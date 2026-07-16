@@ -8,10 +8,10 @@ fn try_participant_ref(src : Source) -> PartRef? {
       return None
     }
     src.skip_whitespace()
-    if src.try_string("as") {
+    if src.try_keyword("as") {
       src.skip_whitespace()
       let code = src.take_while(is_ident_char)
-      if code.length() == 0 {
+      guard code.length() > 0 else {
         src.restore(saved)
         return None
       }
@@ -20,16 +20,19 @@ fn try_participant_ref(src : Source) -> PartRef? {
     return Some({ code: display, display })
   }
   let code = src.take_while(is_ident_char)
-  if code.length() == 0 {
+  guard code.length() > 0 else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
-  if src.try_string("as") {
+  if src.try_keyword("as") {
     src.skip_whitespace()
     if src.consume('"') {
       let display = src.take_while(c => c != '"')
-      let _ = src.consume('"')
+      guard src.consume('"') else {
+        src.restore(saved)
+        return None
+      }
       return Some({ code, display })
     }
     let display = src.take_while(is_ident_char)
@@ -69,12 +72,9 @@ fn left_dressing(src : Source) -> DressingResult {
   } else {
     NoneHead
   }
-  let has_dir : Bool = match head {
-    NoneHead => false
-    _ => true
-  }
+  let has_dir = head.has_direction()
   if src.consume('(') {
-    let _ = src.take_while(is_digit)
+    let _ = src.take_while(Char::is_ascii_digit)
     let _ = src.consume(')')
   }
   { head, circle, cross, has_dir, part, inclination: 0 }
@@ -107,14 +107,11 @@ fn right_dressing(src : Source) -> DressingResult {
   } else {
     NoneHead
   }
-  let has_dir : Bool = match head {
-    NoneHead => false
-    _ => true
-  }
+  let has_dir = head.has_direction()
   let circle : Bool = src.consume('o')
   let cross : Bool = src.consume('x')
   if src.consume('(') {
-    let _ = src.take_while(is_digit)
+    let _ = src.take_while(Char::is_ascii_digit)
     let _ = src.consume(')')
   }
   { head, circle, cross, has_dir, part, inclination: 0 }
@@ -122,29 +119,17 @@ fn right_dressing(src : Source) -> DressingResult {
 
 ///|
 fn activation_spec(src : Source) -> ActivationSpec? {
-  let saved = src.save()
-  if src.consume('+') {
-    if src.consume('+') {
-      return Some(Activate)
-    }
+  if src.try_string("++") {
+    Some(Activate)
+  } else if src.try_string("--") {
+    Some(Deactivate)
+  } else if src.try_string("!!") {
+    Some(Destroy)
+  } else if src.try_string("**") {
+    Some(Create)
+  } else {
+    None
   }
-  if src.consume('-') {
-    if src.consume('-') {
-      return Some(Deactivate)
-    }
-  }
-  if src.consume('!') {
-    if src.consume('!') {
-      return Some(Destroy)
-    }
-  }
-  if src.consume('*') {
-    if src.consume('*') {
-      return Some(Create)
-    }
-  }
-  src.restore(saved)
-  None
 }
 
 ///|
@@ -156,10 +141,10 @@ fn build_arrow_cfg(
 ) -> ArrowConfig {
   let (l, r) = if reverse { (right, left) } else { (left, right) }
   let mut cfg = ArrowConfig::default()
-  if !is_none_head(l.head) {
+  if l.head.has_direction() {
     cfg = cfg.with_head1(l.head)
   }
-  if !is_none_head(r.head) {
+  if r.head.has_direction() {
     cfg = cfg.with_head2(r.head)
   }
   if l.cross {

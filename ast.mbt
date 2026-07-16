@@ -27,7 +27,7 @@ enum ArrowBody {
   Solid
   Dotted
   Hidden
-}
+} derive(Eq, Debug)
 
 ///|
 enum ArrowHead {
@@ -35,7 +35,7 @@ enum ArrowHead {
   Async
   CrossX
   NoneHead
-}
+} derive(Eq, Debug)
 
 ///|
 enum ArrowPart {

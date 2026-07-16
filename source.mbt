@@ -6,11 +6,7 @@ struct Source {
 
 ///|
 fn Source::new(input : String) -> Source {
-  let cs : Array[Char] = []
-  for c in input {
-    cs.push(c)
-  }
-  { chars: cs, pos: 0 }
+  { chars: input.to_array(), pos: 0 }
 }
 
 ///|
@@ -30,11 +26,8 @@ fn Source::eof(self : Source) -> Bool {
 
 ///|
 fn Source::peek(self : Source) -> Char? {
-  if self.pos >= self.chars.length() {
-    None
-  } else {
-    Some(self.chars[self.pos])
-  }
+  guard !self.eof() else { None }
+  Some(self.chars[self.pos])
 }
 
 ///|
@@ -46,13 +39,9 @@ fn Source::advance(self : Source) -> Char {
 
 ///|
 fn Source::consume(self : Source, expected : Char) -> Bool {
-  match self.peek() {
-    Some(c) if c == expected => {
-      self.pos = self.pos + 1
-      true
-    }
-    _ => false
-  }
+  guard self.peek() is Some(c) && c == expected else { false }
+  self.pos = self.pos + 1
+  true
 }
 
 ///|
@@ -72,22 +61,16 @@ fn Source::try_string(self : Source, s : String) -> Bool {
 
 ///|
 fn Source::skip_whitespace(self : Source) -> Unit {
-  while true {
-    match self.peek() {
-      Some(c) if c == ' ' || c == '\t' || c == '\r' => self.pos = self.pos + 1
-      _ => break
-    }
+  while self.peek().map_or(false, is_inline_whitespace) {
+    self.pos += 1
   }
 }
 
 ///|
 fn Source::try_keyword(self : Source, kw : String) -> Bool {
-  if self.peek_word().equal_ignore_ascii_case(kw) {
-    self.skip_word()
-    true
-  } else {
-    false
-  }
+  guard self.peek_word().equal_ignore_ascii_case(kw) else { false }
+  self.skip_word()
+  true
 }
 
 ///|
@@ -110,32 +93,23 @@ fn Source::finish_command(self : Source, start : Int) -> Bool {
 
 ///|
 fn Source::skip_line(self : Source) -> Unit {
-  while true {
-    match self.peek() {
-      Some('\n') => {
-        self.pos = self.pos + 1
-        break
-      }
-      Some(_) => self.pos = self.pos + 1
-      None => break
-    }
+  while self.peek() is Some(c) && c != '\n' {
+    self.pos += 1
   }
+  let _ = self.consume('\n')
 }
 
 ///|
 fn Source::take_while(self : Source, pred : (Char) -> Bool) -> String {
   let start = self.pos
-  while true {
-    match self.peek() {
-      Some(c) if pred(c) => self.pos = self.pos + 1
-      _ => break
-    }
+  while self.peek().map_or(false, pred) {
+    self.pos += 1
   }
-  let sb = StringBuilder()
+  let builder = StringBuilder()
   for i = start; i < self.pos; i = i + 1 {
-    sb <+ "\{self.chars[i]}"
+    builder <+ "\{self.chars[i]}"
   }
-  sb.to_string()
+  builder.to_string()
 }
 
 ///|

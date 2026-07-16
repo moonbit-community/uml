@@ -58,16 +58,12 @@ fn parse_note_position(src : Source) -> NotePosition? {
 
 ///|
 fn split_participant_list(raw : StringView) -> Array[String] {
-  let codes : Array[String] = []
-  if raw.length() > 0 {
-    for c in raw.split(",") {
-      let t = c.trim()
-      if t.length() > 0 {
-        codes.push(t.to_owned())
-      }
-    }
-  }
-  codes
+  raw
+  .split(",")
+  .map(c => c.trim())
+  .filter(c => c.length() > 0)
+  .map(c => c.to_owned())
+  .to_array()
 }
 
 ///|
@@ -95,7 +91,7 @@ fn try_participant_decl(src : Source) -> ParticipantDecl? {
   src.skip_whitespace()
   if try_keyword(src, "order") {
     src.skip_whitespace()
-    let _ = src.take_while(c => c == '-' || is_digit(c))
+    let _ = src.take_while(c => c == '-' || c.is_ascii_digit())
   }
   if src.consume('#') {
     let _ = src.take_while(is_ident_char)
@@ -227,13 +223,13 @@ fn try_grouping(src : Source) -> Event? {
 ///|
 fn try_life_event(src : Source, kw : String, typ : ActivationSpec) -> Event? {
   let saved = src.save()
-  if !try_keyword(src, kw) {
+  guard try_keyword(src, kw) else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
   let code = src.take_while(is_ident_char)
-  if code.length() == 0 {
+  guard code.length() > 0 else {
     src.restore(saved)
     return None
   }
@@ -264,7 +260,7 @@ fn try_destroy(src : Source) -> Event? {
 ///|
 fn try_divider(src : Source) -> Event? {
   let saved = src.save()
-  if !src.consume('=') || !src.consume('=') {
+  guard src.try_string("==") else {
     src.restore(saved)
     return None
   }
@@ -302,12 +298,12 @@ fn try_delay(src : Source) -> Event? {
 ///|
 fn try_hspace(src : Source) -> Event? {
   let saved = src.save()
-  if !src.consume('|') || !src.consume('|') {
+  guard src.try_string("||") else {
     src.restore(saved)
     return None
   }
   let n_str = src.take_while(c => c >= '0' && c <= '9')
-  if !src.consume('|') {
+  guard src.consume('|') else {
     src.restore(saved)
     return None
   }
@@ -326,7 +322,7 @@ fn try_hspace(src : Source) -> Event? {
 ///|
 fn try_newpage(src : Source) -> Event? {
   let saved = src.save()
-  if !try_keyword(src, "newpage") {
+  guard try_keyword(src, "newpage") else {
     src.restore(saved)
     return None
   }

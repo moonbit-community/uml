@@ -31,7 +31,12 @@ struct ParseCtx {
 
 ///|
 fn ParseCtx::new(input : String) -> ParseCtx {
-  { source: Source::new(input), participants: {}, auto_order: 0, events: [] }
+  {
+    source: Source::new(input),
+    participants: Map([]),
+    auto_order: 0,
+    events: [],
+  }
 }
 
 ///|
@@ -41,9 +46,7 @@ fn ParseCtx::get_or_create(
   display : String,
   typ : ParticipantType,
 ) -> Unit {
-  if self.participants.contains(code) {
-    return
-  }
+  guard !self.participants.contains(code) else { return }
   self.auto_order = self.auto_order + 1
   self.participants[code] = {
     code,
@@ -65,9 +68,9 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
       self.get_or_create(message.to_code, message.to_code, Participant)
     }
     Note(note) =>
-      for code in note.participant_codes {
+      note.participant_codes.each(code => {
         self.get_or_create(code, code, Participant)
-      }
+      })
     LifeEvent(life) =>
       self.get_or_create(
         life.participant_code,
@@ -79,18 +82,17 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
 }
 
 ///|
-fn is_alpha(c : Char) -> Bool {
-  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-}
-
-///|
-fn is_digit(c : Char) -> Bool {
-  c >= '0' && c <= '9'
+fn is_inline_whitespace(c : Char) -> Bool {
+  c == ' ' || c == '\t' || c == '\r'
 }
 
 ///|
 fn is_ident_char(c : Char) -> Bool {
-  is_alpha(c) || is_digit(c) || c == '_' || c == '.' || c == '@'
+  c.is_ascii_alphabetic() ||
+  c.is_ascii_digit() ||
+  c == '_' ||
+  c == '.' ||
+  c == '@'
 }
 
 ///|
@@ -111,9 +113,6 @@ fn is_arrow_char(c : Char) -> Bool {
 }
 
 ///|
-fn is_none_head(h : ArrowHead) -> Bool {
-  match h {
-    NoneHead => true
-    _ => false
-  }
+fn ArrowHead::has_direction(self : ArrowHead) -> Bool {
+  !(self is NoneHead)
 }
