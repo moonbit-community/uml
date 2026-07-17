@@ -71,8 +71,6 @@ priv enum NotePosition {
   Right
   Over
   OverSeveral
-  Bottom
-  Top
   Across
 }
 
@@ -264,7 +262,6 @@ priv enum Event {
   LinkAnchor(String, String, String?)
   Return(Return)
   Create
-  UrlOf(String, String)
   IgnoreNewpage
   AutoNewpage(Int?)
 }

@@ -32,6 +32,8 @@ priv struct ParseCtx {
   participants : Map[String, Participant]
   events : Array[Event]
   box_stack : Array[ParticipantBox]
+  mut grouping_depth : Int
+  mut pending_create : String?
 }
 
 ///|
@@ -41,6 +43,8 @@ fn ParseCtx::new(input : String) -> ParseCtx {
     participants: Map([]),
     events: [],
     box_stack: [],
+    grouping_depth: 0,
+    pending_create: None,
   }
 }
 
@@ -67,8 +71,10 @@ fn ParseCtx::ensure_participant(
 fn ParseCtx::declare_participant(
   self : ParseCtx,
   declaration : ParticipantDecl,
-) -> Unit {
+) -> Unit raise ParseError {
+  self.ensure_no_pending_create()
   let reference = declaration.reference
+  let is_new = !self.participants.contains(reference.code)
   self.ensure_participant(reference.code, reference.display, declaration.typ)
   let existing = self.participants[reference.code]
   let color = match declaration.color {
@@ -89,6 +95,9 @@ fn ParseCtx::declare_participant(
   }
   if declaration.created {
     self.events.push(Create)
+    if is_new {
+      self.pending_create = Some(reference.code)
+    }
   }
 }
 
@@ -118,11 +127,6 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
         life.participant_code,
         Participant,
       )
-    UrlOf(code, url) => {
-      self.ensure_participant(code, code, Participant)
-      let participant = self.participants[code]
-      self.participants[code] = { ..participant, url: Some(url) }
-    }
     BoxStart(box) => self.box_stack.push({ label: box.label, color: box.color })
     BoxEnd => {
       let _ = self.box_stack.pop()
@@ -133,7 +137,60 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
 }
 
 ///|
-fn ParseCtx::push_event(self : ParseCtx, event : Event) -> Unit {
+fn ParseCtx::ensure_no_pending_create(self : ParseCtx) -> Unit raise ParseError {
+  guard self.pending_create is Some(code) else { () }
+  raise SyntaxError(
+    self.source.line_number(),
+    "after create, send a message to \{code}",
+  )
+}
+
+///|
+fn ParseCtx::validate_event(
+  self : ParseCtx,
+  event : Event,
+) -> Unit raise ParseError {
+  match self.pending_create {
+    Some(code) =>
+      match event {
+        Message(message) if message.to_code == code =>
+          self.pending_create = None
+        _ =>
+          raise SyntaxError(
+            self.source.line_number(),
+            "after create, send a message to \{code}",
+          )
+      }
+    None => ()
+  }
+  match event {
+    GroupingStart(_) => self.grouping_depth += 1
+    GroupingLeaf(leaf) => {
+      guard self.grouping_depth > 0 else {
+        raise SyntaxError(
+          self.source.line_number(),
+          "group leaf without a group",
+        )
+      }
+      if leaf.is_end {
+        self.grouping_depth -= 1
+      }
+    }
+    BoxEnd => {
+      guard !self.box_stack.is_empty() else {
+        raise SyntaxError(self.source.line_number(), "end box without a box")
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
+fn ParseCtx::push_event(
+  self : ParseCtx,
+  event : Event,
+) -> Unit raise ParseError {
+  self.validate_event(event)
   self.register_event(event)
   self.events.push(event)
 }

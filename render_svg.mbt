@@ -581,7 +581,7 @@ fn append_note(
   let x = match note.position {
     Left => center - width - 10
     Right => center + 10
-    Over | Top | Bottom => center - width / 2
+    Over => center - width / 2
     OverSeveral =>
       match (note.participant_codes.get(0), note.participant_codes.last()) {
         (Some(first), Some(last)) => {
@@ -925,6 +925,6 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
 
 ///|
 /// Parse PlantUML sequence-diagram text and render it as standalone SVG.
-pub fn render_sequence_svg(input : String) -> String {
+pub fn render_sequence_svg(input : String) -> String raise ParseError {
   parse(input).render_svg()
 }

@@ -57,8 +57,6 @@ fn parse_note_position(src : Source) -> NotePosition? {
     "right" => Right
     "over" => Over
     "across" => Across
-    "bottom" => Bottom
-    "top" => Top
     _ => return None
   }
   src.skip_word()
@@ -78,7 +76,7 @@ fn split_participant_list(raw : StringView) -> Array[String] {
 ///|
 fn note_is_on_arrow(position : NotePosition, src : Source) -> Bool {
   match position {
-    Left | Right | Bottom | Top => src.peek() is Some(':')
+    Left | Right => src.peek() is Some(':')
     Over | OverSeveral | Across => false
   }
 }
@@ -162,6 +160,10 @@ fn try_note(src : Source) -> Event? {
   let participants = split_participant_list(
     src.take_while(c => c != ':' && c != '#' && c != '\n').trim(),
   )
+  guard participants.length() <= 2 else {
+    src.restore(saved)
+    return None
+  }
   src.skip_whitespace()
   let color = src.try_color()
   src.skip_whitespace()
@@ -417,11 +419,14 @@ fn try_box(src : Source) -> Event? {
   }
   guard src.try_keyword("box") else { return None }
   src.skip_whitespace()
+  let label = src
+    .take_while(c => c != '#' && c != '\n')
+    .trim()
+    .to_owned()
+    .optional_text()
+  src.skip_whitespace()
   let color = src.try_color()
-  if color is Some(_) {
-    src.skip_whitespace()
-  }
-  Some(BoxStart({ label: src.collect_line().optional_text(), color }))
+  Some(BoxStart({ label, color }))
 }
 
 ///|
@@ -462,28 +467,6 @@ fn try_return(src : Source) -> Event? {
 }
 
 ///|
-fn try_url(src : Source) -> Event? {
-  let saved = src.save()
-  guard src.try_keyword("url") else { return None }
-  src.skip_whitespace()
-  let _ = src.try_keyword("of") || src.try_keyword("for")
-  src.skip_whitespace()
-  guard src.try_participant_ref() is Some(reference) else {
-    src.restore(saved)
-    return None
-  }
-  src.skip_whitespace()
-  let _ = src.try_keyword("is")
-  src.skip_whitespace()
-  let parsed_url = src.collect_line().optional_text()
-  guard parsed_url is Some(url) else {
-    src.restore(saved)
-    return None
-  }
-  Some(UrlOf(reference.code, url))
-}
-
-///|
 fn try_ignore_newpage(src : Source) -> Event? {
   let saved = src.save()
   guard src.try_keyword("ignore") else { return None }
@@ -497,15 +480,16 @@ fn try_ignore_newpage(src : Source) -> Event? {
 
 ///|
 fn try_auto_newpage(src : Source) -> Event? {
-  let saved = src.save()
-  guard src.try_keyword("auto") else { return None }
-  src.skip_whitespace()
-  guard src.try_keyword("newpage") else {
-    src.restore(saved)
-    return None
-  }
+  guard src.try_keyword("autonewpage") else { return None }
   src.skip_whitespace()
   Some(AutoNewpage(take_optional_decimal(src)))
+}
+
+///|
+fn try_title(src : Source) -> Bool {
+  guard src.try_keyword("title") else { false }
+  src.skip_line()
+  true
 }
 
 ///|

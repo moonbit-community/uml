@@ -99,13 +99,21 @@ test "render groups notes and activation as distinct layers" {
 }
 
 ///|
-test "render supports auto numbering URLs and hiding unlinked participants" {
+test "render preserves official hexagonal and box note styles" {
   let svg = render_sequence_svg(
-    "@startuml\nparticipant Hidden\nparticipant Alice\nparticipant Bob\nurl of Alice is https://example.com\nautonumber 7 2 \"(0)\"\nAlice -> Bob : request\nBob -> Alice : response\nhide unlinked\n@enduml",
+    "@startuml\nhnote over Alice : hex\nrnote over Bob : box\n@enduml",
+  )
+  @test.assert_eq(svg.contains("class=\"note hex-note\""), true)
+  @test.assert_eq(svg.contains("class=\"note box-note\""), true)
+}
+
+///|
+test "render supports auto numbering and hiding unlinked participants" {
+  let svg = render_sequence_svg(
+    "@startuml\nparticipant Hidden\nparticipant Alice\nparticipant Bob\nautonumber 7 2 \"(0)\"\nAlice -> Bob : request\nBob -> Alice : response\nhide unlinked\n@enduml",
   )
   @test.assert_eq(svg.contains("(7) request"), true)
   @test.assert_eq(svg.contains("(9) response"), true)
-  @test.assert_eq(svg.contains("href=\"https://example.com\""), true)
   @test.assert_eq(svg.contains("data-code=\"Hidden\""), false)
 }
 
@@ -151,7 +159,7 @@ test "note on arrow is centered over the preceding message" {
 ///|
 test "participant boxes retain parser scope and render as englobers" {
   let diagram = parse(
-    "@startuml\nbox #lightblue Infrastructure\nparticipant Gateway\nparticipant Store\nend box\nparticipant Client\nGateway -> Store\n@enduml",
+    "@startuml\nbox Infrastructure #lightblue\nparticipant Gateway\nparticipant Store\nend box\nparticipant Client\nGateway -> Store\n@enduml",
   )
   let svg = diagram.render_svg()
   @test.assert_eq(diagram.participants["Gateway"].boxes.length(), 1)

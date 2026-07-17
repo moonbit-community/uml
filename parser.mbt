@@ -2,7 +2,7 @@
 fn ParseCtx::try_event(
   self : ParseCtx,
   parsers : Array[(Source) -> Event?],
-) -> Bool {
+) -> Bool raise ParseError {
   for parser in parsers {
     let start = self.source.save()
     match parser(self.source) {
@@ -17,7 +17,9 @@ fn ParseCtx::try_event(
 }
 
 ///|
-fn ParseCtx::try_participant_declaration(self : ParseCtx) -> Bool {
+fn ParseCtx::try_participant_declaration(
+  self : ParseCtx,
+) -> Bool raise ParseError {
   let start = self.source.save()
   match try_participant_decl(self.source) {
     Some(declaration) if self.source.finish_command(start) => {
@@ -71,12 +73,12 @@ fn skip_ignored_line(source : Source) -> Bool {
 /// - `input`: the raw PlantUML source text, optionally wrapped with `@startuml` / `@enduml`.
 ///
 /// Returns a `SequenceDiagram` containing the parsed participants and events.
-pub fn parse(input : String) -> SequenceDiagram {
+pub fn parse(input : String) -> SequenceDiagram raise ParseError {
   let ctx = ParseCtx::new(input)
   let parsers : Array[(Source) -> Event?] = [
     arrow, try_exo_arrow, try_note, try_box, try_grouping, try_activate, try_deactivate,
     try_destroy, try_return, try_divider, try_delay, try_hspace, try_newpage, try_reference,
-    try_autonumber, try_autoactivate, try_footbox, try_hide_unlinked, try_url, try_ignore_newpage,
+    try_autonumber, try_autoactivate, try_footbox, try_hide_unlinked, try_ignore_newpage,
     try_auto_newpage, try_link_anchor,
   ]
 
@@ -93,10 +95,21 @@ pub fn parse(input : String) -> SequenceDiagram {
       ctx.source.skip_line()
       break
     }
+    if try_title(ctx.source) {
+      continue
+    }
     if ctx.try_event(parsers) || ctx.try_participant_declaration() {
       continue
     }
-    ctx.source.skip_line()
+    raise SyntaxError(ctx.source.line_number(), ctx.source.current_line())
+  }
+
+  ctx.ensure_no_pending_create()
+  guard ctx.grouping_depth == 0 else {
+    raise SyntaxError(ctx.source.line_number(), "unclosed group")
+  }
+  guard ctx.box_stack.is_empty() else {
+    raise SyntaxError(ctx.source.line_number(), "unclosed box")
   }
 
   let (auto_number, autoactivate, show_footbox) = diagram_options(ctx.events)

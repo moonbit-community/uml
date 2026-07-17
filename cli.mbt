@@ -21,7 +21,11 @@ fn main {
 
   let output_path = output_path_for(input_path)
   guard read_input(input_path) is Some(source) else { return }
-  guard write_output(output_path, render_sequence_svg(source)) else { return }
+  let svg = render_sequence_svg(source) catch {
+    SyntaxError(line, message) =>
+      return println("error: line \{line}: \{message}")
+  }
+  guard write_output(output_path, svg) else { return }
   println("output: \{output_path}")
 }
 

@@ -122,6 +122,7 @@ fn Source::take_message_tail(
 ) -> (ActivationSpec?, String?, String?) {
   self.skip_whitespace()
   let activation = self.take_activation_spec()
+  self.skip_whitespace()
   let color = self.try_color()
   self.skip_whitespace()
   let label = if self.consume(':') {

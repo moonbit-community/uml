@@ -149,7 +149,6 @@ fn Event::height(self : Event) -> Int {
     | Autoactivate(_)
     | Footbox(_)
     | HideUnlinked
-    | UrlOf(_, _)
     | IgnoreNewpage
     | AutoNewpage(_) => 0
   }
@@ -211,7 +210,6 @@ fn SequenceDiagram::participant_is_linked(
             return true
           }
         }
-      UrlOf(participant, _) => if participant == code { return true }
       _ => ()
     }
   }

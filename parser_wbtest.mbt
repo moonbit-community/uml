@@ -173,28 +173,73 @@ test "keywords are case insensitive" {
 }
 
 ///|
-test "create declares a participant" {
-  let result = parse("@startuml\ncreate Bob\n@enduml")
+test "create is followed by a message to the new participant" {
+  let result = parse("@startuml\ncreate Bob\nAlice -> Bob\n@enduml")
   @test.assert_eq(result.participants.contains("Bob"), true)
-  @test.assert_eq(result.events.length(), 1)
+  @test.assert_eq(result.events.length(), 2)
 }
 
 ///|
-test "trailing command text is not accepted as an arrow" {
-  let result = parse("@startuml\nAlice -> Bob trailing\n@enduml")
-  @test.assert_eq(result.events.length(), 0)
+test "invalid arrow suffix raises a parse error" {
+  try parse("@startuml\nAlice -> Bob trailing\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
 }
 
 ///|
-test "participant aliases require an as keyword boundary" {
-  let result = parse("@startuml\nAlice asBob -> Carol\n@enduml")
-  @test.assert_eq(result.events.length(), 0)
+test "invalid participant aliases raise a parse error" {
+  try parse("@startuml\nAlice asBob -> Carol\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
 }
 
 ///|
-test "single activation suffix is not accepted" {
-  let result = parse("@startuml\nAlice -> Bob +\n@enduml")
-  @test.assert_eq(result.events.length(), 0)
+test "invalid activation suffix raises a parse error" {
+  try parse("@startuml\nAlice -> Bob +\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "notes over more than two participants raise a parse error" {
+  try parse("@startuml\nnote over Alice, Bob, Carol : invalid\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "non-PlantUML box order raises a parse error" {
+  try parse("@startuml\nbox #lightblue Infrastructure\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "non-PlantUML auto newpage spelling raises a parse error" {
+  try parse("@startuml\nauto newpage 10\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "unsupported URL commands raise a parse error" {
+  try parse("@startuml\nurl of Alice is https://example.com\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
 }
 
 ///|
@@ -238,7 +283,7 @@ test "parse a complete sequence diagram" {
     #|deactivate Service
     #|[-> client : HTTP request
     #|client ->] : audit
-    #|box #lightblue Infrastructure
+    #|box Infrastructure #lightblue
     #|participant Logger
     #|end box
     #|autonumber 1.2 3 "(0)"
@@ -246,8 +291,7 @@ test "parse a complete sequence diagram" {
     #|autoactivate on
     #|hide footbox
     #|hide unlinked
-    #|url of client is https://example.com
-    #|auto newpage 10
+    #|autonewpage 10
     #|ignore newpage
     #|newpage summary
     #|
@@ -255,7 +299,7 @@ test "parse a complete sequence diagram" {
     #|
   let result = parse(input)
 
-  @test.assert_eq(result.events.length(), 28)
+  @test.assert_eq(result.events.length(), 27)
   @test.assert_eq(result.participants.contains("client"), true)
   @test.assert_eq(result.participants.contains("Gateway"), true)
   @test.assert_eq(result.participants.contains("Service"), true)
@@ -319,7 +363,7 @@ test "parse a complete sequence diagram" {
     BoxStart(box) => @test.assert_eq(box.color, Some("lightblue"))
     _ => fail("not a box")
   }
-  match result.events[27] {
+  match result.events[26] {
     Newpage(page) => @test.assert_eq(page.title, Some("summary"))
     _ => fail("not a newpage")
   }

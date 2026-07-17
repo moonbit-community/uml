@@ -116,6 +116,30 @@ fn Source::skip_line(self : Source) -> Unit {
 }
 
 ///|
+fn Source::line_number(self : Source) -> Int {
+  let mut line = 1
+  for index in 0..<self.pos {
+    if self.chars[index] == '\n' {
+      line += 1
+    }
+  }
+  line
+}
+
+///|
+fn Source::current_line(self : Source) -> String {
+  let mut end = self.pos
+  while end < self.chars.length() && self.chars[end] != '\n' {
+    end += 1
+  }
+  let output = StringBuilder()
+  for index in self.pos..<end {
+    output.write_char(self.chars[index])
+  }
+  output.to_string()
+}
+
+///|
 fn Source::finish_command(self : Source, start : Int) -> Bool {
   for index in start..<self.pos {
     guard self.chars[index] != '\n' else { return true }
