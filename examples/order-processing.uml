@@ -9,11 +9,11 @@ database "Payment Gateway" as payment #lightcoral
 queue "Notification Queue" as notify #lavender
 collections "Cache Layer" as cache #palegreen
 
-box #lightyellow Frontend
+box Frontend #lightyellow
 participant "CDN" as cdn
 end box
 
-box #lightgrey Backend
+box Backend #lightgrey
 participant "Worker Pool" as worker
 participant "Audit Logger" as audit
 end box
@@ -60,7 +60,8 @@ inventory -->> service -- : Stock reduced
 
 note across : Payment processing may take up to 30 seconds
 
-service -> payment ++ -- : Charge $49.99
+service -> payment ++ : Charge $49.99
+deactivate payment
 autonumber stop
 payment --> service : Payment confirmed
 autonumber resume
@@ -74,7 +75,7 @@ end
 service --> gateway -- : Order #1234 created
 gateway --> customer : "Order confirmed"
 
-hnote over service, inventory, notify #aliceblue : Transaction complete
+hnote over service, inventory #aliceblue : Transaction complete
 
 == Post-Processing ==
 

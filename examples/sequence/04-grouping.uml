@@ -37,7 +37,7 @@ partition ModuleA
   Bob -> Carol : partitioned
 end
 
-parallel group syntax:
+' parallel group syntax:
 & alt #pink concurrency
   Alice -> Bob : path A
   else
@@ -52,7 +52,8 @@ alt #lightgreen accepted
   Bob -> Carol : wait
   end
 
-also keyword for group leaves:
+' also keyword for group leaves:
+par alternatives
 Alice -> Bob : test
 also
 Alice -> Carol : also works

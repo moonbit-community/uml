@@ -20,6 +20,7 @@ CollectionA -> Xtra : ordered earlier
 
 create alice
 create Bob as "Bobby Tables"
+alice -> Bob : create and alias
 actor "External" as ext #lightgreen
-ext --> alice : create and alias
+ext --> alice : external reply
 @enduml

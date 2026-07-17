@@ -1,9 +1,9 @@
 @startuml
 
-box #lightyellow Frontend
+box Frontend #lightyellow
 participant Client
 end box
-box #lightblue Backend
+box Backend #lightblue
 participant Server
 participant Database
 end box
@@ -32,19 +32,16 @@ return result value
 Client ->] : to outside
 
 & Client -> Server : multicast message
-Server & Database : multicast to multiple
+Server -> Database & Client : multicast to multiple
 
 hide unlinked
 participant Orphan
-
-url of Client is https://example.com/users
-url of Server is https://example.com/api
 
 {start} Client -> Server : anchored arrow
 {start} <-> {end} : linked anchors
 
 ignore newpage
-auto newpage 50
+autonewpage 50
 newpage summary page
 
 @enduml
