@@ -64,13 +64,13 @@ priv struct DiagramLayout {
 fn TextSize::of(text : String) -> TextSize {
   let lines = text.split("\n").to_array()
   let mut width = 0
-  for line in lines {
+  lines.each(line => {
     let mut line_width = 0
     for char in line {
       line_width = line_width + text_char_width(char)
     }
     width = width.max(line_width)
-  }
+  })
   { width, height: lines.length().max(1) * 16 }
 }
 
@@ -169,8 +169,11 @@ fn Message::gap_requirement(self : Message) -> Int {
 }
 
 ///|
-fn participant_is_linked(diagram : SequenceDiagram, code : String) -> Bool {
-  for event in diagram.events {
+fn SequenceDiagram::participant_is_linked(
+  self : SequenceDiagram,
+  code : String,
+) -> Bool {
+  for event in self.events {
     match event {
       Message(message) => {
         if message.from_code == code || message.to_code == code {
@@ -204,8 +207,8 @@ fn participant_is_linked(diagram : SequenceDiagram, code : String) -> Bool {
 }
 
 ///|
-fn hides_unlinked(diagram : SequenceDiagram) -> Bool {
-  for event in diagram.events {
+fn SequenceDiagram::hides_unlinked(self : SequenceDiagram) -> Bool {
+  for event in self.events {
     if event is HideUnlinked {
       return true
     }
@@ -292,9 +295,9 @@ fn initial_participant_layout(
 ) -> Array[ParticipantLayout] {
   let layouts = []
   let mut index = 0
-  let hide_unlinked = hides_unlinked(diagram)
+  let hide_unlinked = diagram.hides_unlinked()
   for _, participant in diagram.participants {
-    guard !hide_unlinked || participant_is_linked(diagram, participant.code) else {
+    guard !hide_unlinked || diagram.participant_is_linked(participant.code) else {
       continue
     }
     let width = (TextSize::of(participant.display).width + 28).max(80)
@@ -588,12 +591,12 @@ fn layout_events(
 }
 
 ///|
-fn layout(diagram : SequenceDiagram) -> DiagramLayout {
-  let (participants, participant_index, width) = layout_participants(diagram)
+fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
+  let (participants, participant_index, width) = layout_participants(self)
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
-    diagram,
+    self,
   )
-  let footbox_height = if diagram.show_footbox { 70 } else { 24 }
+  let footbox_height = if self.show_footbox { 70 } else { 24 }
   {
     participants,
     participant_index,

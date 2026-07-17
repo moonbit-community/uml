@@ -19,7 +19,7 @@ test "participant layout reserves message label width" {
   let diagram = parse(
     "@startuml\nAlice -> Bob : this is a deliberately wide message label\n@enduml",
   )
-  let result = layout(diagram)
+  let result = diagram.layout()
   let distance = result.participants[1].center_x -
     result.participants[0].center_x
   @test.assert_eq(
@@ -34,7 +34,7 @@ test "participant layout follows explicit PlantUML order" {
   let diagram = parse(
     "@startuml\nparticipant Last order 20\nparticipant First order -10\nparticipant Middle\nFirst -> Middle\n@enduml",
   )
-  let result = layout(diagram)
+  let result = diagram.layout()
   @test.assert_eq(result.participants[0].participant.code, "First")
   @test.assert_eq(result.participants[1].participant.code, "Middle")
   @test.assert_eq(result.participants[2].participant.code, "Last")
@@ -45,7 +45,7 @@ test "render groups notes and activation as distinct layers" {
   let diagram = parse(
     "@startuml\nAlice -> Bob ++ : start\nnote right of Bob #yellow : cached\nalt #palegreen accepted\nBob --> Alice -- : reply\nelse rejected\nBob -> Alice : error\nend\ndestroy Bob\n@enduml",
   )
-  let result = layout(diagram)
+  let result = diagram.layout()
   let svg = diagram.render_svg()
   @test.assert_eq(result.groups.length(), 1)
   @test.assert_eq(result.groups[0].end_y > result.groups[0].start_y, true)
@@ -87,18 +87,18 @@ test "note on arrow is centered over the preceding message" {
   let diagram = parse(
     "@startuml\nAlice -> Bob\nBob -> Carol\nnote right : attached\n@enduml",
   )
-  let result = layout(diagram)
+  let result = diagram.layout()
   match diagram.events[1] {
     Message(message) =>
       match diagram.events[2] {
         Note(note) => {
           let expected = (
-              participant_at(result, message.from_code).unwrap_or(
-                result.participants[0],
-              ).center_x +
-              participant_at(result, message.to_code).unwrap_or(
-                result.participants[0],
-              ).center_x
+              result
+              .participant_at(message.from_code)
+              .unwrap_or(result.participants[0]).center_x +
+              result
+              .participant_at(message.to_code)
+              .unwrap_or(result.participants[0]).center_x
             ) /
             2
           @test.assert_eq(
@@ -133,7 +133,7 @@ test "delays split lifelines into visible event ranges" {
   let diagram = parse(
     "@startuml\nAlice -> Bob\n... waiting ...\nBob -> Alice\n@enduml",
   )
-  let result = layout(diagram)
+  let result = diagram.layout()
   let ranges = delay_ranges(result, diagram.events)
   @test.assert_eq(ranges.length(), 1)
   @test.assert_eq(ranges[0].0 < ranges[0].1, true)
@@ -153,7 +153,7 @@ test "return follows the most recent active caller" {
   let diagram = parse(
     "@startuml\nClient -> Service ++ : call\nreturn result\ndeactivate Service\n@enduml",
   )
-  let result = layout(diagram)
+  let result = diagram.layout()
   let return_y = result.placements[1].y + 18
   let span = result.activations[0]
   @test.assert_eq(span.caller_code, Some("Client"))

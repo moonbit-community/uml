@@ -64,22 +64,25 @@ fn append_text(
   let lines = text.split("\n").to_array()
   output <+
     "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" class=\"\{class_name}\">"
-  for index, line in lines {
+  lines.eachi((index, line) => {
     let dy = if index == 0 { 0 } else { 16 }
     output <+
       "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line.to_owned())}</tspan>"
-  }
+  })
   output.write_string("</text>\n")
 }
 
 ///|
-fn participant_at(layout : DiagramLayout, code : String) -> ParticipantLayout? {
-  layout.participant_index.get(code).map(index => layout.participants[index])
+fn DiagramLayout::participant_at(
+  self : DiagramLayout,
+  code : String,
+) -> ParticipantLayout? {
+  self.participant_index.get(code).map(index => self.participants[index])
 }
 
 ///|
-fn group_keyword(keyword : GroupKeyword) -> String {
-  match keyword {
+fn GroupKeyword::label(self : GroupKeyword) -> String {
+  match self {
     Opt => "opt"
     Alt => "alt"
     Loop => "loop"
@@ -105,7 +108,7 @@ fn append_participant(
     None => ()
   }
   output <+
-    "<g class=\"participant \{participant_type_class(layout.participant.typ)}\" data-code=\"\{xml_escape(layout.participant.code)}\">\n"
+    "<g class=\"participant \{layout.participant.typ.css_class()}\" data-code=\"\{xml_escape(layout.participant.code)}\">\n"
   output <+
     "<rect x=\"\{left}\" y=\"\{y}\" width=\"\{layout.width}\" height=\"36\" rx=\"2\" fill=\"\{fill}\"/>\n"
   append_participant_icon(output, layout.participant.typ, layout.center_x, y)
@@ -123,8 +126,8 @@ fn append_participant(
 }
 
 ///|
-fn participant_type_class(typ : ParticipantType) -> String {
-  match typ {
+fn ParticipantType::css_class(self : ParticipantType) -> String {
+  match self {
     Participant => "participant-box"
     Actor => "actor"
     Boundary => "boundary"
@@ -257,8 +260,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
     let height = (group.end_y - group.start_y).max(22)
     let body_color = svg_color(group.body_color)
     let header_color = svg_color(group.color)
-    output <+
-      "<g class=\"group\" data-keyword=\"\{group_keyword(group.keyword)}\">\n"
+    output <+ "<g class=\"group\" data-keyword=\"\{group.keyword.label()}\">\n"
     output <+
       "<rect x=\"\{x}\" y=\"\{group.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"group-body\" fill=\"\{body_color}\"/>\n"
     output <+
@@ -267,7 +269,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       output,
       x + 8,
       group.start_y + 16,
-      "\{group_keyword(group.keyword)} \{group.header}",
+      "\{group.keyword.label()} \{group.header}",
       "group-label",
       anchor="start",
     )
@@ -329,7 +331,7 @@ fn append_lifelines(
 ///|
 fn append_activations(output : StringBuilder, layout : DiagramLayout) -> Unit {
   for activation in layout.activations {
-    guard participant_at(layout, activation.participant_code)
+    guard layout.participant_at(activation.participant_code)
       is Some(participant) else {
       continue
     }
@@ -358,8 +360,8 @@ fn append_arrow_head(
 }
 
 ///|
-fn marker_for(head : ArrowHead, start : Bool) -> String {
-  match (head, start) {
+fn ArrowHead::marker(self : ArrowHead, start : Bool) -> String {
+  match (self, start) {
     (Normal, true) => " marker-start=\"url(#arrow-start)\""
     (Normal, false) => " marker-end=\"url(#arrow)\""
     (Async, true) => " marker-start=\"url(#open-arrow-start)\""
@@ -375,8 +377,8 @@ fn append_message(
   message : Message,
   placement : EventPlacement,
 ) -> Unit {
-  guard participant_at(layout, message.from_code) is Some(from) else { return }
-  guard participant_at(layout, message.to_code) is Some(to) else { return }
+  guard layout.participant_at(message.from_code) is Some(from) else { return }
+  guard layout.participant_at(message.to_code) is Some(to) else { return }
   let y = placement.y + 18
   let label = placement.number
     .map(number => "\{number} \{message.display_label()}")
@@ -396,7 +398,7 @@ fn append_message(
   if from.participant.code == to.participant.code {
     let loop_x = from.center_x + 34
     output <+
-      "<path d=\"M\{from.center_x} \{start_y}h34v22h-34\" class=\"\{line_class}\"\{marker_for(message.arrow_config.head2, false)}/>\n"
+      "<path d=\"M\{from.center_x} \{start_y}h34v22h-34\" class=\"\{line_class}\"\{message.arrow_config.head2.marker(false)}/>\n"
     append_text(
       output,
       loop_x + 6,
@@ -409,7 +411,7 @@ fn append_message(
     let start_x = from.center_x
     let end_x = to.center_x
     output <+
-      "<line x1=\"\{start_x}\" y1=\"\{start_y}\" x2=\"\{end_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{marker_for(message.arrow_config.head1, true)}\{marker_for(message.arrow_config.head2, false)}/>\n"
+      "<line x1=\"\{start_x}\" y1=\"\{start_y}\" x2=\"\{end_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>\n"
     let label_x = (start_x + end_x) / 2
     append_text(output, label_x, start_y.min(end_y) - 6, label, "message-label")
   }
@@ -424,9 +426,9 @@ fn append_message(
   append_arrow_head(output, message.arrow_config.head1, from.center_x, start_y)
   append_arrow_head(output, message.arrow_config.head2, to.center_x, end_y)
   for code in message.multicast {
-    guard participant_at(layout, code) is Some(target) else { continue }
+    guard layout.participant_at(code) is Some(target) else { continue }
     output <+
-      "<line x1=\"\{from.center_x}\" y1=\"\{start_y}\" x2=\"\{target.center_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{marker_for(message.arrow_config.head2, false)}/>\n"
+      "<line x1=\"\{from.center_x}\" y1=\"\{start_y}\" x2=\"\{target.center_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{message.arrow_config.head2.marker(false)}/>\n"
   }
   if message.anchor is Some(_) {
     output.write_string("</g>\n")
@@ -440,7 +442,7 @@ fn append_exo_message(
   message : MessageExo,
   placement : EventPlacement,
 ) -> Unit {
-  guard participant_at(layout, message.participant_code) is Some(participant) else {
+  guard layout.participant_at(message.participant_code) is Some(participant) else {
     return
   }
   let y = placement.y + 18
@@ -455,12 +457,11 @@ fn append_exo_message(
   }
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
   output <+
-    "<line x1=\"\{start_x}\" y1=\"\{y}\" x2=\"\{end_x}\" y2=\"\{y}\" class=\"message\{dotted}\"\{marker_for(message.arrow_config.head1, true)}\{marker_for(message.arrow_config.head2, false)}/>\n"
+    "<line x1=\"\{start_x}\" y1=\"\{y}\" x2=\"\{end_x}\" y2=\"\{y}\" class=\"message\{dotted}\"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>\n"
   let raw_label = message.label.unwrap_or("")
-  let label = match placement.number {
-    Some(number) => "\{number} \{raw_label}"
-    None => raw_label
-  }
+  let label = placement.number
+    .map(number => "\{number} \{raw_label}")
+    .unwrap_or_else(() => raw_label)
   append_text(output, (start_x + end_x) / 2, y - 6, label, "message-label")
 }
 
@@ -483,10 +484,10 @@ fn append_note(
     OverSeveral =>
       match (note.participant_codes.get(0), note.participant_codes.last()) {
         (Some(first), Some(last)) => {
-          let start = participant_at(layout, first).map_or(center, p => {
-            p.center_x
-          })
-          let end = participant_at(layout, last).map_or(center, p => p.center_x)
+          let start = layout
+            .participant_at(first)
+            .map_or(center, p => p.center_x)
+          let end = layout.participant_at(last).map_or(center, p => p.center_x)
           (start + end) / 2 - width / 2
         }
         _ => center - width / 2
@@ -524,22 +525,20 @@ fn note_anchor_center(
   guard note.on_arrow else {
     match note.participant_codes.get(0) {
       Some(code) =>
-        participant_at(layout, code).map_or(layout.width / 2, participant => {
-          participant.center_x
-        })
+        layout
+        .participant_at(code)
+        .map_or(layout.width / 2, participant => participant.center_x)
       None => layout.width / 2
     }
   }
   match arrow_anchor {
     Some(message) => {
-      let from = participant_at(layout, message.from_code).map_or(
-        layout.width / 2,
-        participant => participant.center_x,
-      )
-      let to = participant_at(layout, message.to_code).map_or(
-        layout.width / 2,
-        participant => participant.center_x,
-      )
+      let from = layout
+        .participant_at(message.from_code)
+        .map_or(layout.width / 2, participant => participant.center_x)
+      let to = layout
+        .participant_at(message.to_code)
+        .map_or(layout.width / 2, participant => participant.center_x)
       (from + to) / 2
     }
     None => layout.width / 2
@@ -585,7 +584,7 @@ fn append_reference(
   placement : EventPlacement,
 ) -> Unit {
   let centers = reference.participant_codes.map(code => {
-    participant_at(layout, code).map_or(layout.width / 2, p => p.center_x)
+    layout.participant_at(code).map_or(layout.width / 2, p => p.center_x)
   })
   let first = centers.get(0).unwrap_or(36)
   let last = centers.last().unwrap_or(layout.width - 36)
@@ -620,16 +619,16 @@ fn append_return(
   }
   let from = match activation {
     Some(span) =>
-      participant_at(layout, span.participant_code).unwrap_or(
-        layout.participants[layout.participants.length() - 1],
-      )
+      layout
+      .participant_at(span.participant_code)
+      .unwrap_or(layout.participants[layout.participants.length() - 1])
     None => layout.participants[layout.participants.length() - 1]
   }
   let to = match activation {
     Some(span) =>
       match span.caller_code {
         Some(caller) =>
-          participant_at(layout, caller).unwrap_or(layout.participants[0])
+          layout.participant_at(caller).unwrap_or(layout.participants[0])
         None => layout.participants[0]
       }
     None => layout.participants[0]
@@ -743,7 +742,7 @@ fn append_event(
 ///|
 fn append_destroy_marks(output : StringBuilder, layout : DiagramLayout) -> Unit {
   for mark in layout.destroys {
-    guard participant_at(layout, mark.participant_code) is Some(participant) else {
+    guard layout.participant_at(mark.participant_code) is Some(participant) else {
       continue
     }
     append_line(
@@ -793,7 +792,7 @@ fn append_svg_preamble(output : StringBuilder, layout : DiagramLayout) -> Unit {
 /// and group, lifeline, activation, and message layers are then painted in
 /// that order.
 pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
-  let layout = layout(self)
+  let layout = self.layout()
   let output = StringBuilder()
   append_svg_preamble(output, layout)
   append_groups(output, layout)
