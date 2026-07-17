@@ -6,10 +6,14 @@ readme = "README.md"
 
 repository = "https://github.com/kokic/uml"
 
-license = "AGPL-3.0"
+license = "Apache-2.0"
 
 keywords = [ ]
 
 description = ""
+
+import {
+  "moonbitlang/x@0.4.45",
+}
 
 preferred_target = "native"

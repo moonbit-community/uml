@@ -1,0 +1,61 @@
+@startuml
+Alice -> Bob : start
+
+alt success path
+  Bob -> Carol : process
+else error path
+  Bob --> Alice : failure
+end
+
+loop 3 times
+  Alice -> Bob : retry
+  opt validation
+    Bob -> Carol : check
+  end
+end
+
+par parallel tasks
+  & Alice -> Bob : task 1
+  & Alice -> Carol : task 2
+  & Alice -> Dave : task 3
+end
+
+break on timeout
+  Bob -> Alice : abort
+end
+
+critical atomic section
+  Bob -> Carol : critical step 1
+  Carol --> Bob : ack
+end
+
+group custom label
+  Alice -> Bob : grouped
+end
+
+partition ModuleA
+  Bob -> Carol : partitioned
+end
+
+parallel group syntax:
+& alt #pink concurrency
+  Alice -> Bob : path A
+  else
+  Alice -> Carol : path B
+  end
+
+alt #lightgreen accepted
+  Alice -> Bob : ok
+  else #mistyrose rejected
+  Bob --> Alice : nok
+  else #aliceblue pending
+  Bob -> Carol : wait
+  end
+
+also keyword for group leaves:
+Alice -> Bob : test
+also
+Alice -> Carol : also works
+end
+
+@enduml

@@ -1,0 +1,25 @@
+@startuml
+participant "Alice Smith" as alice #lightblue
+actor "Bob Jones" as bob #gold
+boundary Gateway #pink
+control Controller
+entity EntityA
+database DatabaseA
+queue QueueA
+collections CollectionA
+participant Xtra order -1
+
+alice -> bob : typed participants
+bob -> Gateway : boundary
+Gateway -> Controller : control
+Controller -> EntityA : entity
+EntityA -> DatabaseA : database
+DatabaseA -> QueueA : queue
+QueueA -> CollectionA : collections
+CollectionA -> Xtra : ordered earlier
+
+create alice
+create Bob as "Bobby Tables"
+actor "External" as ext #lightgreen
+ext --> alice : create and alias
+@enduml

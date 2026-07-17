@@ -1,4 +1,12 @@
 import {
+  "moonbitlang/core/argparse",
   "moonbitlang/core/string",
   "moonbitlang/core/test",
+  "moonbitlang/x/fs",
 }
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "cli.mbt": [ "native" ] },
+)

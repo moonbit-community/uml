@@ -1,0 +1,50 @@
+@startuml
+
+box #lightyellow Frontend
+participant Client
+end box
+box #lightblue Backend
+participant Server
+participant Database
+end box
+
+Client -> Server : request
+Server -> Database -- : query
+
+== Transaction Log ==
+
+... processing ...
+
+hide footbox
+autonumber 100 5 "(msg #)"
+Server --> Client : response
+Client -> Server : next
+autonumber stop
+Server --> Client : unnumbered
+autonumber resume
+Server --> Client : renumbered
+
+ref over Client, Server : external API call
+
+return result value
+
+[-> Client : from outside
+Client ->] : to outside
+
+& Client -> Server : multicast message
+Server & Database : multicast to multiple
+
+hide unlinked
+participant Orphan
+
+url of Client is https://example.com/users
+url of Server is https://example.com/api
+
+{start} Client -> Server : anchored arrow
+{start} <-> {end} : linked anchors
+
+ignore newpage
+auto newpage 50
+newpage summary page
+
+@enduml

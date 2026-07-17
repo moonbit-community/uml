@@ -5,3 +5,4 @@ target/
 .moonagent/
 .local/
 *.mbti
+*.svg

@@ -1,0 +1,37 @@
+@startuml
+Alice -> Bob
+activate Bob
+Bob -> Carol ++ : auto activate
+Bob -> Carol ++ : another activation
+Carol --> Bob -- : deactivate
+deactivate Bob
+destroy Carol
+
+Alice -> Bob : ++ suffix
+Bob -> Carol ++ -- : activate and deactivate
+Carol -> Alice ** : create via arrow
+
+note left of Alice : left note
+note right of Bob : right note
+note over Carol : over note
+note across : across note
+note top of Alice : top note
+note bottom of Bob : bottom note
+
+hnote over Alice : hexagonal note
+rnote over Bob : box note
+
+note over Alice, Bob : shared note
+note over Alice, Bob, Carol #yellow : shared colored
+
+Alice -> Bob : message
+note right : attached note
+
+hnote over Alice #lightgreen : colored hex
+rnote over Carol #lightcoral : colored box
+
+autoactivate on
+Alice -> Bob : auto activated
+Alice -> Bob --> : not auto (dotted)
+autoactivate off
+@enduml

@@ -1,0 +1,18 @@
+@startuml
+Alice -> Bob
+Alice -> Bob : label only
+Alice -> Carol
+Bob --> Carol : dotted arrow
+Bob ->> Carol : async arrow
+Bob -->> Alice : dotted async
+Alice -> Alice : self message
+Bob <- Alice : reverse arrow
+Carol <-- Bob : reverse dotted
+Bob <<- Alice : reverse solid
+Bob <<-- Alice : reverse async
+Alice \-> Bob : top part
+Alice \--> Bob : dotted top
+Alice /-> Bob : bottom part
+Alice /--> Bob : dotted bottom
+Alice -> Bob : trailing text
+@enduml
