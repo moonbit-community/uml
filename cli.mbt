@@ -2,7 +2,7 @@
 fn main {
   let command = @argparse.Command(
     "uml",
-    about="Render a PlantUML sequence diagram as SVG.",
+    about="Render a PlantUML diagram as SVG.",
     positionals=[
       PositionArg(
         "input",
@@ -21,7 +21,7 @@ fn main {
 
   let output_path = output_path_for(input_path)
   guard read_input(input_path) is Some(source) else { return }
-  let svg = render_sequence_svg(source) catch {
+  let svg = @api.render_svg(source) catch {
     SyntaxError(line, message) =>
       return println("error: line \{line}: \{message}")
   }

@@ -1,8 +1,8 @@
 import {
   "moonbitlang/core/argparse",
   "moonbitlang/core/string",
-  "moonbitlang/core/test",
   "moonbitlang/x/fs",
+  "kokic/uml/api",
 }
 
 pkgtype(kind: "executable")
