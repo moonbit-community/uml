@@ -37,6 +37,9 @@ Server -> Database & Client : multicast to multiple
 hide unlinked
 participant Orphan
 
+url of Client is [[https://example.com/users]]
+url of Server is [[https://example.com/api]]
+
 {start} Client -> Server : anchored arrow
 {start} <-> {end} : linked anchors
 

@@ -78,7 +78,7 @@ pub fn parse(input : String) -> SequenceDiagram raise ParseError {
   let parsers : Array[(Source) -> Event?] = [
     arrow, try_exo_arrow, try_note, try_box, try_grouping, try_activate, try_deactivate,
     try_destroy, try_return, try_divider, try_delay, try_hspace, try_newpage, try_reference,
-    try_autonumber, try_autoactivate, try_footbox, try_hide_unlinked, try_ignore_newpage,
+    try_autonumber, try_autoactivate, try_footbox, try_hide_unlinked, try_url, try_ignore_newpage,
     try_auto_newpage, try_link_anchor,
   ]
 

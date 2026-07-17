@@ -140,6 +140,8 @@ fn Event::height(self : Event) -> Int {
     Return(return_value) =>
       (TextSize::of(return_value.value.unwrap_or("")).height + 24).max(34)
     Create => 18
+    Url(_, _) => 0
+    DeactivateLatest => 0
     LinkAnchor(_, _, label) =>
       (TextSize::of(label.unwrap_or("")).height + 24).max(34)
     Autonumber(_)
@@ -148,7 +150,7 @@ fn Event::height(self : Event) -> Int {
     | AutonumberIncrement(_)
     | Autoactivate(_)
     | Footbox(_)
-    | HideUnlinked
+    | HideUnlinked(_)
     | IgnoreNewpage
     | AutoNewpage(_) => 0
   }
@@ -218,12 +220,14 @@ fn SequenceDiagram::participant_is_linked(
 
 ///|
 fn SequenceDiagram::hides_unlinked(self : SequenceDiagram) -> Bool {
+  let mut hidden = false
   for event in self.events {
-    if event is HideUnlinked {
-      return true
+    match event {
+      HideUnlinked(value) => hidden = value
+      _ => ()
     }
   }
-  false
+  hidden
 }
 
 ///|

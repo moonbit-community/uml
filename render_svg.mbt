@@ -581,6 +581,7 @@ fn append_note(
   let x = match note.position {
     Left => center - width - 10
     Right => center + 10
+    Bottom | Top => center - width / 2
     Over => center - width / 2
     OverSeveral =>
       match (note.participant_codes.get(0), note.participant_codes.last()) {

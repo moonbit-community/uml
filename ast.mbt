@@ -69,6 +69,8 @@ priv struct ArrowConfig {
 priv enum NotePosition {
   Left
   Right
+  Bottom
+  Top
   Over
   OverSeveral
   Across
@@ -258,10 +260,12 @@ priv enum Event {
   AutonumberIncrement(String?)
   Autoactivate(Bool)
   Footbox(Bool)
-  HideUnlinked
+  HideUnlinked(Bool)
   LinkAnchor(String, String, String?)
   Return(Return)
   Create
+  Url(String, String)
+  DeactivateLatest
   IgnoreNewpage
   AutoNewpage(Int?)
 }

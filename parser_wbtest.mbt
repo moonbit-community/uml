@@ -5,6 +5,14 @@ test "parse empty diagram" {
 }
 
 ///|
+test "parse multiline titles" {
+  let result = parse(
+    "@startuml\ntitle\nSequence title\nend title\nAlice -> Bob\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 1)
+}
+
+///|
 test "parse simple arrow" {
   let result = parse("@startuml\nAlice -> Bob\n@enduml")
   @test.assert_eq(result.events.length(), 1)
@@ -39,6 +47,36 @@ test "parse note" {
 }
 
 ///|
+test "parse multiline notes" {
+  let result = parse(
+    "@startuml\nAlice -> Bob\nnote left of Alice\nfirst line\nsecond line\nend note\nnote top\nattached\nend note\n@enduml",
+  )
+  match (result.events[1], result.events[2]) {
+    (Note(participant_note), Note(arrow_note)) => {
+      @test.assert_eq(participant_note.text, "first line\nsecond line")
+      @test.assert_eq(arrow_note.text, "attached")
+      @test.assert_eq(arrow_note.on_arrow, true)
+    }
+    _ => fail("expected notes")
+  }
+}
+
+///|
+test "notes and references normalize quoted participant codes" {
+  let result = parse(
+    "@startuml\nparticipant \"Alice Smith\"\nnote over \"Alice Smith\" : note\nref over \"Alice Smith\" : ref\n@enduml",
+  )
+  @test.assert_eq(result.participants.length(), 1)
+  match (result.events[0], result.events[1]) {
+    (Note(note), Reference(reference)) => {
+      @test.assert_eq(note.participant_codes, ["Alice Smith"])
+      @test.assert_eq(reference.participant_codes, ["Alice Smith"])
+    }
+    _ => fail("expected note and reference")
+  }
+}
+
+///|
 test "parse grouping" {
   let result = parse(
     "@startuml\nAlice -> Bob\nopt condition\nBob -> Carol\nend\n@enduml",
@@ -55,6 +93,18 @@ test "parse grouping" {
 }
 
 ///|
+test "parse multiline references" {
+  let result = parse(
+    "@startuml\nref over Alice, Bob\nfirst line\nsecond line\nend ref\n@enduml",
+  )
+  match result.events[0] {
+    Reference(reference) =>
+      @test.assert_eq(reference.label, Some("first line\nsecond line"))
+    _ => fail("expected reference")
+  }
+}
+
+///|
 test "parse activate deactivate" {
   let result = parse(
     "@startuml\nAlice -> Bob\nactivate Bob\nBob -> Carol\ndeactivate Bob\n@enduml",
@@ -67,6 +117,55 @@ test "parse activate deactivate" {
   match result.events[3] {
     LifeEvent(le) => @test.assert_eq(le.participant_code, "Bob")
     _ => fail("not life event")
+  }
+}
+
+///|
+test "bare deactivate follows the latest activating message" {
+  let result = parse("@startuml\nAlice -> Bob ++\ndeactivate\n@enduml")
+  match result.events[1] {
+    LifeEvent(life) => {
+      @test.assert_eq(life.participant_code, "Bob")
+      match life.event_type {
+        Deactivate => ()
+        _ => fail("expected deactivation")
+      }
+    }
+    _ => fail("expected lifecycle event")
+  }
+}
+
+///|
+test "bare deactivate requires an activating message" {
+  try parse("@startuml\ndeactivate\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "bare deactivate consumes activating messages in reverse order" {
+  let result = parse(
+    "@startuml\nAlice -> Bob ++\nAlice -> Carol ++\ndeactivate\ndeactivate\n@enduml",
+  )
+  match (result.events[2], result.events[3]) {
+    (LifeEvent(first), LifeEvent(second)) => {
+      @test.assert_eq(first.participant_code, "Carol")
+      @test.assert_eq(second.participant_code, "Bob")
+    }
+    _ => fail("expected lifecycle events")
+  }
+}
+
+///|
+test "standalone activate can be followed by bare deactivate" {
+  let result = parse(
+    "@startuml\nAlice -> Bob\nactivate Bob\ndeactivate\n@enduml",
+  )
+  match result.events[2] {
+    LifeEvent(life) => @test.assert_eq(life.participant_code, "Bob")
+    _ => fail("expected lifecycle event")
   }
 }
 
@@ -89,6 +188,20 @@ test "parse delay" {
   match result.events[1] {
     Delay(d) => @test.assert_eq(d.label, None)
     _ => fail("not a delay")
+  }
+}
+
+///|
+test "delays require a closing ellipsis around labels" {
+  let result = parse("@startuml\n... waiting ...\n@enduml")
+  match result.events[0] {
+    Delay(delay) => @test.assert_eq(delay.label, Some("waiting"))
+    _ => fail("expected delay")
+  }
+  try parse("@startuml\n... waiting\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
   }
 }
 
@@ -166,6 +279,23 @@ test "participant declarations preserve aliases" {
 }
 
 ///|
+test "unquoted participant aliases use the alias as the code" {
+  let result = parse("@startuml\nparticipant Alice as Bob\nBob -> Bob\n@enduml")
+  guard result.participants.contains("Bob") else { fail("missing alias") }
+  @test.assert_eq(result.participants["Bob"].display, "Alice")
+  @test.assert_eq(result.participants.contains("Alice"), false)
+}
+
+///|
+test "participant declarations support PlantUML URLs before colors" {
+  let result = parse(
+    "@startuml\nparticipant Alice [[https://example.com]] #lightblue\n@enduml",
+  )
+  @test.assert_eq(result.participants["Alice"].url, Some("https://example.com"))
+  @test.assert_eq(result.participants["Alice"].color, Some("lightblue"))
+}
+
+///|
 test "keywords are case insensitive" {
   let result = parse("@STARTUML\nACTOR Alice\nAlice -> Bob\n@ENDUML")
   @test.assert_eq(result.events.length(), 1)
@@ -177,6 +307,14 @@ test "create is followed by a message to the new participant" {
   let result = parse("@startuml\ncreate Bob\nAlice -> Bob\n@enduml")
   @test.assert_eq(result.participants.contains("Bob"), true)
   @test.assert_eq(result.events.length(), 2)
+}
+
+///|
+test "creating an existing participant is a no-op" {
+  let result = parse(
+    "@startuml\nparticipant Bob\ncreate Bob\nAlice -> Bob\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 1)
 }
 
 ///|
@@ -216,6 +354,20 @@ test "notes over more than two participants raise a parse error" {
 }
 
 ///|
+test "only over notes may span two participants" {
+  try parse("@startuml\nnote left of Alice, Bob : invalid\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+  try parse("@startuml\nnote across Alice : invalid\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
 test "non-PlantUML box order raises a parse error" {
   try parse("@startuml\nbox #lightblue Infrastructure\n@enduml") catch {
     SyntaxError(_, _) => ()
@@ -234,8 +386,75 @@ test "non-PlantUML auto newpage spelling raises a parse error" {
 }
 
 ///|
-test "unsupported URL commands raise a parse error" {
+test "autonewpage requires a message count" {
+  try parse("@startuml\nautonewpage\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "single-line notes require their colon delimiter" {
+  try parse("@startuml\nnote left of Alice\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "top and bottom notes attach to the preceding message" {
+  let result = parse(
+    "@startuml\nAlice -> Bob\nnote top : above\nnote bottom : below\n@enduml",
+  )
+  match (result.events[1], result.events[2]) {
+    (Note(top), Note(bottom)) => {
+      @test.assert_eq(top.on_arrow, true)
+      @test.assert_eq(bottom.on_arrow, true)
+      match (top.position, bottom.position) {
+        (Top, Bottom) => ()
+        _ => fail("wrong note positions")
+      }
+    }
+    _ => fail("expected attached notes")
+  }
+}
+
+///|
+test "top notes cannot target a participant" {
+  try parse("@startuml\nnote top of Alice : invalid\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "URL commands use PlantUML link syntax" {
+  let result = parse(
+    "@startuml\nurl of Alice is [[https://example.com/users User profile]]\n@enduml",
+  )
+  @test.assert_eq(
+    result.participants["Alice"].url,
+    Some("https://example.com/users"),
+  )
+}
+
+///|
+test "URL commands reject bare links" {
   try parse("@startuml\nurl of Alice is https://example.com\n@enduml") catch {
+    SyntaxError(_, _) => ()
+  } noraise {
+    _ => fail("expected a parse error")
+  }
+}
+
+///|
+test "URL commands do not accept participant aliases" {
+  try
+    parse("@startuml\nurl of Alice as Bob [[https://example.com]]\n@enduml")
+  catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => fail("expected a parse error")
@@ -432,11 +651,25 @@ test "dispatch hide commands without consuming the wrong prefix" {
   let result = parse("@startuml\nhide unlinked\nhide footbox\n@enduml")
   @test.assert_eq(result.events.length(), 2)
   match result.events[0] {
-    HideUnlinked => ()
+    HideUnlinked(true) => ()
     _ => fail("expected hide unlinked")
   }
   match result.events[1] {
     Footbox(false) => ()
     _ => fail("expected hidden footbox")
   }
+}
+
+///|
+test "show unlinked reverses hide unlinked" {
+  let diagram = parse(
+    "@startuml\nhide unlinked\nshow unlinked\nparticipant Orphan\n@enduml",
+  )
+  @test.assert_eq(diagram.hides_unlinked(), false)
+}
+
+///|
+test "hide unlinked accepts the official @ prefix" {
+  let diagram = parse("@startuml\nhide @unlinked\n@enduml")
+  @test.assert_eq(diagram.hides_unlinked(), true)
 }
