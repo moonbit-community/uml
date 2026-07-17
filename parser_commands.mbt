@@ -1,7 +1,11 @@
 ///|
+fn take_optional_decimal(src : Source) -> Int? {
+  src.take_while(Char::is_ascii_digit).optional_integer()
+}
+
+///|
 fn parse_participant_type(src : Source) -> ParticipantType? {
-  let keyword = src.peek_word().to_lower()
-  let variant = match keyword {
+  let typ = match src.peek_word().to_lower() {
     "participant" => Participant
     "actor" => Actor
     "boundary" => Boundary
@@ -13,13 +17,12 @@ fn parse_participant_type(src : Source) -> ParticipantType? {
     _ => return None
   }
   src.skip_word()
-  Some(variant)
+  Some(typ)
 }
 
 ///|
-fn parse_group_start_keyword(src : Source) -> GroupKeyword? {
-  let keyword = src.peek_word().to_lower()
-  let variant = match keyword {
+fn parse_group_keyword(src : Source) -> GroupKeyword? {
+  let keyword = match src.peek_word().to_lower() {
     "opt" => Opt
     "alt" => Alt
     "loop" => Loop
@@ -32,13 +35,24 @@ fn parse_group_start_keyword(src : Source) -> GroupKeyword? {
     _ => return None
   }
   src.skip_word()
-  Some(variant)
+  Some(keyword)
+}
+
+///|
+fn parse_note_style(src : Source) -> NoteStyle? {
+  let style = match src.peek_word().to_lower() {
+    "note" => NodeNormal
+    "hnote" => Hexagonal
+    "rnote" => Box
+    _ => return None
+  }
+  src.skip_word()
+  Some(style)
 }
 
 ///|
 fn parse_note_position(src : Source) -> NotePosition? {
-  let keyword = src.peek_word().to_lower()
-  let variant = match keyword {
+  let position = match src.peek_word().to_lower() {
     "left" => Left
     "right" => Right
     "over" => Over
@@ -48,7 +62,7 @@ fn parse_note_position(src : Source) -> NotePosition? {
     _ => return None
   }
   src.skip_word()
-  Some(variant)
+  Some(position)
 }
 
 ///|
@@ -62,6 +76,26 @@ fn split_participant_list(raw : StringView) -> Array[String] {
 }
 
 ///|
+fn note_is_on_arrow(position : NotePosition, src : Source) -> Bool {
+  match position {
+    Left | Right | Bottom | Top => src.peek() is Some(':')
+    Over | OverSeveral | Across => false
+  }
+}
+
+///|
+fn note_position_for(
+  position : NotePosition,
+  participants : Array[String],
+) -> NotePosition {
+  if position is Over && participants.length() > 1 {
+    OverSeveral
+  } else {
+    position
+  }
+}
+
+///|
 fn try_participant_decl(src : Source) -> ParticipantDecl? {
   let saved = src.save()
   let created = src.try_keyword("create")
@@ -71,137 +105,100 @@ fn try_participant_decl(src : Source) -> ParticipantDecl? {
   let typ = match parse_participant_type(src) {
     Some(typ) => typ
     None => {
-      guard !created else { Participant }
-      src.restore(saved)
-      return None
+      guard created else { return None }
+      Participant
     }
   }
   src.skip_whitespace()
-  guard try_participant_ref(src) is Some(reference) else {
+  guard src.try_participant_ref() is Some(reference) else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
   let order = if src.try_keyword("order") {
     src.skip_whitespace()
-    let raw_order = src.take_while(c => c == '-' || c.is_ascii_digit())
-    guard raw_order.length() != 0 else { None }
-    Some(@string.parse_int(raw_order) catch { _ => 0 })
+    src.take_while(c => c == '-' || c.is_ascii_digit()).optional_integer()
   } else {
     None
   }
-  if src.consume('#') {
-    let color = src.take_while(c => !is_inline_whitespace(c) && c != '\n')
-    guard color.length() > 0 else {
-      src.restore(saved)
-      return None
-    }
-    return Some({ typ, reference, created, color: Some(color), order })
-  }
-  Some({ typ, reference, created, color: None, order })
+  src.skip_whitespace()
+  let color = src.try_color()
+  Some({ typ, reference, created, color, order })
 }
 
 ///|
 fn try_note(src : Source) -> Event? {
   let saved = src.save()
-
   let _ = src.consume('&')
   let _ = src.consume('/')
   src.skip_whitespace()
-
-  let note_style = match src.peek_word().to_lower() {
-    "note" => NodeNormal
-    "hnote" => Hexagonal
-    "rnote" => Box
-    _ => return None
+  guard parse_note_style(src) is Some(note_style) else {
+    src.restore(saved)
+    return None
   }
-  src.skip_word()
-
   src.skip_whitespace()
-  let pos_raw = parse_note_position(src)
-
-  match pos_raw {
-    Some(pos) => {
-      src.skip_whitespace()
-      let on_arrow : Bool = match pos {
-        Left | Right | Bottom | Top =>
-          match src.peek() {
-            Some(c) if c == ':' => true
-            _ => false
-          }
-        _ => false
-      }
-
-      if on_arrow {
-        let _ = src.consume(':')
-        let text = src.collect_line().trim().to_owned()
-        return Some(
-          Note({
-            participant_codes: [],
-            position: pos,
-            text,
-            note_style,
-            on_arrow: true,
-            color: None,
-          }),
-        )
-      }
-
-      let _ = match pos {
-        Across => false
-        _ => src.try_keyword("of")
-      }
-      src.skip_whitespace()
-      let part_text = src
-        .take_while(c => c != ':' && c != '#' && c != '\n')
-        .trim()
-      let codes = split_participant_list(part_text)
-      src.skip_whitespace()
-      let color = try_color(src)
-      src.skip_whitespace()
-      let text = if src.consume(':') {
-        src.collect_line().trim().to_owned()
-      } else {
-        ""
-      }
-      let position = if pos is Over && codes.length() > 1 {
-        OverSeveral
-      } else {
-        pos
-      }
-      Some(
-        Note({
-          participant_codes: codes,
-          position,
-          text,
-          note_style,
-          on_arrow: false,
-          color,
-        }),
-      )
-    }
-    None => {
-      src.restore(saved)
-      None
-    }
+  guard parse_note_position(src) is Some(position) else {
+    src.restore(saved)
+    return None
   }
+  src.skip_whitespace()
+  if note_is_on_arrow(position, src) {
+    let _ = src.consume(':')
+    return Some(
+      Note({
+        participant_codes: [],
+        position,
+        text: src.collect_line().trim().to_owned(),
+        note_style,
+        on_arrow: true,
+        color: None,
+      }),
+    )
+  }
+  if !(position is Across) {
+    let _ = src.try_keyword("of")
+  }
+  src.skip_whitespace()
+  let participants = split_participant_list(
+    src.take_while(c => c != ':' && c != '#' && c != '\n').trim(),
+  )
+  src.skip_whitespace()
+  let color = src.try_color()
+  src.skip_whitespace()
+  let text = if src.consume(':') {
+    src.collect_line().trim().to_owned()
+  } else {
+    ""
+  }
+  Some(
+    Note({
+      participant_codes: participants,
+      position: note_position_for(position, participants),
+      text,
+      note_style,
+      on_arrow: false,
+      color,
+    }),
+  )
 }
 
 ///|
-fn make_else_event(src : Source) -> Event {
-  src.skip_whitespace()
-  let back_color = try_color(src)
-  src.skip_whitespace()
-  let text = src.collect_line().trim()
-  GroupingLeaf({
-    is_end: false,
-    label: if text.length() > 0 {
-      Some(text.to_owned())
-    } else {
-      None
-    },
-    back_color,
-  })
+fn try_group_leaf(src : Source) -> Event? {
+  if src.try_keyword("else") || src.try_keyword("also") {
+    src.skip_whitespace()
+    let back_color = src.try_color()
+    src.skip_whitespace()
+    return Some(
+      GroupingLeaf({
+        is_end: false,
+        label: src.collect_line().optional_text(),
+        back_color,
+      }),
+    )
+  }
+  guard src.try_keyword("end") else { return None }
+  let _ = src.collect_line()
+  Some(GroupingLeaf({ is_end: true, label: None, back_color: None }))
 }
 
 ///|
@@ -211,64 +208,42 @@ fn try_grouping(src : Source) -> Event? {
   if parallel {
     src.skip_whitespace()
   }
-  let kw = parse_group_start_keyword(src)
-
-  match kw {
-    Some(k) => {
-      src.skip_whitespace()
-      let back_color_header = try_color(src)
-      src.skip_whitespace()
-      let back_color_body = if back_color_header is Some(_) {
-        try_color(src)
-      } else {
-        None
-      }
-      src.skip_whitespace()
-      Some(
-        GroupingStart({
-          keyword: k,
-          header: src.collect_line().trim().to_owned(),
-          back_color_header,
-          back_color_body,
-          parallel,
-        }),
-      )
-    }
-    None =>
-      if src.try_keyword("else") {
-        Some(make_else_event(src))
-      } else if src.try_keyword("also") {
-        Some(make_else_event(src))
-      } else if src.try_keyword("end") {
-        let _ = src.collect_line()
-        Some(GroupingLeaf({ is_end: true, label: None, back_color: None }))
-      } else {
-        src.restore(saved)
-        None
-      }
+  guard parse_group_keyword(src) is Some(keyword) else {
+    src.restore(saved)
+    return try_group_leaf(src)
   }
+  src.skip_whitespace()
+  let header_color = src.try_color()
+  src.skip_whitespace()
+  let body_color = if header_color is Some(_) { src.try_color() } else { None }
+  src.skip_whitespace()
+  Some(
+    GroupingStart({
+      keyword,
+      header: src.collect_line().trim().to_owned(),
+      back_color_header: header_color,
+      back_color_body: body_color,
+      parallel,
+    }),
+  )
 }
 
 ///|
-fn try_life_event(src : Source, kw : String, typ : ActivationSpec) -> Event? {
+fn try_life_event(
+  src : Source,
+  keyword : String,
+  event_type : ActivationSpec,
+) -> Event? {
   let saved = src.save()
-  guard src.try_keyword(kw) else {
+  guard src.try_keyword(keyword) else { return None }
+  src.skip_whitespace()
+  let participant_code = src.take_while(is_ident_char)
+  guard participant_code.length() > 0 else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
-  let code = src.take_while(is_ident_char)
-  guard code.length() > 0 else {
-    src.restore(saved)
-    return None
-  }
-  src.skip_whitespace()
-  let color : String? = if src.consume('#') {
-    Some(src.take_while(is_ident_char))
-  } else {
-    None
-  }
-  Some(LifeEvent({ participant_code: code, event_type: typ, color }))
+  Some(LifeEvent({ participant_code, event_type, color: src.try_color() }))
 }
 
 ///|
@@ -289,10 +264,7 @@ fn try_destroy(src : Source) -> Event? {
 ///|
 fn try_divider(src : Source) -> Event? {
   let saved = src.save()
-  guard src.try_string("==") else {
-    src.restore(saved)
-    return None
-  }
+  guard src.try_string("==") else { return None }
   let title = src.take_while(c => c != '=').trim().to_owned()
   guard src.try_string("==") else {
     src.restore(saved)
@@ -304,25 +276,15 @@ fn try_divider(src : Source) -> Event? {
 ///|
 fn try_delay(src : Source) -> Event? {
   let saved = src.save()
-  let dots = src.take_while(c => c == '.')
-  if dots.length() < 3 {
+  guard src.take_while(c => c == '.').length() >= 3 else {
     src.restore(saved)
     return None
   }
-  let line = src.collect_line().trim()
-  let label : String? = if line.length() > 0 {
-    let s = if line.has_suffix("...") {
-      line[:line.length() - 3].trim().to_owned()
-    } else {
-      line.to_owned()
-    }
-    if s.length() > 0 {
-      Some(s)
-    } else {
-      None
-    }
+  let text = src.collect_line().trim()
+  let label = if text.has_suffix("...") {
+    text[:text.length() - 3].to_owned().optional_text()
   } else {
-    None
+    text.to_owned().optional_text()
   }
   Some(Delay({ label, }))
 }
@@ -330,25 +292,14 @@ fn try_delay(src : Source) -> Event? {
 ///|
 fn try_hspace(src : Source) -> Event? {
   let saved = src.save()
-  guard src.try_string("||") else {
-    src.restore(saved)
-    return None
-  }
-  let n_str = src.take_while(c => c >= '0' && c <= '9')
+  guard src.try_string("||") else { return None }
+  let pixels = src.take_while(Char::is_ascii_digit).optional_integer()
   guard src.consume('|') else {
     src.restore(saved)
     return None
   }
   let _ = src.take_while(c => c == '|')
-  Some(
-    HSpace({
-      pixels: if n_str.length() > 0 {
-        Some(@string.parse_int(n_str) catch { _ => 0 })
-      } else {
-        None
-      },
-    }),
-  )
+  Some(HSpace({ pixels, }))
 }
 
 ///|
@@ -359,10 +310,7 @@ fn try_newpage(src : Source) -> Event? {
     src.restore(saved)
     return None
   }
-  let t = src.collect_line().trim()
-  Some(
-    Newpage({ title: if t.length() > 0 { Some(t.to_owned()) } else { None } }),
-  )
+  Some(Newpage({ title: src.collect_line().optional_text() }))
 }
 
 ///|
@@ -374,59 +322,29 @@ fn try_autonumber(src : Source) -> Event? {
   }
   if src.try_keyword("resume") {
     src.skip_whitespace()
-    let increment = src.take_while(Char::is_ascii_digit)
+    let increment = take_optional_decimal(src)
     src.skip_whitespace()
-    let format = try_quoted_string(src)
     return Some(
-      AutonumberResume({
-        increment: if increment.length() == 0 {
-          None
-        } else {
-          Some(@string.parse_int(increment) catch { _ => 0 })
-        },
-        format,
-      }),
+      AutonumberResume({ increment, format: src.try_quoted_string() }),
     )
   }
   if src.try_keyword("inc") {
     src.skip_whitespace()
-    let position = src.take_while(Char::is_ascii_alphabetic)
     return Some(
       AutonumberIncrement(
-        if position.length() == 0 {
-          None
-        } else {
-          Some(position)
-        },
+        src.take_while(Char::is_ascii_alphabetic).optional_text(),
       ),
     )
   }
-
-  let start = if src.peek() is Some('"') {
-    None
-  } else {
-    let value = src.take_while(c => !is_inline_whitespace(c) && c != '\n')
-    if value.length() == 0 {
-      None
-    } else {
-      Some(value)
-    }
+  let start = match src.peek() {
+    Some('"') => None
+    _ =>
+      src.take_while(c => !is_inline_whitespace(c) && c != '\n').optional_text()
   }
   src.skip_whitespace()
-  let increment = src.take_while(Char::is_ascii_digit)
+  let increment = take_optional_decimal(src)
   src.skip_whitespace()
-  let format = try_quoted_string(src)
-  Some(
-    Autonumber({
-      start,
-      increment: if increment.length() == 0 {
-        None
-      } else {
-        Some(@string.parse_int(increment) catch { _ => 0 })
-      },
-      format,
-    }),
-  )
+  Some(Autonumber({ start, increment, format: src.try_quoted_string() }))
 }
 
 ///|
@@ -434,35 +352,45 @@ fn try_autoactivate(src : Source) -> Event? {
   let saved = src.save()
   guard src.try_keyword("autoactivate") else { return None }
   src.skip_whitespace()
-  if src.try_keyword("on") {
-    Some(Autoactivate(true))
+  let enabled = if src.try_keyword("on") {
+    Some(true)
   } else if src.try_keyword("off") {
-    Some(Autoactivate(false))
+    Some(false)
   } else {
-    src.restore(saved)
     None
   }
+  guard enabled is Some(enabled) else {
+    src.restore(saved)
+    return None
+  }
+  Some(Autoactivate(enabled))
 }
 
 ///|
 fn try_footbox(src : Source) -> Event? {
   let saved = src.save()
-  if src.try_keyword("footbox") {
+  if src.try_keyword("hide") {
     src.skip_whitespace()
-    if src.try_keyword("on") {
-      return Some(Footbox(true))
+    guard src.try_keyword("footbox") else {
+      src.restore(saved)
+      return None
     }
-    if src.try_keyword("off") {
-      return Some(Footbox(false))
-    }
-  } else if src.try_keyword("hide") {
-    src.skip_whitespace()
-    if src.try_keyword("footbox") {
-      return Some(Footbox(false))
-    }
+    return Some(Footbox(false))
   }
-  src.restore(saved)
-  None
+  guard src.try_keyword("footbox") else { return None }
+  src.skip_whitespace()
+  let enabled = if src.try_keyword("on") {
+    Some(true)
+  } else if src.try_keyword("off") {
+    Some(false)
+  } else {
+    None
+  }
+  guard enabled is Some(enabled) else {
+    src.restore(saved)
+    return None
+  }
+  Some(Footbox(enabled))
 }
 
 ///|
@@ -485,25 +413,15 @@ fn try_box(src : Source) -> Event? {
     if src.try_keyword("box") {
       return Some(BoxEnd)
     }
+    src.restore(saved)
   }
-  src.restore(saved)
   guard src.try_keyword("box") else { return None }
   src.skip_whitespace()
-  let color = try_color(src)
+  let color = src.try_color()
   if color is Some(_) {
     src.skip_whitespace()
   }
-  let label = src.collect_line().trim()
-  Some(
-    BoxStart({
-      label: if label.length() == 0 {
-        None
-      } else {
-        Some(label.to_owned())
-      },
-      color,
-    }),
-  )
+  Some(BoxStart({ label: src.collect_line().optional_text(), color }))
 }
 
 ///|
@@ -516,23 +434,15 @@ fn try_reference(src : Source) -> Event? {
     return None
   }
   src.skip_whitespace()
-  let participants = split_participant_list(
+  let participant_codes = split_participant_list(
     src.take_while(c => c != ':' && c != '\n'),
   )
-  guard participants.length() > 0 && src.consume(':') else {
+  guard participant_codes.length() > 0 && src.consume(':') else {
     src.restore(saved)
     return None
   }
-  let label = src.collect_line().trim()
   Some(
-    Reference({
-      participant_codes: participants,
-      label: if label.length() == 0 {
-        None
-      } else {
-        Some(label.to_owned())
-      },
-    }),
+    Reference({ participant_codes, label: src.collect_line().optional_text() }),
   )
 }
 
@@ -546,18 +456,9 @@ fn try_return(src : Source) -> Event? {
     return None
   }
   src.skip_whitespace()
-  let _ = try_color(src)
+  let _ = src.try_color()
   src.skip_whitespace()
-  let value = src.collect_line().trim()
-  Some(
-    Return({
-      value: if value.length() == 0 {
-        None
-      } else {
-        Some(value.to_owned())
-      },
-    }),
-  )
+  Some(Return({ value: src.collect_line().optional_text() }))
 }
 
 ///|
@@ -567,19 +468,19 @@ fn try_url(src : Source) -> Event? {
   src.skip_whitespace()
   let _ = src.try_keyword("of") || src.try_keyword("for")
   src.skip_whitespace()
-  guard try_participant_ref(src) is Some(reference) else {
+  guard src.try_participant_ref() is Some(reference) else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
   let _ = src.try_keyword("is")
   src.skip_whitespace()
-  let url = src.collect_line().trim()
-  guard url.length() > 0 else {
+  let parsed_url = src.collect_line().optional_text()
+  guard parsed_url is Some(url) else {
     src.restore(saved)
     return None
   }
-  Some(UrlOf(reference.code, url.to_owned()))
+  Some(UrlOf(reference.code, url))
 }
 
 ///|
@@ -604,37 +505,28 @@ fn try_auto_newpage(src : Source) -> Event? {
     return None
   }
   src.skip_whitespace()
-  let size = src.take_while(Char::is_ascii_digit)
-  Some(
-    AutoNewpage(
-      if size.length() == 0 {
-        None
-      } else {
-        Some(@string.parse_int(size) catch { _ => 0 })
-      },
-    ),
-  )
+  Some(AutoNewpage(take_optional_decimal(src)))
 }
 
 ///|
 fn try_link_anchor(src : Source) -> Event? {
   let saved = src.save()
-  guard try_anchor(src) is Some(a1) else { return None }
+  guard src.try_anchor() is Some(from) else { return None }
   src.skip_whitespace()
-  if !src.consume('<') || !src.consume('-') || !src.consume('>') {
+  guard src.try_string("<->") else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
-  guard try_anchor(src) is Some(a2) else {
+  guard src.try_anchor() is Some(to) else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
   let label = if src.consume(':') {
-    Some(src.collect_line().trim().to_owned())
+    src.collect_line().optional_text()
   } else {
     None
   }
-  Some(LinkAnchor(a1, a2, label))
+  Some(LinkAnchor(from, to, label))
 }

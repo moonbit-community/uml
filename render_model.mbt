@@ -61,7 +61,7 @@ priv struct DiagramLayout {
 }
 
 ///|
-fn text_size(text : String) -> TextSize {
+fn TextSize::of(text : String) -> TextSize {
   let lines = text.split("\n").to_array()
   let mut width = 0
   for line in lines {
@@ -92,20 +92,20 @@ fn text_char_width(char : Char) -> Int {
 }
 
 ///|
-fn message_label(message : Message) -> String {
-  message.label.unwrap_or("")
+fn Message::display_label(self : Message) -> String {
+  self.label.unwrap_or("")
 }
 
 ///|
-fn note_height(note : Note) -> Int {
-  text_size(note.text).height + 18
+fn Note::height(self : Note) -> Int {
+  TextSize::of(self.text).height + 18
 }
 
 ///|
-fn event_height(event : Event) -> Int {
-  match event {
+fn Event::height(self : Event) -> Int {
+  match self {
     Message(message) => {
-      let base = text_size(message_label(message)).height + 24
+      let base = TextSize::of(message.display_label()).height + 24
       if message.from_code == message.to_code {
         base + 22
       } else {
@@ -113,8 +113,8 @@ fn event_height(event : Event) -> Int {
       }
     }
     MessageExo(message) =>
-      (text_size(message.label.unwrap_or("")).height + 24).max(34)
-    Note(note) => note_height(note)
+      (TextSize::of(message.label.unwrap_or("")).height + 24).max(34)
+    Note(note) => note.height()
     GroupingStart(_) => 34
     GroupingLeaf(leaf) => if leaf.is_end { 12 } else { 24 }
     LifeEvent(_) => 18
@@ -123,13 +123,13 @@ fn event_height(event : Event) -> Int {
     HSpace(space) => space.pixels.unwrap_or(0)
     Newpage(_) => 40
     Reference(reference) =>
-      (text_size(reference.label.unwrap_or("ref")).height + 28).max(42)
+      (TextSize::of(reference.label.unwrap_or("ref")).height + 28).max(42)
     BoxStart(_) | BoxEnd => 0
     Return(return_value) =>
-      (text_size(return_value.value.unwrap_or("")).height + 24).max(34)
+      (TextSize::of(return_value.value.unwrap_or("")).height + 24).max(34)
     Create => 18
     LinkAnchor(_, _, label) =>
-      (text_size(label.unwrap_or("")).height + 24).max(34)
+      (TextSize::of(label.unwrap_or("")).height + 24).max(34)
     Autonumber(_)
     | AutonumberStop
     | AutonumberResume(_)
@@ -144,8 +144,8 @@ fn event_height(event : Event) -> Int {
 }
 
 ///|
-fn is_parallel(event : Event) -> Bool {
-  match event {
+fn Event::is_parallel(self : Event) -> Bool {
+  match self {
     Message(message) => message.parallel
     GroupingStart(group) => group.parallel
     _ => false
@@ -164,8 +164,8 @@ fn participant_code_index(
 }
 
 ///|
-fn message_gap_requirement(message : Message) -> Int {
-  text_size(message_label(message)).width + 48
+fn Message::gap_requirement(self : Message) -> Int {
+  TextSize::of(self.display_label()).width + 48
 }
 
 ///|
@@ -279,7 +279,7 @@ fn constrain_message_gap(
   let last = if from < to { to } else { from }
   let span = last - first
   guard span > 0 else { return }
-  let required = message_gap_requirement(message)
+  let required = message.gap_requirement()
   let per_gap = (required + span - 1) / span
   for index in first..<last {
     gaps[index] = gaps[index].max(per_gap)
@@ -297,7 +297,7 @@ fn initial_participant_layout(
     guard !hide_unlinked || participant_is_linked(diagram, participant.code) else {
       continue
     }
-    let width = (text_size(participant.display).width + 28).max(80)
+    let width = (TextSize::of(participant.display).width + 28).max(80)
     layouts.push({ participant, index, center_x: 0, width })
     index = index + 1
   }
@@ -463,8 +463,8 @@ fn layout_events(
   })
 
   for event in diagram.events {
-    let height = event_height(event)
-    let y = if is_parallel(event) { previous_top } else { current_y }
+    let height = event.height()
+    let y = if event.is_parallel() { previous_top } else { current_y }
     let number = match event {
       Message(_) | MessageExo(_) if autonumber => {
         let value = next_number
@@ -477,7 +477,7 @@ fn layout_events(
       _ => None
     }
     placements.push({ y, height, number })
-    if is_parallel(event) {
+    if event.is_parallel() {
       parallel_bottom = parallel_bottom.max(y + height)
       current_y = parallel_bottom
     } else {

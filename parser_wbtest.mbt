@@ -332,3 +332,67 @@ test "parse a complete sequence diagram" {
     None => fail("missing autonumber configuration")
   }
 }
+
+///|
+test "parse note variants with shared participants and arrow attachment" {
+  let result = parse(
+    "@startuml\nhnote over Alice, Bob #yellow : shared\nnote right : attached\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 2)
+  match result.events[0] {
+    Note(note) => {
+      @test.assert_eq(note.participant_codes, ["Alice", "Bob"])
+      @test.assert_eq(note.color, Some("yellow"))
+      @test.assert_eq(note.on_arrow, false)
+      match (note.position, note.note_style) {
+        (OverSeveral, Hexagonal) => ()
+        _ => fail("expected a shared hexagonal note")
+      }
+    }
+    _ => fail("expected note")
+  }
+  match result.events[1] {
+    Note(note) => {
+      @test.assert_eq(note.text, "attached")
+      @test.assert_eq(note.on_arrow, true)
+    }
+    _ => fail("expected arrow note")
+  }
+}
+
+///|
+test "parse grouping colors and parallel groups" {
+  let result = parse(
+    "@startuml\n& alt #header #body first\nelse #leaf second\nend\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 3)
+  match result.events[0] {
+    GroupingStart(group) => {
+      @test.assert_eq(group.parallel, true)
+      @test.assert_eq(group.back_color_header, Some("header"))
+      @test.assert_eq(group.back_color_body, Some("body"))
+    }
+    _ => fail("expected group start")
+  }
+  match result.events[1] {
+    GroupingLeaf(leaf) => {
+      @test.assert_eq(leaf.label, Some("second"))
+      @test.assert_eq(leaf.back_color, Some("leaf"))
+    }
+    _ => fail("expected group leaf")
+  }
+}
+
+///|
+test "dispatch hide commands without consuming the wrong prefix" {
+  let result = parse("@startuml\nhide unlinked\nhide footbox\n@enduml")
+  @test.assert_eq(result.events.length(), 2)
+  match result.events[0] {
+    HideUnlinked => ()
+    _ => fail("expected hide unlinked")
+  }
+  match result.events[1] {
+    Footbox(false) => ()
+    _ => fail("expected hidden footbox")
+  }
+}

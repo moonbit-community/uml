@@ -45,7 +45,7 @@ fn ParseCtx::new(input : String) -> ParseCtx {
 }
 
 ///|
-fn ParseCtx::get_or_create(
+fn ParseCtx::ensure_participant(
   self : ParseCtx,
   code : String,
   display : String,
@@ -64,31 +64,62 @@ fn ParseCtx::get_or_create(
 }
 
 ///|
+fn ParseCtx::declare_participant(
+  self : ParseCtx,
+  declaration : ParticipantDecl,
+) -> Unit {
+  let reference = declaration.reference
+  self.ensure_participant(reference.code, reference.display, declaration.typ)
+  let existing = self.participants[reference.code]
+  let color = match declaration.color {
+    Some(color) => Some(color)
+    None => existing.color
+  }
+  let order = match declaration.order {
+    Some(order) => Some(order)
+    None => existing.order
+  }
+  self.participants[reference.code] = {
+    ..existing,
+    display: reference.display,
+    typ: declaration.typ,
+    color,
+    order,
+    boxes: self.box_stack.copy(),
+  }
+  if declaration.created {
+    self.events.push(Create)
+  }
+}
+
+///|
 fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
   match event {
     Message(message) => {
-      self.get_or_create(message.from_code, message.from_code, Participant)
-      self.get_or_create(message.to_code, message.to_code, Participant)
-      message.multicast.each(code => self.get_or_create(code, code, Participant))
+      self.ensure_participant(message.from_code, message.from_code, Participant)
+      self.ensure_participant(message.to_code, message.to_code, Participant)
+      message.multicast.each(code => {
+        self.ensure_participant(code, code, Participant)
+      })
     }
     MessageExo(message) =>
-      self.get_or_create(
+      self.ensure_participant(
         message.participant_code,
         message.participant_code,
         Participant,
       )
     Note(note) =>
       note.participant_codes.each(code => {
-        self.get_or_create(code, code, Participant)
+        self.ensure_participant(code, code, Participant)
       })
     LifeEvent(life) =>
-      self.get_or_create(
+      self.ensure_participant(
         life.participant_code,
         life.participant_code,
         Participant,
       )
     UrlOf(code, url) => {
-      self.get_or_create(code, code, Participant)
+      self.ensure_participant(code, code, Participant)
       let participant = self.participants[code]
       self.participants[code] = { ..participant, url: Some(url) }
     }
@@ -102,67 +133,73 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
 }
 
 ///|
-fn is_inline_whitespace(c : Char) -> Bool {
-  c == ' ' || c == '\t' || c == '\r'
+fn ParseCtx::push_event(self : ParseCtx, event : Event) -> Unit {
+  self.register_event(event)
+  self.events.push(event)
 }
 
 ///|
-fn is_ident_char(c : Char) -> Bool {
-  c.is_ascii_alphabetic() ||
-  c.is_ascii_digit() ||
-  c == '_' ||
-  c == '.' ||
-  c == '@'
+fn is_inline_whitespace(char : Char) -> Bool {
+  char == ' ' || char == '\t' || char == '\r'
 }
 
 ///|
-fn is_arrow_char(c : Char) -> Bool {
-  c == '-' ||
-  c == '<' ||
-  c == '>' ||
-  c == 'o' ||
-  c == 'x' ||
-  c == '\\' ||
-  c == '/' ||
-  c == '[' ||
-  c == ']' ||
-  c == '#' ||
-  c == '_' ||
-  c == '(' ||
-  c == ')'
+fn is_ident_char(char : Char) -> Bool {
+  char.is_ascii_alphabetic() ||
+  char.is_ascii_digit() ||
+  char == '_' ||
+  char == '.' ||
+  char == '@'
 }
 
 ///|
-fn try_color(src : Source) -> String? {
-  let saved = src.save()
-  guard src.consume('#') else { return None }
-  let color = src.take_while(c => !is_inline_whitespace(c) && c != '\n')
+fn is_arrow_char(char : Char) -> Bool {
+  char == '-' ||
+  char == '<' ||
+  char == '>' ||
+  char == 'o' ||
+  char == 'x' ||
+  char == '\\' ||
+  char == '/' ||
+  char == '[' ||
+  char == ']' ||
+  char == '#' ||
+  char == '_' ||
+  char == '(' ||
+  char == ')'
+}
+
+///|
+fn Source::try_color(self : Source) -> String? {
+  let checkpoint = self.save()
+  guard self.consume('#') else { return None }
+  let color = self.take_while(c => !is_inline_whitespace(c) && c != '\n')
   guard color.length() > 0 else {
-    src.restore(saved)
+    self.restore(checkpoint)
     return None
   }
   Some(color)
 }
 
 ///|
-fn try_anchor(src : Source) -> String? {
-  let saved = src.save()
-  guard src.consume('{') else { return None }
-  let anchor = src.take_while(is_ident_char)
-  guard anchor.length() > 0 && src.consume('}') else {
-    src.restore(saved)
+fn Source::try_anchor(self : Source) -> String? {
+  let checkpoint = self.save()
+  guard self.consume('{') else { return None }
+  let anchor = self.take_while(is_ident_char)
+  guard anchor.length() > 0 && self.consume('}') else {
+    self.restore(checkpoint)
     return None
   }
   Some(anchor)
 }
 
 ///|
-fn try_quoted_string(src : Source) -> String? {
-  let saved = src.save()
-  guard src.consume('"') else { return None }
-  let value = src.take_while(c => c != '"')
-  guard src.consume('"') else {
-    src.restore(saved)
+fn Source::try_quoted_string(self : Source) -> String? {
+  let checkpoint = self.save()
+  guard self.consume('"') else { return None }
+  let value = self.take_while(c => c != '"')
+  guard self.consume('"') else {
+    self.restore(checkpoint)
     return None
   }
   Some(value)

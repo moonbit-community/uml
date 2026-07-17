@@ -150,18 +150,23 @@ fn append_participant_icon(
       append_line(output, x, y + 12, x, y + 23, "participant-icon")
       append_line(output, x - 6, y + 16, x + 6, y + 16, "participant-icon")
     }
-    Boundary =>
+    Boundary => {
       output <+
-        "<circle cx=\"\{x - 16}\" cy=\"\{y + 18}\" r=\"6\" class=\"participant-icon\"/><line x1=\"\{x - 10}\" y1=\"\{y + 8}\" x2=\"\{x - 10}\" y2=\"\{y + 28}\" class=\"participant-icon\"/>\n"
+        "<circle cx=\"\{x - 16}\" cy=\"\{y + 18}\" r=\"6\" class=\"participant-icon\"/>\n"
+      append_line(output, x - 10, y + 8, x - 10, y + 28, "participant-icon")
+    }
     Control =>
       output <+
         "<circle cx=\"\{x - 16}\" cy=\"\{y + 18}\" r=\"7\" class=\"participant-icon\"/>\n"
     Entity =>
       output <+
         "<rect x=\"\{x - 22}\" y=\"\{y + 12}\" width=\"12\" height=\"12\" class=\"participant-icon\"/>\n"
-    Database =>
+    Database => {
       output <+
-        "<ellipse cx=\"\{x - 16}\" cy=\"\{y + 13}\" rx=\"7\" ry=\"3\" class=\"participant-icon\"/><path d=\"M\{x - 23} \{y + 13}v10c0 4 14 4 14 0V\{y + 13}\" class=\"participant-icon\"/>\n"
+        "<ellipse cx=\"\{x - 16}\" cy=\"\{y + 13}\" rx=\"7\" ry=\"3\" class=\"participant-icon\"/>\n"
+      output <+
+        "<path d=\"M\{x - 23} \{y + 13}v10c0 4 14 4 14 0V\{y + 13}\" class=\"participant-icon\"/>\n"
+    }
     Queue =>
       output <+
         "<path d=\"M\{x - 23} \{y + 12}h13l-3 6 3 6h-13z\" class=\"participant-icon\"/>\n"
@@ -257,7 +262,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
     output <+
       "<rect x=\"\{x}\" y=\"\{group.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"group-body\" fill=\"\{body_color}\"/>\n"
     output <+
-      "<path d=\"M\{x} \{group.start_y}h\{(text_size(group.header).width + 38).max(54)}v22h-8l-5 5-5-5h-\{(text_size(group.header).width + 20).max(36)}z\" class=\"group-header\" fill=\"\{header_color}\"/>\n"
+      "<path d=\"M\{x} \{group.start_y}h\{(TextSize::of(group.header).width + 38).max(54)}v22h-8l-5 5-5-5h-\{(TextSize::of(group.header).width + 20).max(36)}z\" class=\"group-header\" fill=\"\{header_color}\"/>\n"
     append_text(
       output,
       x + 8,
@@ -276,15 +281,12 @@ fn delay_ranges(
   events : Array[Event],
 ) -> Array[(Int, Int)] {
   let ranges = []
-  for index, event in events {
-    match event {
-      Delay(_) => {
-        let placement = layout.placements[index]
-        ranges.push((placement.y, placement.y + placement.height))
-      }
-      _ => ()
+  events.eachi((index, event) => {
+    if event is Delay(_) {
+      let placement = layout.placements[index]
+      ranges.push((placement.y, placement.y + placement.height))
     }
-  }
+  })
   ranges
 }
 
@@ -357,20 +359,12 @@ fn append_arrow_head(
 
 ///|
 fn marker_for(head : ArrowHead, start : Bool) -> String {
-  match head {
-    Normal =>
-      if start {
-        " marker-start=\"url(#arrow-start)\""
-      } else {
-        " marker-end=\"url(#arrow)\""
-      }
-    Async =>
-      if start {
-        " marker-start=\"url(#open-arrow-start)\""
-      } else {
-        " marker-end=\"url(#open-arrow)\""
-      }
-    CrossX | NoneHead => ""
+  match (head, start) {
+    (Normal, true) => " marker-start=\"url(#arrow-start)\""
+    (Normal, false) => " marker-end=\"url(#arrow)\""
+    (Async, true) => " marker-start=\"url(#open-arrow-start)\""
+    (Async, false) => " marker-end=\"url(#open-arrow)\""
+    (CrossX | NoneHead, _) => ""
   }
 }
 
@@ -384,10 +378,9 @@ fn append_message(
   guard participant_at(layout, message.from_code) is Some(from) else { return }
   guard participant_at(layout, message.to_code) is Some(to) else { return }
   let y = placement.y + 18
-  let label = match placement.number {
-    Some(number) => "\{number} \{message_label(message)}"
-    None => message_label(message)
-  }
+  let label = placement.number
+    .map(number => "\{number} \{message.display_label()}")
+    .unwrap_or_else(() => message.display_label())
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
   let line_class = "message\{dotted}"
   let (start_y, end_y) = match message.arrow_config.part {
@@ -479,9 +472,9 @@ fn append_note(
   placement : EventPlacement,
   arrow_anchor : Message?,
 ) -> Unit {
-  let size = text_size(note.text)
+  let size = TextSize::of(note.text)
   let width = (size.width + 20).max(56)
-  let height = note_height(note)
+  let height = note.height()
   let center = note_anchor_center(layout, note, arrow_anchor)
   let x = match note.position {
     Left => center - width - 10
@@ -562,7 +555,7 @@ fn append_divider(
 ) -> Unit {
   let y = placement.y + 17
   append_line(output, 28, y, layout.width - 28, y, "divider")
-  let width = text_size(divider.title).width + 22
+  let width = TextSize::of(divider.title).width + 22
   output <+
     "<rect x=\"\{(layout.width - width) / 2}\" y=\"\{y - 12}\" width=\"\{width}\" height=\"24\" class=\"divider-title\"/>\n"
   append_text(output, layout.width / 2, y + 5, divider.title, "divider-label")

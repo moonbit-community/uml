@@ -1,131 +1,115 @@
 ///|
-fn try_participant_ref(src : Source) -> PartRef? {
-  let saved = src.save()
-  if src.consume('"') {
-    let display = src.take_while(c => c != '"')
-    if !src.consume('"') {
-      src.restore(saved)
+fn Source::try_participant_ref(self : Source) -> PartRef? {
+  let checkpoint = self.save()
+  if self.consume('"') {
+    let display = self.take_while(c => c != '"')
+    guard self.consume('"') else {
+      self.restore(checkpoint)
       return None
     }
-    src.skip_whitespace()
-    if src.try_keyword("as") {
-      src.skip_whitespace()
-      let code = src.take_while(is_ident_char)
+    self.skip_whitespace()
+    guard !self.try_keyword("as") else {
+      self.skip_whitespace()
+      let code = self.take_while(is_ident_char)
       guard code.length() > 0 else {
-        src.restore(saved)
+        self.restore(checkpoint)
         return None
       }
       return Some({ code, display })
     }
     return Some({ code: display, display })
   }
-  let code = src.take_while(is_ident_char)
+  let code = self.take_while(is_ident_char)
   guard code.length() > 0 else {
-    src.restore(saved)
+    self.restore(checkpoint)
     return None
   }
-  src.skip_whitespace()
-  if src.try_keyword("as") {
-    src.skip_whitespace()
-    if src.consume('"') {
-      let display = src.take_while(c => c != '"')
-      guard src.consume('"') else {
-        src.restore(saved)
-        return None
-      }
-      return Some({ code, display })
+  self.skip_whitespace()
+  guard self.try_keyword("as") else { return Some({ code, display: code }) }
+  self.skip_whitespace()
+  let display = if self.consume('"') {
+    let quoted = self.take_while(c => c != '"')
+    guard self.consume('"') else {
+      self.restore(checkpoint)
+      return None
     }
-    let display = src.take_while(is_ident_char)
-    if display.length() > 0 {
-      return Some({ code, display })
-    }
-    return Some({ code, display: code })
-  }
-  Some({ code, display: code })
-}
-
-///|
-fn left_dressing(src : Source) -> DressingResult {
-  let circle : Bool = src.consume('o')
-  let cross : Bool = src.consume('x')
-  let mut part = Full
-  let head : ArrowHead = if src.consume('<') {
-    if src.consume('<') {
-      Async
-    } else {
-      Normal
-    }
-  } else if src.consume('/') {
-    part = TopPart
-    if src.consume('/') {
-      Async
-    } else {
-      Normal
-    }
-  } else if src.consume('\\') {
-    part = BottomPart
-    if src.consume('\\') {
-      Async
-    } else {
-      Normal
-    }
+    quoted
   } else {
-    NoneHead
+    self.take_while(is_ident_char)
   }
-  let has_dir = head.has_direction()
-  if src.consume('(') {
-    let _ = src.take_while(Char::is_ascii_digit)
-    let _ = src.consume(')')
-  }
-  { head, circle, cross, has_dir, part }
+  Some({ code, display })
 }
 
 ///|
-fn right_dressing(src : Source) -> DressingResult {
-  let _ = src.consume('_')
-  let mut part = Full
-  let head : ArrowHead = if src.consume('>') {
-    if src.consume('>') {
-      Async
-    } else {
-      Normal
-    }
-  } else if src.consume('/') {
-    part = BottomPart
-    if src.consume('/') {
-      Async
-    } else {
-      Normal
-    }
-  } else if src.consume('\\') {
-    part = TopPart
-    if src.consume('\\') {
-      Async
-    } else {
-      Normal
-    }
+fn Source::take_left_dressing(self : Source) -> DressingResult {
+  let circle = self.consume('o')
+  let cross = self.consume('x')
+  let (head, part) = if self.consume('<') {
+    (if self.consume('<') { Async } else { Normal }, Full)
+  } else if self.consume('/') {
+    (if self.consume('/') { Async } else { Normal }, TopPart)
+  } else if self.consume('\\') {
+    (if self.consume('\\') { Async } else { Normal }, BottomPart)
   } else {
-    NoneHead
+    (NoneHead, Full)
   }
-  let has_dir = head.has_direction()
-  let circle : Bool = src.consume('o')
-  let cross : Bool = src.consume('x')
-  if src.consume('(') {
-    let _ = src.take_while(Char::is_ascii_digit)
-    let _ = src.consume(')')
+  if self.consume('(') {
+    let _ = self.take_while(Char::is_ascii_digit)
+    let _ = self.consume(')')
   }
-  { head, circle, cross, has_dir, part }
+  { head, circle, cross, has_dir: head.has_direction(), part }
 }
 
 ///|
-fn activation_spec(src : Source) -> ActivationSpec? {
-  if src.try_string("++") {
+fn Source::take_right_dressing(self : Source) -> DressingResult {
+  let _ = self.consume('_')
+  let (head, part) = if self.consume('>') {
+    (if self.consume('>') { Async } else { Normal }, Full)
+  } else if self.consume('/') {
+    (if self.consume('/') { Async } else { Normal }, BottomPart)
+  } else if self.consume('\\') {
+    (if self.consume('\\') { Async } else { Normal }, TopPart)
+  } else {
+    (NoneHead, Full)
+  }
+  let circle = self.consume('o')
+  let cross = self.consume('x')
+  if self.consume('(') {
+    let _ = self.take_while(Char::is_ascii_digit)
+    let _ = self.consume(')')
+  }
+  { head, circle, cross, has_dir: head.has_direction(), part }
+}
+
+///|
+fn Source::try_arrow_dressing(
+  self : Source,
+) -> (DressingResult, ArrowBody, DressingResult)? {
+  let left = self.take_left_dressing()
+  let first_dashes = self.take_while(c => c == '-')
+  if self.consume('[') {
+    let _ = self.take_while(c => c != ']')
+    let _ = self.consume(']')
+  }
+  let second_dashes = self.take_while(c => c == '-')
+  guard first_dashes.length() + second_dashes.length() > 0 else { None }
+  let body = if first_dashes.length() + second_dashes.length() > 1 {
+    Dotted
+  } else {
+    Solid
+  }
+  Some((left, body, self.take_right_dressing()))
+}
+
+///|
+fn Source::take_activation_spec(self : Source) -> ActivationSpec? {
+  if self.try_string("++") {
     Some(Activate)
-  } else if src.try_string("--") {
+  } else if self.try_string("--") {
     Some(Deactivate)
-  } else if src.try_string("!!") {
+  } else if self.try_string("!!") {
     Some(Destroy)
-  } else if src.try_string("**") {
+  } else if self.try_string("**") {
     Some(Create)
   } else {
     None
@@ -133,271 +117,223 @@ fn activation_spec(src : Source) -> ActivationSpec? {
 }
 
 ///|
-fn build_arrow_cfg(
+fn Source::take_message_tail(
+  self : Source,
+) -> (ActivationSpec?, String?, String?) {
+  self.skip_whitespace()
+  let activation = self.take_activation_spec()
+  let color = self.try_color()
+  self.skip_whitespace()
+  let label = if self.consume(':') {
+    self.collect_line().optional_text()
+  } else {
+    None
+  }
+  (activation, color, label)
+}
+
+///|
+fn ArrowConfig::from_dressing(
   left : DressingResult,
   right : DressingResult,
   body : ArrowBody,
   reverse : Bool,
 ) -> ArrowConfig {
-  let (l, r) = if reverse { (right, left) } else { (left, right) }
-  let mut cfg = ArrowConfig::default()
-  if l.head.has_direction() {
-    cfg = cfg.with_head1(l.head)
+  let (start, end) = if reverse { (right, left) } else { (left, right) }
+  let head1 = if start.cross { CrossX } else { start.head }
+  let head2 = if end.cross { CrossX } else { end.head }
+  let part = match (start.part, end.part) {
+    (TopPart, _) | (_, TopPart) => TopPart
+    (BottomPart, _) | (_, BottomPart) => BottomPart
+    (Full, Full) => Full
   }
-  if r.head.has_direction() {
-    cfg = cfg.with_head2(r.head)
+  {
+    body,
+    head1,
+    head2,
+    part,
+    circle_start: start.circle,
+    circle_end: end.circle,
   }
-  if l.cross {
-    cfg = cfg.with_head1(CrossX)
+}
+
+///|
+fn message_direction(left : DressingResult, right : DressingResult) -> Bool? {
+  if right.has_dir || left.cross || right.cross {
+    Some(false)
+  } else if left.has_dir {
+    Some(true)
+  } else {
+    None
   }
-  if r.cross {
-    cfg = cfg.with_head2(CrossX)
+}
+
+///|
+fn Source::take_multicast(self : Source) -> Array[String]? {
+  let targets = []
+  while self.consume('&') {
+    self.skip_whitespace()
+    let target = self.take_while(is_ident_char)
+    guard target.length() > 0 else { return None }
+    targets.push(target)
+    self.skip_whitespace()
   }
-  let cfg = match (l.part, r.part) {
-    (Full, Full) => cfg
-    (TopPart, _) | (_, TopPart) => { ..cfg, part: TopPart }
-    (BottomPart, _) | (_, BottomPart) => { ..cfg, part: BottomPart }
-  }
-  cfg.with_circle_start(l.circle).with_circle_end(r.circle).with_body(body)
+  Some(targets)
 }
 
 ///|
 fn arrow(src : Source) -> Event? {
-  let saved = src.save()
-  let parallel : Bool = src.consume('&')
+  let checkpoint = src.save()
+  let parallel = src.consume('&')
   if parallel {
     src.skip_whitespace()
   }
-  let anchor = try_anchor(src)
+  let anchor = src.try_anchor()
   if anchor is Some(_) {
     src.skip_whitespace()
   }
-
-  let p1_code : String = match try_participant_ref(src) {
-    Some(r) => r.code
-    None => {
-      src.restore(saved)
-      return None
-    }
-  }
-
-  src.skip_whitespace()
-  let _ = try_anchor(src)
-  src.skip_whitespace()
-  let is_a : Bool = match src.peek() {
-    Some(c) if is_arrow_char(c) => true
-    _ => false
-  }
-  if !is_a {
-    src.restore(saved)
+  guard src.try_participant_ref() is Some(first) else {
+    src.restore(checkpoint)
     return None
   }
-
-  let left = left_dressing(src)
-  let d1 = src.take_while(c => c == '-')
-  let _ = if src.consume('[') {
-    let _s = src.take_while(c => c != ']')
-    let _ = src.consume(']')
-    ()
-  }
-  let d2 = src.take_while(c => c == '-')
-  if d1.length() == 0 && d2.length() == 0 {
-    src.restore(saved)
+  src.skip_whitespace()
+  let _ = src.try_anchor()
+  src.skip_whitespace()
+  guard src.peek().map_or(false, is_arrow_char) else {
+    src.restore(checkpoint)
     return None
   }
-
-  let body : ArrowBody = if d1.length() + d2.length() > 1 {
-    Dotted
-  } else {
-    Solid
-  }
-  let right = right_dressing(src)
-
-  src.skip_whitespace()
-  let p2_code : String = match try_participant_ref(src) {
-    Some(r) => r.code
-    None => {
-      src.restore(saved)
-      return None
-    }
-  }
-
-  src.skip_whitespace()
-  let multicast : Array[String] = []
-  while src.consume('&') {
-    src.skip_whitespace()
-    let code = src.take_while(is_ident_char)
-    guard code.length() > 0 else {
-      src.restore(saved)
-      return None
-    }
-    multicast.push(code)
-    src.skip_whitespace()
-  }
-  let _ = try_anchor(src)
-
-  let reverse : Bool = if right.has_dir {
-    false
-  } else if left.has_dir {
-    true
-  } else if left.cross || right.cross {
-    false
-  } else {
-    src.restore(saved)
+  guard src.try_arrow_dressing() is Some((left, body, right)) else {
+    src.restore(checkpoint)
     return None
   }
-
-  let mut from : String = p1_code
-  let mut to : String = p2_code
-  if reverse {
-    from = p2_code
-    to = p1_code
-  }
-  let cfg = build_arrow_cfg(left, right, body, reverse)
-
   src.skip_whitespace()
-  let act = activation_spec(src)
-  let lcolor : String? = if src.consume('#') {
-    Some(src.take_while(is_ident_char))
-  } else {
-    None
+  guard src.try_participant_ref() is Some(second) else {
+    src.restore(checkpoint)
+    return None
   }
   src.skip_whitespace()
-  let label : String? = if src.consume(':') {
-    Some(src.collect_line().trim().to_owned())
-  } else {
-    None
+  guard src.take_multicast() is Some(multicast) else {
+    src.restore(checkpoint)
+    return None
   }
-
+  let _ = src.try_anchor()
+  guard message_direction(left, right) is Some(reverse) else {
+    src.restore(checkpoint)
+    return None
+  }
+  let (from, to) = if reverse {
+    (second.code, first.code)
+  } else {
+    (first.code, second.code)
+  }
+  let (activation_spec, life_color, label) = src.take_message_tail()
   Some(
     Message({
       from_code: from,
       to_code: to,
       label,
-      arrow_config: cfg,
+      arrow_config: ArrowConfig::from_dressing(left, right, body, reverse),
       parallel,
       anchor,
       multicast,
-      activation_spec: act,
-      life_color: lcolor,
+      activation_spec,
+      life_color,
     }),
   )
 }
 
 ///|
+fn from_left_exo_type(
+  left : DressingResult,
+  right : DressingResult,
+) -> MessageExoType? {
+  if right.has_dir {
+    Some(FromLeft)
+  } else if left.has_dir {
+    Some(ToLeft)
+  } else {
+    None
+  }
+}
+
+///|
+fn to_right_exo_type(
+  left : DressingResult,
+  right : DressingResult,
+) -> MessageExoType? {
+  if right.has_dir {
+    Some(ToRight)
+  } else if left.has_dir {
+    Some(FromRight)
+  } else {
+    None
+  }
+}
+
+///|
 fn try_exo_arrow(src : Source) -> Event? {
-  let saved = src.save()
+  let checkpoint = src.save()
   let _ = src.consume('&')
   src.skip_whitespace()
-
-  let from_left = src.consume('[')
-  let mut short_arrow = false
-  if from_left {
-    short_arrow = src.consume('?')
-    let left = left_dressing(src)
-    let d1 = src.take_while(c => c == '-')
-    let _ = if src.consume('[') {
-      let _ = src.take_while(c => c != ']')
-      let _ = src.consume(']')
-      ()
-    }
-    let d2 = src.take_while(c => c == '-')
-    let right = right_dressing(src)
-    guard d1.length() + d2.length() > 0 else {
-      src.restore(saved)
+  if src.consume('[') {
+    let short_arrow = src.consume('?')
+    guard src.try_arrow_dressing() is Some((left, body, right)) else {
+      src.restore(checkpoint)
       return None
     }
     src.skip_whitespace()
-    guard try_participant_ref(src) is Some(participant) else {
-      src.restore(saved)
+    guard src.try_participant_ref() is Some(participant) else {
+      src.restore(checkpoint)
       return None
     }
-    let exo_type = if right.has_dir {
-      FromLeft
-    } else if left.has_dir {
-      ToLeft
-    } else {
-      src.restore(saved)
+    guard from_left_exo_type(left, right) is Some(exo_type) else {
+      src.restore(checkpoint)
       return None
     }
-    let body = if d1.length() + d2.length() > 1 { Dotted } else { Solid }
-    src.skip_whitespace()
-    let activation_spec = activation_spec(src)
-    let life_color = if src.consume('#') {
-      Some(src.take_while(is_ident_char))
-    } else {
-      None
-    }
-    src.skip_whitespace()
-    let label = if src.consume(':') {
-      Some(src.collect_line().trim().to_owned())
-    } else {
-      None
-    }
+    let (activation_spec, life_color, label) = src.take_message_tail()
     return Some(
       MessageExo({
         participant_code: participant.code,
         exo_type,
         label,
-        arrow_config: build_arrow_cfg(left, right, body, left.has_dir),
+        arrow_config: ArrowConfig::from_dressing(
+          left,
+          right,
+          body,
+          left.has_dir,
+        ),
         short_arrow,
         activation_spec,
         life_color,
       }),
     )
   }
-
-  guard try_participant_ref(src) is Some(participant) else {
-    src.restore(saved)
+  guard src.try_participant_ref() is Some(participant) else {
+    src.restore(checkpoint)
     return None
   }
   src.skip_whitespace()
-  let left = left_dressing(src)
-  let d1 = src.take_while(c => c == '-')
-  let _ = if src.consume('[') {
-    let _ = src.take_while(c => c != ']')
-    let _ = src.consume(']')
-    ()
-  }
-  let d2 = src.take_while(c => c == '-')
-  let right = right_dressing(src)
-  guard d1.length() + d2.length() > 0 else {
-    src.restore(saved)
+  guard src.try_arrow_dressing() is Some((left, body, right)) else {
+    src.restore(checkpoint)
     return None
   }
-  short_arrow = src.consume('?')
+  let short_arrow = src.consume('?')
   guard src.consume(']') else {
-    src.restore(saved)
+    src.restore(checkpoint)
     return None
   }
-  let exo_type = if right.has_dir {
-    ToRight
-  } else if left.has_dir {
-    FromRight
-  } else {
-    src.restore(saved)
+  guard to_right_exo_type(left, right) is Some(exo_type) else {
+    src.restore(checkpoint)
     return None
   }
-  let body = if d1.length() + d2.length() > 1 { Dotted } else { Solid }
-  src.skip_whitespace()
-  let activation_spec = activation_spec(src)
-  let life_color = if src.consume('#') {
-    Some(src.take_while(is_ident_char))
-  } else {
-    None
-  }
-  src.skip_whitespace()
-  let label = if src.consume(':') {
-    Some(src.collect_line().trim().to_owned())
-  } else {
-    None
-  }
+  let (activation_spec, life_color, label) = src.take_message_tail()
   Some(
     MessageExo({
       participant_code: participant.code,
       exo_type,
       label,
-      arrow_config: build_arrow_cfg(left, right, body, left.has_dir),
+      arrow_config: ArrowConfig::from_dressing(left, right, body, left.has_dir),
       short_arrow,
       activation_spec,
       life_color,
