@@ -64,6 +64,13 @@ fn skip_ignored_line(source : Source) -> Bool {
 }
 
 ///|
+/// Parse a PlantUML sequence diagram string into a `SequenceDiagram`.
+///
+/// Parameters:
+///
+/// - `input`: the raw PlantUML source text, optionally wrapped with `@startuml` / `@enduml`.
+///
+/// Returns a `SequenceDiagram` containing the parsed participants and events.
 pub fn parse(input : String) -> SequenceDiagram {
   let ctx = ParseCtx::new(input)
   let parsers : Array[(Source) -> Event?] = [

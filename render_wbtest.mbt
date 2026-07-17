@@ -30,6 +30,42 @@ test "participant layout reserves message label width" {
 }
 
 ///|
+test "actors have a separate icon and label without a participant rectangle" {
+  let svg = render_sequence_svg(
+    "@startuml\nactor \"Bob Jones\" as bob\n@enduml",
+  )
+  @test.assert_eq(svg.contains("data-code=\"bob\">\n<circle"), true)
+  @test.assert_eq(svg.contains("data-code=\"bob\">\n<rect"), false)
+  @test.assert_eq(svg.contains("<text x=\"195\" y=\"73\""), true)
+}
+
+///|
+test "participant heads share a lifeline contact instead of a fixed top offset" {
+  let layout = parse("@startuml\nactor Actor\nparticipant Service\n@enduml").layout()
+  @test.assert_eq(layout.participant_head_y(layout.participants[0]), 0)
+  @test.assert_eq(layout.participant_head_y(layout.participants[1]), 40)
+  @test.assert_eq(layout.body_top, 86)
+  @test.assert_eq(layout.participant_tail_y(), layout.body_bottom + 9)
+}
+
+///|
+test "specialized participants use their PlantUML shapes" {
+  let svg = render_sequence_svg(
+    "@startuml\nboundary B\ncontrol C\nentity E\ndatabase D\nqueue Q\ncollections S\n@enduml",
+  )
+  @test.assert_eq(svg.contains("data-code=\"B\">\n<circle"), true)
+  @test.assert_eq(svg.contains("data-code=\"B\">\n<rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"C\">\n<circle"), true)
+  @test.assert_eq(svg.contains("data-code=\"C\">\n<rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"E\">\n<ellipse"), true)
+  @test.assert_eq(svg.contains("data-code=\"E\">\n<rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"D\">\n<ellipse"), true)
+  @test.assert_eq(svg.contains("data-code=\"D\">\n<rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"Q\">\n<path"), true)
+  @test.assert_eq(svg.contains("data-code=\"S\">\n<rect"), true)
+}
+
+///|
 test "participant layout follows explicit PlantUML order" {
   let diagram = parse(
     "@startuml\nparticipant Last order 20\nparticipant First order -10\nparticipant Middle\nFirst -> Middle\n@enduml",
@@ -165,8 +201,8 @@ test "return follows the most recent active caller" {
 test "partial arrows retain their vertical inclination" {
   let top = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
   let bottom = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
-  @test.assert_eq(top.contains("y1=\"105\""), true)
-  @test.assert_eq(top.contains("y2=\"95\""), true)
-  @test.assert_eq(bottom.contains("y1=\"95\""), true)
-  @test.assert_eq(bottom.contains("y2=\"105\""), true)
+  @test.assert_eq(top.contains("y1=\"89\""), true)
+  @test.assert_eq(top.contains("y2=\"79\""), true)
+  @test.assert_eq(bottom.contains("y1=\"79\""), true)
+  @test.assert_eq(bottom.contains("y2=\"89\""), true)
 }

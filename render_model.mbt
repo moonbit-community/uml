@@ -97,6 +97,18 @@ fn Message::display_label(self : Message) -> String {
 }
 
 ///|
+fn ParticipantType::header_height(self : ParticipantType) -> Int {
+  match self {
+    Actor => 76
+    Boundary | Control | Entity => 48
+    Database => 67
+    Queue => 26
+    Collections => 40
+    Participant => 36
+  }
+}
+
+///|
 fn Note::height(self : Note) -> Int {
   TextSize::of(self.text).height + 18
 }
@@ -437,6 +449,7 @@ fn apply_activation_spec(
 ///|
 fn layout_events(
   diagram : SequenceDiagram,
+  start_y : Int,
 ) -> (
   Array[EventPlacement],
   Array[ActivationSpan],
@@ -450,7 +463,7 @@ fn layout_events(
   let destroys = []
   let active : Map[String, Array[Int]] = Map([])
   let group_stack = []
-  let mut current_y = 82
+  let mut current_y = start_y
   let mut previous_top = current_y
   let mut parallel_bottom = current_y
   let mut autoactivate = diagram.autoactivate
@@ -593,10 +606,21 @@ fn layout_events(
 ///|
 fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   let (participants, participant_index, width) = layout_participants(self)
+  let mut participant_header_height = 36
+  for participant in participants {
+    participant_header_height = participant_header_height.max(
+      participant.participant.typ.header_height(),
+    )
+  }
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
     self,
+    participant_header_height + 30,
   )
-  let footbox_height = if self.show_footbox { 70 } else { 24 }
+  let footbox_height = if self.show_footbox {
+    participant_header_height + 10
+  } else {
+    24
+  }
   {
     participants,
     participant_index,
@@ -606,7 +630,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     destroys,
     width,
     height: body_bottom + footbox_height,
-    body_top: 62,
+    body_top: participant_header_height + 10,
     body_bottom,
   }
 }
