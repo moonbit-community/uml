@@ -506,7 +506,7 @@ fn append_note(
     width
   }
   let class_name = match note.note_style {
-    Normal => "note"
+    NodeNormal => "note"
     Hexagonal => "note hex-note"
     Box => "note box-note"
   }

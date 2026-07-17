@@ -79,7 +79,7 @@ priv enum NotePosition {
 ///|
 #warnings("-unused_value")
 priv enum NoteStyle {
-  Normal
+  NodeNormal
   Hexagonal
   Box
 }

@@ -1,9 +1,4 @@
 ///|
-fn try_keyword(src : Source, kw : String) -> Bool {
-  src.try_keyword(kw)
-}
-
-///|
 fn parse_participant_type(src : Source) -> ParticipantType? {
   let keyword = src.peek_word().to_lower()
   let variant = match keyword {
@@ -69,19 +64,17 @@ fn split_participant_list(raw : StringView) -> Array[String] {
 ///|
 fn try_participant_decl(src : Source) -> ParticipantDecl? {
   let saved = src.save()
-  let created = try_keyword(src, "create")
+  let created = src.try_keyword("create")
   if created {
     src.skip_whitespace()
   }
   let typ = match parse_participant_type(src) {
     Some(typ) => typ
-    None =>
-      if created {
-        Participant
-      } else {
-        src.restore(saved)
-        return None
-      }
+    None => {
+      guard !created else { Participant }
+      src.restore(saved)
+      return None
+    }
   }
   src.skip_whitespace()
   guard try_participant_ref(src) is Some(reference) else {
@@ -89,14 +82,11 @@ fn try_participant_decl(src : Source) -> ParticipantDecl? {
     return None
   }
   src.skip_whitespace()
-  let order = if try_keyword(src, "order") {
+  let order = if src.try_keyword("order") {
     src.skip_whitespace()
     let raw_order = src.take_while(c => c == '-' || c.is_ascii_digit())
-    if raw_order.length() == 0 {
-      None
-    } else {
-      Some(@string.parse_int(raw_order) catch { _ => 0 })
-    }
+    guard raw_order.length() != 0 else { None }
+    Some(@string.parse_int(raw_order) catch { _ => 0 })
   } else {
     None
   }
@@ -119,15 +109,13 @@ fn try_note(src : Source) -> Event? {
   let _ = src.consume('/')
   src.skip_whitespace()
 
-  let note_style = if src.try_keyword("note") {
-    NoteStyle::Normal
-  } else if src.try_keyword("hnote") {
-    Hexagonal
-  } else if src.try_keyword("rnote") {
-    Box
-  } else {
-    return None
+  let note_style = match src.peek_word().to_lower() {
+    "note" => NodeNormal
+    "hnote" => Hexagonal
+    "rnote" => Box
+    _ => return None
   }
+  src.skip_word()
 
   src.skip_whitespace()
   let pos_raw = parse_note_position(src)
@@ -161,7 +149,7 @@ fn try_note(src : Source) -> Event? {
 
       let _ = match pos {
         Across => false
-        _ => try_keyword(src, "of")
+        _ => src.try_keyword("of")
       }
       src.skip_whitespace()
       let part_text = src
@@ -264,7 +252,7 @@ fn try_grouping(src : Source) -> Event? {
 ///|
 fn try_life_event(src : Source, kw : String, typ : ActivationSpec) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, kw) else {
+  guard src.try_keyword(kw) else {
     src.restore(saved)
     return None
   }
@@ -367,7 +355,7 @@ fn try_hspace(src : Source) -> Event? {
 fn try_newpage(src : Source) -> Event? {
   let saved = src.save()
   let _ = src.consume('@')
-  guard try_keyword(src, "newpage") else {
+  guard src.try_keyword("newpage") else {
     src.restore(saved)
     return None
   }
@@ -379,12 +367,12 @@ fn try_newpage(src : Source) -> Event? {
 
 ///|
 fn try_autonumber(src : Source) -> Event? {
-  guard try_keyword(src, "autonumber") else { return None }
+  guard src.try_keyword("autonumber") else { return None }
   src.skip_whitespace()
-  if try_keyword(src, "stop") {
+  if src.try_keyword("stop") {
     return Some(AutonumberStop)
   }
-  if try_keyword(src, "resume") {
+  if src.try_keyword("resume") {
     src.skip_whitespace()
     let increment = src.take_while(Char::is_ascii_digit)
     src.skip_whitespace()
@@ -400,7 +388,7 @@ fn try_autonumber(src : Source) -> Event? {
       }),
     )
   }
-  if try_keyword(src, "inc") {
+  if src.try_keyword("inc") {
     src.skip_whitespace()
     let position = src.take_while(Char::is_ascii_alphabetic)
     return Some(
@@ -444,11 +432,11 @@ fn try_autonumber(src : Source) -> Event? {
 ///|
 fn try_autoactivate(src : Source) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, "autoactivate") else { return None }
+  guard src.try_keyword("autoactivate") else { return None }
   src.skip_whitespace()
-  if try_keyword(src, "on") {
+  if src.try_keyword("on") {
     Some(Autoactivate(true))
-  } else if try_keyword(src, "off") {
+  } else if src.try_keyword("off") {
     Some(Autoactivate(false))
   } else {
     src.restore(saved)
@@ -459,17 +447,17 @@ fn try_autoactivate(src : Source) -> Event? {
 ///|
 fn try_footbox(src : Source) -> Event? {
   let saved = src.save()
-  if try_keyword(src, "footbox") {
+  if src.try_keyword("footbox") {
     src.skip_whitespace()
-    if try_keyword(src, "on") {
+    if src.try_keyword("on") {
       return Some(Footbox(true))
     }
-    if try_keyword(src, "off") {
+    if src.try_keyword("off") {
       return Some(Footbox(false))
     }
-  } else if try_keyword(src, "hide") {
+  } else if src.try_keyword("hide") {
     src.skip_whitespace()
-    if try_keyword(src, "footbox") {
+    if src.try_keyword("footbox") {
       return Some(Footbox(false))
     }
   }
@@ -480,9 +468,9 @@ fn try_footbox(src : Source) -> Event? {
 ///|
 fn try_hide_unlinked(src : Source) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, "hide") else { return None }
+  guard src.try_keyword("hide") else { return None }
   src.skip_whitespace()
-  guard try_keyword(src, "unlinked") else {
+  guard src.try_keyword("unlinked") else {
     src.restore(saved)
     return None
   }
@@ -492,14 +480,14 @@ fn try_hide_unlinked(src : Source) -> Event? {
 ///|
 fn try_box(src : Source) -> Event? {
   let saved = src.save()
-  if try_keyword(src, "end") {
+  if src.try_keyword("end") {
     src.skip_whitespace()
-    if try_keyword(src, "box") {
+    if src.try_keyword("box") {
       return Some(BoxEnd)
     }
   }
   src.restore(saved)
-  guard try_keyword(src, "box") else { return None }
+  guard src.try_keyword("box") else { return None }
   src.skip_whitespace()
   let color = try_color(src)
   if color is Some(_) {
@@ -521,9 +509,9 @@ fn try_box(src : Source) -> Event? {
 ///|
 fn try_reference(src : Source) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, "ref") else { return None }
+  guard src.try_keyword("ref") else { return None }
   src.skip_whitespace()
-  guard try_keyword(src, "over") else {
+  guard src.try_keyword("over") else {
     src.restore(saved)
     return None
   }
@@ -553,7 +541,7 @@ fn try_return(src : Source) -> Event? {
   let saved = src.save()
   let _ = src.consume('&')
   src.skip_whitespace()
-  guard try_keyword(src, "return") else {
+  guard src.try_keyword("return") else {
     src.restore(saved)
     return None
   }
@@ -575,16 +563,16 @@ fn try_return(src : Source) -> Event? {
 ///|
 fn try_url(src : Source) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, "url") else { return None }
+  guard src.try_keyword("url") else { return None }
   src.skip_whitespace()
-  let _ = try_keyword(src, "of") || try_keyword(src, "for")
+  let _ = src.try_keyword("of") || src.try_keyword("for")
   src.skip_whitespace()
   guard try_participant_ref(src) is Some(reference) else {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
-  let _ = try_keyword(src, "is")
+  let _ = src.try_keyword("is")
   src.skip_whitespace()
   let url = src.collect_line().trim()
   guard url.length() > 0 else {
@@ -597,9 +585,9 @@ fn try_url(src : Source) -> Event? {
 ///|
 fn try_ignore_newpage(src : Source) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, "ignore") else { return None }
+  guard src.try_keyword("ignore") else { return None }
   src.skip_whitespace()
-  guard try_keyword(src, "newpage") else {
+  guard src.try_keyword("newpage") else {
     src.restore(saved)
     return None
   }
@@ -609,9 +597,9 @@ fn try_ignore_newpage(src : Source) -> Event? {
 ///|
 fn try_auto_newpage(src : Source) -> Event? {
   let saved = src.save()
-  guard try_keyword(src, "auto") else { return None }
+  guard src.try_keyword("auto") else { return None }
   src.skip_whitespace()
-  guard try_keyword(src, "newpage") else {
+  guard src.try_keyword("newpage") else {
     src.restore(saved)
     return None
   }
