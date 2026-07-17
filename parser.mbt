@@ -8,8 +8,10 @@ pub fn parse(input : String) -> SequenceDiagram {
   }
 
   let parsers : Array[(Source) -> Event?] = [
-    arrow, try_note, try_grouping, try_activate, try_deactivate, try_destroy, try_divider,
-    try_delay, try_hspace, try_newpage, try_link_anchor,
+    arrow, try_exo_arrow, try_note, try_box, try_grouping, try_activate, try_deactivate,
+    try_destroy, try_return, try_divider, try_delay, try_hspace, try_newpage, try_reference,
+    try_autonumber, try_autoactivate, try_footbox, try_hide_unlinked, try_url, try_ignore_newpage,
+    try_auto_newpage, try_link_anchor,
   ]
 
   while true {
@@ -61,8 +63,23 @@ pub fn parse(input : String) -> SequenceDiagram {
             decl.reference.display,
             decl.typ,
           )
+          let participant = ctx.participants[decl.reference.code]
+          ctx.participants[decl.reference.code] = {
+            ..participant,
+            display: decl.reference.display,
+            typ: decl.typ,
+            color: match decl.color {
+              Some(color) => Some(color)
+              None => participant.color
+            },
+            boxes: ctx.box_stack.copy(),
+            order: match decl.order {
+              Some(order) => Some(order)
+              None => participant.order
+            },
+          }
           if decl.created {
-            ctx.events.push(Create(true))
+            ctx.events.push(Create)
           }
           matched = true
         }
@@ -75,11 +92,24 @@ pub fn parse(input : String) -> SequenceDiagram {
     }
   }
 
+  let mut auto_number = None
+  let mut autoactivate = false
+  let mut show_footbox = true
+  for event in ctx.events {
+    match event {
+      Autonumber(config) => auto_number = Some(config)
+      AutonumberStop => auto_number = None
+      Autoactivate(enabled) => autoactivate = enabled
+      Footbox(enabled) => show_footbox = enabled
+      _ => ()
+    }
+  }
+
   {
     participants: ctx.participants,
     events: ctx.events,
-    auto_number: None,
-    autoactivate: false,
-    show_footbox: true,
+    auto_number,
+    autoactivate,
+    show_footbox,
   }
 }

@@ -1,32 +1,37 @@
 ///|
-struct PartRef {
+#warnings("-unused_value")
+priv struct PartRef {
   code : String
   display : String
 }
 
 ///|
-struct ParticipantDecl {
+#warnings("-unused_value")
+priv struct ParticipantDecl {
   typ : ParticipantType
   reference : PartRef
   created : Bool
+  color : String?
+  order : Int?
 }
 
 ///|
-struct DressingResult {
+#warnings("-unused_value")
+priv struct DressingResult {
   head : ArrowHead
   circle : Bool
   cross : Bool
   has_dir : Bool
   part : ArrowPart
-  inclination : Int
 }
 
 ///|
-struct ParseCtx {
+#warnings("-unused_value")
+priv struct ParseCtx {
   source : Source
   participants : Map[String, Participant]
-  mut auto_order : Int
   events : Array[Event]
+  box_stack : Array[ParticipantBox]
 }
 
 ///|
@@ -34,8 +39,8 @@ fn ParseCtx::new(input : String) -> ParseCtx {
   {
     source: Source::new(input),
     participants: Map([]),
-    auto_order: 0,
     events: [],
+    box_stack: [],
   }
 }
 
@@ -47,16 +52,14 @@ fn ParseCtx::get_or_create(
   typ : ParticipantType,
 ) -> Unit {
   guard !self.participants.contains(code) else { return }
-  self.auto_order = self.auto_order + 1
   self.participants[code] = {
     code,
     display,
     typ,
-    order: Some(self.auto_order),
-    stereotype: None,
+    order: Some(0),
     color: None,
     url: None,
-    style: None,
+    boxes: self.box_stack.copy(),
   }
 }
 
@@ -66,7 +69,14 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
     Message(message) => {
       self.get_or_create(message.from_code, message.from_code, Participant)
       self.get_or_create(message.to_code, message.to_code, Participant)
+      message.multicast.each(code => self.get_or_create(code, code, Participant))
     }
+    MessageExo(message) =>
+      self.get_or_create(
+        message.participant_code,
+        message.participant_code,
+        Participant,
+      )
     Note(note) =>
       note.participant_codes.each(code => {
         self.get_or_create(code, code, Participant)
@@ -77,6 +87,16 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
         life.participant_code,
         Participant,
       )
+    UrlOf(code, url) => {
+      self.get_or_create(code, code, Participant)
+      let participant = self.participants[code]
+      self.participants[code] = { ..participant, url: Some(url) }
+    }
+    BoxStart(box) => self.box_stack.push({ label: box.label, color: box.color })
+    BoxEnd => {
+      let _ = self.box_stack.pop()
+      ()
+    }
     _ => ()
   }
 }
@@ -110,6 +130,42 @@ fn is_arrow_char(c : Char) -> Bool {
   c == '_' ||
   c == '(' ||
   c == ')'
+}
+
+///|
+fn try_color(src : Source) -> String? {
+  let saved = src.save()
+  guard src.consume('#') else { return None }
+  let color = src.take_while(c => !is_inline_whitespace(c) && c != '\n')
+  guard color.length() > 0 else {
+    src.restore(saved)
+    return None
+  }
+  Some(color)
+}
+
+///|
+fn try_anchor(src : Source) -> String? {
+  let saved = src.save()
+  guard src.consume('{') else { return None }
+  let anchor = src.take_while(is_ident_char)
+  guard anchor.length() > 0 && src.consume('}') else {
+    src.restore(saved)
+    return None
+  }
+  Some(anchor)
+}
+
+///|
+fn try_quoted_string(src : Source) -> String? {
+  let saved = src.save()
+  guard src.consume('"') else { return None }
+  let value = src.take_while(c => c != '"')
+  guard src.consume('"') else {
+    src.restore(saved)
+    return None
+  }
+  Some(value)
 }
 
 ///|

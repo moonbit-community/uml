@@ -1,5 +1,6 @@
 ///|
-struct Source {
+#warnings("-unused_value")
+priv struct Source {
   chars : Array[Char]
   mut pos : Int
 }

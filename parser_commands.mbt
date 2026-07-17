@@ -89,19 +89,35 @@ fn try_participant_decl(src : Source) -> ParticipantDecl? {
     return None
   }
   src.skip_whitespace()
-  if try_keyword(src, "order") {
+  let order = if try_keyword(src, "order") {
     src.skip_whitespace()
-    let _ = src.take_while(c => c == '-' || c.is_ascii_digit())
+    let raw_order = src.take_while(c => c == '-' || c.is_ascii_digit())
+    if raw_order.length() == 0 {
+      None
+    } else {
+      Some(@string.parse_int(raw_order) catch { _ => 0 })
+    }
+  } else {
+    None
   }
   if src.consume('#') {
-    let _ = src.take_while(is_ident_char)
+    let color = src.take_while(c => !is_inline_whitespace(c) && c != '\n')
+    guard color.length() > 0 else {
+      src.restore(saved)
+      return None
+    }
+    return Some({ typ, reference, created, color: Some(color), order })
   }
-  Some({ typ, reference, created })
+  Some({ typ, reference, created, color: None, order })
 }
 
 ///|
 fn try_note(src : Source) -> Event? {
   let saved = src.save()
+
+  let _ = src.consume('&')
+  let _ = src.consume('/')
+  src.skip_whitespace()
 
   let note_style = if src.try_keyword("note") {
     NoteStyle::Normal
@@ -148,22 +164,31 @@ fn try_note(src : Source) -> Event? {
         _ => try_keyword(src, "of")
       }
       src.skip_whitespace()
-      let part_text = src.take_while(c => c != ':' && c != '\n').trim()
+      let part_text = src
+        .take_while(c => c != ':' && c != '#' && c != '\n')
+        .trim()
       let codes = split_participant_list(part_text)
+      src.skip_whitespace()
+      let color = try_color(src)
       src.skip_whitespace()
       let text = if src.consume(':') {
         src.collect_line().trim().to_owned()
       } else {
         ""
       }
+      let position = if pos is Over && codes.length() > 1 {
+        OverSeveral
+      } else {
+        pos
+      }
       Some(
         Note({
           participant_codes: codes,
-          position: pos,
+          position,
           text,
           note_style,
           on_arrow: false,
-          color: None,
+          color,
         }),
       )
     }
@@ -176,6 +201,9 @@ fn try_note(src : Source) -> Event? {
 
 ///|
 fn make_else_event(src : Source) -> Event {
+  src.skip_whitespace()
+  let back_color = try_color(src)
+  src.skip_whitespace()
   let text = src.collect_line().trim()
   GroupingLeaf({
     is_end: false,
@@ -184,34 +212,47 @@ fn make_else_event(src : Source) -> Event {
     } else {
       None
     },
-    back_color: None,
+    back_color,
   })
 }
 
 ///|
 fn try_grouping(src : Source) -> Event? {
   let saved = src.save()
-  let _ = src.consume('&')
+  let parallel = src.consume('&')
+  if parallel {
+    src.skip_whitespace()
+  }
   let kw = parse_group_start_keyword(src)
 
   match kw {
-    Some(k) =>
+    Some(k) => {
+      src.skip_whitespace()
+      let back_color_header = try_color(src)
+      src.skip_whitespace()
+      let back_color_body = if back_color_header is Some(_) {
+        try_color(src)
+      } else {
+        None
+      }
+      src.skip_whitespace()
       Some(
         GroupingStart({
           keyword: k,
           header: src.collect_line().trim().to_owned(),
-          label: None,
-          back_color_header: None,
-          back_color_body: None,
-          parallel: false,
+          back_color_header,
+          back_color_body,
+          parallel,
         }),
       )
+    }
     None =>
       if src.try_keyword("else") {
         Some(make_else_event(src))
       } else if src.try_keyword("also") {
         Some(make_else_event(src))
       } else if src.try_keyword("end") {
+        let _ = src.collect_line()
         Some(GroupingLeaf({ is_end: true, label: None, back_color: None }))
       } else {
         src.restore(saved)
@@ -265,7 +306,10 @@ fn try_divider(src : Source) -> Event? {
     return None
   }
   let title = src.take_while(c => c != '=').trim().to_owned()
-  let _ = src.take_while(c => c == '=')
+  guard src.try_string("==") else {
+    src.restore(saved)
+    return None
+  }
   Some(Divider({ title, }))
 }
 
@@ -322,6 +366,7 @@ fn try_hspace(src : Source) -> Event? {
 ///|
 fn try_newpage(src : Source) -> Event? {
   let saved = src.save()
+  let _ = src.consume('@')
   guard try_keyword(src, "newpage") else {
     src.restore(saved)
     return None
@@ -333,31 +378,275 @@ fn try_newpage(src : Source) -> Event? {
 }
 
 ///|
+fn try_autonumber(src : Source) -> Event? {
+  guard try_keyword(src, "autonumber") else { return None }
+  src.skip_whitespace()
+  if try_keyword(src, "stop") {
+    return Some(AutonumberStop)
+  }
+  if try_keyword(src, "resume") {
+    src.skip_whitespace()
+    let increment = src.take_while(Char::is_ascii_digit)
+    src.skip_whitespace()
+    let format = try_quoted_string(src)
+    return Some(
+      AutonumberResume({
+        increment: if increment.length() == 0 {
+          None
+        } else {
+          Some(@string.parse_int(increment) catch { _ => 0 })
+        },
+        format,
+      }),
+    )
+  }
+  if try_keyword(src, "inc") {
+    src.skip_whitespace()
+    let position = src.take_while(Char::is_ascii_alphabetic)
+    return Some(
+      AutonumberIncrement(
+        if position.length() == 0 {
+          None
+        } else {
+          Some(position)
+        },
+      ),
+    )
+  }
+
+  let start = if src.peek() is Some('"') {
+    None
+  } else {
+    let value = src.take_while(c => !is_inline_whitespace(c) && c != '\n')
+    if value.length() == 0 {
+      None
+    } else {
+      Some(value)
+    }
+  }
+  src.skip_whitespace()
+  let increment = src.take_while(Char::is_ascii_digit)
+  src.skip_whitespace()
+  let format = try_quoted_string(src)
+  Some(
+    Autonumber({
+      start,
+      increment: if increment.length() == 0 {
+        None
+      } else {
+        Some(@string.parse_int(increment) catch { _ => 0 })
+      },
+      format,
+    }),
+  )
+}
+
+///|
+fn try_autoactivate(src : Source) -> Event? {
+  let saved = src.save()
+  guard try_keyword(src, "autoactivate") else { return None }
+  src.skip_whitespace()
+  if try_keyword(src, "on") {
+    Some(Autoactivate(true))
+  } else if try_keyword(src, "off") {
+    Some(Autoactivate(false))
+  } else {
+    src.restore(saved)
+    None
+  }
+}
+
+///|
+fn try_footbox(src : Source) -> Event? {
+  let saved = src.save()
+  if try_keyword(src, "footbox") {
+    src.skip_whitespace()
+    if try_keyword(src, "on") {
+      return Some(Footbox(true))
+    }
+    if try_keyword(src, "off") {
+      return Some(Footbox(false))
+    }
+  } else if try_keyword(src, "hide") {
+    src.skip_whitespace()
+    if try_keyword(src, "footbox") {
+      return Some(Footbox(false))
+    }
+  }
+  src.restore(saved)
+  None
+}
+
+///|
+fn try_hide_unlinked(src : Source) -> Event? {
+  let saved = src.save()
+  guard try_keyword(src, "hide") else { return None }
+  src.skip_whitespace()
+  guard try_keyword(src, "unlinked") else {
+    src.restore(saved)
+    return None
+  }
+  Some(HideUnlinked)
+}
+
+///|
+fn try_box(src : Source) -> Event? {
+  let saved = src.save()
+  if try_keyword(src, "end") {
+    src.skip_whitespace()
+    if try_keyword(src, "box") {
+      return Some(BoxEnd)
+    }
+  }
+  src.restore(saved)
+  guard try_keyword(src, "box") else { return None }
+  src.skip_whitespace()
+  let color = try_color(src)
+  if color is Some(_) {
+    src.skip_whitespace()
+  }
+  let label = src.collect_line().trim()
+  Some(
+    BoxStart({
+      label: if label.length() == 0 {
+        None
+      } else {
+        Some(label.to_owned())
+      },
+      color,
+    }),
+  )
+}
+
+///|
+fn try_reference(src : Source) -> Event? {
+  let saved = src.save()
+  guard try_keyword(src, "ref") else { return None }
+  src.skip_whitespace()
+  guard try_keyword(src, "over") else {
+    src.restore(saved)
+    return None
+  }
+  src.skip_whitespace()
+  let participants = split_participant_list(
+    src.take_while(c => c != ':' && c != '\n'),
+  )
+  guard participants.length() > 0 && src.consume(':') else {
+    src.restore(saved)
+    return None
+  }
+  let label = src.collect_line().trim()
+  Some(
+    Reference({
+      participant_codes: participants,
+      label: if label.length() == 0 {
+        None
+      } else {
+        Some(label.to_owned())
+      },
+    }),
+  )
+}
+
+///|
+fn try_return(src : Source) -> Event? {
+  let saved = src.save()
+  let _ = src.consume('&')
+  src.skip_whitespace()
+  guard try_keyword(src, "return") else {
+    src.restore(saved)
+    return None
+  }
+  src.skip_whitespace()
+  let _ = try_color(src)
+  src.skip_whitespace()
+  let value = src.collect_line().trim()
+  Some(
+    Return({
+      value: if value.length() == 0 {
+        None
+      } else {
+        Some(value.to_owned())
+      },
+    }),
+  )
+}
+
+///|
+fn try_url(src : Source) -> Event? {
+  let saved = src.save()
+  guard try_keyword(src, "url") else { return None }
+  src.skip_whitespace()
+  let _ = try_keyword(src, "of") || try_keyword(src, "for")
+  src.skip_whitespace()
+  guard try_participant_ref(src) is Some(reference) else {
+    src.restore(saved)
+    return None
+  }
+  src.skip_whitespace()
+  let _ = try_keyword(src, "is")
+  src.skip_whitespace()
+  let url = src.collect_line().trim()
+  guard url.length() > 0 else {
+    src.restore(saved)
+    return None
+  }
+  Some(UrlOf(reference.code, url.to_owned()))
+}
+
+///|
+fn try_ignore_newpage(src : Source) -> Event? {
+  let saved = src.save()
+  guard try_keyword(src, "ignore") else { return None }
+  src.skip_whitespace()
+  guard try_keyword(src, "newpage") else {
+    src.restore(saved)
+    return None
+  }
+  Some(IgnoreNewpage)
+}
+
+///|
+fn try_auto_newpage(src : Source) -> Event? {
+  let saved = src.save()
+  guard try_keyword(src, "auto") else { return None }
+  src.skip_whitespace()
+  guard try_keyword(src, "newpage") else {
+    src.restore(saved)
+    return None
+  }
+  src.skip_whitespace()
+  let size = src.take_while(Char::is_ascii_digit)
+  Some(
+    AutoNewpage(
+      if size.length() == 0 {
+        None
+      } else {
+        Some(@string.parse_int(size) catch { _ => 0 })
+      },
+    ),
+  )
+}
+
+///|
 fn try_link_anchor(src : Source) -> Event? {
   let saved = src.save()
-  if !src.consume('{') {
-    src.restore(saved)
-    return None
-  }
-  let a1 = src.take_while(is_ident_char)
-  if !src.consume('}') || a1.length() == 0 {
-    src.restore(saved)
-    return None
-  }
+  guard try_anchor(src) is Some(a1) else { return None }
   src.skip_whitespace()
   if !src.consume('<') || !src.consume('-') || !src.consume('>') {
     src.restore(saved)
     return None
   }
   src.skip_whitespace()
-  if !src.consume('{') {
+  guard try_anchor(src) is Some(a2) else {
     src.restore(saved)
     return None
   }
-  let a2 = src.take_while(is_ident_char)
-  if !src.consume('}') || a2.length() == 0 {
-    src.restore(saved)
-    return None
+  src.skip_whitespace()
+  let label = if src.consume(':') {
+    Some(src.collect_line().trim().to_owned())
+  } else {
+    None
   }
-  Some(LinkAnchor(a1, a2))
+  Some(LinkAnchor(a1, a2, label))
 }

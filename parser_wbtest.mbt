@@ -121,7 +121,10 @@ test "parse dotted arrow" {
     Message(m) => {
       @test.assert_eq(m.from_code, "Alice")
       @test.assert_eq(m.to_code, "Bob")
-      @test.assert_eq(m.arrow_config.body, Dotted)
+      match m.arrow_config.body {
+        Dotted => ()
+        _ => fail("expected dotted arrow")
+      }
     }
     _ => fail("not a message")
   }
@@ -132,7 +135,11 @@ test "parse async arrow" {
   let result = parse("@startuml\nAlice ->> Bob\n@enduml")
   guard result.events.length() == 1 else { fail("expected 1 event") }
   match result.events[0] {
-    Message(m) => @test.assert_eq(m.arrow_config.head2, Async)
+    Message(m) =>
+      match m.arrow_config.head2 {
+        Async => ()
+        _ => fail("expected async arrow")
+      }
     _ => fail("not a message")
   }
 }
@@ -200,5 +207,128 @@ test "ordinary arrows have only an end head" {
         _ => fail("unexpected start head")
       }
     _ => fail("not a message")
+  }
+}
+
+///|
+test "parse a complete sequence diagram" {
+  let input : String =
+    #|@startuml
+    #|
+    #|participant "Web Client" as client #lightblue
+    #|boundary Gateway
+    #|control Service
+    #|database Store
+    #|
+    #|& {request} client -> Gateway & Service : Fetch account
+    #|activate Service #lime
+    #|Service ->> Store : load profile
+    #|note right of Service #yellow : cache miss
+    #|alt #palegreen cache hit
+    #|Service --> client : cached
+    #|else cache miss
+    #|Service -> Store ++ : query
+    #|Store --> Service -- : rows
+    #|end
+    #|ref over client, Service : External system
+    #|
+    #|== Processing ==
+    #|... waiting for upstream ...
+    #|return response
+    #|deactivate Service
+    #|[-> client : HTTP request
+    #|client ->] : audit
+    #|box #lightblue Infrastructure
+    #|participant Logger
+    #|end box
+    #|autonumber 1.2 3 "(0)"
+    #|autonumber inc b
+    #|autoactivate on
+    #|hide footbox
+    #|hide unlinked
+    #|url of client is https://example.com
+    #|auto newpage 10
+    #|ignore newpage
+    #|newpage summary
+    #|
+    #|@enduml
+    #|
+  let result = parse(input)
+
+  @test.assert_eq(result.events.length(), 28)
+  @test.assert_eq(result.participants.contains("client"), true)
+  @test.assert_eq(result.participants.contains("Gateway"), true)
+  @test.assert_eq(result.participants.contains("Service"), true)
+  @test.assert_eq(result.participants.contains("Store"), true)
+  @test.assert_eq(result.participants.contains("Logger"), true)
+  @test.assert_eq(result.participants["client"].display, "Web Client")
+  @test.assert_eq(result.autoactivate, true)
+  @test.assert_eq(result.show_footbox, false)
+
+  match result.events[0] {
+    Message(message) => {
+      @test.assert_eq(message.anchor, Some("request"))
+      @test.assert_eq(message.parallel, true)
+      @test.assert_eq(message.multicast, ["Service"])
+    }
+    _ => fail("not a multicast message")
+  }
+  match result.events[3] {
+    Note(note) => @test.assert_eq(note.color, Some("yellow"))
+    _ => fail("not a note")
+  }
+  match result.events[4] {
+    GroupingStart(group) => {
+      @test.assert_eq(group.header, "cache hit")
+      @test.assert_eq(group.back_color_header, Some("palegreen"))
+    }
+    _ => fail("not a grouping start")
+  }
+  match result.events[7] {
+    Message(message) =>
+      match message.activation_spec {
+        Some(Activate) => ()
+        _ => fail("message did not activate")
+      }
+    _ => fail("not an activating message")
+  }
+  match result.events[10] {
+    Reference(reference) => {
+      @test.assert_eq(reference.participant_codes, ["client", "Service"])
+      @test.assert_eq(reference.label, Some("External system"))
+    }
+    _ => fail("not a reference")
+  }
+  match result.events[15] {
+    MessageExo(message) =>
+      match message.exo_type {
+        FromLeft => ()
+        _ => fail("wrong external message direction")
+      }
+    _ => fail("not a left external message")
+  }
+  match result.events[16] {
+    MessageExo(message) =>
+      match message.exo_type {
+        ToRight => ()
+        _ => fail("wrong external message direction")
+      }
+    _ => fail("not a right external message")
+  }
+  match result.events[17] {
+    BoxStart(box) => @test.assert_eq(box.color, Some("lightblue"))
+    _ => fail("not a box")
+  }
+  match result.events[27] {
+    Newpage(page) => @test.assert_eq(page.title, Some("summary"))
+    _ => fail("not a newpage")
+  }
+  match result.auto_number {
+    Some(number) => {
+      @test.assert_eq(number.start, Some("1.2"))
+      @test.assert_eq(number.increment, Some(3))
+      @test.assert_eq(number.format, Some("(0)"))
+    }
+    None => fail("missing autonumber configuration")
   }
 }

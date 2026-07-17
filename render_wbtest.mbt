@@ -1,0 +1,172 @@
+///|
+test "render SVG escapes labels and emits participant lifelines" {
+  let svg = render_sequence_svg(
+    "@startuml\nparticipant \"Web & Client\" as client\nclient -> Server : a < b & c\n@enduml",
+  )
+  @test.assert_eq(
+    svg.has_prefix("<svg xmlns=\"http://www.w3.org/2000/svg\""),
+    true,
+  )
+  @test.assert_eq(svg.contains("Web &amp; Client"), true)
+  @test.assert_eq(svg.contains("a &lt; b &amp; c"), true)
+  @test.assert_eq(svg.contains("class=\"lifeline\""), true)
+  @test.assert_eq(svg.contains("marker-end=\"url(#arrow)\""), true)
+  @test.assert_eq(svg.has_suffix("</svg>\n"), true)
+}
+
+///|
+test "participant layout reserves message label width" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob : this is a deliberately wide message label\n@enduml",
+  )
+  let result = layout(diagram)
+  let distance = result.participants[1].center_x -
+    result.participants[0].center_x
+  @test.assert_eq(
+    distance >=
+    text_size("this is a deliberately wide message label").width + 48,
+    true,
+  )
+}
+
+///|
+test "participant layout follows explicit PlantUML order" {
+  let diagram = parse(
+    "@startuml\nparticipant Last order 20\nparticipant First order -10\nparticipant Middle\nFirst -> Middle\n@enduml",
+  )
+  let result = layout(diagram)
+  @test.assert_eq(result.participants[0].participant.code, "First")
+  @test.assert_eq(result.participants[1].participant.code, "Middle")
+  @test.assert_eq(result.participants[2].participant.code, "Last")
+}
+
+///|
+test "render groups notes and activation as distinct layers" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob ++ : start\nnote right of Bob #yellow : cached\nalt #palegreen accepted\nBob --> Alice -- : reply\nelse rejected\nBob -> Alice : error\nend\ndestroy Bob\n@enduml",
+  )
+  let result = layout(diagram)
+  let svg = diagram.render_svg()
+  @test.assert_eq(result.groups.length(), 1)
+  @test.assert_eq(result.groups[0].end_y > result.groups[0].start_y, true)
+  @test.assert_eq(result.activations.length() >= 1, true)
+  @test.assert_eq(
+    result.activations[0].end_y > result.activations[0].start_y,
+    true,
+  )
+  @test.assert_eq(result.destroys.length(), 1)
+  @test.assert_eq(svg.contains("class=\"group-body\""), true)
+  @test.assert_eq(svg.contains("class=\"activation\""), true)
+  @test.assert_eq(svg.contains("class=\"note\""), true)
+  @test.assert_eq(svg.contains("class=\"group-separator\""), true)
+  @test.assert_eq(svg.contains("class=\"destroy\""), true)
+}
+
+///|
+test "render supports auto numbering URLs and hiding unlinked participants" {
+  let svg = render_sequence_svg(
+    "@startuml\nparticipant Hidden\nparticipant Alice\nparticipant Bob\nurl of Alice is https://example.com\nautonumber 7 2 \"(0)\"\nAlice -> Bob : request\nBob -> Alice : response\nhide unlinked\n@enduml",
+  )
+  @test.assert_eq(svg.contains("(7) request"), true)
+  @test.assert_eq(svg.contains("(9) response"), true)
+  @test.assert_eq(svg.contains("href=\"https://example.com\""), true)
+  @test.assert_eq(svg.contains("data-code=\"Hidden\""), false)
+}
+
+///|
+test "render preserves dotted auto numbers" {
+  let svg = render_sequence_svg(
+    "@startuml\nautonumber 1.2 3 \"(0)\"\nAlice -> Bob : first\nBob -> Alice : second\n@enduml",
+  )
+  @test.assert_eq(svg.contains("(1.2) first"), true)
+  @test.assert_eq(svg.contains("(1.5) second"), true)
+}
+
+///|
+test "note on arrow is centered over the preceding message" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob\nBob -> Carol\nnote right : attached\n@enduml",
+  )
+  let result = layout(diagram)
+  match diagram.events[1] {
+    Message(message) =>
+      match diagram.events[2] {
+        Note(note) => {
+          let expected = (
+              participant_at(result, message.from_code).unwrap_or(
+                result.participants[0],
+              ).center_x +
+              participant_at(result, message.to_code).unwrap_or(
+                result.participants[0],
+              ).center_x
+            ) /
+            2
+          @test.assert_eq(
+            note_anchor_center(result, note, Some(message)),
+            expected,
+          )
+        }
+        _ => fail("expected note")
+      }
+    _ => fail("expected message")
+  }
+}
+
+///|
+test "participant boxes retain parser scope and render as englobers" {
+  let diagram = parse(
+    "@startuml\nbox #lightblue Infrastructure\nparticipant Gateway\nparticipant Store\nend box\nparticipant Client\nGateway -> Store\n@enduml",
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(diagram.participants["Gateway"].boxes.length(), 1)
+  @test.assert_eq(
+    diagram.participants["Store"].boxes[0].label,
+    Some("Infrastructure"),
+  )
+  @test.assert_eq(diagram.participants["Client"].boxes.length(), 0)
+  @test.assert_eq(svg.contains("class=\"participant-box-group\""), true)
+  @test.assert_eq(svg.contains(">Infrastructure</tspan>"), true)
+}
+
+///|
+test "delays split lifelines into visible event ranges" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob\n... waiting ...\nBob -> Alice\n@enduml",
+  )
+  let result = layout(diagram)
+  let ranges = delay_ranges(result, diagram.events)
+  @test.assert_eq(ranges.length(), 1)
+  @test.assert_eq(ranges[0].0 < ranges[0].1, true)
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"delay\""), true)
+}
+
+///|
+test "text metrics distinguish narrow and wide default sans glyphs" {
+  @test.assert_eq(text_size("WWW").width > text_size("iii").width, true)
+  @test.assert_eq(text_size(" ").width, 4)
+  @test.assert_eq(text_size("A").width, 8)
+}
+
+///|
+test "return follows the most recent active caller" {
+  let diagram = parse(
+    "@startuml\nClient -> Service ++ : call\nreturn result\ndeactivate Service\n@enduml",
+  )
+  let result = layout(diagram)
+  let return_y = result.placements[1].y + 18
+  let span = result.activations[0]
+  @test.assert_eq(span.caller_code, Some("Client"))
+  @test.assert_eq(span.start_y <= return_y && return_y <= span.end_y, true)
+  @test.assert_eq(diagram.render_svg().contains("result"), true)
+}
+
+///|
+test "partial arrows retain their vertical inclination" {
+  let top = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
+  let bottom = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
+  @test.assert_eq(top.contains("y1=\"105\""), true)
+  @test.assert_eq(top.contains("y2=\"95\""), true)
+  @test.assert_eq(bottom.contains("y1=\"95\""), true)
+  @test.assert_eq(bottom.contains("y2=\"105\""), true)
+}

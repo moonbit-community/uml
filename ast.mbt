@@ -1,5 +1,6 @@
 ///|
-enum ParticipantType {
+#warnings("-unused_value")
+priv enum ParticipantType {
   Participant
   Actor
   Boundary
@@ -11,41 +12,50 @@ enum ParticipantType {
 }
 
 ///|
-struct Participant {
+#warnings("-unused_value")
+priv struct ParticipantBox {
+  label : String?
+  color : String?
+} derive(Eq)
+
+///|
+#warnings("-unused_value")
+priv struct Participant {
   code : String
   display : String
   typ : ParticipantType
   order : Int?
-  stereotype : String?
   color : String?
   url : String?
-  style : String?
+  boxes : Array[ParticipantBox]
 }
 
 ///|
-enum ArrowBody {
+#warnings("-unused_value")
+priv enum ArrowBody {
   Solid
   Dotted
-  Hidden
-} derive(Eq, Debug)
+} derive(Eq)
 
 ///|
-enum ArrowHead {
+priv enum ArrowHead {
   Normal
   Async
   CrossX
   NoneHead
-} derive(Eq, Debug)
+}
 
 ///|
-enum ArrowPart {
+#warnings("-unused_value")
+priv enum ArrowPart {
   Full
   TopPart
   BottomPart
 }
 
 ///|
-struct ArrowConfig {
+#warnings("-unused_value")
+priv struct ArrowConfig {
   body : ArrowBody
   head1 : ArrowHead
   head2 : ArrowHead
@@ -55,7 +65,8 @@ struct ArrowConfig {
 }
 
 ///|
-enum NotePosition {
+#warnings("-unused_value")
+priv enum NotePosition {
   Left
   Right
   Over
@@ -66,14 +77,16 @@ enum NotePosition {
 }
 
 ///|
-enum NoteStyle {
+#warnings("-unused_value")
+priv enum NoteStyle {
   Normal
   Hexagonal
   Box
 }
 
 ///|
-enum GroupKeyword {
+#warnings("-unused_value")
+priv enum GroupKeyword {
   Opt
   Alt
   Loop
@@ -86,7 +99,8 @@ enum GroupKeyword {
 }
 
 ///|
-enum ActivationSpec {
+#warnings("-unused_value")
+priv enum ActivationSpec {
   Activate
   Deactivate
   Destroy
@@ -94,24 +108,26 @@ enum ActivationSpec {
 }
 
 ///|
-struct GroupingStart {
+#warnings("-unused_value")
+priv struct GroupingStart {
   keyword : GroupKeyword
   header : String
-  label : String?
   back_color_header : String?
   back_color_body : String?
   parallel : Bool
 }
 
 ///|
-struct GroupingLeaf {
+#warnings("-unused_value")
+priv struct GroupingLeaf {
   is_end : Bool
   label : String?
   back_color : String?
 }
 
 ///|
-struct Message {
+#warnings("-unused_value")
+priv struct Message {
   from_code : String
   to_code : String
   label : String?
@@ -121,12 +137,11 @@ struct Message {
   multicast : Array[String]
   activation_spec : ActivationSpec?
   life_color : String?
-  stereotype : String?
-  url : String?
 }
 
 ///|
-enum MessageExoType {
+#warnings("-unused_value")
+priv enum MessageExoType {
   FromLeft
   ToLeft
   FromRight
@@ -134,7 +149,8 @@ enum MessageExoType {
 }
 
 ///|
-struct MessageExo {
+#warnings("-unused_value")
+priv struct MessageExo {
   participant_code : String
   exo_type : MessageExoType
   label : String?
@@ -142,11 +158,11 @@ struct MessageExo {
   short_arrow : Bool
   activation_spec : ActivationSpec?
   life_color : String?
-  url : String?
 }
 
 ///|
-struct Note {
+#warnings("-unused_value")
+priv struct Note {
   participant_codes : Array[String]
   position : NotePosition
   text : String
@@ -156,64 +172,75 @@ struct Note {
 }
 
 ///|
-struct Delay {
+#warnings("-unused_value")
+priv struct Delay {
   label : String?
 }
 
 ///|
-struct Divider {
+#warnings("-unused_value")
+priv struct Divider {
   title : String
 }
 
 ///|
-struct HSpace {
+#warnings("-unused_value")
+priv struct HSpace {
   pixels : Int?
 }
 
 ///|
-struct Newpage {
+#warnings("-unused_value")
+priv struct Newpage {
   title : String?
 }
 
 ///|
-struct Reference {
+#warnings("-unused_value")
+priv struct Reference {
   participant_codes : Array[String]
   label : String?
 }
 
 ///|
-struct BoxStart {
+#warnings("-unused_value")
+priv struct BoxStart {
   label : String?
   color : String?
 }
 
 ///|
-struct Autonumber {
-  start : Int?
+#warnings("-unused_value")
+priv struct Autonumber {
+  start : String?
   increment : Int?
   format : String?
 }
 
 ///|
-struct AutonumberResume {
-  message_number : String?
+#warnings("-unused_value")
+priv struct AutonumberResume {
+  increment : Int?
   format : String?
 }
 
 ///|
-struct Return {
+#warnings("-unused_value")
+priv struct Return {
   value : String?
 }
 
 ///|
-struct LifeEvent {
+#warnings("-unused_value")
+priv struct LifeEvent {
   participant_code : String
   event_type : ActivationSpec
   color : String?
 }
 
 ///|
-enum Event {
+#warnings("-unused_value")
+priv enum Event {
   Message(Message)
   MessageExo(MessageExo)
   Note(Note)
@@ -230,19 +257,20 @@ enum Event {
   Autonumber(Autonumber)
   AutonumberStop
   AutonumberResume(AutonumberResume)
-  AutonumberIncrement(Int)
+  AutonumberIncrement(String?)
   Autoactivate(Bool)
   Footbox(Bool)
   HideUnlinked
-  LinkAnchor(String, String)
+  LinkAnchor(String, String, String?)
   Return(Return)
-  Create(Bool)
+  Create
   UrlOf(String, String)
   IgnoreNewpage
   AutoNewpage(Int?)
 }
 
 ///|
+#warnings("-unused_value")
 struct SequenceDiagram {
   participants : Map[String, Participant]
   events : Array[Event]
