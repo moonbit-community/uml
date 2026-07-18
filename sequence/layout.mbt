@@ -67,6 +67,9 @@ let horizontal_margin = 5
 let vertical_margin = 5
 
 ///|
+let participant_edge_gap = 17
+
+///|
 fn TextSize::of(text : String) -> TextSize {
   let lines = text.split("\n").to_array()
   let mut width = 0
@@ -499,6 +502,7 @@ fn layout_events(
   let mut current_y = start_y
   let mut previous_top = current_y
   let mut parallel_bottom = current_y
+  let mut last_visual_bottom = start_y
   let mut autoactivate = diagram.autoactivate
   let mut autonumber = false
   let mut next_number = diagram.auto_number.map_or("1", config => {
@@ -540,6 +544,12 @@ fn layout_events(
 
     match event {
       Message(message) => {
+        let arrow_extra = if message.from_code == message.to_code {
+          22
+        } else {
+          0
+        }
+        last_visual_bottom = last_visual_bottom.max(y + 18 + arrow_extra)
         apply_activation_spec(
           message.activation_spec,
           message.to_code,
@@ -563,7 +573,8 @@ fn layout_events(
           )
         }
       }
-      MessageExo(message) =>
+      MessageExo(message) => {
+        last_visual_bottom = last_visual_bottom.max(y + 18)
         apply_activation_spec(
           message.activation_spec,
           message.participant_code,
@@ -574,6 +585,7 @@ fn layout_events(
           active,
           destroys,
         )
+      }
       LifeEvent(life) =>
         apply_activation_spec(
           Some(life.event_type),
@@ -626,6 +638,8 @@ fn layout_events(
       _ => ()
     }
   }
+
+  current_y = current_y.max(last_visual_bottom + participant_edge_gap - 9)
 
   for _, indices in active {
     for index in indices {
@@ -752,7 +766,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   }
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
     self,
-    participant_header_height - 2 + vertical_margin,
+    participant_header_height - 6 + vertical_margin,
   )
   let footbox_height = if self.show_footbox {
     participant_header_height + 10

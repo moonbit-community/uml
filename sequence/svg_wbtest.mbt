@@ -220,8 +220,8 @@ test "return follows the most recent active caller" {
 test "partial arrows retain their edge side" {
   let below = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
   let above = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
-  @test.assert_eq(below.contains("y1=\"57\""), true)
-  @test.assert_eq(below.contains("y2=\"57\""), true)
-  @test.assert_eq(above.contains("y1=\"57\""), true)
-  @test.assert_eq(above.contains("y2=\"57\""), true)
+  @test.assert_eq(below.contains("y1=\"53\""), true)
+  @test.assert_eq(below.contains("y2=\"53\""), true)
+  @test.assert_eq(above.contains("y1=\"53\""), true)
+  @test.assert_eq(above.contains("y2=\"53\""), true)
 }
