@@ -10,9 +10,9 @@ Bob <- Alice : reverse arrow
 Carol <-- Bob : reverse dotted
 Bob <<- Alice : reverse solid
 Bob <<-- Alice : reverse async
-Alice \-> Bob : top part
-Alice \--> Bob : dotted top
-Alice /-> Bob : bottom part
-Alice /--> Bob : dotted bottom
+Alice \-> Bob : bottom part
+Alice \--> Bob : dotted bottom
+Alice /-> Bob : top part
+Alice /--> Bob : dotted top
 Alice -> Bob : trailing text
 @enduml
