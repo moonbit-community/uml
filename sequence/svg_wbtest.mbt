@@ -30,6 +30,18 @@ test "participant layout reserves message label width" {
 }
 
 ///|
+test "labelled messages reserve space before their arrow" {
+  let layout = parse(
+    "@startuml\nAlice -> Bob\nAlice -> Bob : label only\nBob --> Carol : dotted arrow\n@enduml",
+  ).layout()
+  let first_arrow = layout.placements[0].y + 18
+  let label_arrow = layout.placements[1].y + 18
+  let dotted_arrow = layout.placements[2].y + 18
+  @test.assert_eq(label_arrow - first_arrow >= 34, true)
+  @test.assert_eq(dotted_arrow - label_arrow >= 34, true)
+}
+
+///|
 test "actors have a separate icon and label without a participant rectangle" {
   let svg = render_sequence_svg(
     "@startuml\nactor \"Bob Jones\" as bob\n@enduml",

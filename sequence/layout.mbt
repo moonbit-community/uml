@@ -130,23 +130,13 @@ fn Note::height(self : Note) -> Int {
 ///|
 fn Event::height(self : Event) -> Int {
   match self {
-    Message(message) => {
-      let base = if message.label_height() == 0 {
-        14
-      } else {
-        message.label_height() + 18
-      }
+    Message(message) =>
       if message.from_code == message.to_code {
-        base + 13
+        42
       } else {
-        base
+        14
       }
-    }
-    MessageExo(message) =>
-      match message.label {
-        Some(label) if label.length() > 0 => TextSize::of(label).height + 18
-        _ => 14
-      }
+    MessageExo(_) => 14
     Note(note) => note.height()
     GroupingStart(_) => 34
     GroupingLeaf(leaf) => if leaf.is_end { 12 } else { 24 }
@@ -174,6 +164,26 @@ fn Event::height(self : Event) -> Int {
     | HideUnlinked(_)
     | IgnoreNewpage
     | AutoNewpage(_) => 0
+  }
+}
+
+///|
+fn Event::required_gap_before(self : Event) -> Int {
+  match self {
+    Message(message) =>
+      if message.from_code == message.to_code {
+        42
+      } else if message.label_height() > 0 {
+        message.label_height() + 18
+      } else {
+        14
+      }
+    MessageExo(message) =>
+      match message.label {
+        Some(label) if label.length() > 0 => TextSize::of(label).height + 18
+        _ => 14
+      }
+    _ => self.height()
   }
 }
 
@@ -501,8 +511,11 @@ fn layout_events(
     config.format
   })
 
-  for event in diagram.events {
-    let height = event.height()
+  for event_index, event in diagram.events {
+    let next_gap = diagram.events
+      .get(event_index + 1)
+      .map_or(14, next => next.required_gap_before())
+    let height = event.height().max(next_gap)
     let y = if event.is_parallel() { previous_top } else { current_y }
     let number = match event {
       Message(_) | MessageExo(_) if autonumber => {
