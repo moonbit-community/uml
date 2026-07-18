@@ -100,6 +100,14 @@ fn Message::display_label(self : Message) -> String {
 }
 
 ///|
+fn Message::label_height(self : Message) -> Int {
+  match self.label {
+    Some(label) if label.length() > 0 => TextSize::of(label).height
+    _ => 0
+  }
+}
+
+///|
 fn ParticipantType::header_height(self : ParticipantType) -> Int {
   match self {
     Actor => 76
@@ -120,15 +128,22 @@ fn Note::height(self : Note) -> Int {
 fn Event::height(self : Event) -> Int {
   match self {
     Message(message) => {
-      let base = TextSize::of(message.display_label()).height + 24
-      if message.from_code == message.to_code {
-        base + 22
+      let base = if message.label_height() == 0 {
+        14
       } else {
-        base.max(34)
+        message.label_height() + 13
+      }
+      if message.from_code == message.to_code {
+        base + 13
+      } else {
+        base
       }
     }
     MessageExo(message) =>
-      (TextSize::of(message.label.unwrap_or("")).height + 24).max(34)
+      match message.label {
+        Some(label) if label.length() > 0 => TextSize::of(label).height + 13
+        _ => 14
+      }
     Note(note) => note.height()
     GroupingStart(_) => 34
     GroupingLeaf(leaf) => if leaf.is_end { 12 } else { 24 }
@@ -721,7 +736,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   }
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
     self,
-    participant_header_height + 30,
+    participant_header_height - 2,
   )
   let footbox_height = if self.show_footbox {
     participant_header_height + 10
@@ -737,7 +752,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     destroys,
     width,
     height: body_bottom + footbox_height,
-    body_top: participant_header_height + 10,
+    body_top: participant_header_height,
     body_bottom,
   }
   let (min_x, max_x) = layout.content_horizontal_bounds(self.events)

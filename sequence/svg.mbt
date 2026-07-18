@@ -85,7 +85,7 @@ fn DiagramLayout::participant_head_y(
   self : DiagramLayout,
   participant : ParticipantLayout,
 ) -> Int {
-  self.body_top - participant.participant.typ.header_height() - 10
+  self.body_top - participant.participant.typ.header_height()
 }
 
 ///|
@@ -461,6 +461,46 @@ fn append_arrow_head(
 }
 
 ///|
+fn append_partial_arrow_head(
+  output : StringBuilder,
+  head : ArrowHead,
+  part : ArrowPart,
+  x : Int,
+  y : Int,
+  points_right : Bool,
+) -> Unit {
+  match head {
+    Normal => {
+      let base = if points_right { x - 10 } else { x + 10 }
+      let path = match part {
+        TopPart => "M\{base} \{y}L\{x} \{y}L\{base} \{y + 4}Z"
+        BottomPart => "M\{base} \{y - 4}L\{x} \{y}L\{base} \{y}Z"
+        Full => ""
+      }
+      if part is TopPart || part is BottomPart {
+        output <+
+          "<path d=\"\{path}\" class=\"partial-arrow\" fill=\"#181818\"/>\n"
+      }
+    }
+    Async => {
+      let base = if points_right { x - 10 } else { x + 10 }
+      match part {
+        TopPart => {
+          append_line(output, base, y, x, y, "partial-arrow")
+          append_line(output, x, y, base, y + 4, "partial-arrow")
+        }
+        BottomPart => {
+          append_line(output, base, y - 4, x, y, "partial-arrow")
+          append_line(output, x, y, base, y, "partial-arrow")
+        }
+        Full => ()
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
 fn ArrowHead::marker(self : ArrowHead, start : Bool) -> String {
   match (self, start) {
     (Normal, true) => " marker-start=\"url(#arrow-start)\""
@@ -486,11 +526,8 @@ fn append_message(
     .unwrap_or_else(() => message.display_label())
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
   let line_class = "message\{dotted}"
-  let (start_y, end_y) = match message.arrow_config.part {
-    Full => (y, y)
-    TopPart => (y + 5, y - 5)
-    BottomPart => (y - 5, y + 5)
-  }
+  let start_y = y
+  let end_y = y
   match message.anchor {
     Some(anchor) =>
       output <+ "<g id=\"\{xml_escape(anchor)}\" class=\"message-anchor\">\n"
@@ -498,8 +535,20 @@ fn append_message(
   }
   if from.participant.code == to.participant.code {
     let loop_x = from.center_x + 34
+    let end_marker = match message.arrow_config.part {
+      Full => message.arrow_config.head2.marker(false)
+      TopPart | BottomPart => ""
+    }
     output <+
-      "<path d=\"M\{from.center_x} \{start_y}h34v22h-34\" class=\"\{line_class}\"\{message.arrow_config.head2.marker(false)}/>\n"
+      "<path d=\"M\{from.center_x} \{start_y}h34v22h-34\" class=\"\{line_class}\"\{end_marker}/>\n"
+    append_partial_arrow_head(
+      output,
+      message.arrow_config.head2,
+      message.arrow_config.part,
+      from.center_x,
+      end_y + 22,
+      false,
+    )
     append_text(
       output,
       loop_x + 6,
@@ -511,8 +560,20 @@ fn append_message(
   } else {
     let start_x = from.center_x
     let end_x = to.center_x
+    let end_marker = match message.arrow_config.part {
+      Full => message.arrow_config.head2.marker(false)
+      TopPart | BottomPart => ""
+    }
     output <+
-      "<line x1=\"\{start_x}\" y1=\"\{start_y}\" x2=\"\{end_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>\n"
+      "<line x1=\"\{start_x}\" y1=\"\{start_y}\" x2=\"\{end_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{message.arrow_config.head1.marker(true)}\{end_marker}/>\n"
+    append_partial_arrow_head(
+      output,
+      message.arrow_config.head2,
+      message.arrow_config.part,
+      end_x,
+      end_y,
+      end_x >= start_x,
+    )
     let label_x = (start_x + end_x) / 2
     append_text(output, label_x, start_y.min(end_y) - 6, label, "message-label")
   }
@@ -525,11 +586,25 @@ fn append_message(
       "<circle cx=\"\{to.center_x}\" cy=\"\{end_y}\" r=\"4\" class=\"endpoint\"/>\n"
   }
   append_arrow_head(output, message.arrow_config.head1, from.center_x, start_y)
-  append_arrow_head(output, message.arrow_config.head2, to.center_x, end_y)
+  if message.arrow_config.part is Full {
+    append_arrow_head(output, message.arrow_config.head2, to.center_x, end_y)
+  }
   for code in message.multicast {
     guard layout.participant_at(code) is Some(target) else { continue }
+    let target_marker = match message.arrow_config.part {
+      Full => message.arrow_config.head2.marker(false)
+      TopPart | BottomPart => ""
+    }
     output <+
-      "<line x1=\"\{from.center_x}\" y1=\"\{start_y}\" x2=\"\{target.center_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{message.arrow_config.head2.marker(false)}/>\n"
+      "<line x1=\"\{from.center_x}\" y1=\"\{start_y}\" x2=\"\{target.center_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{target_marker}/>\n"
+    append_partial_arrow_head(
+      output,
+      message.arrow_config.head2,
+      message.arrow_config.part,
+      target.center_x,
+      end_y,
+      target.center_x >= from.center_x,
+    )
   }
   if message.anchor is Some(_) {
     output.write_string("</g>\n")
