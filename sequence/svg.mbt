@@ -473,8 +473,8 @@ fn append_partial_arrow_head(
     Normal => {
       let base = if points_right { x - 10 } else { x + 10 }
       let path = match part {
-        TopPart => "M\{base} \{y}L\{x} \{y}L\{base} \{y + 4}Z"
-        BottomPart => "M\{base} \{y - 4}L\{x} \{y}L\{base} \{y}Z"
+        TopPart => "M\{base} \{y - 4}L\{x} \{y}L\{base} \{y}Z"
+        BottomPart => "M\{base} \{y}L\{x} \{y}L\{base} \{y + 4}Z"
         Full => ""
       }
       if part is TopPart || part is BottomPart {
@@ -486,12 +486,12 @@ fn append_partial_arrow_head(
       let base = if points_right { x - 10 } else { x + 10 }
       match part {
         TopPart => {
-          append_line(output, base, y, x, y, "partial-arrow")
-          append_line(output, x, y, base, y + 4, "partial-arrow")
-        }
-        BottomPart => {
           append_line(output, base, y - 4, x, y, "partial-arrow")
           append_line(output, x, y, base, y, "partial-arrow")
+        }
+        BottomPart => {
+          append_line(output, base, y, x, y, "partial-arrow")
+          append_line(output, x, y, base, y + 4, "partial-arrow")
         }
         Full => ()
       }

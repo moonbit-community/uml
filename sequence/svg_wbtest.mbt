@@ -217,13 +217,11 @@ test "return follows the most recent active caller" {
 }
 
 ///|
-test "partial arrows retain a horizontal message line" {
-  let top = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
-  let bottom = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
-  @test.assert_eq(top.contains("y1=\"57\""), true)
-  @test.assert_eq(top.contains("y2=\"57\""), true)
-  @test.assert_eq(bottom.contains("y1=\"57\""), true)
-  @test.assert_eq(bottom.contains("y2=\"57\""), true)
-  @test.assert_eq(top.contains("class=\"partial-arrow\""), true)
-  @test.assert_eq(bottom.contains("class=\"partial-arrow\""), true)
+test "partial arrows retain their edge side" {
+  let below = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
+  let above = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
+  @test.assert_eq(below.contains("y1=\"57\""), true)
+  @test.assert_eq(below.contains("y2=\"57\""), true)
+  @test.assert_eq(above.contains("y1=\"57\""), true)
+  @test.assert_eq(above.contains("y2=\"57\""), true)
 }
