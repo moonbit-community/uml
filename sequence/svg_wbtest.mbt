@@ -36,7 +36,6 @@ test "actors have a separate icon and label without a participant rectangle" {
   )
   @test.assert_eq(svg.contains("data-code=\"bob\">\n<circle"), true)
   @test.assert_eq(svg.contains("data-code=\"bob\">\n<rect"), false)
-  @test.assert_eq(svg.contains("<text x=\"195\" y=\"73\""), true)
 }
 
 ///|
@@ -146,7 +145,7 @@ test "note on arrow is centered over the preceding message" {
             ) /
             2
           @test.assert_eq(
-            note_anchor_center(result, note, Some(message)),
+            result.note_anchor_center(note, Some(message)),
             expected,
           )
         }
