@@ -64,6 +64,9 @@ priv struct DiagramLayout {
 let horizontal_margin = 5
 
 ///|
+let vertical_margin = 5
+
+///|
 fn TextSize::of(text : String) -> TextSize {
   let lines = text.split("\n").to_array()
   let mut width = 0
@@ -131,7 +134,7 @@ fn Event::height(self : Event) -> Int {
       let base = if message.label_height() == 0 {
         14
       } else {
-        message.label_height() + 13
+        message.label_height() + 18
       }
       if message.from_code == message.to_code {
         base + 13
@@ -141,7 +144,7 @@ fn Event::height(self : Event) -> Int {
     }
     MessageExo(message) =>
       match message.label {
-        Some(label) if label.length() > 0 => TextSize::of(label).height + 13
+        Some(label) if label.length() > 0 => TextSize::of(label).height + 18
         _ => 14
       }
     Note(note) => note.height()
@@ -736,7 +739,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   }
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
     self,
-    participant_header_height - 2,
+    participant_header_height - 2 + vertical_margin,
   )
   let footbox_height = if self.show_footbox {
     participant_header_height + 10
@@ -751,8 +754,8 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     groups,
     destroys,
     width,
-    height: body_bottom + footbox_height,
-    body_top: participant_header_height,
+    height: body_bottom + footbox_height + vertical_margin,
+    body_top: participant_header_height + vertical_margin,
     body_bottom,
   }
   let (min_x, max_x) = layout.content_horizontal_bounds(self.events)

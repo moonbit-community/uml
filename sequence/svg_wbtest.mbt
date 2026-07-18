@@ -41,9 +41,9 @@ test "actors have a separate icon and label without a participant rectangle" {
 ///|
 test "participant heads share a lifeline contact instead of a fixed top offset" {
   let layout = parse("@startuml\nactor Actor\nparticipant Service\n@enduml").layout()
-  @test.assert_eq(layout.participant_head_y(layout.participants[0]), 0)
-  @test.assert_eq(layout.participant_head_y(layout.participants[1]), 40)
-  @test.assert_eq(layout.body_top, 76)
+  @test.assert_eq(layout.participant_head_y(layout.participants[0]), 5)
+  @test.assert_eq(layout.participant_head_y(layout.participants[1]), 45)
+  @test.assert_eq(layout.body_top, 81)
   @test.assert_eq(layout.participant_tail_y(), layout.body_bottom + 9)
 }
 
@@ -208,10 +208,10 @@ test "return follows the most recent active caller" {
 test "partial arrows retain a horizontal message line" {
   let top = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
   let bottom = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
-  @test.assert_eq(top.contains("y1=\"52\""), true)
-  @test.assert_eq(top.contains("y2=\"52\""), true)
-  @test.assert_eq(bottom.contains("y1=\"52\""), true)
-  @test.assert_eq(bottom.contains("y2=\"52\""), true)
+  @test.assert_eq(top.contains("y1=\"57\""), true)
+  @test.assert_eq(top.contains("y2=\"57\""), true)
+  @test.assert_eq(bottom.contains("y1=\"57\""), true)
+  @test.assert_eq(bottom.contains("y2=\"57\""), true)
   @test.assert_eq(top.contains("class=\"partial-arrow\""), true)
   @test.assert_eq(bottom.contains("class=\"partial-arrow\""), true)
 }
