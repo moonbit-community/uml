@@ -61,6 +61,9 @@ priv struct DiagramLayout {
 }
 
 ///|
+let horizontal_margin = 5
+
+///|
 fn TextSize::of(text : String) -> TextSize {
   let lines = text.split("\n").to_array()
   let mut width = 0
@@ -345,7 +348,7 @@ fn layout_participants(
 ) -> (Array[ParticipantLayout], Map[String, Int], Int) {
   let layouts = initial_participant_layout(diagram)
   let index = participant_code_index(layouts)
-  guard layouts.length() > 0 else { (layouts, index, 300) }
+  guard layouts.length() > 0 else { (layouts, index, horizontal_margin * 2) }
 
   let gaps = []
   for participant_index in 0..<(layouts.length() - 1) {
@@ -360,14 +363,14 @@ fn layout_participants(
     }
   }
 
-  let mut center_x = 150 + layouts[0].width / 2
+  let mut center_x = horizontal_margin + layouts[0].width / 2
   layouts[0] = { ..layouts[0], center_x, }
   for participant_index in 1..<layouts.length() {
     center_x = center_x + gaps[participant_index - 1]
     layouts[participant_index] = { ..layouts[participant_index], center_x, }
   }
   let last = layouts[layouts.length() - 1]
-  (layouts, index, last.center_x + last.width / 2 + 150)
+  (layouts, index, last.center_x + last.width / 2 + horizontal_margin)
 }
 
 ///|
@@ -606,6 +609,108 @@ fn layout_events(
 }
 
 ///|
+fn DiagramLayout::note_anchor_center(
+  self : DiagramLayout,
+  note : Note,
+  arrow_anchor : Message?,
+) -> Int {
+  guard note.on_arrow else {
+    match note.participant_codes.get(0) {
+      Some(code) =>
+        self
+        .participant_at(code)
+        .map_or(self.width / 2, participant => participant.center_x)
+      None => self.width / 2
+    }
+  }
+  match arrow_anchor {
+    Some(message) => {
+      let from = self
+        .participant_at(message.from_code)
+        .map_or(self.width / 2, participant => participant.center_x)
+      let to = self
+        .participant_at(message.to_code)
+        .map_or(self.width / 2, participant => participant.center_x)
+      (from + to) / 2
+    }
+    None => self.width / 2
+  }
+}
+
+///|
+fn note_horizontal_bounds(
+  layout : DiagramLayout,
+  note : Note,
+  arrow_anchor : Message?,
+) -> (Int, Int) {
+  let width = (TextSize::of(note.text).width + 20).max(56)
+  let center = layout.note_anchor_center(note, arrow_anchor)
+  match note.position {
+    Left => (center - width - 10, center - 10)
+    Right => (center + 10, center + width + 10)
+    Bottom | Top | Over | OverSeveral =>
+      (center - width / 2, center + width / 2)
+    Across => (24, layout.width - 24)
+  }
+}
+
+///|
+fn DiagramLayout::content_horizontal_bounds(
+  self : DiagramLayout,
+  events : Array[Event],
+) -> (Int, Int) {
+  guard self.participants.length() > 0 else { (0, self.width) }
+  let first = self.participants[0]
+  let last = self.participants[self.participants.length() - 1]
+  let mut min_x = first.center_x - first.width / 2
+  let mut max_x = last.center_x + last.width / 2
+  let mut arrow_anchor : Message? = None
+  for event in events {
+    match event {
+      Message(message) => {
+        if message.from_code == message.to_code {
+          match self.participant_at(message.from_code) {
+            Some(participant) =>
+              max_x = max_x.max(
+                participant.center_x +
+                40 +
+                TextSize::of(message.display_label()).width,
+              )
+            None => ()
+          }
+        }
+        arrow_anchor = Some(message)
+      }
+      MessageExo(message) =>
+        match self.participant_at(message.participant_code) {
+          Some(participant) => {
+            let length = if message.short_arrow { 40 } else { 90 }
+            let outside = match message.exo_type {
+              FromLeft | ToLeft => participant.center_x - length
+              FromRight | ToRight => participant.center_x + length
+            }
+            let label_width = TextSize::of(message.label.unwrap_or("")).width
+            min_x = min_x.min(
+              outside.min(participant.center_x) - label_width / 2,
+            )
+            max_x = max_x.max(
+              outside.max(participant.center_x) + label_width / 2,
+            )
+          }
+          None => ()
+        }
+      Note(note) => {
+        let (left, right) = note_horizontal_bounds(self, note, arrow_anchor)
+        min_x = min_x.min(left)
+        max_x = max_x.max(right)
+      }
+      _ => ()
+    }
+  }
+  (min_x, max_x)
+}
+
+///|
 fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   let (participants, participant_index, width) = layout_participants(self)
   let mut participant_header_height = 36
@@ -623,7 +728,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   } else {
     24
   }
-  {
+  let layout = {
     participants,
     participant_index,
     placements,
@@ -635,4 +740,11 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     body_top: participant_header_height + 10,
     body_bottom,
   }
+  let (min_x, max_x) = layout.content_horizontal_bounds(self.events)
+  let shift = (horizontal_margin - min_x).max(0)
+  let participants = layout.participants.map(participant => {
+    ..participant,
+    center_x: participant.center_x + shift,
+  })
+  { ..layout, participants, width: max_x + shift + horizontal_margin }
 }

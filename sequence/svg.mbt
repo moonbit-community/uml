@@ -577,7 +577,7 @@ fn append_note(
   let size = TextSize::of(note.text)
   let width = (size.width + 20).max(56)
   let height = note.height()
-  let center = note_anchor_center(layout, note, arrow_anchor)
+  let center = layout.note_anchor_center(note, arrow_anchor)
   let x = match note.position {
     Left => center - width - 10
     Right => center + 10
@@ -616,35 +616,6 @@ fn append_note(
     "note-label",
     anchor="start",
   )
-}
-
-///|
-fn note_anchor_center(
-  layout : DiagramLayout,
-  note : Note,
-  arrow_anchor : Message?,
-) -> Int {
-  guard note.on_arrow else {
-    match note.participant_codes.get(0) {
-      Some(code) =>
-        layout
-        .participant_at(code)
-        .map_or(layout.width / 2, participant => participant.center_x)
-      None => layout.width / 2
-    }
-  }
-  match arrow_anchor {
-    Some(message) => {
-      let from = layout
-        .participant_at(message.from_code)
-        .map_or(layout.width / 2, participant => participant.center_x)
-      let to = layout
-        .participant_at(message.to_code)
-        .map_or(layout.width / 2, participant => participant.center_x)
-      (from + to) / 2
-    }
-    None => layout.width / 2
-  }
 }
 
 ///|
