@@ -10,6 +10,8 @@ priv struct ParticipantLayout {
   index : Int
   center_x : Int
   width : Int
+  birth_y : Int?
+  death_y : Int?
 }
 
 ///|
@@ -80,7 +82,7 @@ fn TextSize::of(text : String) -> TextSize {
     }
     width = width.max(line_width)
   })
-  { width, height: lines.length().max(1) * 16 }
+  { width, height: lines.length().max(1) * 15 }
 }
 
 ///|
@@ -127,7 +129,7 @@ fn ParticipantType::header_height(self : ParticipantType) -> Int {
 
 ///|
 fn Note::height(self : Note) -> Int {
-  TextSize::of(self.text).height + 18
+  self.component().height
 }
 
 ///|
@@ -140,10 +142,10 @@ fn Event::height(self : Event) -> Int {
         14
       }
     MessageExo(_) => 14
-    Note(note) => note.height()
+    Note(note) => note.height() + 10
     GroupingStart(_) => 34
     GroupingLeaf(leaf) => if leaf.is_end { 12 } else { 24 }
-    LifeEvent(_) => 18
+    LifeEvent(_) => 0
     Delay(_) => 28
     Divider(_) => 34
     HSpace(space) => space.pixels.unwrap_or(0)
@@ -153,7 +155,7 @@ fn Event::height(self : Event) -> Int {
     BoxStart(_) | BoxEnd => 0
     Return(return_value) =>
       (TextSize::of(return_value.value.unwrap_or("")).height + 24).max(34)
-    Create => 18
+    Create => 0
     Url(_, _) => 0
     DeactivateLatest => 0
     LinkAnchor(_, _, label) =>
@@ -176,16 +178,19 @@ fn Event::required_gap_before(self : Event) -> Int {
     Message(message) =>
       if message.from_code == message.to_code {
         42
+      } else if message.activation_spec is Some(Create) {
+        message.label_height().max(15) + 44
       } else if message.label_height() > 0 {
-        message.label_height() + 18
+        message.label_height() + 14
       } else {
         14
       }
     MessageExo(message) =>
       match message.label {
-        Some(label) if label.length() > 0 => TextSize::of(label).height + 18
+        Some(label) if label.length() > 0 => TextSize::of(label).height + 14
         _ => 14
       }
+    Note(note) => note.component().height + 18
     _ => self.height()
   }
 }
@@ -197,6 +202,25 @@ fn Event::is_parallel(self : Event) -> Bool {
     GroupingStart(group) => group.parallel
     _ => false
   }
+}
+
+///|
+fn event_advances_layout(event : Event) -> Bool {
+  match event {
+    Note(note) => !note.on_arrow
+    _ => event.height() > 0
+  }
+}
+
+///|
+fn next_visual_gap(events : Array[Event], index : Int) -> Int {
+  for next_index in (index + 1)..<events.length() {
+    let next = events[next_index]
+    if event_advances_layout(next) {
+      return next.required_gap_before()
+    }
+  }
+  14
 }
 
 ///|
@@ -338,6 +362,28 @@ fn constrain_message_gap(
 }
 
 ///|
+fn constrain_note_gap(
+  gaps : Array[Int],
+  participant_index : Map[String, Int],
+  note : Note,
+) -> Unit {
+  guard note.position is OverSeveral else { return }
+  guard note.participant_codes.get(0) is Some(first_code) else { return }
+  guard note.participant_codes.last() is Some(last_code) else { return }
+  guard participant_index.get(first_code) is Some(first) else { return }
+  guard participant_index.get(last_code) is Some(last) else { return }
+  let left = first.min(last)
+  let right = first.max(last)
+  let span = right - left
+  guard span > 0 else { return }
+  let required = note.component().width
+  let per_gap = (required + span - 1) / span
+  for index in left..<right {
+    gaps[index] = gaps[index].max(per_gap)
+  }
+}
+
+///|
 fn initial_participant_layout(
   diagram : SequenceDiagram,
 ) -> Array[ParticipantLayout] {
@@ -349,7 +395,14 @@ fn initial_participant_layout(
       continue
     }
     let width = (TextSize::of(participant.display).width + 28).max(80)
-    layouts.push({ participant, index, center_x: 0, width })
+    layouts.push({
+      participant,
+      index,
+      center_x: 0,
+      width,
+      birth_y: None,
+      death_y: None,
+    })
     index = index + 1
   }
   for current in 0..<layouts.length() {
@@ -390,6 +443,7 @@ fn layout_participants(
   for event in diagram.events {
     match event {
       Message(message) => constrain_message_gap(gaps, index, message)
+      Note(note) => constrain_note_gap(gaps, index, note)
       _ => ()
     }
   }
@@ -466,10 +520,11 @@ fn apply_activation_spec(
   destroys : Array[DestroyMark],
 ) -> Unit {
   match spec {
-    Some(Activate) | Some(Create) =>
+    Some(Activate) =>
       start_activation(
         activations, active, participant_code, caller_code, y, color,
       )
+    Some(Create) => ()
     Some(Deactivate) => {
       let _ = finish_activation(activations, active, participant_code, y)
       ()
@@ -516,11 +571,19 @@ fn layout_events(
   })
 
   for event_index, event in diagram.events {
-    let next_gap = diagram.events
-      .get(event_index + 1)
-      .map_or(14, next => next.required_gap_before())
-    let height = event.height().max(next_gap)
-    let y = if event.is_parallel() { previous_top } else { current_y }
+    let event_height = event.height()
+    let advances = event_advances_layout(event)
+    let height = if !advances {
+      0
+    } else if event is Note(_) {
+      event_height
+    } else {
+      event_height.max(next_visual_gap(diagram.events, event_index))
+    }
+    let y = match event {
+      Note(note) if note.on_arrow => previous_top + 4
+      _ => if event.is_parallel() { previous_top } else { current_y }
+    }
     let number = match event {
       Message(_) | MessageExo(_) if autonumber => {
         let value = next_number
@@ -533,7 +596,9 @@ fn layout_events(
       _ => None
     }
     placements.push({ y, height, number })
-    if event.is_parallel() {
+    if !advances {
+      ()
+    } else if event.is_parallel() {
       parallel_bottom = parallel_bottom.max(y + height)
       current_y = parallel_bottom
     } else {
@@ -683,23 +748,6 @@ fn DiagramLayout::note_anchor_center(
 }
 
 ///|
-fn note_horizontal_bounds(
-  layout : DiagramLayout,
-  note : Note,
-  arrow_anchor : Message?,
-) -> (Int, Int) {
-  let width = (TextSize::of(note.text).width + 20).max(56)
-  let center = layout.note_anchor_center(note, arrow_anchor)
-  match note.position {
-    Left => (center - width - 10, center - 10)
-    Right => (center + 10, center + width + 10)
-    Bottom | Top | Over | OverSeveral =>
-      (center - width / 2, center + width / 2)
-    Across => (24, layout.width - 24)
-  }
-}
-
-///|
 fn DiagramLayout::content_horizontal_bounds(
   self : DiagramLayout,
   events : Array[Event],
@@ -710,7 +758,7 @@ fn DiagramLayout::content_horizontal_bounds(
   let mut min_x = first.center_x - first.width / 2
   let mut max_x = last.center_x + last.width / 2
   let mut arrow_anchor : Message? = None
-  for event in events {
+  for index, event in events {
     match event {
       Message(message) => {
         if message.from_code == message.to_code {
@@ -745,14 +793,52 @@ fn DiagramLayout::content_horizontal_bounds(
           None => ()
         }
       Note(note) => {
-        let (left, right) = note_horizontal_bounds(self, note, arrow_anchor)
-        min_x = min_x.min(left)
-        max_x = max_x.max(right)
+        let geometry = self.note_geometry(
+          note,
+          self.placements[index],
+          arrow_anchor,
+        )
+        min_x = min_x.min(geometry.x)
+        max_x = max_x.max(geometry.x + geometry.component.width)
       }
       _ => ()
     }
   }
   (min_x, max_x)
+}
+
+///|
+fn participant_lifetimes(
+  events : Array[Event],
+  placements : Array[EventPlacement],
+) -> (Map[String, Int], Map[String, Int]) {
+  let births : Map[String, Int] = Map([])
+  let deaths : Map[String, Int] = Map([])
+  for index, event in events {
+    match event {
+      Message(message) =>
+        match message.activation_spec {
+          Some(Create) => births[message.to_code] = placements[index].y
+          Some(Destroy) => deaths[message.to_code] = placements[index].y + 18
+          _ => ()
+        }
+      MessageExo(message) =>
+        match message.activation_spec {
+          Some(Create) => births[message.participant_code] = placements[index].y
+          Some(Destroy) =>
+            deaths[message.participant_code] = placements[index].y + 18
+          _ => ()
+        }
+      LifeEvent(life) =>
+        match life.event_type {
+          Create => births[life.participant_code] = placements[index].y
+          Destroy => deaths[life.participant_code] = placements[index].y
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  (births, deaths)
 }
 
 ///|
@@ -768,6 +854,12 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     self,
     participant_header_height - 6 + vertical_margin,
   )
+  let (births, deaths) = participant_lifetimes(self.events, placements)
+  let participants = participants.map(participant => {
+    ..participant,
+    birth_y: births.get(participant.participant.code),
+    death_y: deaths.get(participant.participant.code),
+  })
   let footbox_height = if self.show_footbox {
     participant_header_height + 10
   } else {

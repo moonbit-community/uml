@@ -37,8 +37,8 @@ test "labelled messages reserve space before their arrow" {
   let first_arrow = layout.placements[0].y + 18
   let label_arrow = layout.placements[1].y + 18
   let dotted_arrow = layout.placements[2].y + 18
-  @test.assert_eq(label_arrow - first_arrow >= 34, true)
-  @test.assert_eq(dotted_arrow - label_arrow >= 34, true)
+  @test.assert_eq(label_arrow - first_arrow >= 29, true)
+  @test.assert_eq(dotted_arrow - label_arrow >= 29, true)
 }
 
 ///|
@@ -201,6 +201,63 @@ test "text metrics distinguish narrow and wide default sans glyphs" {
   @test.assert_eq(TextSize::of("WWW").width > TextSize::of("iii").width, true)
   @test.assert_eq(TextSize::of(" ").width, 4)
   @test.assert_eq(TextSize::of("A").width, 8)
+}
+
+///|
+test "left notes use the current lifecycle segment and folded component" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob ++\nnote left of Bob : cached\n@enduml",
+  )
+  let layout = diagram.layout()
+  let note = match diagram.events[1] {
+    Note(note) => note
+    _ => fail("expected note")
+  }
+  let geometry = layout.note_geometry(note, layout.placements[1], None)
+  let segment = layout.participant_segment("Bob", layout.placements[1].y)
+  @test.assert_eq(geometry.x + geometry.component.width, segment.0)
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"note-fold\""), true)
+}
+
+///|
+test "notes reserve an arrow clearance and a trailing component gap" {
+  let layout = parse(
+    "@startuml\nAlice -> Bob\nnote left of Alice : first\nnote left of Alice : second\n@enduml",
+  ).layout()
+  let arrow_y = layout.placements[0].y + 18
+  let first_note = layout.placements[1]
+  let second_note = layout.placements[2]
+  @test.assert_eq(first_note.y - arrow_y >= 25, true)
+  @test.assert_eq(second_note.y - first_note.y >= 35, true)
+}
+
+///|
+test "notes on arrows share the preceding message tile" {
+  let layout = parse(
+    "@startuml\nAlice -> Bob : request\nnote right : detail\nAlice -> Bob : follow up\n@enduml",
+  ).layout()
+  @test.assert_eq(layout.placements[1].height, 0)
+  @test.assert_eq(layout.placements[1].y, layout.placements[0].y + 4)
+  @test.assert_eq(layout.placements[2].y - layout.placements[0].y >= 29, true)
+}
+
+///|
+test "create arrow delays the participant head and lifeline" {
+  let diagram = parse(
+    "@startuml\nBob -> Alice ** : create\nnote left of Alice : ready\n@enduml",
+  )
+  let layout = diagram.layout()
+  let alice = layout.participant_at("Alice").unwrap()
+  let created_at = layout.placements[0].y
+  @test.assert_eq(alice.birth_y, Some(created_at))
+  @test.assert_eq(layout.participant_head_y(alice) > 5, true)
+  @test.assert_eq(
+    layout.activations.any(span => span.participant_code == "Alice"),
+    false,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("data-code=\"Alice\""), true)
 }
 
 ///|

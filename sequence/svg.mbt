@@ -40,6 +40,11 @@ fn svg_color(color : String?) -> String {
 }
 
 ///|
+fn note_color(color : String?) -> String {
+  color.map_or("#FEFFDD", value => svg_color(Some(value)))
+}
+
+///|
 fn append_line(
   output : StringBuilder,
   x1 : Int,
@@ -62,10 +67,15 @@ fn append_text(
   anchor? : String = "middle",
 ) -> Unit {
   let lines = text.split("\n").to_array()
+  let font_size = match class_name {
+    "note-label" | "participant-label" => 13
+    "participant-box-label" => 11
+    _ => 12
+  }
   output <+
-    "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" class=\"\{class_name}\">"
+    "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" fill=\"#181818\" font-size=\"\{font_size}\" class=\"\{class_name}\">"
   lines.eachi((index, line) => {
-    let dy = if index == 0 { 0 } else { 16 }
+    let dy = if index == 0 { 0 } else { 15 }
     output <+
       "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line.to_owned())}</tspan>"
   })
@@ -85,7 +95,10 @@ fn DiagramLayout::participant_head_y(
   self : DiagramLayout,
   participant : ParticipantLayout,
 ) -> Int {
-  self.body_top - participant.participant.typ.header_height()
+  match participant.birth_y {
+    Some(birth_y) => birth_y + 9 - participant.participant.typ.header_height()
+    None => self.body_top - participant.participant.typ.header_height()
+  }
 }
 
 ///|
@@ -401,10 +414,13 @@ fn append_lifelines(
 ) -> Unit {
   let delays = delay_ranges(layout, events)
   for participant in layout.participants {
-    let mut start = layout.body_top
+    let mut start = participant.birth_y.map_or(layout.body_top, birth_y => {
+      birth_y + 9
+    })
+    let end = participant.death_y.map_or(layout.body_bottom, death_y => death_y)
     for _, delay in delays {
       let (delay_start, delay_end) = delay
-      if start < delay_start {
+      if start < delay_start && delay_start < end {
         append_line(
           output,
           participant.center_x,
@@ -416,13 +432,13 @@ fn append_lifelines(
       }
       start = start.max(delay_end)
     }
-    if start < layout.body_bottom {
+    if start < end {
       append_line(
         output,
         participant.center_x,
         start,
         participant.center_x,
-        layout.body_bottom,
+        end,
         "lifeline",
       )
     }
@@ -649,44 +665,36 @@ fn append_note(
   placement : EventPlacement,
   arrow_anchor : Message?,
 ) -> Unit {
-  let size = TextSize::of(note.text)
-  let width = (size.width + 20).max(56)
-  let height = note.height()
-  let center = layout.note_anchor_center(note, arrow_anchor)
-  let x = match note.position {
-    Left => center - width - 10
-    Right => center + 10
-    Bottom | Top => center - width / 2
-    Over => center - width / 2
-    OverSeveral =>
-      match (note.participant_codes.get(0), note.participant_codes.last()) {
-        (Some(first), Some(last)) => {
-          let start = layout
-            .participant_at(first)
-            .map_or(center, p => p.center_x)
-          let end = layout.participant_at(last).map_or(center, p => p.center_x)
-          (start + end) / 2 - width / 2
-        }
-        _ => center - width / 2
-      }
-    Across => 24
-  }
-  let note_width = if note.position is Across {
-    layout.width - 48
-  } else {
-    width
-  }
+  let geometry = layout.note_geometry(note, placement, arrow_anchor)
+  let x = geometry.x
+  let y = geometry.y
+  let component = geometry.component
   let class_name = match note.note_style {
     NodeNormal => "note"
     Hexagonal => "note hex-note"
     Box => "note box-note"
   }
-  output <+
-    "<rect x=\"\{x}\" y=\"\{placement.y}\" width=\"\{note_width}\" height=\"\{height}\" class=\"\{class_name}\" fill=\"\{svg_color(note.color)}\"/>\n"
+  let fill = note_color(note.color)
+  match note.note_style {
+    NodeNormal => {
+      let fold_x = x + component.width - component.fold
+      let fold_y = y + component.fold
+      output <+
+        "<path d=\"M\{x},\{y} L\{x},\{y + component.height} L\{x + component.width},\{y + component.height} L\{x + component.width},\{fold_y} L\{fold_x},\{y} Z\" class=\"\{class_name}\" fill=\"\{fill}\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+      output <+
+        "<path d=\"M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}\" class=\"note-fold\" fill=\"none\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+    }
+    Hexagonal =>
+      output <+
+        "<polygon points=\"\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}\" class=\"\{class_name}\" fill=\"\{fill}\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+    Box =>
+      output <+
+        "<rect x=\"\{x}\" y=\"\{y}\" width=\"\{component.width}\" height=\"\{component.height}\" class=\"\{class_name}\" fill=\"\{fill}\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+  }
   append_text(
     output,
-    x + 10,
-    placement.y + 18,
+    x + component.text_x,
+    y + component.text_y,
     note.text,
     "note-label",
     anchor="start",
