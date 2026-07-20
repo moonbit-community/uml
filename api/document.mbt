@@ -2,7 +2,8 @@
 /// The parsed PlantUML document. Diagram-specific state stays in its own package.
 pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
-  Class(@classdiagram.ClassDiagram)
+  Class(@class.ClassDiagram)
+  Json(@nonuml.JsonDiagram)
 }
 
 ///|
@@ -15,17 +16,23 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
     Class(_) => Class
+    Json(_) => Json
   }
 }
 
 ///|
-pub fn parse_class(input : String) -> Document raise @classdiagram.ParseError {
-  { diagram: Class(@classdiagram.parse(input)) }
+pub fn parse_class(input : String) -> Document raise @class.ParseError {
+  { diagram: Class(@class.parse(input)) }
 }
 
 ///|
 pub fn parse(input : String) -> Document raise @sequence.ParseError {
   { diagram: Sequence(@sequence.parse(input)) }
+}
+
+///|
+pub fn parse_json(input : String) -> Document raise @json.ParseError {
+  { diagram: Json(@nonuml.parse_json(input)) }
 }
 
 ///|
@@ -43,4 +50,10 @@ pub fn is_class_source(input : String) -> Bool {
   input.contains("enum ") ||
   input.contains("package ") ||
   input.contains("namespace ")
+}
+
+///|
+/// Returns whether the source uses PlantUML's JSON diagram delimiters.
+pub fn is_json_source(input : String) -> Bool {
+  input.trim().to_lower().has_prefix("@startjson")
 }

@@ -18,3 +18,16 @@ test "document facade renders a class diagram" {
   }
   @test.assert_eq(document.render_svg().contains("Class diagram"), true)
 }
+
+///|
+test "document facade renders a JSON structure diagram" {
+  let document = parse_json(
+    "@startjson\n{\"service\":{\"port\":8080}}\n@endjson",
+  )
+  match document.kind() {
+    Json => ()
+    _ => @test.fail("expected JSON diagram")
+  }
+  @test.assert_eq(document.render_svg().contains(">service<"), true)
+  @test.assert_eq(is_json_source("\n@STARTJSON\n{}\n@endjson"), true)
+}

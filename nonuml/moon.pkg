@@ -1,8 +1,7 @@
 import {
-  "kokic/uml/class",
   "kokic/uml/core",
-  "kokic/uml/nonuml",
-  "kokic/uml/sequence",
+  "moonbitlang/core/array",
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonbitlang/core/test",
 }
