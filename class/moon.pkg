@@ -1,6 +1,4 @@
 import {
-  "kokic/uml/classdiagram",
   "kokic/uml/core",
-  "kokic/uml/sequence",
   "moonbitlang/core/test",
 }

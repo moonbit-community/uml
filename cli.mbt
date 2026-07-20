@@ -21,9 +21,16 @@ fn main {
 
   let output_path = output_path_for(input_path)
   guard read_input(input_path) is Some(source) else { return }
-  let svg = @api.render_svg(source) catch {
-    SyntaxError(line, message) =>
-      return println("error: line \{line}: \{message}")
+  let svg = if @api.is_class_source(source) {
+    @api.render_class_svg(source) catch {
+      SyntaxError(line, message) =>
+        return println("error: line \{line}: \{message}")
+    }
+  } else {
+    @api.render_svg(source) catch {
+      SyntaxError(line, message) =>
+        return println("error: line \{line}: \{message}")
+    }
   }
   guard write_output(output_path, svg) else { return }
   println("output: \{output_path}")

@@ -296,6 +296,14 @@ test "participant declarations support PlantUML URLs before colors" {
 }
 
 ///|
+test "quoted participant URLs use the shared URL normalizer" {
+  let result = parse(
+    "@startuml\nparticipant Alice [[\"https://example.com\"]]\n@enduml",
+  )
+  @test.assert_eq(result.participants["Alice"].url, Some("https://example.com"))
+}
+
+///|
 test "keywords are case insensitive" {
   let result = parse("@STARTUML\nACTOR Alice\nAlice -> Bob\n@ENDUML")
   @test.assert_eq(result.events.length(), 1)
@@ -672,4 +680,55 @@ test "show unlinked reverses hide unlinked" {
 test "hide unlinked accepts the official @ prefix" {
   let diagram = parse("@startuml\nhide @unlinked\n@enduml")
   @test.assert_eq(diagram.hides_unlinked(), true)
+}
+
+///|
+test "parses shared document background style" {
+  let diagram = parse(
+    "@startuml\nskinparam BackgroundColor #102030\nAlice -> Bob\n@enduml",
+  )
+  @test.assert_eq(diagram.style.background_color, Some("#102030"))
+  @test.assert_eq(diagram.render_svg().contains("background:#102030"), true)
+}
+
+///|
+test "parses shared braced skinparam background style" {
+  let diagram = parse(
+    "@startuml\nskinparam {\nBackgroundColor #203040\n}\nAlice -> Bob\n@enduml",
+  )
+  @test.assert_eq(diagram.style.background_color, Some("#203040"))
+}
+
+///|
+test "accepts common preprocessing directives" {
+  let diagram = parse("@startuml\n!define USER Alice\nUSER -> Bob\n@enduml")
+  @test.assert_eq(diagram.events.length(), 1)
+}
+
+///|
+test "expands shared object-like preprocessor macros" {
+  let diagram = parse("@startuml\n!define USER Alice\nUSER -> Bob\n@enduml")
+  @test.assert_eq(diagram.participants.contains("Alice"), true)
+}
+
+///|
+test "parses shared default font style" {
+  let diagram = parse(
+    "@startuml\nskinparam DefaultFontName Courier\nskinparam DefaultFontSize 16\nAlice -> Bob\n@enduml",
+  )
+  @test.assert_eq(diagram.style.font_family, Some("Courier"))
+  @test.assert_eq(diagram.style.font_size, Some("16"))
+  @test.assert_eq(
+    diagram.render_svg().contains("font-family:Courier;font-size:16px"),
+    true,
+  )
+}
+
+///|
+test "parses shared arrow color style" {
+  let diagram = parse(
+    "@startuml\nskinparam ArrowColor #ff0000\nAlice -> Bob\n@enduml",
+  )
+  @test.assert_eq(diagram.style.line_color, Some("#ff0000"))
+  @test.assert_eq(diagram.render_svg().contains("stroke:#ff0000"), true)
 }

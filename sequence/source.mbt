@@ -116,14 +116,17 @@ fn Source::skip_line(self : Source) -> Unit {
 }
 
 ///|
-fn Source::line_number(self : Source) -> Int {
-  let mut line = 1
-  for index in 0..<self.pos {
-    if self.chars[index] == '\n' {
-      line += 1
-    }
-  }
-  line
+fn Source::diagnostic(self : Source, message : String) -> @core.ParseDiagnostic {
+  @core.diagnostic_at_span(@core.source_span(self.chars, self.pos), message)
+}
+
+///|
+fn Source::raise_parse_error(
+  self : Source,
+  message : String,
+) -> Unit raise ParseError {
+  let diagnostic = self.diagnostic(message)
+  raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }
 
 ///|

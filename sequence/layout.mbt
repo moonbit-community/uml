@@ -73,33 +73,8 @@ let participant_edge_gap = 17
 
 ///|
 fn TextSize::of(text : String) -> TextSize {
-  let lines = text.split("\n").to_array()
-  let mut width = 0
-  lines.each(line => {
-    let mut line_width = 0
-    for char in line {
-      line_width = line_width + text_char_width(char)
-    }
-    width = width.max(line_width)
-  })
-  { width, height: lines.length().max(1) * 15 }
-}
-
-///|
-/// Approximate PlantUML's default sans-serif metrics at the SVG's 13px size.
-/// Java measures against the installed font at runtime; these buckets avoid
-/// treating narrow glyphs such as `i` and wide glyphs such as `W` identically.
-fn text_char_width(char : Char) -> Int {
-  match char {
-    ' ' | '\t' => 4
-    'i' | 'l' | 'I' | '!' | '|' | '.' | ',' | ':' | ';' | '\'' => 3
-    'f' | 'j' | 'r' | 't' | '(' | ')' | '[' | ']' => 5
-    'm' | 'w' | 'M' | 'W' | '@' | '%' => 11
-    'A'..='Z' => 8
-    '0'..='9' => 7
-    _ if char.is_ascii() => 7
-    _ => 14
-  }
+  let metrics = @core.measure_text(text)
+  { width: metrics.width, height: metrics.height }
 }
 
 ///|

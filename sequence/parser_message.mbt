@@ -206,7 +206,7 @@ fn Source::try_url_link(self : Source) -> String? {
     self.restore(checkpoint)
     return None
   }
-  Some(link)
+  Some(@core.normalize_url_target(link))
 }
 
 ///|
@@ -219,7 +219,7 @@ fn Source::take_message_tail(
   let color = self.try_color()
   self.skip_whitespace()
   let label = if self.consume(':') {
-    self.collect_line().optional_text()
+    @core.normalize_label(self.collect_line())
   } else {
     None
   }

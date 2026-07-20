@@ -38,12 +38,13 @@ priv struct ParseCtx {
   activating_messages : Array[String]
   mut last_message_from : String?
   mut last_message_to : String?
+  style : @core.DocumentStyle
 }
 
 ///|
 fn ParseCtx::new(input : String) -> ParseCtx {
   {
-    source: Source::new(input),
+    source: Source::new(@core.preprocess(input)),
     participants: Map([]),
     events: [],
     box_stack: [],
@@ -52,6 +53,7 @@ fn ParseCtx::new(input : String) -> ParseCtx {
     activating_messages: [],
     last_message_from: None,
     last_message_to: None,
+    style: @core.DocumentStyle::empty(),
   }
 }
 
@@ -158,10 +160,7 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
 ///|
 fn ParseCtx::ensure_no_pending_create(self : ParseCtx) -> Unit raise ParseError {
   guard self.pending_create is Some(code) else { () }
-  raise SyntaxError(
-    self.source.line_number(),
-    "after create, send a message to \{code}",
-  )
+  self.source.raise_parse_error("after create, send a message to \{code}")
 }
 
 ///|
@@ -175,8 +174,7 @@ fn ParseCtx::validate_event(
         Message(message) if message.to_code == code =>
           self.pending_create = None
         _ =>
-          raise SyntaxError(
-            self.source.line_number(),
+          self.source.raise_parse_error(
             "after create, send a message to \{code}",
           )
       }
@@ -186,10 +184,7 @@ fn ParseCtx::validate_event(
     GroupingStart(_) => self.grouping_depth += 1
     GroupingLeaf(leaf) => {
       guard self.grouping_depth > 0 else {
-        raise SyntaxError(
-          self.source.line_number(),
-          "group leaf without a group",
-        )
+        self.source.raise_parse_error("group leaf without a group")
       }
       if leaf.is_end {
         self.grouping_depth -= 1
@@ -197,7 +192,7 @@ fn ParseCtx::validate_event(
     }
     BoxEnd => {
       guard !self.box_stack.is_empty() else {
-        raise SyntaxError(self.source.line_number(), "end box without a box")
+        self.source.raise_parse_error("end box without a box")
       }
     }
     _ => ()
@@ -216,8 +211,10 @@ fn ParseCtx::resolve_event(
           let _ = self.activating_messages.pop()
           LifeEvent({ participant_code, event_type: Deactivate, color: None })
         }
-        None =>
-          raise SyntaxError(self.source.line_number(), "nothing to deactivate")
+        None => {
+          let diagnostic = self.source.diagnostic("nothing to deactivate")
+          raise SyntaxError(diagnostic.line_number(), diagnostic.message)
+        }
       }
     _ => event
   }

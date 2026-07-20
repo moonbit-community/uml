@@ -1,0 +1,11 @@
+@startuml
+package domain {
+  abstract class "Account Holder" as Account {
+    + id : Int
+    + login()
+  }
+  interface Auditable
+  class Customer extends Account
+  Customer ..|> Auditable
+}
+@enduml

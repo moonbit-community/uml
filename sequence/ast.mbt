@@ -278,4 +278,5 @@ struct SequenceDiagram {
   auto_number : Autonumber?
   autoactivate : Bool
   show_footbox : Bool
+  style : @core.DocumentStyle
 }

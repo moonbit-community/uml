@@ -34,6 +34,35 @@ fn ParseCtx::try_participant_declaration(
 }
 
 ///|
+fn ParseCtx::try_style_directive(self : ParseCtx) -> Bool raise ParseError {
+  let start = self.source.save()
+  let line = self.source.collect_line()
+  if line.trim().to_lower() == "skinparam {" {
+    while !self.source.eof() {
+      let property = self.source.collect_line()
+      if property.trim() == "}" {
+        return true
+      }
+      match @core.parse_style_property(property) {
+        Some(directive) => self.style.apply(directive)
+        None => ()
+      }
+    }
+    self.source.raise_parse_error("unclosed skinparam")
+  }
+  match @core.parse_style_directive(line) {
+    Some(directive) => {
+      self.style.apply(directive)
+      true
+    }
+    None => {
+      self.source.restore(start)
+      false
+    }
+  }
+}
+
+///|
 fn diagram_options(events : Array[Event]) -> (Autonumber?, Bool, Bool) {
   let mut auto_number = None
   let mut autoactivate = false
@@ -98,18 +127,30 @@ pub fn parse(input : String) -> SequenceDiagram raise ParseError {
     if try_title(ctx.source) {
       continue
     }
+    if ctx.try_style_directive() {
+      continue
+    }
+    let directive_start = ctx.source.save()
+    let directive = ctx.source.collect_line()
+    if @core.is_preprocessor_directive(directive) {
+      continue
+    }
+    ctx.source.restore(directive_start)
     if ctx.try_event(parsers) || ctx.try_participant_declaration() {
       continue
     }
-    raise SyntaxError(ctx.source.line_number(), ctx.source.current_line())
+    let diagnostic = ctx.source.diagnostic(ctx.source.current_line())
+    raise SyntaxError(diagnostic.line_number(), diagnostic.message)
   }
 
   ctx.ensure_no_pending_create()
   guard ctx.grouping_depth == 0 else {
-    raise SyntaxError(ctx.source.line_number(), "unclosed group")
+    let diagnostic = ctx.source.diagnostic("unclosed group")
+    raise SyntaxError(diagnostic.line_number(), diagnostic.message)
   }
   guard ctx.box_stack.is_empty() else {
-    raise SyntaxError(ctx.source.line_number(), "unclosed box")
+    let diagnostic = ctx.source.diagnostic("unclosed box")
+    raise SyntaxError(diagnostic.line_number(), diagnostic.message)
   }
 
   let (auto_number, autoactivate, show_footbox) = diagram_options(ctx.events)
@@ -119,5 +160,6 @@ pub fn parse(input : String) -> SequenceDiagram raise ParseError {
     auto_number,
     autoactivate,
     show_footbox,
+    style: ctx.style,
   }
 }

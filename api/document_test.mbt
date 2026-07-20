@@ -8,3 +8,13 @@ test "document facade dispatches a sequence diagram" {
     true,
   )
 }
+
+///|
+test "document facade renders a class diagram" {
+  let document = parse_class("@startuml\nclass User\nUser --> Account\n@enduml")
+  match document.kind() {
+    Class => ()
+    _ => @test.fail("expected class diagram")
+  }
+  @test.assert_eq(document.render_svg().contains("Class diagram"), true)
+}

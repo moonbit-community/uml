@@ -1,42 +1,11 @@
 ///|
 fn xml_escape(value : String) -> String {
-  let output = StringBuilder()
-  for char in value {
-    match char {
-      '&' => output.write_string("&amp;")
-      '<' => output.write_string("&lt;")
-      '>' => output.write_string("&gt;")
-      '"' => output.write_string("&quot;")
-      '\'' => output.write_string("&apos;")
-      _ => output.write_char(char)
-    }
-  }
-  output.to_string()
+  @core.xml_escape(value)
 }
 
 ///|
 fn svg_color(color : String?) -> String {
-  match color {
-    None => "#FEFECE"
-    Some(value) => {
-      let mut hexadecimal = value.length() == 3 ||
-        value.length() == 6 ||
-        value.length() == 8
-      for char in value {
-        hexadecimal = hexadecimal &&
-          (
-            char.is_ascii_digit() ||
-            ('a' <= char && char <= 'f') ||
-            ('A' <= char && char <= 'F')
-          )
-      }
-      if hexadecimal {
-        "#\{value}"
-      } else {
-        xml_escape(value)
-      }
-    }
-  }
+  @core.svg_color(color, "#FEFECE")
 }
 
 ///|
@@ -928,15 +897,59 @@ fn append_footboxes(output : StringBuilder, layout : DiagramLayout) -> Unit {
 }
 
 ///|
-fn append_svg_preamble(output : StringBuilder, layout : DiagramLayout) -> Unit {
+fn append_svg_preamble(
+  output : StringBuilder,
+  layout : DiagramLayout,
+  style : @core.DocumentStyle,
+) -> Unit {
+  let background = @core.svg_color(style.background_color, "#fff")
+  let font_family = @core.font_family(style)
+  let font_size = @core.font_size(style)
+  let line_color = @core.svg_color(style.line_color, "#181818")
   output <+
     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{layout.width}\" height=\"\{layout.height}\" viewBox=\"0 0 \{layout.width} \{layout.height}\" role=\"img\" aria-label=\"Sequence diagram\">\n"
-  output.write_string(
-    "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" class=\"arrow-fill\"/></marker><marker id=\"arrow-start\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M 10 0 L 0 5 L 10 10 z\" class=\"arrow-fill\"/></marker><marker id=\"open-arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M 0 0 L 10 5 L 0 10\" class=\"arrow-open\"/></marker><marker id=\"open-arrow-start\" viewBox=\"0 0 10 10\" refX=\"1\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto\"><path d=\"M 10 0 L 0 5 L 10 10\" class=\"arrow-open\"/></marker></defs>\n",
-  )
-  output.write_string(
-    "<style>svg{font-family:Arial,sans-serif;font-size:13px;background:#fff}.participant rect,.activation,.note,.divider-title{stroke:#181818;stroke-width:1.2}.participant-label{font-weight:bold;fill:#181818}.participant-icon{fill:none;stroke:#181818;stroke-width:1.1}.participant-box-group{fill-opacity:.16;stroke:#181818;stroke-width:1.1}.participant-box-label{font-size:11px;font-weight:bold;fill:#181818}.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}.activation{fill:#FEFECE}.message,.cross,.destroy{fill:none;stroke:#181818;stroke-width:1.3}.message.dotted{stroke-dasharray:5 4}.arrow-fill{fill:#181818}.arrow-open{fill:none;stroke:#181818;stroke-width:1.5}.endpoint{fill:#fff;stroke:#181818;stroke-width:1.2}.message-label,.note-label,.reference-label,.delay-label{fill:#181818;font-size:12px}.group-body{fill-opacity:.18;stroke:#181818;stroke-width:1.1}.group-header{stroke:#181818;stroke-width:1.1}.group-label{font-size:12px;font-weight:bold;fill:#181818}.note{fill:#FEFFDD}.hex-note{stroke-dasharray:2 1}.box-note{rx:0}.divider{stroke:#777;stroke-width:1}.divider-title{fill:#f6f6f6}.divider-label{font-weight:bold}.delay{stroke:#777;stroke-dasharray:3 3}.reference{fill:#fff;stroke:#181818;stroke-width:1.2}.group-separator{stroke:#181818;stroke-dasharray:4 3}.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}.page-label{font-style:italic}.destroy{stroke-width:2}</style>\n",
-  )
+  let defs =
+    #|<defs>
+    #|<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/></marker>
+    #|<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
+    #|<marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
+    #|<marker id="open-arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10" class="arrow-open"/></marker>
+    #|</defs>
+  output.write_string(defs)
+
+  let svg_style =
+    $|<style>
+    $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
+    $|.participant rect,.activation,.note,.divider-title{stroke:#181818;stroke-width:1.2}
+    $|.participant-label{font-weight:bold;fill:#181818}
+    $|.participant-icon{fill:none;stroke:#181818;stroke-width:1.1}
+    $|.participant-box-group{fill-opacity:.16;stroke:#181818;stroke-width:1.1}
+    $|.participant-box-label{font-size:11px;font-weight:bold;fill:#181818}
+    $|.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}
+    $|.activation{fill:#FEFECE}
+    $|.message,.cross,.destroy{fill:none;stroke:\{line_color};stroke-width:1.3}
+    $|.message.dotted{stroke-dasharray:5 4}
+    $|.arrow-fill{fill:\{line_color}}
+    $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:1.5}
+    $|.endpoint{fill:#fff;stroke:\{line_color};stroke-width:1.2}
+    $|.message-label,.note-label,.reference-label,.delay-label{fill:#181818;font-size:12px}
+    $|.group-body{fill-opacity:.18;stroke:#181818;stroke-width:1.1}
+    $|.group-header{stroke:#181818;stroke-width:1.1}
+    $|.group-label{font-size:12px;font-weight:bold;fill:#181818}
+    $|.note{fill:#FEFFDD}
+    $|.hex-note{stroke-dasharray:2 1}
+    $|.box-note{rx:0}
+    $|.divider{stroke:#777;stroke-width:1}
+    $|.divider-title{fill:#f6f6f6}
+    $|.divider-label{font-weight:bold}
+    $|.delay{stroke:#777;stroke-dasharray:3 3}
+    $|.reference{fill:#fff;stroke:#181818;stroke-width:1.2}
+    $|.group-separator{stroke:#181818;stroke-dasharray:4 3}
+    $|.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
+    $|.page-label{font-style:italic}
+    $|.destroy{stroke-width:2}
+    $|</style>
+  output.write_string(svg_style)
 }
 
 ///|
@@ -949,7 +962,7 @@ fn append_svg_preamble(output : StringBuilder, layout : DiagramLayout) -> Unit {
 pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
   let layout = self.layout()
   let output = StringBuilder()
-  append_svg_preamble(output, layout)
+  append_svg_preamble(output, layout, self.style)
   append_groups(output, layout)
   append_participant_boxes(output, layout)
   for participant in layout.participants {
