@@ -1,20 +1,20 @@
-
+<!-- plantuml -tsvg -o puml <path> -->
 
 | PlantUML | UML |
 | - | - |
-| ![](./01-basic-puml.svg) | ![](./01-basic.svg) |
+| ![](./puml/01-basic.svg) | ![](./01-basic.svg) |
 
 | | |
 | - | - |
-| PlantUML | ![](./02-participants-puml.svg) 
+| PlantUML | ![](./puml/02-participants.svg) 
 | UML | ![](./02-participants.svg) |
 
 | PlantUML | UML |
 | - | - |
-| ![](./03-lifecycle-notes-puml.svg) | ![](./03-lifecycle-notes.svg) |
+| ![](./puml/03-lifecycle-notes.svg) | ![](./03-lifecycle-notes.svg) |
 
-<!-- ![](./04-grouping-puml.svg) -->
+<!-- ![](./puml/04-grouping.svg) -->
 <!-- ![](./04-grouping.svg) -->
 
-![](./05-advanced-puml.svg)
+![](./puml/05-advanced.svg)
 ![](./05-advanced.svg)

@@ -1,0 +1,14 @@
+@startjson
+{
+  "string": "text",
+  "integer": 0,
+  "negative": -12,
+  "decimal": 3.14159,
+  "exponent": 6.02e23,
+  "truthy": true,
+  "falsy": false,
+  "emptyArray": [],
+  "emptyObject": {},
+  "nothing": null
+}
+@endjson
