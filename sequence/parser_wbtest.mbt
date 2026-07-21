@@ -725,6 +725,35 @@ test "parses shared default font style" {
 }
 
 ///|
+test "sequence layout and SVG receive document font roles" {
+  let regular = parse(
+    "@startuml\nparticipant \"VeryLongParticipantName\" as A\nA -> Bob : message\n@enduml",
+  )
+  let styled = parse(
+    "@startuml\nskinparam DefaultFontName Courier\nskinparam DefaultFontSize 16\nparticipant \"VeryLongParticipantName\" as A\nA -> Bob : message\n@enduml",
+  )
+  let regular_layout = regular.layout()
+  let styled_layout = styled.layout()
+  @test.assert_eq(styled_layout.text_metrics.participant.profile, Monospace)
+  @test.assert_eq(styled_layout.text_metrics.participant.font_size, 16)
+  @test.assert_eq(styled_layout.text_metrics.participant.font_weight, 700)
+  @test.assert_eq(styled_layout.text_metrics.body_italic.style, Italic)
+  @test.assert_eq(
+    styled_layout.participants[0].width > regular_layout.participants[0].width,
+    true,
+  )
+  let svg = styled.render_svg()
+  @test.assert_eq(svg.contains(".participant-label{font-size:16px"), true)
+  @test.assert_eq(
+    svg.contains(
+      ".message-label,.reference-label,.delay-label{fill:#181818;font-size:15px",
+    ),
+    true,
+  )
+  @test.assert_eq(svg.contains(".participant-box-label{font-size:14px"), true)
+}
+
+///|
 test "parses shared arrow color style" {
   let diagram = parse(
     "@startuml\nskinparam ArrowColor #ff0000\nAlice -> Bob\n@enduml",

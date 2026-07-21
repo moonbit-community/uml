@@ -96,6 +96,65 @@ pub fn font_size(style : DocumentStyle) -> String {
 }
 
 ///|
+pub fn font_size_value(style : DocumentStyle) -> Int {
+  let value = style.font_size.unwrap_or("13")
+  let normalized = value.to_lower()
+  let raw = normalized.trim_end(chars="pxt").trim()
+  let parsed = @string.parse_int(raw) catch { _ => 13 }
+  if normalized.has_suffix("pt") {
+    (parsed * 4 + 2) / 3
+  } else {
+    parsed
+  }
+}
+
+///|
+pub fn font_profile(style : DocumentStyle) -> FontProfile {
+  let family = style.font_family.unwrap_or("Arial, sans-serif").to_lower()
+  match () {
+    _ if family.contains("mono") ||
+      family.contains("courier") ||
+      family.contains("consolas") ||
+      family.contains("menlo") => Monospace
+    _ if !family.contains("sans") &&
+      (
+        family.contains("serif") ||
+        family.contains("times") ||
+        family.contains("georgia")
+      ) => Serif
+    _ => Sans
+  }
+}
+
+///|
+/// Builds metrics from the document font settings plus a concrete text role.
+pub fn DocumentStyle::font_metrics(
+  self : DocumentStyle,
+  font_size? : Int = 0,
+  font_weight? : Int = 400,
+  font_style? : FontStyle = Normal,
+  line_height? : Int = 0,
+) -> FontMetrics {
+  let resolved_size = if font_size > 0 {
+    font_size
+  } else {
+    font_size_value(self)
+  }
+  let resolved_line_height = if line_height > 0 {
+    line_height
+  } else {
+    resolved_size + 2
+  }
+  FontMetrics::from_defaults(
+    profile=font_profile(self),
+    style=font_style,
+    font_size=resolved_size,
+    font_weight~,
+    line_height=resolved_line_height,
+  )
+}
+
+///|
 /// Returns whether a line is a PlantUML preprocessor directive that does not
 /// directly contribute to a diagram model.
 pub fn is_preprocessor_directive(line : String) -> Bool {

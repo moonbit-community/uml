@@ -24,7 +24,11 @@ test "participant layout reserves message label width" {
     result.participants[0].center_x
   @test.assert_eq(
     distance >=
-    TextSize::of("this is a deliberately wide message label").width + 48,
+    TextSize::of_with(
+      "this is a deliberately wide message label",
+      result.text_metrics.body,
+    ).width +
+    48,
     true,
   )
 }
@@ -198,9 +202,14 @@ test "delays split lifelines into visible event ranges" {
 
 ///|
 test "text metrics distinguish narrow and wide default sans glyphs" {
-  @test.assert_eq(TextSize::of("WWW").width > TextSize::of("iii").width, true)
-  @test.assert_eq(TextSize::of(" ").width, 4)
-  @test.assert_eq(TextSize::of("A").width, 8)
+  let metrics = @core.FontMetrics::default()
+  @test.assert_eq(
+    TextSize::of_with("WWW", metrics).width >
+    TextSize::of_with("iii", metrics).width,
+    true,
+  )
+  @test.assert_eq(TextSize::of_with(" ", metrics).width, 4)
+  @test.assert_eq(TextSize::of_with("A", metrics).width, 8)
 }
 
 ///|

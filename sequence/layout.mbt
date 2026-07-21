@@ -5,8 +5,49 @@ priv struct TextSize {
 }
 
 ///|
+priv struct SequenceTextMetrics {
+  participant : @core.FontMetrics
+  note : @core.FontMetrics
+  body : @core.FontMetrics
+  body_bold : @core.FontMetrics
+  body_italic : @core.FontMetrics
+  small_bold : @core.FontMetrics
+}
+
+///|
+fn SequenceTextMetrics::new(style : @core.DocumentStyle) -> SequenceTextMetrics {
+  let base_size = @core.font_size_value(style)
+  let line_height = base_size + 2
+  {
+    participant: style.font_metrics(
+      font_size=base_size,
+      font_weight=700,
+      line_height~,
+    ),
+    note: style.font_metrics(font_size=base_size, line_height~),
+    body: style.font_metrics(font_size=(base_size - 1).max(1), line_height~),
+    body_bold: style.font_metrics(
+      font_size=(base_size - 1).max(1),
+      font_weight=700,
+      line_height~,
+    ),
+    body_italic: style.font_metrics(
+      font_size=(base_size - 1).max(1),
+      font_style=Italic,
+      line_height~,
+    ),
+    small_bold: style.font_metrics(
+      font_size=(base_size - 2).max(1),
+      font_weight=700,
+      line_height~,
+    ),
+  }
+}
+
+///|
 priv struct ParticipantLayout {
   participant : Participant
+  text_metrics : SequenceTextMetrics
   index : Int
   center_x : Int
   width : Int
@@ -60,6 +101,7 @@ priv struct DiagramLayout {
   height : Int
   body_top : Int
   body_bottom : Int
+  text_metrics : SequenceTextMetrics
 }
 
 ///|
@@ -72,8 +114,11 @@ let vertical_margin = 5
 let participant_edge_gap = 17
 
 ///|
-fn TextSize::of(text : String) -> TextSize {
-  let metrics = @core.measure_text(text)
+fn TextSize::of_with(
+  text : String,
+  font_metrics : @core.FontMetrics,
+) -> TextSize {
+  let metrics = @core.measure_text_with(text, font_metrics)
   { width: metrics.width, height: metrics.height }
 }
 
@@ -83,9 +128,13 @@ fn Message::display_label(self : Message) -> String {
 }
 
 ///|
-fn Message::label_height(self : Message) -> Int {
+fn Message::label_height(
+  self : Message,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
   match self.label {
-    Some(label) if label.length() > 0 => TextSize::of(label).height
+    Some(label) if label.length() > 0 =>
+      TextSize::of_with(label, text_metrics.body).height
     _ => 0
   }
 }
@@ -103,12 +152,12 @@ fn ParticipantType::header_height(self : ParticipantType) -> Int {
 }
 
 ///|
-fn Note::height(self : Note) -> Int {
-  self.component().height
+fn Note::height(self : Note, text_metrics : SequenceTextMetrics) -> Int {
+  self.component(text_metrics).height
 }
 
 ///|
-fn Event::height(self : Event) -> Int {
+fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
   match self {
     Message(message) =>
       if message.from_code == message.to_code {
@@ -117,7 +166,7 @@ fn Event::height(self : Event) -> Int {
         14
       }
     MessageExo(_) => 14
-    Note(note) => note.height() + 10
+    Note(note) => note.height(text_metrics) + 10
     GroupingStart(_) => 34
     GroupingLeaf(leaf) => if leaf.is_end { 12 } else { 24 }
     LifeEvent(_) => 0
@@ -126,15 +175,19 @@ fn Event::height(self : Event) -> Int {
     HSpace(space) => space.pixels.unwrap_or(0)
     Newpage(_) => 40
     Reference(reference) =>
-      (TextSize::of(reference.label.unwrap_or("ref")).height + 28).max(42)
+      (TextSize::of_with(reference.label.unwrap_or("ref"), text_metrics.body).height +
+      28).max(42)
     BoxStart(_) | BoxEnd => 0
     Return(return_value) =>
-      (TextSize::of(return_value.value.unwrap_or("")).height + 24).max(34)
+      (TextSize::of_with(return_value.value.unwrap_or(""), text_metrics.body).height +
+      24).max(34)
     Create => 0
     Url(_, _) => 0
     DeactivateLatest => 0
     LinkAnchor(_, _, label) =>
-      (TextSize::of(label.unwrap_or("")).height + 24).max(34)
+      (TextSize::of_with(label.unwrap_or(""), text_metrics.body).height + 24).max(
+        34,
+      )
     Autonumber(_)
     | AutonumberStop
     | AutonumberResume(_)
@@ -148,25 +201,29 @@ fn Event::height(self : Event) -> Int {
 }
 
 ///|
-fn Event::required_gap_before(self : Event) -> Int {
+fn Event::required_gap_before(
+  self : Event,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
   match self {
     Message(message) =>
       if message.from_code == message.to_code {
         42
       } else if message.activation_spec is Some(Create) {
-        message.label_height().max(15) + 44
-      } else if message.label_height() > 0 {
-        message.label_height() + 14
+        message.label_height(text_metrics).max(15) + 44
+      } else if message.label_height(text_metrics) > 0 {
+        message.label_height(text_metrics) + 14
       } else {
         14
       }
     MessageExo(message) =>
       match message.label {
-        Some(label) if label.length() > 0 => TextSize::of(label).height + 14
+        Some(label) if label.length() > 0 =>
+          TextSize::of_with(label, text_metrics.body).height + 14
         _ => 14
       }
-    Note(note) => note.component().height + 18
-    _ => self.height()
+    Note(note) => note.component(text_metrics).height + 18
+    _ => self.height(text_metrics)
   }
 }
 
@@ -180,19 +237,26 @@ fn Event::is_parallel(self : Event) -> Bool {
 }
 
 ///|
-fn event_advances_layout(event : Event) -> Bool {
+fn event_advances_layout(
+  event : Event,
+  text_metrics : SequenceTextMetrics,
+) -> Bool {
   match event {
     Note(note) => !note.on_arrow
-    _ => event.height() > 0
+    _ => event.height(text_metrics) > 0
   }
 }
 
 ///|
-fn next_visual_gap(events : Array[Event], index : Int) -> Int {
+fn next_visual_gap(
+  events : Array[Event],
+  index : Int,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
   for next_index in (index + 1)..<events.length() {
     let next = events[next_index]
-    if event_advances_layout(next) {
-      return next.required_gap_before()
+    if event_advances_layout(next, text_metrics) {
+      return next.required_gap_before(text_metrics)
     }
   }
   14
@@ -210,8 +274,11 @@ fn participant_code_index(
 }
 
 ///|
-fn Message::gap_requirement(self : Message) -> Int {
-  TextSize::of(self.display_label()).width + 48
+fn Message::gap_requirement(
+  self : Message,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
+  TextSize::of_with(self.display_label(), text_metrics.body).width + 48
 }
 
 ///|
@@ -261,6 +328,49 @@ fn SequenceDiagram::hides_unlinked(self : SequenceDiagram) -> Bool {
     }
   }
   hidden
+}
+
+///|
+fn SequenceDiagram::minimum_text_width(
+  self : SequenceDiagram,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
+  let mut width = 0
+  for event in self.events {
+    let measured = match event {
+      GroupingStart(group) =>
+        TextSize::of_with(
+          "\{group.keyword.label()} \{group.header}",
+          text_metrics.body_bold,
+        ).width +
+        84
+      GroupingLeaf(leaf) =>
+        TextSize::of_with(leaf.label.unwrap_or(""), text_metrics.body_bold).width +
+        84
+      Divider(divider) =>
+        TextSize::of_with(divider.title, text_metrics.body_bold).width + 44
+      Newpage(page) =>
+        TextSize::of_with(page.title.unwrap_or(""), text_metrics.body_italic).width +
+        48
+      Delay(delay) =>
+        TextSize::of_with(delay.label.unwrap_or(""), text_metrics.body).width +
+        56
+      Reference(reference) =>
+        TextSize::of_with(reference.label.unwrap_or("ref"), text_metrics.body).width +
+        72
+      Return(value) =>
+        TextSize::of_with(value.value.unwrap_or(""), text_metrics.body).width +
+        48
+      LinkAnchor(_, _, label) =>
+        TextSize::of_with(label.unwrap_or(""), text_metrics.body).width + 48
+      BoxStart(box) =>
+        TextSize::of_with(box.label.unwrap_or(""), text_metrics.small_bold).width +
+        32
+      _ => 0
+    }
+    width = width.max(measured)
+  }
+  width
 }
 
 ///|
@@ -322,6 +432,7 @@ fn constrain_message_gap(
   gaps : Array[Int],
   participant_index : Map[String, Int],
   message : Message,
+  text_metrics : SequenceTextMetrics,
 ) -> Unit {
   guard participant_index.get(message.from_code) is Some(from) else { return }
   guard participant_index.get(message.to_code) is Some(to) else { return }
@@ -329,7 +440,7 @@ fn constrain_message_gap(
   let last = if from < to { to } else { from }
   let span = last - first
   guard span > 0 else { return }
-  let required = message.gap_requirement()
+  let required = message.gap_requirement(text_metrics)
   let per_gap = (required + span - 1) / span
   for index in first..<last {
     gaps[index] = gaps[index].max(per_gap)
@@ -341,6 +452,7 @@ fn constrain_note_gap(
   gaps : Array[Int],
   participant_index : Map[String, Int],
   note : Note,
+  text_metrics : SequenceTextMetrics,
 ) -> Unit {
   guard note.position is OverSeveral else { return }
   guard note.participant_codes.get(0) is Some(first_code) else { return }
@@ -351,7 +463,7 @@ fn constrain_note_gap(
   let right = first.max(last)
   let span = right - left
   guard span > 0 else { return }
-  let required = note.component().width
+  let required = note.component(text_metrics).width
   let per_gap = (required + span - 1) / span
   for index in left..<right {
     gaps[index] = gaps[index].max(per_gap)
@@ -361,6 +473,7 @@ fn constrain_note_gap(
 ///|
 fn initial_participant_layout(
   diagram : SequenceDiagram,
+  text_metrics : SequenceTextMetrics,
 ) -> Array[ParticipantLayout] {
   let layouts = []
   let mut index = 0
@@ -369,9 +482,14 @@ fn initial_participant_layout(
     guard !hide_unlinked || diagram.participant_is_linked(participant.code) else {
       continue
     }
-    let width = (TextSize::of(participant.display).width + 28).max(80)
+    let width = (TextSize::of_with(
+      participant.display,
+      text_metrics.participant,
+    ).width +
+    28).max(80)
     layouts.push({
       participant,
+      text_metrics,
       index,
       center_x: 0,
       width,
@@ -404,8 +522,9 @@ fn initial_participant_layout(
 ///|
 fn layout_participants(
   diagram : SequenceDiagram,
+  text_metrics : SequenceTextMetrics,
 ) -> (Array[ParticipantLayout], Map[String, Int], Int) {
-  let layouts = initial_participant_layout(diagram)
+  let layouts = initial_participant_layout(diagram, text_metrics)
   let index = participant_code_index(layouts)
   guard layouts.length() > 0 else { (layouts, index, horizontal_margin * 2) }
 
@@ -417,8 +536,9 @@ fn layout_participants(
   }
   for event in diagram.events {
     match event {
-      Message(message) => constrain_message_gap(gaps, index, message)
-      Note(note) => constrain_note_gap(gaps, index, note)
+      Message(message) =>
+        constrain_message_gap(gaps, index, message, text_metrics)
+      Note(note) => constrain_note_gap(gaps, index, note, text_metrics)
       _ => ()
     }
   }
@@ -516,6 +636,7 @@ fn apply_activation_spec(
 fn layout_events(
   diagram : SequenceDiagram,
   start_y : Int,
+  text_metrics : SequenceTextMetrics,
 ) -> (
   Array[EventPlacement],
   Array[ActivationSpan],
@@ -546,14 +667,16 @@ fn layout_events(
   })
 
   for event_index, event in diagram.events {
-    let event_height = event.height()
-    let advances = event_advances_layout(event)
+    let event_height = event.height(text_metrics)
+    let advances = event_advances_layout(event, text_metrics)
     let height = if !advances {
       0
     } else if event is Note(_) {
       event_height
     } else {
-      event_height.max(next_visual_gap(diagram.events, event_index))
+      event_height.max(
+        next_visual_gap(diagram.events, event_index, text_metrics),
+      )
     }
     let y = match event {
       Note(note) if note.on_arrow => previous_top + 4
@@ -742,7 +865,10 @@ fn DiagramLayout::content_horizontal_bounds(
               max_x = max_x.max(
                 participant.center_x +
                 40 +
-                TextSize::of(message.display_label()).width,
+                TextSize::of_with(
+                  message.display_label(),
+                  self.text_metrics.body,
+                ).width,
               )
             None => ()
           }
@@ -757,7 +883,10 @@ fn DiagramLayout::content_horizontal_bounds(
               FromLeft | ToLeft => participant.center_x - length
               FromRight | ToRight => participant.center_x + length
             }
-            let label_width = TextSize::of(message.label.unwrap_or("")).width
+            let label_width = TextSize::of_with(
+                message.label.unwrap_or(""),
+                self.text_metrics.body,
+              ).width
             min_x = min_x.min(
               outside.min(participant.center_x) - label_width / 2,
             )
@@ -818,7 +947,10 @@ fn participant_lifetimes(
 
 ///|
 fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
-  let (participants, participant_index, width) = layout_participants(self)
+  let text_metrics = SequenceTextMetrics::new(self.style)
+  let (participants, participant_index, width) = layout_participants(
+    self, text_metrics,
+  )
   let mut participant_header_height = 36
   for participant in participants {
     participant_header_height = participant_header_height.max(
@@ -828,6 +960,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
     self,
     participant_header_height - 6 + vertical_margin,
+    text_metrics,
   )
   let (births, deaths) = participant_lifetimes(self.events, placements)
   let participants = participants.map(participant => {
@@ -851,6 +984,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     height: body_bottom + footbox_height + vertical_margin,
     body_top: participant_header_height + vertical_margin,
     body_bottom,
+    text_metrics,
   }
   let (min_x, max_x) = layout.content_horizontal_bounds(self.events)
   let shift = (horizontal_margin - min_x).max(0)
@@ -858,5 +992,8 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     ..participant,
     center_x: participant.center_x + shift,
   })
-  { ..layout, participants, width: max_x + shift + horizontal_margin }
+  let width = (max_x + shift + horizontal_margin).max(
+    self.minimum_text_width(text_metrics),
+  )
+  { ..layout, participants, width }
 }

@@ -15,6 +15,16 @@ priv struct PlacedNode {
 }
 
 ///|
+fn json_font_size() -> Int {
+  14
+}
+
+///|
+fn json_key_font_weight() -> Int {
+  700
+}
+
+///|
 fn display_text(value : JsonValueDisplay) -> String {
   match value {
     Text(text) => text
@@ -46,15 +56,28 @@ fn is_blank_node(node : JsonNode) -> Bool {
 
 ///|
 fn node_metrics(node : JsonNode) -> NodeMetrics {
+  let regular_metrics = @core.FontMetrics::from_defaults(
+    font_size=json_font_size(),
+    line_height=21,
+  )
+  let key_metrics = @core.FontMetrics::from_defaults(
+    font_size=json_font_size(),
+    font_weight=json_key_font_weight(),
+    line_height=21,
+  )
   let mut key_width = 0
   let mut value_width = 0
   for row in node.rows {
     match row.key {
-      Some(key) => key_width = key_width.max(@core.measure_text(key).width + 10)
+      Some(key) =>
+        key_width = key_width.max(
+          @core.measure_text_with(key, key_metrics).width + 10,
+        )
       None => ()
     }
     value_width = value_width.max(
-      @core.measure_text(display_text(row.value)).width + 10,
+      @core.measure_text_with(display_text(row.value), regular_metrics).width +
+      10,
     )
   }
   let height = if is_blank_node(node) {
@@ -253,19 +276,28 @@ pub fn JsonDiagram::render_svg(self : JsonDiagram) -> String {
   output <+
     "  width=\"\{width}\" height=\"\{height}\" viewBox=\"0 0 \{width} \{height}\"\n"
   output.write_string("  role=\"img\" aria-label=\"JSON diagram\">\n")
+  let font_size = json_font_size()
+  let key_font_weight = json_key_font_weight()
+  output.write_string("<style>\n")
+  output <+
+    "svg { font-family: sans-serif; font-size: \{font_size}px; background: #fff }\n"
   output.write_string(
     (
-      #|<style>
-      #|svg { font-family: sans-serif; font-size: 14px; background: #fff }
       #|.json-node rect { fill: #F1F1F1; stroke: #000; stroke-width: 1.5 }
       #|.json-node line { stroke: #000; stroke-width: 1 }
       #|.json-node text { fill: #000 }
-      #|.json-key { font-weight: 700 }
+    ),
+  )
+  output.write_char('\n')
+  output <+ ".json-key { font-weight: \{key_font_weight} }\n"
+  output.write_string(
+    (
       #|.json-edge { fill: none; stroke: #000; stroke-width: 1; stroke-dasharray: 3,3 }
       #|.json-arrow, .json-spot { fill: #000; stroke: #000; stroke-width: 1 }
       #|</style>
     ),
   )
+  output.write_char('\n')
   append_edges(output, root)
   append_node(output, root)
   output.write_string("</svg>\n")

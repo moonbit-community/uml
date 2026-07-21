@@ -16,8 +16,11 @@ priv struct NoteGeometry {
 }
 
 ///|
-fn Note::component(self : Note) -> NoteComponent {
-  let text = TextSize::of(self.text)
+fn Note::component(
+  self : Note,
+  text_metrics : SequenceTextMetrics,
+) -> NoteComponent {
+  let text = TextSize::of_with(self.text, text_metrics.note)
   match self.note_style {
     NodeNormal =>
       {
@@ -85,7 +88,7 @@ fn DiagramLayout::note_geometry(
   placement : EventPlacement,
   arrow_anchor : Message?,
 ) -> NoteGeometry {
-  let component = note.component()
+  let component = note.component(self.text_metrics)
   let center = self.note_anchor_center(note, arrow_anchor)
   let x = if note.on_arrow {
     match note.position {

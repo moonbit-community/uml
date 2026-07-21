@@ -34,17 +34,13 @@ fn append_text(
   text : String,
   class_name : String,
   anchor? : String = "middle",
+  line_height? : Int = 15,
 ) -> Unit {
   let lines = text.split("\n").to_array()
-  let font_size = match class_name {
-    "note-label" | "participant-label" => 13
-    "participant-box-label" => 11
-    _ => 12
-  }
   output <+
-    "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" fill=\"#181818\" font-size=\"\{font_size}\" class=\"\{class_name}\">"
+    "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" fill=\"#181818\" class=\"\{class_name}\">"
   lines.eachi((index, line) => {
-    let dy = if index == 0 { 0 } else { 15 }
+    let dy = if index == 0 { 0 } else { line_height }
     output <+
       "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line.to_owned())}</tspan>"
   })
@@ -119,6 +115,7 @@ fn append_participant(
         y + 23,
         layout.participant.display,
         "participant-label",
+        line_height=layout.text_metrics.participant.line_height,
       )
     }
   }
@@ -150,6 +147,7 @@ fn append_vertical_participant(
     label_y,
     layout.participant.display,
     "participant-label",
+    line_height=layout.text_metrics.participant.line_height,
   )
 }
 
@@ -170,6 +168,7 @@ fn append_queue_participant(
     y + 18,
     layout.participant.display,
     "participant-label",
+    line_height=layout.text_metrics.participant.line_height,
   )
 }
 
@@ -191,6 +190,7 @@ fn append_collections_participant(
     y + 27,
     layout.participant.display,
     "participant-label",
+    line_height=layout.text_metrics.participant.line_height,
   )
 }
 
@@ -287,6 +287,7 @@ fn append_participant_box(
         label,
         "participant-box-label",
         anchor="start",
+        line_height=first.text_metrics.small_bold.line_height,
       )
     None => ()
   }
@@ -347,7 +348,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
     output <+
       "<rect x=\"\{x}\" y=\"\{group.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"group-body\" fill=\"\{body_color}\"/>\n"
     output <+
-      "<path d=\"M\{x} \{group.start_y}h\{(TextSize::of(group.header).width + 38).max(54)}v22h-8l-5 5-5-5h-\{(TextSize::of(group.header).width + 20).max(36)}z\" class=\"group-header\" fill=\"\{header_color}\"/>\n"
+      "<path d=\"M\{x} \{group.start_y}h\{(TextSize::of_with(group.header, layout.text_metrics.body_bold).width + 38).max(54)}v22h-8l-5 5-5-5h-\{(TextSize::of_with(group.header, layout.text_metrics.body_bold).width + 20).max(36)}z\" class=\"group-header\" fill=\"\{header_color}\"/>\n"
     append_text(
       output,
       x + 8,
@@ -355,6 +356,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       "\{group.keyword.label()} \{group.header}",
       "group-label",
       anchor="start",
+      line_height=layout.text_metrics.body_bold.line_height,
     )
     output.write_string("</g>\n")
   }
@@ -541,6 +543,7 @@ fn append_message(
       label,
       "message-label",
       anchor="start",
+      line_height=layout.text_metrics.body.line_height,
     )
   } else {
     let start_x = from.center_x
@@ -560,7 +563,14 @@ fn append_message(
       end_x >= start_x,
     )
     let label_x = (start_x + end_x) / 2
-    append_text(output, label_x, start_y.min(end_y) - 6, label, "message-label")
+    append_text(
+      output,
+      label_x,
+      start_y.min(end_y) - 6,
+      label,
+      "message-label",
+      line_height=layout.text_metrics.body.line_height,
+    )
   }
   if message.arrow_config.circle_start {
     output <+
@@ -623,7 +633,14 @@ fn append_exo_message(
   let label = placement.number
     .map(number => "\{number} \{raw_label}")
     .unwrap_or_else(() => raw_label)
-  append_text(output, (start_x + end_x) / 2, y - 6, label, "message-label")
+  append_text(
+    output,
+    (start_x + end_x) / 2,
+    y - 6,
+    label,
+    "message-label",
+    line_height=layout.text_metrics.body.line_height,
+  )
 }
 
 ///|
@@ -667,6 +684,7 @@ fn append_note(
     note.text,
     "note-label",
     anchor="start",
+    line_height=layout.text_metrics.note.line_height,
   )
 }
 
@@ -679,10 +697,18 @@ fn append_divider(
 ) -> Unit {
   let y = placement.y + 17
   append_line(output, 28, y, layout.width - 28, y, "divider")
-  let width = TextSize::of(divider.title).width + 22
+  let width = TextSize::of_with(divider.title, layout.text_metrics.body_bold).width +
+    22
   output <+
     "<rect x=\"\{(layout.width - width) / 2}\" y=\"\{y - 12}\" width=\"\{width}\" height=\"24\" class=\"divider-title\"/>\n"
-  append_text(output, layout.width / 2, y + 5, divider.title, "divider-label")
+  append_text(
+    output,
+    layout.width / 2,
+    y + 5,
+    divider.title,
+    "divider-label",
+    line_height=layout.text_metrics.body_bold.line_height,
+  )
 }
 
 ///|
@@ -696,7 +722,14 @@ fn append_delay(
   append_line(output, 28, y, layout.width - 28, y, "delay")
   match delay.label {
     Some(label) =>
-      append_text(output, layout.width / 2, y - 5, label, "delay-label")
+      append_text(
+        output,
+        layout.width / 2,
+        y - 5,
+        label,
+        "delay-label",
+        line_height=layout.text_metrics.body.line_height,
+      )
     None => ()
   }
 }
@@ -724,6 +757,7 @@ fn append_reference(
     reference.label.unwrap_or("ref"),
     "reference-label",
     anchor="start",
+    line_height=layout.text_metrics.body.line_height,
   )
 }
 
@@ -766,6 +800,7 @@ fn append_return(
     y - 6,
     value.value.unwrap_or(""),
     "message-label",
+    line_height=layout.text_metrics.body.line_height,
   )
 }
 
@@ -812,6 +847,7 @@ fn append_event(
               label,
               "group-label",
               anchor="start",
+              line_height=layout.text_metrics.body_bold.line_height,
             )
           None => ()
         }
@@ -833,6 +869,7 @@ fn append_event(
             placement.y + 14,
             title,
             "page-label",
+            line_height=layout.text_metrics.body_italic.line_height,
           )
         None => ()
       }
@@ -848,6 +885,7 @@ fn append_event(
             placement.y + 18,
             text,
             "anchor-link-label",
+            line_height=layout.text_metrics.body.line_height,
           )
         None => ()
       }
@@ -905,6 +943,9 @@ fn append_svg_preamble(
   let background = @core.svg_color(style.background_color, "#fff")
   let font_family = @core.font_family(style)
   let font_size = @core.font_size(style)
+  let base_font_size = @core.font_size_value(style)
+  let body_font_size = (base_font_size - 1).max(1)
+  let small_font_size = (base_font_size - 2).max(1)
   let line_color = @core.svg_color(style.line_color, "#181818")
   output <+
     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{layout.width}\" height=\"\{layout.height}\" viewBox=\"0 0 \{layout.width} \{layout.height}\" role=\"img\" aria-label=\"Sequence diagram\">\n"
@@ -921,10 +962,10 @@ fn append_svg_preamble(
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
     $|.participant rect,.activation,.note,.divider-title{stroke:#181818;stroke-width:1.2}
-    $|.participant-label{font-weight:bold;fill:#181818}
+    $|.participant-label{font-size:\{base_font_size}px;font-weight:bold;fill:#181818}
     $|.participant-icon{fill:none;stroke:#181818;stroke-width:1.1}
     $|.participant-box-group{fill-opacity:.16;stroke:#181818;stroke-width:1.1}
-    $|.participant-box-label{font-size:11px;font-weight:bold;fill:#181818}
+    $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:#181818}
     $|.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}
     $|.activation{fill:#FEFECE}
     $|.message,.cross,.destroy{fill:none;stroke:\{line_color};stroke-width:1.3}
@@ -932,21 +973,22 @@ fn append_svg_preamble(
     $|.arrow-fill{fill:\{line_color}}
     $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:1.5}
     $|.endpoint{fill:#fff;stroke:\{line_color};stroke-width:1.2}
-    $|.message-label,.note-label,.reference-label,.delay-label{fill:#181818;font-size:12px}
+    $|.message-label,.reference-label,.delay-label{fill:#181818;font-size:\{body_font_size}px}
+    $|.note-label{fill:#181818;font-size:\{base_font_size}px}
     $|.group-body{fill-opacity:.18;stroke:#181818;stroke-width:1.1}
     $|.group-header{stroke:#181818;stroke-width:1.1}
-    $|.group-label{font-size:12px;font-weight:bold;fill:#181818}
+    $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:#181818}
     $|.note{fill:#FEFFDD}
     $|.hex-note{stroke-dasharray:2 1}
     $|.box-note{rx:0}
     $|.divider{stroke:#777;stroke-width:1}
     $|.divider-title{fill:#f6f6f6}
-    $|.divider-label{font-weight:bold}
+    $|.divider-label{font-size:\{body_font_size}px;font-weight:bold}
     $|.delay{stroke:#777;stroke-dasharray:3 3}
     $|.reference{fill:#fff;stroke:#181818;stroke-width:1.2}
     $|.group-separator{stroke:#181818;stroke-dasharray:4 3}
     $|.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
-    $|.page-label{font-style:italic}
+    $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{stroke-width:2}
     $|</style>
   output.write_string(svg_style)
