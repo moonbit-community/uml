@@ -1,10 +1,26 @@
 @startjson
 {
-  "tags": ["parser", "renderer", "json"],
-  "releases": [
-    { "version": "0.1.0", "stable": true },
-    { "version": "0.2.0-beta", "stable": false }
+  "firstName": "John",
+  "lastName": "Smith",
+  "isAlive": true,
+  "age": 28,
+  "address": {
+    "streetAddress": "21 2nd Street",
+    "city": "New York",
+    "state": "NY",
+    "postalCode": "10021-3100"
+  },
+  "phoneNumbers": [
+    {
+      "type": "home",
+      "number": "212 555-1234"
+    },
+    {
+      "type": "office",
+      "number": "646 555-4567"
+    }
   ],
-  "matrix": [[1, 2], [3, 4]]
+  "children": [],
+  "spouse": null
 }
 @endjson

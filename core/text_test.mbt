@@ -1,6 +1,6 @@
 ///|
 test "default font metrics retain legacy text measurements" {
-  @test.assert_eq(measure_text("Hello").width, 28)
+  @test.assert_eq(measure_text("Hello").width, 29)
   @test.assert_eq(measure_text("Hello\nWorld").height, 30)
 }
 
@@ -14,7 +14,7 @@ test "font metrics expose defaulted tuning parameters" {
   )
   @test.assert_eq(metrics.font_size, 16)
   let measured = measure_text_with("AA", metrics)
-  @test.assert_eq(measured.width, 23)
+  @test.assert_eq(measured.width, 25)
   @test.assert_eq(measured.height, 22)
 }
 
@@ -51,8 +51,8 @@ test "font profiles and italic style affect advances" {
     measure_text_with("iii", monospace).width,
   )
   @test.assert_eq(
-    measure_text_with("Hello", italic).advance_width >
-    measure_text_with("Hello", sans).advance_width,
+    measure_text_with("Hello", italic).width >
+    measure_text_with("Hello", sans).width,
     true,
   )
   @test.assert_eq(measure_text_with("Hello", italic).ink_left, 1)
@@ -77,6 +77,42 @@ test "kerning tabs and word spacing participate in measurement" {
     measure_text_with("a a", FontMetrics::from_defaults(word_spacing=2)).width,
     measure_text_with("a a", metrics).width + 2,
   )
+}
+
+///|
+test "numeric runs reserve enough sans-serif width" {
+  let metrics = FontMetrics::from_defaults(font_size=14)
+  @test.assert_eq(measure_text_with("0123456789", metrics).width, 81)
+  @test.assert_eq(measure_text_with("212 555-1234", metrics).width, 93)
+  @test.assert_eq(
+    measure_text_with("0123456789", metrics).width >
+    measure_text_with("abcdefghij", metrics).width,
+    true,
+  )
+}
+
+///|
+test "character class width scales are configurable" {
+  let calibrated = FontMetrics::from_defaults(font_size=14)
+  let neutral = FontMetrics::from_defaults(
+    font_size=14,
+    uppercase_width_scale=100,
+    lowercase_width_scale=100,
+    digit_width_scale=100,
+    punctuation_width_scale=100,
+    cjk_width_scale=100,
+  )
+  @test.assert_eq(
+    measure_text_with("ABCDEFGHIJKLMNOPQRSTUVWXYZ", calibrated).width >
+    measure_text_with("ABCDEFGHIJKLMNOPQRSTUVWXYZ", neutral).width,
+    true,
+  )
+  @test.assert_eq(
+    measure_text_with("0123456789", calibrated).width <
+    measure_text_with("0123456789", neutral).width,
+    true,
+  )
+  @test.assert_eq(measure_text_with("中文字体度量", calibrated).width, 85)
 }
 
 ///|

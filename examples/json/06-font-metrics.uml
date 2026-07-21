@@ -1,0 +1,16 @@
+@startjson
+{
+  "digits": ["0123456789"],
+  "digitsGrouped": ["123 456 7890"],
+  "phone": ["212 555-1234"],
+  "lowercase": ["abcdefghijklmnopqrstuvwxyz"],
+  "uppercase": ["ABCDEFGHIJKLMNOPQRSTUVWXYZ"],
+  "narrowGlyphs": ["ilI!|.,:;'"],
+  "wideGlyphs": ["mwMW@%"],
+  "punctuation": ["!@#$%^&*()-_=+[]{};:'\",.<>/?\\|"],
+  "mixed": ["Order #A-1024 / v2.5"],
+  "spaces": ["alpha beta gamma"],
+  "cjk": ["中文字体度量"],
+  "emoji": ["Font metrics 😀 ✅"]
+}
+@endjson

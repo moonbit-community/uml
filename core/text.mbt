@@ -48,6 +48,11 @@ pub struct FontMetrics {
   italic_width_scale : Int
   italic_overhang : Int
   width_scale : Int
+  uppercase_width_scale : Int
+  lowercase_width_scale : Int
+  digit_width_scale : Int
+  punctuation_width_scale : Int
+  cjk_width_scale : Int
   bold_width_scale : Int
   space_width : Int
   narrow_width : Int
@@ -60,7 +65,7 @@ pub struct FontMetrics {
 } derive(Eq, Debug)
 
 ///|
-pub fn FontMetrics::default() -> FontMetrics {
+pub impl Default for FontMetrics with fn default() -> FontMetrics {
   FontMetrics::from_defaults()
 }
 
@@ -77,6 +82,11 @@ pub fn FontMetrics::from_defaults(
   descent? : Int = 0,
   line_gap? : Int = 0,
   width_scale? : Int = 100,
+  uppercase_width_scale? : Int = 108,
+  lowercase_width_scale? : Int = 100,
+  digit_width_scale? : Int = 93,
+  punctuation_width_scale? : Int = 102,
+  cjk_width_scale? : Int = 93,
   font_stretch? : Int = 100,
   bold_width_scale? : Int = 110,
   italic_width_scale? : Int = 103,
@@ -112,6 +122,11 @@ pub fn FontMetrics::from_defaults(
     italic_width_scale,
     italic_overhang,
     width_scale,
+    uppercase_width_scale,
+    lowercase_width_scale,
+    digit_width_scale,
+    punctuation_width_scale,
+    cjk_width_scale,
     bold_width_scale,
     space_width: 0,
     narrow_width: 0,
@@ -129,7 +144,7 @@ pub fn FontMetrics::from_defaults(
     normal_width: metrics.scaled_advance(7, 'a').ceil_pixels(),
     wide_width: metrics.scaled_advance(11, 'm').ceil_pixels(),
     uppercase_width: metrics.scaled_advance(8, 'A').ceil_pixels(),
-    digit_width: metrics.scaled_advance(7, '0').ceil_pixels(),
+    digit_width: metrics.scaled_advance(8, '0').ceil_pixels(),
     cjk_width: metrics.scaled_advance(14, '\u{4e00}').ceil_pixels(),
     emoji_width: metrics.scaled_advance(14, '\u{1f600}').ceil_pixels(),
   }
@@ -186,10 +201,27 @@ fn FontMetrics::scaled_advance(
   }
   let advance = base_width * self.font_size * 1000 / 13
   let advance = advance * self.width_scale / 100
+  let advance = advance * self.glyph_width_scale(char) / 100
   let advance = advance * self.font_stretch / 100
   let advance = advance * self.profile_scale() / 1000
   let advance = advance * weight_scale / 100
   advance * style_scale / 100
+}
+
+///|
+fn FontMetrics::glyph_width_scale(self : FontMetrics, char : Char) -> Int {
+  guard self.profile != Monospace else { 100 }
+  match char {
+    'A'..='Z' => self.uppercase_width_scale
+    'a'..='z' => self.lowercase_width_scale
+    '0'..='9' => self.digit_width_scale
+    ' ' | '\t' => 100
+    _ if char.is_ascii() => self.punctuation_width_scale
+    '\u{2e80}'..='\u{9fff}'
+    | '\u{ac00}'..='\u{d7af}'
+    | '\u{f900}'..='\u{faff}' => self.cjk_width_scale
+    _ => 100
+  }
 }
 
 ///|
@@ -201,7 +233,7 @@ fn base_char_width(char : Char) -> Int {
     'f' | 'j' | 'r' | 't' | '(' | ')' | '[' | ']' => 5
     'm' | 'w' | 'M' | 'W' | '@' | '%' => 11
     'A'..='Z' => 8
-    '0'..='9' => 7
+    '0'..='9' => 8
     '\u{1f000}'..='\u{1faff}' => 14
     _ if char.is_ascii() => 7
     _ => 14
@@ -227,11 +259,6 @@ fn FontMetrics::kerning(self : FontMetrics, left : Char, right : Char) -> Int {
     _ => 0
   }
   base * self.font_size * self.kerning_scale / (13 * 100)
-}
-
-///|
-pub fn text_char_width(char : Char) -> Int {
-  FontMetrics::default().char_width(char)
 }
 
 ///|

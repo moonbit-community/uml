@@ -209,7 +209,7 @@ test "text metrics distinguish narrow and wide default sans glyphs" {
     true,
   )
   @test.assert_eq(TextSize::of_with(" ", metrics).width, 4)
-  @test.assert_eq(TextSize::of_with("A", metrics).width, 8)
+  @test.assert_eq(TextSize::of_with("A", metrics).width, 9)
 }
 
 ///|
