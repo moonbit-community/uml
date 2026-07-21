@@ -1,0 +1,10 @@
+@startjson
+{
+  "tags": ["parser", "renderer", "json"],
+  "releases": [
+    { "version": "0.1.0", "stable": true },
+    { "version": "0.2.0-beta", "stable": false }
+  ],
+  "matrix": [[1, 2], [3, 4]]
+}
+@endjson
