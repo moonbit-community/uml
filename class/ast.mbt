@@ -153,6 +153,8 @@ pub struct Relation {
   inside : String?
   left_port : String?
   right_port : String?
+  left_couple : (String, String)?
+  right_couple : (String, String)?
 } derive(Eq, Debug)
 
 ///|

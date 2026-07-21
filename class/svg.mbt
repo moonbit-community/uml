@@ -39,8 +39,8 @@ fn Entity::visible_member_count(self : Entity) -> Int {
 
 ///|
 priv struct ClassTextMetrics {
-  regular : @core.FontMetrics
-  bold : @core.FontMetrics
+  regular : @metrics.FontMetrics
+  bold : @metrics.FontMetrics
 }
 
 ///|
@@ -50,12 +50,12 @@ fn ClassTextMetrics::new(style : @core.DocumentStyle) -> ClassTextMetrics {
 
 ///|
 fn Entity::width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
-  let mut width = @core.measure_text_with(self.display, text_metrics.bold).width +
+  let mut width = @metrics.measure_text_with(self.display, text_metrics.bold).width +
     28
   for entry in self.members {
     guard self.entry_visible(entry) else { continue }
     width = width.max(
-      @core.measure_text_with(entry.raw, text_metrics.regular).width + 28,
+      @metrics.measure_text_with(entry.raw, text_metrics.regular).width + 28,
     )
   }
   width.max(140)

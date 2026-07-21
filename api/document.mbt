@@ -48,6 +48,32 @@ pub fn is_class_source(input : String) -> Bool {
   input.contains("class ") ||
   input.contains("interface ") ||
   input.contains("enum ") ||
+  input.contains("object ") ||
+  input.contains("entity ") ||
+  input.contains("map ") ||
+  input.contains("json ") ||
+  input.contains("component ") ||
+  input.contains("database ") ||
+  input.contains("queue ") ||
+  input.contains("actor ") ||
+  input.contains("usecase ") ||
+  input.contains("struct ") ||
+  input.contains("protocol ") ||
+  input.contains("person ") ||
+  input.contains("artifact ") ||
+  input.contains("boundary ") ||
+  input.contains("control ") ||
+  input.contains("port ") ||
+  input.contains("portin ") ||
+  input.contains("portout ") ||
+  input.contains("mix_") ||
+  input.contains("() ") ||
+  input.contains("usecase (") ||
+  input.contains("actor :") ||
+  input.contains("component [") ||
+  input.contains("note on link") ||
+  input.contains("constraint on links") ||
+  input.contains("<> ") ||
   input.contains("package ") ||
   input.contains("namespace ")
 }

@@ -107,6 +107,35 @@ fn parse_member_tip_header(line : String) -> SpecialNoteHeader? {
 }
 
 ///|
+fn parse_entity_note_header(line : String) -> SpecialNoteHeader? {
+  guard find_substring(line, " : ") is None else { return None }
+  let tokens = words(line)
+  guard tokens.length() >= 4 && tokens[0].to_lower() == "note" else {
+    return None
+  }
+  guard note_position(tokens[1]) is Some(position) &&
+    tokens[2].to_lower() == "of" else {
+    return None
+  }
+  let (target, color, url, stereotype, braced) = note_header_metadata(
+    tokens[3:].join(" "),
+  )
+  guard target.length() > 0 else { return None }
+  Some({
+    target,
+    position,
+    target_kind: EntityNote,
+    relation_index: None,
+    member_name: None,
+    code: None,
+    color,
+    url,
+    stereotype,
+    braced,
+  })
+}
+
+///|
 fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
   let lower = line.to_lower()
   guard lower.has_prefix("note ") else { return None }
@@ -183,11 +212,14 @@ fn Parser::push_special_note(
       }
       header = { ..header, target, }
     }
+    EntityNote => {
+      let target = self.ensure_entity(header.target)
+      header = { ..header, target, }
+    }
     FloatingNote => {
       let target = self.ensure_entity_as(header.target, NamedNote)
       header = { ..header, target, code: Some(target) }
     }
-    EntityNote => ()
   }
   self.notes.push({
     target: header.target,

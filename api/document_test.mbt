@@ -31,3 +31,13 @@ test "document facade renders a JSON structure diagram" {
   @test.assert_eq(document.render_svg().contains(">service<"), true)
   @test.assert_eq(is_json_source("\n@STARTJSON\n{}\n@endjson"), true)
 }
+
+///|
+test "detects object map and inline JSON class sources" {
+  @test.assert_eq(is_class_source("@startuml\nobject User\n@enduml"), true)
+  @test.assert_eq(
+    is_class_source("@startuml\nmap Values {\nkey => value\n}\n@enduml"),
+    true,
+  )
+  @test.assert_eq(is_class_source("@startuml\njson Values 42\n@enduml"), true)
+}

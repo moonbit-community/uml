@@ -13,3 +13,13 @@ test "shared PlantUML syntax helpers respect quoted text" {
   @test.assert_eq(url.target.target, "https://example.com")
   @test.assert_eq(url.after, " <<entity>>")
 }
+
+///|
+test "syntax words preserve quoted identifiers as single tokens" {
+  @test.assert_eq(syntax_words("class \"Display name\" as User"), [
+    "class", "\"Display name\"", "as", "User",
+  ])
+  @test.assert_eq(syntax_words("note right of \"A B\" : text here"), [
+    "note", "right", "of", "\"A B\"", ":", "text", "here",
+  ])
+}

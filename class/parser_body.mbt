@@ -149,6 +149,8 @@ fn Parser::add_map_link(
     inside: None,
     left_port: Some(entry.key),
     right_port: None,
+    left_couple: None,
+    right_couple: None,
   })
 }
 

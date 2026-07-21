@@ -19,11 +19,37 @@ pub fn strip_line_comment(line : String) -> String {
 ///|
 /// Split a PlantUML command into whitespace-delimited words.
 pub fn syntax_words(line : String) -> Array[String] {
-  line
-  .split(" ")
-  .map(item => item.trim().to_owned())
-  .filter(item => item.length() > 0)
-  .to_array()
+  let result : Array[String] = []
+  let mut current = StringBuilder()
+  let mut quoted = false
+  let mut escaped = false
+  for char in line {
+    if escaped {
+      current.write_char(char)
+      escaped = false
+      continue
+    }
+    if quoted && char == '\\' {
+      current.write_char(char)
+      escaped = true
+      continue
+    }
+    if char == '"' {
+      quoted = !quoted
+      current.write_char(char)
+    } else if !quoted && char.is_whitespace() {
+      if current.to_string().length() > 0 {
+        result.push(current.to_string())
+        current = StringBuilder()
+      }
+    } else {
+      current.write_char(char)
+    }
+  }
+  if current.to_string().length() > 0 {
+    result.push(current.to_string())
+  }
+  result
 }
 
 ///|

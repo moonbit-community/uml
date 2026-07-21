@@ -89,6 +89,9 @@ fn declaration_kind(word : String) -> EntityKind? {
     "struct" => Some(Struct)
     "circle" => Some(Circle)
     "usecase" => Some(Usecase)
+    "usecase/" => Some(Usecase)
+    "person" => Some(Actor)
+    "actor/" => Some(Actor)
     "exception" => Some(Exception)
     "metaclass" => Some(Metaclass)
     "stereotype" => Some(Stereotype)
@@ -98,6 +101,11 @@ fn declaration_kind(word : String) -> EntityKind? {
     "json" => Some(Json)
     "diamond" => Some(Diamond)
     "component" => Some(Component)
+    "boundary" => Some(Component)
+    "control" => Some(Component)
+    "port" => Some(Component)
+    "portin" => Some(Component)
+    "portout" => Some(Component)
     "actor" => Some(Actor)
     "database" => Some(Database)
     "queue" => Some(Queue)
@@ -106,6 +114,19 @@ fn declaration_kind(word : String) -> EntityKind? {
     "node" => Some(Node)
     "cloud" => Some(Cloud)
     "state" => Some(State)
+    "artifact" => Some(Class)
+    "card" => Some(Class)
+    "package" => Some(Folder)
+    "rectangle" => Some(Class)
+    "hexagon" => Some(Class)
+    "label" => Some(Class)
+    "frame" => Some(Folder)
+    "action" => Some(Class)
+    "process" => Some(Class)
+    "stack" => Some(Class)
+    "storage" => Some(Class)
+    "agent" => Some(Class)
+    "collections" => Some(Class)
     _ => None
   }
 }
@@ -213,7 +234,20 @@ fn parse_declaration(line : String) -> Declaration? {
     })
   }
   if line.has_prefix("()") {
-    let body = line[2:].trim().to_owned()
+    let mut body = line[2:].trim().to_owned()
+    let color = declaration_color(body)
+    if find_substring(body, " #") is Some(index) {
+      body = body[0:index].trim().to_owned()
+    }
+    let (_, stereotype) = extract_stereotype(body)
+    let url = match @core.extract_url(body) {
+      Some(value) => Some(value.target.target)
+      None => None
+    }
+    let mut name_end = body.length()
+    name_end = earlier(name_end, find_substring(body, " <<"))
+    name_end = earlier(name_end, find_substring(body, " [["))
+    body = body[0:name_end].trim().to_owned()
     let (display, code) = match body.split(" as ").to_array() {
       [name, alternate] =>
         (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
@@ -230,17 +264,22 @@ fn parse_declaration(line : String) -> Declaration? {
       visibility,
       is_static: false,
       generic: None,
-      stereotype: None,
+      stereotype,
       extends: [],
       implements: [],
-      url: None,
-      color: None,
+      url,
+      color,
     })
   }
   let mut parts = words(line)
   guard parts.length() > 1 else { return None }
   let mut is_static = false
-  let kind = if parts[0].to_lower() == "static" && parts.length() > 2 {
+  let kind = if parts[0].to_lower().has_prefix("mix_") && parts.length() > 1 {
+    let symbol = parts[0][4:].to_owned()
+    parts[0] = symbol
+    guard declaration_kind(parts[0]) is Some(kind) else { return None }
+    kind
+  } else if parts[0].to_lower() == "static" && parts.length() > 2 {
     is_static = true
     parts = parts[1:].to_owned()
     guard declaration_kind(parts[0]) is Some(kind) else { return None }
@@ -292,6 +331,10 @@ fn parse_declaration(line : String) -> Declaration? {
       (name, name)
     }
   }
+  // PlantUML allows the visual symbol to be encoded directly in the name,
+  // for example `usecase (Login)`, `actor :User:`, and `component [API]`.
+  // The encoded delimiters are presentation syntax, not part of the id.
+  let (kind, display, code) = shaped_declaration(kind, display, code)
   guard code.length() > 0 else { return None }
   Some({
     kind,
@@ -306,6 +349,66 @@ fn parse_declaration(line : String) -> Declaration? {
     url,
     color,
   })
+}
+
+///|
+fn shaped_declaration(
+  kind : EntityKind,
+  display : String,
+  code : String,
+) -> (EntityKind, String, String) {
+  let value = display.trim()
+  let encoded = if value.length() >= 2 &&
+    value.has_prefix("(") &&
+    value.has_suffix(")") {
+    Some((Usecase, value[1:value.length() - 1].trim().to_owned()))
+  } else if value.length() >= 2 &&
+    value.has_prefix(":") &&
+    value.has_suffix(":") {
+    Some((Actor, value[1:value.length() - 1].trim().to_owned()))
+  } else if value.length() >= 2 &&
+    value.has_prefix("[") &&
+    value.has_suffix("]") {
+    Some((Component, value[1:value.length() - 1].trim().to_owned()))
+  } else if code.length() >= 2 && code.has_prefix("(") && code.has_suffix(")") {
+    Some((Usecase, code[1:code.length() - 1].trim().to_owned()))
+  } else if code.length() >= 2 && code.has_prefix(":") && code.has_suffix(":") {
+    Some((Actor, code[1:code.length() - 1].trim().to_owned()))
+  } else if code.length() >= 2 && code.has_prefix("[") && code.has_suffix("]") {
+    Some((Component, code[1:code.length() - 1].trim().to_owned()))
+  } else {
+    None
+  }
+  match encoded {
+    Some((shape, raw_inner)) => {
+      let inner = normalize_name(raw_inner)
+      if inner.length() > 0 {
+        let actual_code = if display == code { inner } else { code }
+        return (shape, inner, actual_code)
+      }
+    }
+    None => ()
+  }
+  let value = code.trim()
+  if value.length() >= 2 && value.has_prefix("(") && value.has_suffix(")") {
+    let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
+    if inner.length() > 0 {
+      return (Usecase, inner, inner)
+    }
+  }
+  if value.length() >= 2 && value.has_prefix(":") && value.has_suffix(":") {
+    let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
+    if inner.length() > 0 {
+      return (Actor, inner, inner)
+    }
+  }
+  if value.length() >= 2 && value.has_prefix("[") && value.has_suffix("]") {
+    let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
+    if inner.length() > 0 {
+      return (Component, inner, inner)
+    }
+  }
+  (kind, display, code)
 }
 
 ///|
@@ -568,14 +671,17 @@ fn Parser::add_member_to(self : Parser, code : String, entry : Member) -> Unit {
 
 ///|
 fn parse_external_member(line : String) -> (String, Member)? {
+  let head = words(line)
+  guard head.length() > 0 &&
+    !head[0].to_lower().has_prefix("mix_") &&
+    declaration_kind(head[0]) is None else {
+    return None
+  }
   guard find_substring(line, ":") is Some(separator) else { return None }
   let target = line[0:separator].trim().to_owned()
   let body = line[separator + 1:].trim().to_owned()
   guard target.length() > 0 && body.length() > 0 else { return None }
-  guard !target.contains("-") &&
-    !target.contains(".") &&
-    !target.contains("<") &&
-    !target.contains("[[") else {
+  guard !target.contains("-") && !target.contains("<") && !target.contains("[[") else {
     return None
   }
   Some((normalize_name(target), member_of(body)))
@@ -615,8 +721,15 @@ fn package_declaration(raw : String) -> GroupDeclaration? {
   name_end = earlier(name_end, find_substring(body, " [["))
   body = body[0:name_end].trim().to_owned()
   let (display, code) = match body.split(" as ").to_array() {
-    [name, alternate] =>
-      (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
+    [name, alternate] => {
+      let name = name.trim()
+      let alternate = alternate.trim()
+      if alternate.has_prefix("\"") && alternate.has_suffix("\"") {
+        (normalize_name(alternate.to_owned()), normalize_name(name.to_owned()))
+      } else {
+        (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
+      }
+    }
     _ => {
       let name = normalize_name(body)
       (name, name)
@@ -680,12 +793,12 @@ fn consume_style(line : String, start : Int) -> Int {
 fn relation_arrow(line : String) -> (String, Int, Int)? {
   let chars = line.to_array()
   let left_decors = [
-    "<|:", "<||", "}o", "|o", "}|", "<|", "<<", "0)", "||", "*", "o", "x", "}", "<",
-    "0", "@", ")", "#", "+",
+    "<|:", "<||", "}o", "|o", "}|", "<|", "<<", "0)", "||", "*", "o", "x", "}", "<_",
+    "<", "0", "@", ")", "#", "+",
   ]
   let right_decors = [
-    ":|>", "||>", "o{", "o|", "|{", "|>", ">>", "(0", "||", "*", "o", "x", "{", ">",
-    "0", "@", "(", "#", "+", "\\", "//",
+    ":|>", "||>", "o{", "o|", "|{", "|>", ">>", "(0", "||", "*", "o", "x", "{", "_>",
+    ">", "0", "@", "(", "#", "+", "\\", "//",
   ]
   let directions = [
     "right", "down", "left", "up", "ri", "do", "le", "r", "d", "l", "u",
@@ -710,6 +823,11 @@ fn relation_arrow(line : String) -> (String, Int, Int)? {
     while end < chars.length() && arrow_body_char(chars[end]) {
       end += 1
     }
+    // A relation body is normally at least two stroke characters (`--`, `..`,
+    // `==`). A one-stroke body is valid when followed by an explicit
+    // direction, as in `-left->`.
+    let has_direction = longest_prefix_at(line, end, directions) is Some(_)
+    guard end - body_start >= 2 || has_direction else { continue }
     end = consume_style(line, end)
     if longest_prefix_at(line, end, directions) is Some(direction) {
       end += direction.length()
@@ -956,6 +1074,19 @@ fn relation_suffix(raw : String) -> (String, String?, String?, String?) {
 }
 
 ///|
+fn parse_relation_couple(raw : String) -> (String, String)? {
+  let value = raw.trim()
+  guard value.has_prefix("(") && value.has_suffix(")") else { return None }
+  let content = value[1:value.length() - 1].trim().to_owned()
+  let parts = @core.split_unquoted(content, ',')
+  guard parts.length() == 2 else { return None }
+  let left = normalize_name(parts[0])
+  let right = normalize_name(parts[1])
+  guard left.length() > 0 && right.length() > 0 else { return None }
+  Some((left, right))
+}
+
+///|
 fn note_position(word : String) -> NotePosition? {
   match word.to_lower() {
     "left" => Some(Left)
@@ -976,7 +1107,10 @@ fn parse_single_line_note(line : String) -> Note? {
   guard tokens[2].to_lower() == "of" else { return None }
   let rest = tokens[3:].join(" ")
   guard find_substring(rest, ":") is Some(separator) else { return None }
-  let target = normalize_name(rest[0:separator].trim().to_owned())
+  let (target_raw, color, url, stereotype) = relation_suffix(
+    rest[0:separator].trim().to_owned(),
+  )
+  let target = normalize_name(target_raw)
   let text = rest[separator + 1:].trim().to_owned()
   guard target.length() > 0 else { return None }
   Some({
@@ -987,9 +1121,9 @@ fn parse_single_line_note(line : String) -> Note? {
     relation_index: None,
     member_name: None,
     code: None,
-    color: None,
-    url: None,
-    stereotype: None,
+    color,
+    url,
+    stereotype,
   })
 }
 
@@ -1064,10 +1198,18 @@ fn Parser::consume_text_block(
   keyword : String,
 ) -> Unit raise ParseError {
   self.index += 1
+  let text = StringBuilder()
+  let mut first = true
   while self.index < self.lines.length() {
     if strip_comment(self.lines[self.index]).to_lower() == "end \{keyword}" {
+      self.style.apply(TextBlock(keyword, text.to_string()))
       return
     }
+    if !first {
+      text.write_char('\n')
+    }
+    text.write_string(self.lines[self.index])
+    first = false
     self.index += 1
   }
   self.raise_parse_error("unclosed \{keyword}")
@@ -1191,6 +1333,25 @@ fn split_qualifier(
 }
 
 ///|
+fn Parser::split_port(self : Parser, raw : String) -> (String, String?) {
+  guard find_substring(raw, "::") is Some(separator) else { (raw, None) }
+  let base = raw[0:separator].trim().to_owned()
+  let port = raw[separator + 2:].trim().to_owned()
+  guard base.length() > 0 && port.length() > 0 else { (raw, None) }
+  // `A::B` is a qualified entity name when it already exists. Otherwise,
+  // PlantUML treats the suffix as a port/member id on entity `A`.
+  let full = normalize_name(raw)
+  let base_code = self.resolve(base)
+  if self.entities.any(entity => entity.qualified_code == full) {
+    (raw, None)
+  } else if self.entities.any(entity => entity.qualified_code == base_code) {
+    (base, Some(port))
+  } else {
+    (raw, None)
+  }
+}
+
+///|
 fn Parser::parse_relation(self : Parser, line : String) -> Bool {
   guard relation_arrow(line) is Some((arrow, start, end)) else { false }
   let mut left_raw = line[0:start].trim().to_owned()
@@ -1219,17 +1380,25 @@ fn Parser::parse_relation(self : Parser, line : String) -> Bool {
   let (right_raw, right_role) = split_role(right_target, false)
   let (left_raw, left_qualifier) = split_qualifier(left_raw, true)
   let (right_raw, right_qualifier) = split_qualifier(right_raw, false)
+  let (left_raw, left_port) = self.split_port(left_raw)
+  let (right_raw, right_port) = self.split_port(right_raw)
+  let left_couple_raw = parse_relation_couple(left_raw)
+  let right_couple_raw = parse_relation_couple(right_raw)
   let (left, left_cardinality) = endpoint(left_raw, true)
   let (right, right_cardinality) = endpoint(right_raw, false)
   guard left.length() > 0 && right.length() > 0 else { false }
   let left_end = left_relation_end(arrow)
   let right_end = right_relation_end(arrow)
-  let left = if left_end is Parenthesis {
+  let left = if left_couple_raw is Some((couple_left, _)) {
+    self.ensure_entity(couple_left)
+  } else if left_end is Parenthesis {
     self.ensure_entity_as(left, Interface)
   } else {
     self.ensure_entity(left)
   }
-  let right = if right_end is Parenthesis {
+  let right = if right_couple_raw is Some((_, couple_right)) {
+    self.ensure_entity(couple_right)
+  } else if right_end is Parenthesis {
     self.ensure_entity_as(right, Interface)
   } else {
     self.ensure_entity(right)
@@ -1256,8 +1425,16 @@ fn Parser::parse_relation(self : Parser, line : String) -> Bool {
     stereotype,
     weight,
     inside: relation_inside(arrow),
-    left_port: None,
-    right_port: None,
+    left_port,
+    right_port,
+    left_couple: match left_couple_raw {
+      Some((first, second)) => Some((self.resolve(first), self.resolve(second)))
+      None => None
+    },
+    right_couple: match right_couple_raw {
+      Some((first, second)) => Some((self.resolve(first), self.resolve(second)))
+      None => None
+    },
   })
   true
 }
@@ -1313,6 +1490,13 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     None => ()
   }
   match parse_member_tip_header(line) {
+    Some(header) => {
+      self.consume_special_note(header)
+      return
+    }
+    None => ()
+  }
+  match parse_entity_note_header(line) {
     Some(header) => {
       self.consume_special_note(header)
       return
@@ -1375,13 +1559,6 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     }
     None => ()
   }
-  match parse_external_member(line) {
-    Some((target, entry)) => {
-      self.add_member_to(target, entry)
-      return
-    }
-    None => ()
-  }
   match parse_multiline_note_header(line) {
     Some((target, position)) => {
       let target = self.ensure_entity(target)
@@ -1408,22 +1585,45 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
   match package_declaration(line) {
     Some(group) => {
       let parent = self.current_package()
-      let qualified_name = if parent.length() == 0 {
-        group.code
-      } else {
-        parent + "." + group.code
+      let segments = @core.split_unquoted(group.code, '.')
+      let mut prefix = parent
+      for segment_index, segment in segments {
+        let qualified_name = if prefix.length() == 0 {
+          segment
+        } else {
+          prefix + "." + segment
+        }
+        let is_last = segment_index == segments.length() - 1
+        let display = if is_last { group.display } else { segment }
+        self.packages.push({
+          name: segment,
+          qualified_name,
+          display,
+          parent: prefix,
+          is_namespace: group.is_namespace,
+          visibility: if is_last {
+            group.visibility
+          } else {
+            Unknown
+          },
+          stereotype: if is_last {
+            group.stereotype
+          } else {
+            None
+          },
+          url: if is_last {
+            group.url
+          } else {
+            None
+          },
+          color: if is_last {
+            group.color
+          } else {
+            None
+          },
+        })
+        prefix = qualified_name
       }
-      self.packages.push({
-        name: group.code,
-        qualified_name,
-        display: group.display,
-        parent,
-        is_namespace: group.is_namespace,
-        visibility: group.visibility,
-        stereotype: group.stereotype,
-        url: group.url,
-        color: group.color,
-      })
       if !group.empty {
         self.package_stack.push(group.code)
       }
@@ -1473,6 +1673,8 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
           inside: None,
           left_port: None,
           right_port: None,
+          left_couple: None,
+          right_couple: None,
         })
       }
       for interface in declaration.implements {
@@ -1502,22 +1704,40 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
           inside: None,
           left_port: None,
           right_port: None,
+          left_couple: None,
+          right_couple: None,
         })
       }
       return
     }
     None => ()
   }
+  // Relations may contain endpoint ports (`A::out --> B::in`) and therefore
+  // also contain colons. Parse them before the `A : member` shorthand.
   if self.parse_relation(line) {
     return
+  }
+  match parse_external_member(line) {
+    Some((target, entry)) => {
+      self.add_member_to(target, entry)
+      return
+    }
+    None => ()
   }
   // PlantUML accepts many global/style commands. They do not alter the core
   // class graph and are intentionally retained as no-op parser directives.
   if line.has_prefix("skinparam ") ||
     line.to_lower() == "allowmixing" ||
-    line.has_prefix("left to right") ||
-    line.has_prefix("top to bottom") ||
-    line.has_prefix("title ") {
+    line.to_lower() == "allow_mixing" ||
+    line.to_lower().has_prefix("set namespace_separator ") ||
+    line.to_lower().has_prefix("set namespaceseparator ") ||
+    line.to_lower() == "footbox" ||
+    line.to_lower() == "newpage" ||
+    line.to_lower().has_prefix("newpage ") ||
+    line.to_lower() == "layout newline" ||
+    line.to_lower().has_prefix("left to right") ||
+    line.to_lower().has_prefix("top to bottom") ||
+    line.to_lower().has_prefix("title ") {
     return
   }
   self.raise_parse_error(line)

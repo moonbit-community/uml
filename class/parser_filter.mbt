@@ -72,10 +72,22 @@ fn parse_portion_rule(line : String, scope : String) -> PortionRule? {
     "show" => true
     _ => return None
   }
-  guard member_portion(tokens[tokens.length() - 1]) is Some(portion) else {
-    return None
+  let portion = match member_portion(tokens[tokens.length() - 1]) {
+    Some(value) => value
+    None => {
+      // CommonHides also registers `hide public` (and the other visibility
+      // modifiers) as shorthand for hiding members of that visibility.
+      guard tokens.length() == 2 && visibility_word(tokens[1]) is Some(_) else {
+        return None
+      }
+      MemberPortion
+    }
   }
-  let middle = tokens[1:tokens.length() - 1].to_owned()
+  let middle = if member_portion(tokens[tokens.length() - 1]) is Some(_) {
+    tokens[1:tokens.length() - 1].to_owned()
+  } else {
+    tokens[1:].to_owned()
+  }
   let mut empty_only = false
   let selector_tokens : Array[String] = []
   for token in middle {
