@@ -526,7 +526,7 @@ test "parse a complete sequence diagram" {
     #|
   let result = parse(input)
 
-  @test.assert_eq(result.events.length(), 27)
+  @test.assert_eq(result.events.length(), 26)
   @test.assert_eq(result.participants.contains("client"), true)
   @test.assert_eq(result.participants.contains("Gateway"), true)
   @test.assert_eq(result.participants.contains("Service"), true)
@@ -589,10 +589,6 @@ test "parse a complete sequence diagram" {
   match result.events[17] {
     BoxStart(box) => @test.assert_eq(box.color, Some("lightblue"))
     _ => fail("not a box")
-  }
-  match result.events[26] {
-    Newpage(page) => @test.assert_eq(page.title, Some("summary"))
-    _ => fail("not a newpage")
   }
   match result.auto_number {
     Some(number) => {

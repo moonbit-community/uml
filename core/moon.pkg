@@ -1,5 +1,6 @@
 /// Shared document infrastructure.
 import {
+  "kokic/uml/metrics",
   "moonbitlang/core/string",
 }
 

@@ -6,12 +6,12 @@ priv struct TextSize {
 
 ///|
 priv struct SequenceTextMetrics {
-  participant : @core.FontMetrics
-  note : @core.FontMetrics
-  body : @core.FontMetrics
-  body_bold : @core.FontMetrics
-  body_italic : @core.FontMetrics
-  small_bold : @core.FontMetrics
+  participant : @metrics.FontMetrics
+  note : @metrics.FontMetrics
+  body : @metrics.FontMetrics
+  body_bold : @metrics.FontMetrics
+  body_italic : @metrics.FontMetrics
+  small_bold : @metrics.FontMetrics
 }
 
 ///|
@@ -116,9 +116,9 @@ let participant_edge_gap = 17
 ///|
 fn TextSize::of_with(
   text : String,
-  font_metrics : @core.FontMetrics,
+  font_metrics : @metrics.FontMetrics,
 ) -> TextSize {
-  let metrics = @core.measure_text_with(text, font_metrics)
+  let metrics = @metrics.measure_text_with(text, font_metrics)
   { width: metrics.width, height: metrics.height }
 }
 

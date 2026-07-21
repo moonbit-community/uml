@@ -6,6 +6,20 @@ pub struct DocumentStyle {
   mut font_family : String?
   mut font_size : String?
   mut line_color : String?
+  mut layout_direction : Direction?
+  mut scale : String?
+  mut title : String?
+  mut caption : String?
+  mut legend : String?
+  mut header : String?
+  mut footer : String?
+  properties : Map[String, String]
+} derive(Eq, Debug)
+
+///|
+pub(all) enum Direction {
+  TopToBottom
+  LeftToRight
 } derive(Eq, Debug)
 
 ///|
@@ -15,6 +29,11 @@ pub(all) enum StyleDirective {
   FontFamily(String)
   FontSize(String)
   LineColor(String)
+  TextBlock(String, String)
+  Direction(Direction)
+  Scale(String)
+  Title(String)
+  Property(String, String)
 } derive(Eq, Debug)
 
 ///|
@@ -25,6 +44,14 @@ pub fn DocumentStyle::empty() -> DocumentStyle {
     font_family: None,
     font_size: None,
     line_color: None,
+    layout_direction: None,
+    scale: None,
+    title: None,
+    caption: None,
+    legend: None,
+    header: None,
+    footer: None,
+    properties: Map([]),
   }
 }
 
@@ -39,6 +66,19 @@ pub fn DocumentStyle::apply(
     FontFamily(family) => self.font_family = Some(family)
     FontSize(size) => self.font_size = Some(size)
     LineColor(color) => self.line_color = Some(color)
+    TextBlock(kind, text) =>
+      match kind {
+        "title" => self.title = Some(text)
+        "caption" => self.caption = Some(text)
+        "legend" => self.legend = Some(text)
+        "header" => self.header = Some(text)
+        "footer" => self.footer = Some(text)
+        _ => ()
+      }
+    Direction(dir) => self.layout_direction = Some(dir)
+    Scale(s) => self.scale = Some(s)
+    Title(t) => self.title = Some(t)
+    Property(key, value) => self.properties[key] = value
   }
 }
 
@@ -48,6 +88,31 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
   if trimmed.to_lower().has_prefix("skinparam ") {
     return parse_style_property(trimmed[10:].trim().to_owned())
   }
+  let lower = trimmed.to_lower()
+  if lower == "left to right direction" {
+    return Some(Direction(LeftToRight))
+  }
+  if lower == "top to bottom direction" {
+    return Some(Direction(TopToBottom))
+  }
+  if lower == "hide empty description" {
+    return Some(Property("hide empty description", "true"))
+  }
+  if lower == "footbox" ||
+    lower == "newpage" ||
+    lower.has_prefix("newpage ") ||
+    lower == "layout newline" {
+    return Some(Property(lower.to_owned(), "true"))
+  }
+  if lower.has_prefix("scale ") {
+    return Some(Scale(trimmed[6:].trim().to_owned()))
+  }
+  for kind in ["title", "caption", "legend", "header", "footer"] {
+    if lower.has_prefix(kind + ":") || lower.has_prefix(kind + " ") {
+      let value = trimmed[kind.length():].trim_start(chars=": ").to_owned()
+      return Some(TextBlock(kind, value))
+    }
+  }
   let words = trimmed
     .split(" ")
     .map(part => part.trim().to_owned())
@@ -55,6 +120,8 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     .to_array()
   match words {
     ["!theme", theme, ..] => Some(Theme(theme))
+    ["left", "to", "right", ..] => Some(Direction(LeftToRight))
+    ["scale", value, ..] => Some(Scale(value))
     _ => None
   }
 }
@@ -77,6 +144,7 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
       Some(FontSize(size))
     [key, color, ..] if key.equal_ignore_ascii_case("ArrowColor") =>
       Some(LineColor(color))
+    [key, value, ..] => Some(Property(key, value))
     _ => None
   }
 }
@@ -109,20 +177,20 @@ pub fn font_size_value(style : DocumentStyle) -> Int {
 }
 
 ///|
-pub fn font_profile(style : DocumentStyle) -> FontProfile {
+pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
   let family = style.font_family.unwrap_or("Arial, sans-serif").to_lower()
   match () {
     _ if family.contains("mono") ||
       family.contains("courier") ||
       family.contains("consolas") ||
-      family.contains("menlo") => Monospace
+      family.contains("menlo") => @metrics.Monospace
     _ if !family.contains("sans") &&
       (
         family.contains("serif") ||
         family.contains("times") ||
         family.contains("georgia")
-      ) => Serif
-    _ => Sans
+      ) => @metrics.Serif
+    _ => @metrics.Sans
   }
 }
 
@@ -132,9 +200,9 @@ pub fn DocumentStyle::font_metrics(
   self : DocumentStyle,
   font_size? : Int = 0,
   font_weight? : Int = 400,
-  font_style? : FontStyle = Normal,
+  font_style? : @metrics.FontStyle = @metrics.Normal,
   line_height? : Int = 0,
-) -> FontMetrics {
+) -> @metrics.FontMetrics {
   let resolved_size = if font_size > 0 {
     font_size
   } else {
@@ -145,7 +213,7 @@ pub fn DocumentStyle::font_metrics(
   } else {
     resolved_size + 2
   }
-  FontMetrics::from_defaults(
+  @metrics.FontMetrics::from_defaults(
     profile=font_profile(self),
     style=font_style,
     font_size=resolved_size,

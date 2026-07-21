@@ -56,11 +56,11 @@ fn is_blank_node(node : JsonNode) -> Bool {
 
 ///|
 fn node_metrics(node : JsonNode) -> NodeMetrics {
-  let regular_metrics = @core.FontMetrics::from_defaults(
+  let regular_metrics = @metrics.FontMetrics::from_defaults(
     font_size=json_font_size(),
     line_height=21,
   )
-  let key_metrics = @core.FontMetrics::from_defaults(
+  let key_metrics = @metrics.FontMetrics::from_defaults(
     font_size=json_font_size(),
     font_weight=json_key_font_weight(),
     line_height=21,
@@ -71,12 +71,12 @@ fn node_metrics(node : JsonNode) -> NodeMetrics {
     match row.key {
       Some(key) =>
         key_width = key_width.max(
-          @core.measure_text_with(key, key_metrics).width + 10,
+          @metrics.measure_text_with(key, key_metrics).width + 10,
         )
       None => ()
     }
     value_width = value_width.max(
-      @core.measure_text_with(display_text(row.value), regular_metrics).width +
+      @metrics.measure_text_with(display_text(row.value), regular_metrics).width +
       10,
     )
   }

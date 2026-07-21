@@ -202,7 +202,7 @@ test "delays split lifelines into visible event ranges" {
 
 ///|
 test "text metrics distinguish narrow and wide default sans glyphs" {
-  let metrics = @core.FontMetrics::default()
+  let metrics = @metrics.FontMetrics::default()
   @test.assert_eq(
     TextSize::of_with("WWW", metrics).width >
     TextSize::of_with("iii", metrics).width,
