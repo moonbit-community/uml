@@ -306,3 +306,218 @@ test "parses shared arrow color style" {
     true,
   )
 }
+
+///|
+test "keeps same-named classes distinct across packages" {
+  let diagram = parse(
+    "@startuml\npackage first {\nclass User\n}\npackage second {\nclass User\n}\n@enduml",
+  )
+  @test.assert_eq(diagram.entities.length(), 2)
+  @test.assert_eq(diagram.entity("first.User").unwrap().scope, "first")
+  @test.assert_eq(diagram.entity("second.User").unwrap().scope, "second")
+}
+
+///|
+test "resolves relation endpoints in their package context" {
+  let diagram = parse(
+    "@startuml\npackage first {\nclass User\nUser --> Account\n}\npackage second {\nclass User\nUser --> Account\n}\n@enduml",
+  )
+  @test.assert_eq(diagram.entities.length(), 4)
+  @test.assert_eq(diagram.relations[0].left, "first.User")
+  @test.assert_eq(diagram.relations[0].right, "first.Account")
+  @test.assert_eq(diagram.relations[1].left, "second.User")
+  @test.assert_eq(diagram.relations[1].right, "second.Account")
+}
+
+///|
+test "parses multiple extends and implements targets" {
+  let diagram = parse(
+    "@startuml\nclass Child extends BaseA, BaseB implements APIA, APIB\n@enduml",
+  )
+  @test.assert_eq(diagram.relations.length(), 4)
+  @test.assert_eq(diagram.relations[0].right, "BaseA")
+  @test.assert_eq(diagram.relations[1].right, "BaseB")
+  @test.assert_eq(diagram.relations[2].right, "APIA")
+  @test.assert_eq(diagram.relations[3].right, "APIB")
+}
+
+///|
+test "accepts empty packages and namespaces" {
+  let diagram = parse(
+    "@startuml\npackage empty {}\nnamespace nested.empty {}\nclass User\n@enduml",
+  )
+  @test.assert_eq(diagram.packages.length(), 2)
+  @test.assert_eq(diagram.entity("User").unwrap().scope, "")
+}
+
+///|
+test "preserves relation endpoint decorations" {
+  let diagram = parse(
+    "@startuml\nParent <|-- Child\nOwner --* Part\nClient --[dashed]--> Service\n@enduml",
+  )
+  @test.assert_eq(diagram.relations[0].left_end, Extension)
+  @test.assert_eq(diagram.relations[0].right_end, Plain)
+  @test.assert_eq(diagram.relations[1].left_end, Plain)
+  @test.assert_eq(diagram.relations[1].right_end, CompositionEnd)
+  @test.assert_eq(diagram.relations[2].right_end, Arrow)
+  @test.assert_eq(diagram.relations[2].line_style, Some("dashed"))
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("marker-start=\"url(#triangle)\""), true)
+  @test.assert_eq(svg.contains("marker-end=\"url(#diamond)\""), true)
+}
+
+///|
+test "preserves relation directions and weights" {
+  let diagram = parse("@startuml\n@2 User -left-> Account\n@enduml")
+  @test.assert_eq(diagram.relations[0].direction, Leftward)
+  @test.assert_eq(diagram.relations[0].weight, Some("2"))
+}
+
+///|
+test "creates interface targets for implements and lollipop links" {
+  let diagram = parse(
+    "@startuml\nclass Service implements API\nService --( Port\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("API").unwrap().kind, Interface)
+  @test.assert_eq(diagram.entity("Port").unwrap().kind, Interface)
+  @test.assert_eq(diagram.relations[1].right_end, Parenthesis)
+}
+
+///|
+test "parses standalone urls and association diamonds" {
+  let diagram = parse(
+    "@startuml\nclass User\nurl of User is [[https://example.com/user]]\n<> membership\n@enduml",
+  )
+  @test.assert_eq(
+    diagram.entity("User").unwrap().url,
+    Some("https://example.com/user"),
+  )
+  @test.assert_eq(diagram.entity("membership").unwrap().kind, Diamond)
+}
+
+///|
+test "preserves relation metadata" {
+  let diagram = parse(
+    "@startuml\nA --[dashed,#red]--> B #blue [[https://example.com]] <<critical>> : calls\n@enduml",
+  )
+  let relation = diagram.relations[0]
+  @test.assert_eq(relation.line_style, Some("dashed,#red"))
+  @test.assert_eq(relation.color, Some("blue"))
+  @test.assert_eq(relation.url, Some("https://example.com"))
+  @test.assert_eq(relation.stereotype, Some("<<critical>>"))
+  @test.assert_eq(relation.label, Some("calls"))
+}
+
+///|
+test "preserves package and namespace metadata" {
+  let diagram = parse(
+    "@startuml\n+ package \"Domain Model\" as domain <<Layer>> [[https://example.com/domain]] #lightblue {\nclass User\n}\nnamespace \"External API\" as external.api {}\n@enduml",
+  )
+  let domain = diagram.packages[0]
+  @test.assert_eq(domain.name, "domain")
+  @test.assert_eq(domain.qualified_name, "domain")
+  @test.assert_eq(domain.display, "Domain Model")
+  @test.assert_eq(domain.visibility, Public)
+  @test.assert_eq(domain.stereotype, Some("<<Layer>>"))
+  @test.assert_eq(domain.url, Some("https://example.com/domain"))
+  @test.assert_eq(domain.color, Some("lightblue"))
+  @test.assert_eq(diagram.packages[1].is_namespace, true)
+  @test.assert_eq(diagram.packages[1].name, "external.api")
+}
+
+///|
+test "preserves declaration URL after stereotype" {
+  let diagram = parse(
+    "@startuml\nclass User <<entity>> [[https://example.com/user]] #lightblue\n@enduml",
+  )
+  let user = diagram.entity("User").unwrap()
+  @test.assert_eq(user.stereotype, Some("<<entity>>"))
+  @test.assert_eq(user.url, Some("https://example.com/user"))
+  @test.assert_eq(user.color, Some("lightblue"))
+}
+
+///|
+test "applies entity hide and remove selectors in command order" {
+  let diagram = parse(
+    "@startuml\nhide <<service>>\nclass API <<service>>\nclass Internal <<service>>\nshow API\nremove Internal\nrestore Internal\nhide-class Missing\nclass Missing\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("API").unwrap().is_hidden, false)
+  @test.assert_eq(diagram.entity("Internal").unwrap().is_hidden, true)
+  @test.assert_eq(diagram.entity("Internal").unwrap().is_removed, false)
+  @test.assert_eq(diagram.entity("Missing").unwrap().is_hidden, true)
+}
+
+///|
+test "keeps remove state distinct from hide state" {
+  let diagram = parse("@startuml\nclass User\nremove User\n@enduml")
+  let user = diagram.entity("User").unwrap()
+  @test.assert_eq(user.is_hidden, false)
+  @test.assert_eq(user.is_removed, true)
+}
+
+///|
+test "filters members by visibility and portion" {
+  let diagram = parse(
+    "@startuml\nclass User {\n+ id : Int\n- secret : String\n+ login()\n- reset()\n}\nhide private members\nhide public methods\n@enduml",
+  )
+  let members = diagram.entity("User").unwrap().members
+  @test.assert_eq(members[0].is_hidden, false)
+  @test.assert_eq(members[1].is_hidden, true)
+  @test.assert_eq(members[2].is_hidden, true)
+  @test.assert_eq(members[3].is_hidden, true)
+}
+
+///|
+test "filters portions by kind name stereotype and package" {
+  let diagram = parse(
+    "@startuml\nclass Root {\n+ root()\n}\npackage domain {\nclass Empty\nhide empty fields\nclass Service <<service>> {\n+ run()\n}\nhide <<service>> methods\n}\ninterface API {\n+ call()\n}\nhide interface methods\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("domain.Empty").unwrap().fields_hidden, true)
+  @test.assert_eq(
+    diagram.entity("domain.Service").unwrap().methods_hidden,
+    true,
+  )
+  @test.assert_eq(diagram.entity("Root").unwrap().methods_hidden, false)
+  @test.assert_eq(diagram.entity("API").unwrap().methods_hidden, true)
+}
+
+///|
+test "attaches single and multiline notes to the last link" {
+  let diagram = parse(
+    "@startuml\nA --> B\nnote right on link #yellow : sync\nB --> C\nnote of link\nasync\nretry\nend note\n@enduml",
+  )
+  @test.assert_eq(diagram.notes.length(), 2)
+  @test.assert_eq(diagram.notes[0].target_kind, LinkNote)
+  @test.assert_eq(diagram.notes[0].relation_index, Some(0))
+  @test.assert_eq(diagram.notes[0].position, Right)
+  @test.assert_eq(diagram.notes[0].color, Some("yellow"))
+  @test.assert_eq(diagram.notes[1].relation_index, Some(1))
+  @test.assert_eq(diagram.notes[1].text, "async\nretry")
+}
+
+///|
+test "parses member tips and named notes" {
+  let diagram = parse(
+    "@startuml\nclass User {\n+ login()\n}\nnote left of User::login() #lightblue\nchecks credentials\nend note\nnote \"shared note\" as N1 <<info>> #yellow\nN1 .. User\n@enduml",
+  )
+  @test.assert_eq(diagram.notes.length(), 2)
+  @test.assert_eq(diagram.notes[0].target_kind, MemberTip)
+  @test.assert_eq(diagram.notes[0].target, "User")
+  @test.assert_eq(diagram.notes[0].member_name, Some("login()"))
+  @test.assert_eq(diagram.notes[1].target_kind, FloatingNote)
+  @test.assert_eq(diagram.entity("N1").unwrap().kind, NamedNote)
+  @test.assert_eq(diagram.notes[1].stereotype, Some("<<info>>"))
+  @test.assert_eq(diagram.relations[0].left, "N1")
+}
+
+///|
+test "parses constraints on the two previous links" {
+  let diagram = parse(
+    "@startuml\nA --> B\nA --> C\nconstraint on links #pink : {xor}\n@enduml",
+  )
+  @test.assert_eq(diagram.constraints.length(), 1)
+  @test.assert_eq(diagram.constraints[0].first_relation, 0)
+  @test.assert_eq(diagram.constraints[0].second_relation, 1)
+  @test.assert_eq(diagram.constraints[0].text, "{xor}")
+  @test.assert_eq(diagram.constraints[0].color, Some("pink"))
+}
