@@ -138,8 +138,8 @@ fn Parser::add_map_link(
     label: None,
     dotted: false,
     raw_arrow: arrow,
-    left_end: Plain,
-    right_end: Arrow,
+    left_end: Arrow,
+    right_end: Plain,
     direction: Automatic,
     line_style: None,
     color: None,
@@ -160,9 +160,16 @@ fn Parser::consume_json_body_line(
 ) -> Unit raise ParseError {
   let delta = brace_delta(line)
   if self.body_depth + delta <= 0 {
-    let source = self.entities[entity_index].json_data.unwrap_or("")
-    let source = "{" + source + "}"
-    guard valid_json(source) else { self.raise_parse_error("bad JSON data") }
+    let body = self.entities[entity_index].json_data.unwrap_or("")
+    let wrapped = "{" + body + "}"
+    let source = if valid_json(wrapped) {
+      wrapped
+    } else if valid_json(body) {
+      body
+    } else {
+      self.raise_parse_error("bad JSON data")
+      return
+    }
     self.entities[entity_index] = {
       ..self.entities[entity_index],
       json_data: Some(source),

@@ -521,3 +521,52 @@ test "parses constraints on the two previous links" {
   @test.assert_eq(diagram.constraints[0].text, "{xor}")
   @test.assert_eq(diagram.constraints[0].color, Some("pink"))
 }
+
+///|
+test "parses map entries and linked map ports" {
+  let diagram = parse(
+    "@startuml\nclass Customer\nmap \"Order index\" as Orders {\nid => 42\ncustomer *--> Customer\n}\n@enduml",
+  )
+  let map = diagram.entity("Orders").unwrap()
+  @test.assert_eq(map.kind, Map)
+  @test.assert_eq(map.display, "Order index")
+  @test.assert_eq(map.map_entries.length(), 2)
+  @test.assert_eq(map.map_entries[0].key, "id")
+  @test.assert_eq(map.map_entries[0].value, Some("42"))
+  @test.assert_eq(map.map_entries[1].link_target, Some("Customer"))
+  @test.assert_eq(diagram.relations[0].left, "Orders")
+  @test.assert_eq(diagram.relations[0].left_end, Arrow)
+  @test.assert_eq(diagram.relations[0].left_port, Some("customer"))
+}
+
+///|
+test "parses multiline and single-line JSON entities" {
+  let diagram = parse(
+    "@startuml\njson Profile {\n\"name\": \"Ada\",\n\"settings\": {\n  \"active\": true\n}\n}\njson Count 42\njson Flags [true, false]\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("Profile").unwrap().kind, Json)
+  @test.assert_eq(
+    diagram.entity("Profile").unwrap().json_data,
+    Some("{\"name\": \"Ada\",\n\"settings\": {\n\"active\": true\n}}"),
+  )
+  @test.assert_eq(diagram.entity("Count").unwrap().json_data, Some("42"))
+  @test.assert_eq(
+    diagram.entity("Flags").unwrap().json_data,
+    Some("[true, false]"),
+  )
+}
+
+///|
+test "reports malformed map and JSON bodies" {
+  try parse("@startuml\nmap Broken {\nnot an entry\n}\n@enduml") catch {
+    SyntaxError(_, message) =>
+      @test.assert_eq(message, "map definition should contain key => value")
+  } noraise {
+    _ => @test.fail("expected malformed map error")
+  }
+  try parse("@startuml\njson Broken {\n\"missing\":\n}\n@enduml") catch {
+    SyntaxError(_, message) => @test.assert_eq(message, "bad JSON data")
+  } noraise {
+    _ => @test.fail("expected malformed JSON error")
+  }
+}

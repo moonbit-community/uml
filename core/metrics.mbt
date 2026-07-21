@@ -139,20 +139,20 @@ pub fn FontMetrics::from_defaults(
   }
   {
     ..metrics,
-    space_width: metrics.scaled_advance(4, ' ').ceil_pixels(),
-    narrow_width: metrics.scaled_advance(3, 'i').ceil_pixels(),
-    normal_width: metrics.scaled_advance(7, 'a').ceil_pixels(),
-    wide_width: metrics.scaled_advance(11, 'm').ceil_pixels(),
-    uppercase_width: metrics.scaled_advance(8, 'A').ceil_pixels(),
+    space_width: metrics.scaled_advance(4.0, ' ').ceil_pixels(),
+    narrow_width: metrics.scaled_advance(3.0, 'i').ceil_pixels(),
+    normal_width: metrics.scaled_advance(7.0, 'a').ceil_pixels(),
+    wide_width: metrics.scaled_advance(11.0, 'm').ceil_pixels(),
+    uppercase_width: metrics.scaled_advance(8.0, 'A').ceil_pixels(),
     digit_width: metrics.char_advance('0').ceil_pixels(),
-    cjk_width: metrics.scaled_advance(14, '\u{4e00}').ceil_pixels(),
-    emoji_width: metrics.scaled_advance(14, '\u{1f600}').ceil_pixels(),
+    cjk_width: metrics.scaled_advance(14.0, '\u{4e00}').ceil_pixels(),
+    emoji_width: metrics.scaled_advance(14.0, '\u{1f600}').ceil_pixels(),
   }
 }
 
 ///|
-fn Int::ceil_pixels(self : Int) -> Int {
-  (self + 999) / 1000
+fn Float::ceil_pixels(self : Float) -> Int {
+  (self / 1000.0).ceil().to_int()
 }
 
 ///|
@@ -183,11 +183,11 @@ fn is_zero_width(char : Char) -> Bool {
 ///|
 fn FontMetrics::scaled_advance(
   self : FontMetrics,
-  base_width : Int,
+  base_width : Float,
   char : Char,
-) -> Int {
+) -> Float {
   let base_width = match self.profile {
-    Monospace => if is_zero_width(char) { 0 } else { 8 }
+    Monospace => if is_zero_width(char) { 0.0F } else { 8.0F }
     _ => base_width
   }
   let weight_progress = (self.font_weight - 400).clamp(min=0, max=500)
@@ -199,13 +199,13 @@ fn FontMetrics::scaled_advance(
     (Monospace, _) | (_, Normal) => 100
     (_, Italic) => self.italic_width_scale
   }
-  let advance = base_width * self.font_size * 1000 / 13
-  let advance = advance * self.width_scale / 100
-  let advance = advance * self.glyph_width_scale(char) / 100
-  let advance = advance * self.font_stretch / 100
-  let advance = advance * self.profile_scale() / 1000
-  let advance = advance * weight_scale / 100
-  advance * style_scale / 100
+  let advance = base_width * Float::from_int(self.font_size) * 1000.0F / 13.0F
+  let advance = advance * Float::from_int(self.width_scale) / 100.0F
+  let advance = advance * Float::from_int(self.glyph_width_scale(char)) / 100.0F
+  let advance = advance * Float::from_int(self.font_stretch) / 100.0F
+  let advance = advance * Float::from_int(self.profile_scale()) / 1000.0F
+  let advance = advance * Float::from_int(weight_scale) / 100.0F
+  advance * Float::from_int(style_scale) / 100.0
 }
 
 ///|
@@ -224,37 +224,40 @@ fn FontMetrics::glyph_width_scale(self : FontMetrics, char : Char) -> Int {
   }
 }
 
-pub const MONO_DIGIT_BASE_WIDTH: Int = 8
+///|
+pub const MONO_DIGIT_BASE_WIDTH : Float = 8.5
 
 ///|
-fn FontMetrics::digit_base_width(self : FontMetrics, char : Char) -> Int {
+fn FontMetrics::digit_base_width(self : FontMetrics, char : Char) -> Float {
   match (self.profile, char) {
-    (Sans, '0' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') => MONO_DIGIT_BASE_WIDTH
-    (Sans, '1') => MONO_DIGIT_BASE_WIDTH - 1
-    (Serif, '0' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') => MONO_DIGIT_BASE_WIDTH
-    (Serif, '1') => MONO_DIGIT_BASE_WIDTH - 1
+    (Sans, '0' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') =>
+      MONO_DIGIT_BASE_WIDTH
+    (Sans, '1') => MONO_DIGIT_BASE_WIDTH * 0.6
+    (Serif, '0' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') =>
+      MONO_DIGIT_BASE_WIDTH
+    (Serif, '1') => MONO_DIGIT_BASE_WIDTH * 0.8
     _ => MONO_DIGIT_BASE_WIDTH
   }
 }
 
 ///|
-fn FontMetrics::base_char_width(self : FontMetrics, char : Char) -> Int {
-  guard !is_zero_width(char) else { 0 }
+fn FontMetrics::base_char_width(self : FontMetrics, char : Char) -> Float {
+  guard !is_zero_width(char) else { 0.0 }
   match char {
-    ' ' | '\t' => 4
-    'i' | 'l' | 'I' | '!' | '|' | '.' | ',' | ':' | ';' | '\'' => 3
-    'f' | 'j' | 'r' | 't' | '(' | ')' | '[' | ']' => 5
-    'm' | 'w' | 'M' | 'W' | '@' | '%' => 11
-    'A'..='Z' => 8
+    ' ' | '\t' => 4.0
+    'i' | 'l' | 'I' | '!' | '|' | '.' | ',' | ':' | ';' | '\'' => 3.0
+    'f' | 'j' | 'r' | 't' | '(' | ')' | '[' | ']' => 5.0
+    'm' | 'w' | 'M' | 'W' | '@' | '%' => 11.0
+    'A'..='Z' => 8.0
     '0'..='9' => self.digit_base_width(char)
-    '\u{1f000}'..='\u{1faff}' => 14
-    _ if char.is_ascii() => 7
-    _ => 14
+    '\u{1f000}'..='\u{1faff}' => 14.0
+    _ if char.is_ascii() => 7.0
+    _ => 14.0
   }
 }
 
 ///|
-fn FontMetrics::char_advance(self : FontMetrics, char : Char) -> Int {
+fn FontMetrics::char_advance(self : FontMetrics, char : Char) -> Float {
   self.scaled_advance(self.base_char_width(char), char)
 }
 
@@ -264,42 +267,55 @@ pub fn FontMetrics::char_width(self : FontMetrics, char : Char) -> Int {
 }
 
 ///|
-fn FontMetrics::kerning(self : FontMetrics, left : Char, right : Char) -> Int {
-  guard self.profile != Monospace else { 0 }
+fn FontMetrics::kerning(self : FontMetrics, left : Char, right : Char) -> Float {
+  guard self.profile != Monospace else { 0.0 }
   let base = match (left, right) {
     ('A', 'V' | 'W' | 'Y') | ('T', 'a' | 'e' | 'o') | ('Y', 'a' | 'o') => -1000
     ('F' | 'P', 'a' | 'e' | 'o') => -500
     _ => 0
   }
-  base * self.font_size * self.kerning_scale / (13 * 100)
+  Float::from_int(base * self.font_size * self.kerning_scale) / 1300.0F
 }
 
 ///|
 pub fn measure_text_with(text : String, metrics : FontMetrics) -> TextMetrics {
   let lines = text.split("\n").to_array()
   let measure_line = (line : StringView) => {
-    let (_, advance, glyph_count) = line.fold(init=(None, 0, 0), (state, char) => {
+    let (_, advance, glyph_count) = line.fold(init=(None, 0.0F, 0), (
+      state,
+      char,
+    ) => {
       let (previous, advance, glyph_count) = state
       let char_advance = if char == '\t' {
-        let tab_width = (metrics.char_advance(' ') * metrics.tab_size).max(1)
-        tab_width - advance % tab_width
+        let tab_width = (metrics.char_advance(' ') *
+        Float::from_int(metrics.tab_size)).max(1.0F)
+        tab_width - Float::mod(advance, tab_width)
       } else {
         metrics.char_advance(char) +
-        (if char == ' ' { metrics.word_spacing * 1000 } else { 0 })
+        (if char == ' ' {
+          Float::from_int(metrics.word_spacing) * 1000.0F
+        } else {
+          0.0
+        })
       }
-      let pair_adjustment = previous.map_or(0, left => {
+      let pair_adjustment = previous.map_or(0.0F, left => {
         metrics.kerning(left, char)
       })
-      let next_previous = if char_advance > 0 { Some(char) } else { previous }
+      let next_previous = if char_advance > 0.0F {
+        Some(char)
+      } else {
+        previous
+      }
       (
         next_previous,
         advance + char_advance + pair_adjustment,
-        glyph_count + (if char_advance > 0 { 1 } else { 0 }),
+        glyph_count + (if char_advance > 0.0F { 1 } else { 0 }),
       )
     })
-    advance + (glyph_count - 1).max(0) * metrics.letter_spacing * 1000
+    advance +
+    Float::from_int((glyph_count - 1).max(0) * metrics.letter_spacing) * 1000.0F
   }
-  let width_units = lines.fold(init=0, (widest, line) => {
+  let width_units = lines.fold(init=0.0F, (widest, line) => {
     widest.max(measure_line(line))
   })
   let advance_width = width_units.ceil_pixels()
