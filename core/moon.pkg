@@ -1,1 +1,4 @@
 /// Shared document infrastructure.
+import {
+  "moonbitlang/core/test",
+} for "test"
