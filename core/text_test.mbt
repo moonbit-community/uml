@@ -83,7 +83,17 @@ test "kerning tabs and word spacing participate in measurement" {
 test "numeric runs reserve enough sans-serif width" {
   let metrics = FontMetrics::from_defaults(font_size=14)
   @test.assert_eq(measure_text_with("0123456789", metrics).width, 81)
-  @test.assert_eq(measure_text_with("212 555-1234", metrics).width, 93)
+  @test.assert_eq(measure_text_with("212 555-1234", metrics).width, 89)
+  @test.assert_eq(
+    measure_text_with("1", metrics).width <
+    measure_text_with("8", metrics).width,
+    true,
+  )
+  let serif = FontMetrics::from_defaults(profile=Serif, font_size=14)
+  @test.assert_eq(
+    measure_text_with("1", serif).width < measure_text_with("8", serif).width,
+    true,
+  )
   @test.assert_eq(
     measure_text_with("0123456789", metrics).width >
     measure_text_with("abcdefghij", metrics).width,

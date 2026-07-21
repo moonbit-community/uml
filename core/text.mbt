@@ -144,7 +144,7 @@ pub fn FontMetrics::from_defaults(
     normal_width: metrics.scaled_advance(7, 'a').ceil_pixels(),
     wide_width: metrics.scaled_advance(11, 'm').ceil_pixels(),
     uppercase_width: metrics.scaled_advance(8, 'A').ceil_pixels(),
-    digit_width: metrics.scaled_advance(8, '0').ceil_pixels(),
+    digit_width: metrics.char_advance('0').ceil_pixels(),
     cjk_width: metrics.scaled_advance(14, '\u{4e00}').ceil_pixels(),
     emoji_width: metrics.scaled_advance(14, '\u{1f600}').ceil_pixels(),
   }
@@ -224,8 +224,21 @@ fn FontMetrics::glyph_width_scale(self : FontMetrics, char : Char) -> Int {
   }
 }
 
+pub const MONO_DIGIT_BASE_WIDTH: Int = 8
+
 ///|
-fn base_char_width(char : Char) -> Int {
+fn FontMetrics::digit_base_width(self : FontMetrics, char : Char) -> Int {
+  match (self.profile, char) {
+    (Sans, '0' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') => MONO_DIGIT_BASE_WIDTH
+    (Sans, '1') => MONO_DIGIT_BASE_WIDTH - 1
+    (Serif, '0' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') => MONO_DIGIT_BASE_WIDTH
+    (Serif, '1') => MONO_DIGIT_BASE_WIDTH - 1
+    _ => MONO_DIGIT_BASE_WIDTH
+  }
+}
+
+///|
+fn FontMetrics::base_char_width(self : FontMetrics, char : Char) -> Int {
   guard !is_zero_width(char) else { 0 }
   match char {
     ' ' | '\t' => 4
@@ -233,7 +246,7 @@ fn base_char_width(char : Char) -> Int {
     'f' | 'j' | 'r' | 't' | '(' | ')' | '[' | ']' => 5
     'm' | 'w' | 'M' | 'W' | '@' | '%' => 11
     'A'..='Z' => 8
-    '0'..='9' => 8
+    '0'..='9' => self.digit_base_width(char)
     '\u{1f000}'..='\u{1faff}' => 14
     _ if char.is_ascii() => 7
     _ => 14
@@ -242,7 +255,7 @@ fn base_char_width(char : Char) -> Int {
 
 ///|
 fn FontMetrics::char_advance(self : FontMetrics, char : Char) -> Int {
-  self.scaled_advance(base_char_width(char), char)
+  self.scaled_advance(self.base_char_width(char), char)
 }
 
 ///|

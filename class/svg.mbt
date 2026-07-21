@@ -16,7 +16,25 @@ fn ClassTextMetrics::row_height(self : ClassTextMetrics) -> Int {
 ///|
 fn Entity::height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
   text_metrics.header_height() +
-  self.members.length() * text_metrics.row_height()
+  self.visible_member_count() * text_metrics.row_height()
+}
+
+///|
+fn Entity::entry_visible(self : Entity, entry : Member) -> Bool {
+  !entry.is_hidden &&
+  !(entry.is_method && self.methods_hidden) &&
+  !(!entry.is_method && !entry.is_separator && self.fields_hidden)
+}
+
+///|
+fn Entity::visible_member_count(self : Entity) -> Int {
+  let mut count = 0
+  for entry in self.members {
+    if self.entry_visible(entry) {
+      count += 1
+    }
+  }
+  count
 }
 
 ///|
@@ -35,6 +53,7 @@ fn Entity::width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
   let mut width = @core.measure_text_with(self.display, text_metrics.bold).width +
     28
   for entry in self.members {
+    guard self.entry_visible(entry) else { continue }
     width = width.max(
       @core.measure_text_with(entry.raw, text_metrics.regular).width + 28,
     )
@@ -76,11 +95,22 @@ fn ClassDiagram::layout(
 ///|
 fn entity_index(diagram : ClassDiagram, code : String) -> Int? {
   for index, entity in diagram.entities {
-    if entity.code == code {
+    if entity.qualified_code == code {
       return Some(index)
     }
   }
   None
+}
+
+///|
+fn relation_marker(end : RelationEnd) -> String? {
+  match end {
+    Extension | Redefines | DefinedBy => Some("triangle")
+    CompositionEnd => Some("diamond")
+    AggregationEnd => Some("diamond-open")
+    Arrow | TriangleArrow | HalfArrowUp | HalfArrowDown => Some("arrow")
+    _ => None
+  }
 }
 
 ///|
@@ -107,20 +137,22 @@ fn append_relation(
   }
   let left = diagram.entities[left_index]
   let right = diagram.entities[right_index]
+  guard !left.is_removed && !right.is_removed else { return }
   let x1 = layout.node_x(left_index) + left.width(text_metrics) / 2
   let y1 = layout.node_y(left_index) + left.height(text_metrics) / 2
   let x2 = layout.node_x(right_index) + right.width(text_metrics) / 2
   let y2 = layout.node_y(right_index) + right.height(text_metrics) / 2
   let dash = if relation.dotted { " stroke-dasharray=\"6 4\"" } else { "" }
-  let marker = match relation.kind {
-    Extension | Realization => " marker-end=\"url(#triangle)\""
-    Aggregation => " marker-start=\"url(#diamond-open)\""
-    Composition => " marker-start=\"url(#diamond)\""
-    Dependency => " marker-end=\"url(#arrow)\""
-    Association => ""
+  let marker_start = match relation_marker(relation.left_end) {
+    Some(marker) => " marker-start=\"url(#\{marker})\""
+    None => ""
+  }
+  let marker_end = match relation_marker(relation.right_end) {
+    Some(marker) => " marker-end=\"url(#\{marker})\""
+    None => ""
   }
   output <+
-    "<line x1=\"\{x1}\" y1=\"\{y1}\" x2=\"\{x2}\" y2=\"\{y2}\" class=\"relation\"\{dash}\{marker}/>\n"
+    "<line x1=\"\{x1}\" y1=\"\{y1}\" x2=\"\{x2}\" y2=\"\{y2}\" class=\"relation\"\{dash}\{marker_start}\{marker_end}/>\n"
   match relation.label {
     Some(label) =>
       output <+
@@ -137,6 +169,7 @@ fn append_entity(
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
+  guard !entity.is_hidden && !entity.is_removed else { return }
   let x = layout.node_x(index)
   let y = layout.node_y(index)
   let width = entity.width(text_metrics)
@@ -145,9 +178,11 @@ fn append_entity(
   let row_height = text_metrics.row_height()
   let fill = @core.svg_color(entity.color, "#FEFECE")
   output <+
-    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"/><line x1=\"\{x}\" y1=\"\{y + header_height}\" x2=\"\{x + width}\" y2=\"\{y + header_height}\"/><text x=\"\{x + width / 2}\" y=\"\{y + header_height - 14}\" class=\"class-title\">\{xml_escape(entity.display)}</text>\n"
-  for member_index, entry in entity.members {
-    let member_y = y + header_height + (member_index + 1) * row_height
+    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.qualified_code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"/><line x1=\"\{x}\" y1=\"\{y + header_height}\" x2=\"\{x + width}\" y2=\"\{y + header_height}\"/><text x=\"\{x + width / 2}\" y=\"\{y + header_height - 14}\" class=\"class-title\">\{xml_escape(entity.display)}</text>\n"
+  let mut visible_index = 0
+  for entry in entity.members {
+    guard entity.entry_visible(entry) else { continue }
+    let member_y = y + header_height + (visible_index + 1) * row_height
     if entry.is_separator {
       output <+
         "<line x1=\"\{x}\" y1=\"\{member_y - row_height / 2}\" x2=\"\{x + width}\" y2=\"\{member_y - row_height / 2}\"/>\n"
@@ -155,6 +190,7 @@ fn append_entity(
       output <+
         "<text x=\"\{x + 12}\" y=\"\{member_y}\" class=\"member\">\{xml_escape(entry.raw)}</text>\n"
     }
+    visible_index += 1
   }
   output.write_string("</g>\n")
 }

@@ -6,6 +6,12 @@ pub struct UrlTarget {
 } derive(Eq, Debug)
 
 ///|
+/// A PlantUML URL embedded in a larger command.
+pub struct UrlOccurrence {
+  before : String
+  target : UrlTarget
+  after : String
+} derive(Eq, Debug)
 
 ///|
 pub fn normalize_url_target(value : String) -> String {
@@ -32,4 +38,21 @@ pub fn parse_url_target(value : String) -> UrlTarget? {
   guard target.length() > 0 else { return None }
   let label = if parts.length() > 1 { Some(parts[1:].join(" ")) } else { None }
   Some({ target, label })
+}
+
+///|
+/// Extract the first `[[...]]` URL while preserving command text around it.
+pub fn extract_url(value : String) -> UrlOccurrence? {
+  guard find_literal(value, "[[") is Some(start) else { return None }
+  let tail = value[start + 2:].to_owned()
+  guard find_literal(tail, "]]") is Some(length) else { return None }
+  let end = start + 2 + length + 2
+  guard parse_url_target(value[start:end].to_owned()) is Some(target) else {
+    return None
+  }
+  Some({
+    before: value[0:start].to_owned(),
+    target,
+    after: value[end:].to_owned(),
+  })
 }
