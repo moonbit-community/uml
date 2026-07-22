@@ -177,15 +177,23 @@ fn append_entity(
   let header_height = text_metrics.header_height()
   let row_height = text_metrics.row_height()
   let fill = @core.svg_color(entity.color, "#FEFECE")
+  let stroke = @core.svg_color(entity.line_color, "#181818")
+  let stroke_style = match entity.line_style {
+    Some("dashed") => "stroke-dasharray:6 4"
+    Some("dotted") => "stroke-dasharray:2 3"
+    Some("bold") => "stroke-width:2.5"
+    _ => "stroke-width:1.2"
+  }
+  let line_attributes = " style=\"stroke:\{stroke};\{stroke_style}\""
   output <+
-    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.qualified_code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"/><line x1=\"\{x}\" y1=\"\{y + header_height}\" x2=\"\{x + width}\" y2=\"\{y + header_height}\"/><text x=\"\{x + width / 2}\" y=\"\{y + header_height - 14}\" class=\"class-title\">\{xml_escape(entity.display)}</text>\n"
+    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.qualified_code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"\{line_attributes}/><line x1=\"\{x}\" y1=\"\{y + header_height}\" x2=\"\{x + width}\" y2=\"\{y + header_height}\"\{line_attributes}/><text x=\"\{x + width / 2}\" y=\"\{y + header_height - 14}\" class=\"class-title\">\{xml_escape(entity.display)}</text>\n"
   let mut visible_index = 0
   for entry in entity.members {
     guard entity.entry_visible(entry) else { continue }
     let member_y = y + header_height + (visible_index + 1) * row_height
     if entry.is_separator {
       output <+
-        "<line x1=\"\{x}\" y1=\"\{member_y - row_height / 2}\" x2=\"\{x + width}\" y2=\"\{member_y - row_height / 2}\"/>\n"
+        "<line x1=\"\{x}\" y1=\"\{member_y - row_height / 2}\" x2=\"\{x + width}\" y2=\"\{member_y - row_height / 2}\"\{line_attributes}/>\n"
     } else {
       output <+
         "<text x=\"\{x + 12}\" y=\"\{member_y}\" class=\"member\">\{xml_escape(entry.raw)}</text>\n"

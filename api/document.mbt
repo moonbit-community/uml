@@ -42,14 +42,23 @@ pub fn parse_json(input : String) -> Document raise @json.ParseError {
 /// facade deliberately uses only unambiguous class constructs here, so a
 /// sequence message such as `Alice -> Bob` remains a sequence diagram.
 pub fn is_class_source(input : String) -> Bool {
+  let input = input.to_lower()
   input.contains("--") ||
   input.contains("..") ||
   input.contains("<|") ||
   input.contains("class ") ||
   input.contains("interface ") ||
   input.contains("enum ") ||
+  input.contains("annotation ") ||
+  input.contains("abstract ") ||
   input.contains("object ") ||
   input.contains("entity ") ||
+  input.contains("exception ") ||
+  input.contains("metaclass ") ||
+  input.contains("stereotype ") ||
+  input.contains("dataclass ") ||
+  input.contains("record ") ||
+  input.contains("circle ") ||
   input.contains("map ") ||
   input.contains("json ") ||
   input.contains("component ") ||
@@ -59,6 +68,11 @@ pub fn is_class_source(input : String) -> Bool {
   input.contains("usecase ") ||
   input.contains("struct ") ||
   input.contains("protocol ") ||
+  input.contains("state ") ||
+  input.contains("folder ") ||
+  input.contains("file ") ||
+  input.contains("node ") ||
+  input.contains("cloud ") ||
   input.contains("person ") ||
   input.contains("artifact ") ||
   input.contains("boundary ") ||
@@ -71,6 +85,8 @@ pub fn is_class_source(input : String) -> Bool {
   input.contains("usecase (") ||
   input.contains("actor :") ||
   input.contains("component [") ||
+  input.contains(" .>") ||
+  input.contains(" <.") ||
   input.contains("note on link") ||
   input.contains("constraint on links") ||
   input.contains("<> ") ||

@@ -41,3 +41,13 @@ test "detects object map and inline JSON class sources" {
   )
   @test.assert_eq(is_class_source("@startuml\njson Values 42\n@enduml"), true)
 }
+
+///|
+test "detects the remaining class-only declarations and dotted arrows" {
+  for
+    source in ["annotation A", "record R", "exception E", "folder F", "A .> B"] {
+    @test.assert_eq(is_class_source("@startuml\n" + source + "\n@enduml"), true)
+  }
+  @test.assert_eq(is_class_source("@startuml\nAlice -> Bob\n@enduml"), false)
+  @test.assert_eq(is_class_source("@startuml\nANNOTATION A\n@enduml"), true)
+}

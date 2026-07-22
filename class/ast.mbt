@@ -11,6 +11,7 @@ pub(all) enum EntityKind {
   Struct
   Circle
   Usecase
+  BusinessUsecase
   Exception
   Metaclass
   Stereotype
@@ -22,6 +23,25 @@ pub(all) enum EntityKind {
   Diamond
   Component
   Actor
+  BusinessActor
+  Person
+  Artifact
+  Card
+  Rectangle
+  Hexagon
+  Label
+  Frame
+  Action
+  Process
+  Stack
+  Storage
+  Agent
+  Boundary
+  Control
+  Collections
+  Port
+  PortIn
+  PortOut
   Database
   Queue
   Folder
@@ -70,6 +90,9 @@ pub struct Entity {
   circle_hidden : Bool
   url : String?
   color : String?
+  line_color : String?
+  line_style : String?
+  tags : Array[String]
   members : Array[Member]
   map_entries : Array[MapEntry]
   json_data : String?
@@ -198,6 +221,7 @@ pub struct Note {
   color : String?
   url : String?
   stereotype : String?
+  tags : Array[String]
 } derive(Eq, Debug)
 
 ///|
@@ -231,6 +255,9 @@ priv struct Declaration {
   implements : Array[String]
   url : String?
   color : String?
+  line_color : String?
+  line_style : String?
+  tags : Array[String]
 }
 
 ///|
@@ -251,6 +278,7 @@ priv enum EntitySelector {
   KindEntities(EntityKind)
   StereotypedEntities(String)
   NamedEntity(String)
+  AnyEntities(Array[EntitySelector])
 }
 
 ///|

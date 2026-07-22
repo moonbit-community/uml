@@ -43,7 +43,7 @@ pub fn parse_url_target(value : String) -> UrlTarget? {
 ///|
 /// Extract the first `[[...]]` URL while preserving command text around it.
 pub fn extract_url(value : String) -> UrlOccurrence? {
-  guard find_literal(value, "[[") is Some(start) else { return None }
+  guard find_unquoted_literal(value, "[[") is Some(start) else { return None }
   let tail = value[start + 2:].to_owned()
   guard find_literal(tail, "]]") is Some(length) else { return None }
   let end = start + 2 + length + 2

@@ -36,6 +36,10 @@ fn selector_for(raw : String) -> EntitySelector {
   if raw.has_prefix("<<") && @core.normalize_stereotype(raw) is Some(value) {
     return StereotypedEntities(value)
   }
+  let tokens = words(raw)
+  if tokens.length() > 1 {
+    return AnyEntities(tokens.map(selector_for))
+  }
   if raw.to_lower() == "abstract" {
     return KindEntities(AbstractClass)
   }
@@ -148,6 +152,8 @@ fn selector_matches(
     AllEntities => true
     KindEntities(kind) => entity.kind == kind
     StereotypedEntities(stereotype) => entity.stereotype == Some(stereotype)
+    AnyEntities(selectors) =>
+      selectors.any(selector => selector_matches(entity, selector, scope))
     NamedEntity(name) =>
       entity.code == name ||
       entity.qualified_code == name ||

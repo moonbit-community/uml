@@ -12,6 +12,9 @@ priv struct Parser {
   portion_rules : Array[PortionRule]
   style : @core.DocumentStyle
   mut current_entity : Int?
+  mut last_entity : String?
+  mut namespace_separator : String?
+  mut allow_mixing : Bool
   mut body_depth : Int
 }
 
@@ -33,6 +36,9 @@ fn Parser::new(input : String) -> Parser {
     portion_rules: [],
     style: @core.DocumentStyle::empty(),
     current_entity: None,
+    last_entity: None,
+    namespace_separator: Some("."),
+    allow_mixing: false,
     body_depth: 0,
   }
 }
@@ -89,9 +95,9 @@ fn declaration_kind(word : String) -> EntityKind? {
     "struct" => Some(Struct)
     "circle" => Some(Circle)
     "usecase" => Some(Usecase)
-    "usecase/" => Some(Usecase)
-    "person" => Some(Actor)
-    "actor/" => Some(Actor)
+    "usecase/" => Some(BusinessUsecase)
+    "person" => Some(Person)
+    "actor/" => Some(BusinessActor)
     "exception" => Some(Exception)
     "metaclass" => Some(Metaclass)
     "stereotype" => Some(Stereotype)
@@ -101,11 +107,11 @@ fn declaration_kind(word : String) -> EntityKind? {
     "json" => Some(Json)
     "diamond" => Some(Diamond)
     "component" => Some(Component)
-    "boundary" => Some(Component)
-    "control" => Some(Component)
-    "port" => Some(Component)
-    "portin" => Some(Component)
-    "portout" => Some(Component)
+    "boundary" => Some(Boundary)
+    "control" => Some(Control)
+    "port" => Some(Port)
+    "portin" => Some(PortIn)
+    "portout" => Some(PortOut)
     "actor" => Some(Actor)
     "database" => Some(Database)
     "queue" => Some(Queue)
@@ -114,20 +120,46 @@ fn declaration_kind(word : String) -> EntityKind? {
     "node" => Some(Node)
     "cloud" => Some(Cloud)
     "state" => Some(State)
-    "artifact" => Some(Class)
-    "card" => Some(Class)
+    "artifact" => Some(Artifact)
+    "card" => Some(Card)
     "package" => Some(Folder)
-    "rectangle" => Some(Class)
-    "hexagon" => Some(Class)
-    "label" => Some(Class)
-    "frame" => Some(Folder)
-    "action" => Some(Class)
-    "process" => Some(Class)
-    "stack" => Some(Class)
-    "storage" => Some(Class)
-    "agent" => Some(Class)
-    "collections" => Some(Class)
+    "rectangle" => Some(Rectangle)
+    "hexagon" => Some(Hexagon)
+    "label" => Some(Label)
+    "frame" => Some(Frame)
+    "action" => Some(Action)
+    "process" => Some(Process)
+    "stack" => Some(Stack)
+    "storage" => Some(Storage)
+    "agent" => Some(Agent)
+    "collections" => Some(Collections)
     _ => None
+  }
+}
+
+///|
+fn native_class_kind(kind : EntityKind) -> Bool {
+  match kind {
+    Class
+    | AbstractClass
+    | Interface
+    | Enum
+    | Annotation
+    | Object
+    | Entity
+    | Protocol
+    | Struct
+    | Circle
+    | Exception
+    | Metaclass
+    | Stereotype
+    | Dataclass
+    | Record
+    | Map
+    | Json
+    | Diamond
+    | NamedNote => true
+    _ => false
   }
 }
 
@@ -147,7 +179,9 @@ fn leading_visibility(line : String) -> (Visibility, String) {
 
 ///|
 fn extract_stereotype(body : String) -> (String, String?) {
-  guard find_substring(body, "<<") is Some(start) else { (body, None) }
+  guard @core.find_unquoted_literal(body, "<<") is Some(start) else {
+    return (body, None)
+  }
   let chars = body.to_array()
   for end in (start + 2)..<(chars.length() - 1) {
     if chars[end] == '>' && chars[end + 1] == '>' {
@@ -162,7 +196,10 @@ fn extract_stereotype(body : String) -> (String, String?) {
 
 ///|
 fn declaration_color(body : String) -> String? {
-  guard find_substring(body, " #") is Some(start) else { return None }
+  guard @core.find_unquoted_literal(body, " #") is Some(start) else {
+    return None
+  }
+  guard start + 2 < body.length() && body[start + 2] != '#' else { return None }
   let suffix = body[start + 2:].trim().to_owned()
   match find_substring(suffix, " ") {
     Some(end) => Some(suffix[0:end].to_owned())
@@ -171,11 +208,52 @@ fn declaration_color(body : String) -> String? {
 }
 
 ///|
+fn declaration_line(body : String) -> (String?, String?) {
+  guard @core.find_unquoted_literal(body, "##") is Some(start) else {
+    return (None, None)
+  }
+  let suffix = body[start + 2:].trim().to_owned()
+  let (style, color_body) = if suffix.has_prefix("[") &&
+    find_substring(suffix, "]") is Some(end) {
+    (Some(suffix[1:end].trim().to_owned()), suffix[end + 1:].trim().to_owned())
+  } else {
+    (None, suffix)
+  }
+  let color = if color_body.length() == 0 {
+    None
+  } else {
+    match find_substring(color_body, " ") {
+      Some(end) => Some(color_body[0:end].to_owned())
+      None => Some(color_body)
+    }
+  }
+  (style, color)
+}
+
+///|
+fn declaration_tags(body : String) -> Array[String] {
+  let result : Array[String] = []
+  for token in words(body) {
+    if token.has_prefix("$") && token.length() > 1 {
+      result.push(token[1:].to_owned())
+    }
+  }
+  result
+}
+
+///|
 fn extract_generic(body : String) -> (String, String?) {
-  guard find_substring(body, "<") is Some(start) else { (body, None) }
+  guard @core.find_unquoted_literal(body, "<") is Some(start) else {
+    return (body, None)
+  }
   let chars = body.to_array()
+  let mut depth = 0
   for end in (start + 1)..<chars.length() {
-    if chars[end] == '>' {
+    if chars[end] == '<' {
+      depth += 1
+    } else if chars[end] == '>' && depth > 0 {
+      depth -= 1
+    } else if chars[end] == '>' {
       return (
         body[0:start].trim().to_owned(),
         Some(body[start + 1:end].to_owned()),
@@ -191,13 +269,13 @@ fn tail_targets(
   keyword : String,
   following_keyword : String?,
 ) -> Array[String] {
-  guard find_substring(body.to_lower(), keyword) is Some(start) else {
+  guard @core.find_unquoted_literal(body.to_lower(), keyword) is Some(start) else {
     return []
   }
   let tail = body[start + keyword.length():].trim().to_owned()
   let targets = match following_keyword {
     Some(next) =>
-      match find_substring(tail.to_lower(), next) {
+      match @core.find_unquoted_literal(tail.to_lower(), next) {
         Some(end) => tail[0:end].trim().to_owned()
         None => tail
       }
@@ -211,6 +289,50 @@ fn tail_targets(
     }
   }
   result
+}
+
+///|
+fn name_and_code(body : String) -> (String, String) {
+  match @core.find_unquoted_literal(body, " as ") {
+    Some(separator) => {
+      let name = body[0:separator].trim()
+      let alternate = body[separator + 4:].trim()
+      if alternate.has_prefix("\"") && alternate.has_suffix("\"") {
+        (normalize_name(alternate.to_owned()), normalize_name(name.to_owned()))
+      } else {
+        (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
+      }
+    }
+    None => {
+      let name = normalize_name(body)
+      (name, name)
+    }
+  }
+}
+
+///|
+fn declaration_name_code_generic(body : String) -> (String, String, String?) {
+  match @core.find_unquoted_literal(body, " as ") {
+    Some(separator) => {
+      let (name, name_generic) = extract_generic(
+        body[0:separator].trim().to_owned(),
+      )
+      let (alternate, alternate_generic) = extract_generic(
+        body[separator + 4:].trim().to_owned(),
+      )
+      let generic = match name_generic {
+        Some(value) => Some(value)
+        None => alternate_generic
+      }
+      let (display, code) = name_and_code(name + " as " + alternate)
+      (display, code, generic)
+    }
+    None => {
+      let (name, generic) = extract_generic(body)
+      let name = normalize_name(name)
+      (name, name, generic)
+    }
+  }
 }
 
 ///|
@@ -231,12 +353,23 @@ fn parse_declaration(line : String) -> Declaration? {
       implements: [],
       url: None,
       color: None,
+      line_color: None,
+      line_style: None,
+      tags: [],
     })
   }
   if line.has_prefix("()") {
     let mut body = line[2:].trim().to_owned()
+    if body.has_prefix("#") {
+      let tokens = words(body)
+      if tokens.length() > 1 {
+        body = tokens[1:].to_owned().join(" ")
+      }
+    }
     let color = declaration_color(body)
-    if find_substring(body, " #") is Some(index) {
+    let (line_style, line_color) = declaration_line(body)
+    let tags = declaration_tags(body)
+    if @core.find_unquoted_literal(body, " #") is Some(index) {
       body = body[0:index].trim().to_owned()
     }
     let (_, stereotype) = extract_stereotype(body)
@@ -245,17 +378,11 @@ fn parse_declaration(line : String) -> Declaration? {
       None => None
     }
     let mut name_end = body.length()
-    name_end = earlier(name_end, find_substring(body, " <<"))
-    name_end = earlier(name_end, find_substring(body, " [["))
+    name_end = earlier(name_end, @core.find_unquoted_literal(body, " <<"))
+    name_end = earlier(name_end, @core.find_unquoted_literal(body, " [["))
+    name_end = earlier(name_end, @core.find_unquoted_literal(body, " $"))
     body = body[0:name_end].trim().to_owned()
-    let (display, code) = match body.split(" as ").to_array() {
-      [name, alternate] =>
-        (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
-      _ => {
-        let name = normalize_name(body)
-        (name, name)
-      }
-    }
+    let (display, code) = name_and_code(body)
     guard code.length() > 0 else { return None }
     return Some({
       kind: Interface,
@@ -269,6 +396,9 @@ fn parse_declaration(line : String) -> Declaration? {
       implements: [],
       url,
       color,
+      line_color,
+      line_style,
+      tags,
     })
   }
   let mut parts = words(line)
@@ -282,10 +412,11 @@ fn parse_declaration(line : String) -> Declaration? {
   } else if parts[0].to_lower() == "static" && parts.length() > 2 {
     is_static = true
     parts = parts[1:].to_owned()
-    guard declaration_kind(parts[0]) is Some(kind) else { return None }
-    kind
+    guard parts[0].equal_ignore_ascii_case("class") else { return None }
+    Class
   } else if parts[0].to_lower() == "abstract" && parts.length() > 1 {
-    if parts.length() > 2 && declaration_kind(parts[1]) is Some(_) {
+    if parts.length() > 2 {
+      guard parts[1].equal_ignore_ascii_case("class") else { return None }
       parts = parts[1:].to_owned()
     }
     AbstractClass
@@ -302,8 +433,10 @@ fn parse_declaration(line : String) -> Declaration? {
   let extends = tail_targets(body, "extends ", Some(" implements "))
   let implements = tail_targets(body, "implements ", None)
   let color = declaration_color(body)
+  let (line_style, line_color) = declaration_line(body)
+  let tags = declaration_tags(body)
   for keyword in [" extends ", " implements ", " #", " ##"] {
-    if find_substring(body, keyword) is Some(index) {
+    if @core.find_unquoted_literal(body, keyword) is Some(index) {
       body = body[0:index].trim().to_owned()
     }
   }
@@ -313,24 +446,12 @@ fn parse_declaration(line : String) -> Declaration? {
     None => None
   }
   let mut name_end = body.length()
-  name_end = earlier(name_end, find_substring(body, " <<"))
-  name_end = earlier(name_end, find_substring(body, " [["))
-  let (body, generic) = extract_generic(body[0:name_end].trim().to_owned())
-  let (display, code) = match body.split(" as ").to_array() {
-    [name, alternate] => {
-      let name = name.trim()
-      let alternate = alternate.trim()
-      if alternate.has_prefix("\"") && alternate.has_suffix("\"") {
-        (normalize_name(alternate.to_owned()), normalize_name(name.to_owned()))
-      } else {
-        (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
-      }
-    }
-    _ => {
-      let name = normalize_name(body)
-      (name, name)
-    }
-  }
+  name_end = earlier(name_end, @core.find_unquoted_literal(body, " <<"))
+  name_end = earlier(name_end, @core.find_unquoted_literal(body, " [["))
+  name_end = earlier(name_end, @core.find_unquoted_literal(body, " $"))
+  let (display, code, generic) = declaration_name_code_generic(
+    body[0:name_end].trim().to_owned(),
+  )
   // PlantUML allows the visual symbol to be encoded directly in the name,
   // for example `usecase (Login)`, `actor :User:`, and `component [API]`.
   // The encoded delimiters are presentation syntax, not part of the id.
@@ -348,6 +469,9 @@ fn parse_declaration(line : String) -> Declaration? {
     implements,
     url,
     color,
+    line_color,
+    line_style,
+    tags,
   })
 }
 
@@ -449,30 +573,90 @@ fn member_of(line : String) -> Member {
 }
 
 ///|
+fn Parser::implicit_namespace_scope(self : Parser, code : String) -> String {
+  guard self.current_package().length() == 0 &&
+    self.namespace_separator is Some(separator) &&
+    separator.length() > 0 else {
+    return self.current_package()
+  }
+  let segments = code
+    .split(separator)
+    .map(part => part.trim().to_owned())
+    .filter(part => part.length() > 0)
+    .to_array()
+  guard segments.length() > 1 else { return self.current_package() }
+  segments[0:segments.length() - 1].to_owned().join(separator)
+}
+
+///|
+fn Parser::ensure_implicit_namespaces(self : Parser, code : String) -> Unit {
+  guard self.current_package().length() == 0 &&
+    self.namespace_separator is Some(separator) &&
+    separator.length() > 0 else {
+    return
+  }
+  let segments = code
+    .split(separator)
+    .map(part => part.trim().to_owned())
+    .filter(part => part.length() > 0)
+    .to_array()
+  guard segments.length() > 1 else { return }
+  let mut parent = ""
+  for index in 0..<(segments.length() - 1) {
+    let segment = segments[index]
+    let qualified_name = if parent.length() == 0 {
+      segment
+    } else {
+      parent + separator + segment
+    }
+    if !self.packages.any(group => group.qualified_name == qualified_name) {
+      self.packages.push({
+        name: segment,
+        qualified_name,
+        display: segment,
+        parent,
+        is_namespace: true,
+        visibility: Unknown,
+        stereotype: None,
+        url: None,
+        color: None,
+      })
+    }
+    parent = qualified_name
+  }
+}
+
+///|
 fn Parser::add_entity(
   self : Parser,
   declaration : Declaration,
   open : Bool,
 ) -> Unit {
+  self.ensure_implicit_namespaces(declaration.code)
   let qualified_code = self.qualify(declaration.code)
+  let scope = self.implicit_namespace_scope(declaration.code)
   for index, entity in self.entities {
     if entity.qualified_code == qualified_code {
       self.entities[index] = {
         ..entity,
         display: declaration.display,
         kind: declaration.kind,
-        scope: self.current_package(),
+        scope,
         visibility: declaration.visibility,
         is_static: declaration.is_static,
         generic: declaration.generic,
         stereotype: declaration.stereotype,
         url: declaration.url,
         color: declaration.color,
+        line_color: declaration.line_color,
+        line_style: declaration.line_style,
+        tags: declaration.tags,
       }
       if open {
         self.current_entity = Some(index)
         self.body_depth = 1
       }
+      self.last_entity = Some(qualified_code)
       return
     }
   }
@@ -481,7 +665,7 @@ fn Parser::add_entity(
     qualified_code,
     display: declaration.display,
     kind: declaration.kind,
-    scope: self.current_package(),
+    scope,
     visibility: declaration.visibility,
     is_static: declaration.is_static,
     generic: declaration.generic,
@@ -494,6 +678,9 @@ fn Parser::add_entity(
     circle_hidden: false,
     url: declaration.url,
     color: declaration.color,
+    line_color: declaration.line_color,
+    line_style: declaration.line_style,
+    tags: declaration.tags,
     members: [],
     map_entries: [],
     json_data: None,
@@ -502,6 +689,7 @@ fn Parser::add_entity(
     self.current_entity = Some(self.entities.length() - 1)
     self.body_depth = 1
   }
+  self.last_entity = Some(qualified_code)
 }
 
 ///|
@@ -545,6 +733,7 @@ fn Parser::resolve(self : Parser, code : String) -> String {
 
 ///|
 fn Parser::ensure_entity(self : Parser, code : String) -> String {
+  self.ensure_implicit_namespaces(code)
   let qualified_code = self.resolve(code)
   guard !self.entities.any(entity => entity.qualified_code == qualified_code) else {
     return qualified_code
@@ -554,7 +743,7 @@ fn Parser::ensure_entity(self : Parser, code : String) -> String {
     qualified_code,
     display: code,
     kind: Class,
-    scope: self.current_package(),
+    scope: self.implicit_namespace_scope(code),
     visibility: Unknown,
     is_static: false,
     generic: None,
@@ -567,6 +756,9 @@ fn Parser::ensure_entity(self : Parser, code : String) -> String {
     circle_hidden: false,
     url: None,
     color: None,
+    line_color: None,
+    line_style: None,
+    tags: [],
     members: [],
     map_entries: [],
     json_data: None,
@@ -613,14 +805,15 @@ fn Parser::set_entity_stereotype(
   self : Parser,
   code : String,
   stereotype : String,
-) -> Unit {
-  let qualified_code = self.ensure_entity(code)
+) -> Bool {
+  let qualified_code = self.resolve(code)
   for index, entity in self.entities {
     if entity.qualified_code == qualified_code {
       self.entities[index] = { ..entity, stereotype: Some(stereotype) }
-      return
+      return true
     }
   }
+  false
 }
 
 ///|
@@ -708,7 +901,7 @@ fn package_declaration(raw : String) -> GroupDeclaration? {
     value.to_owned()
   }
   let color = declaration_color(body)
-  if find_substring(body, " #") is Some(start) {
+  if @core.find_unquoted_literal(body, " #") is Some(start) {
     body = body[0:start].trim().to_owned()
   }
   let (_, stereotype) = extract_stereotype(body)
@@ -717,24 +910,10 @@ fn package_declaration(raw : String) -> GroupDeclaration? {
     None => None
   }
   let mut name_end = body.length()
-  name_end = earlier(name_end, find_substring(body, " <<"))
-  name_end = earlier(name_end, find_substring(body, " [["))
+  name_end = earlier(name_end, @core.find_unquoted_literal(body, " <<"))
+  name_end = earlier(name_end, @core.find_unquoted_literal(body, " [["))
   body = body[0:name_end].trim().to_owned()
-  let (display, code) = match body.split(" as ").to_array() {
-    [name, alternate] => {
-      let name = name.trim()
-      let alternate = alternate.trim()
-      if alternate.has_prefix("\"") && alternate.has_suffix("\"") {
-        (normalize_name(alternate.to_owned()), normalize_name(name.to_owned()))
-      } else {
-        (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
-      }
-    }
-    _ => {
-      let name = normalize_name(body)
-      (name, name)
-    }
-  }
+  let (display, code) = name_and_code(body)
   guard code.length() > 0 else { return None }
   Some({
     code,
@@ -793,24 +972,62 @@ fn consume_style(line : String, start : Int) -> Int {
 fn relation_arrow(line : String) -> (String, Int, Int)? {
   let chars = line.to_array()
   let left_decors = [
-    "<|:", "<||", "}o", "|o", "}|", "<|", "<<", "0)", "||", "*", "o", "x", "}", "<_",
-    "<", "0", "@", ")", "#", "+",
+    "<|:", "<||", "}o", "|o", "}|", "<|", "<<", "0)", "()", "))", "||", "*", "o",
+    "x", "}", "<_", "<", "0", "@", ")", "#", "+",
   ]
   let right_decors = [
-    ":|>", "||>", "o{", "o|", "|{", "|>", ">>", "(0", "||", "*", "o", "x", "{", "_>",
-    ">", "0", "@", "(", "#", "+", "\\", "//",
+    ":|>", "||>", "o{", "o|", "|{", "|>", ">>", "(0", "()", "((", "||", "*", "o",
+    "x", "{", "_>", ">", "0", "@", "(", "#", "+", "\\", "//",
   ]
   let directions = [
     "right", "down", "left", "up", "ri", "do", "le", "r", "d", "l", "u",
   ]
   let insides = ["(0)", "(0", "0)", "0"]
   let mut quoted = false
+  let mut in_url = false
+  let mut in_stereotype = false
   for body_start in 0..<chars.length() {
     if chars[body_start] == '"' {
       quoted = !quoted
       continue
     }
-    guard !quoted && arrow_body_char(chars[body_start]) else { continue }
+    if !quoted &&
+      body_start + 1 < chars.length() &&
+      chars[body_start] == '[' &&
+      chars[body_start + 1] == '[' {
+      in_url = true
+      continue
+    }
+    if !quoted &&
+      in_url &&
+      body_start + 1 < chars.length() &&
+      chars[body_start] == ']' &&
+      chars[body_start + 1] == ']' {
+      in_url = false
+      continue
+    }
+    if !quoted &&
+      !in_url &&
+      body_start + 1 < chars.length() &&
+      chars[body_start] == '<' &&
+      chars[body_start + 1] == '<' {
+      in_stereotype = true
+      continue
+    }
+    if !quoted &&
+      in_stereotype &&
+      body_start + 1 < chars.length() &&
+      chars[body_start] == '>' &&
+      chars[body_start + 1] == '>' {
+      in_stereotype = false
+      continue
+    }
+    guard !quoted &&
+      !in_url &&
+      !in_stereotype &&
+      arrow_body_char(chars[body_start]) else {
+      continue
+    }
     let mut start = body_start
     for decor in left_decors {
       if decor.length() <= body_start &&
@@ -823,11 +1040,8 @@ fn relation_arrow(line : String) -> (String, Int, Int)? {
     while end < chars.length() && arrow_body_char(chars[end]) {
       end += 1
     }
-    // A relation body is normally at least two stroke characters (`--`, `..`,
-    // `==`). A one-stroke body is valid when followed by an explicit
-    // direction, as in `-left->`.
+    let stroke_end = end
     let has_direction = longest_prefix_at(line, end, directions) is Some(_)
-    guard end - body_start >= 2 || has_direction else { continue }
     end = consume_style(line, end)
     if longest_prefix_at(line, end, directions) is Some(direction) {
       end += direction.length()
@@ -841,8 +1055,21 @@ fn relation_arrow(line : String) -> (String, Int, Int)? {
     while end < chars.length() && arrow_body_char(chars[end]) {
       end += 1
     }
+    let has_right_decor = longest_prefix_at(line, end, right_decors) is Some(_)
     if longest_prefix_at(line, end, right_decors) is Some(decor) {
       end += decor.length()
+    }
+    let separated_single = stroke_end - body_start == 1 &&
+      body_start > 0 &&
+      stroke_end < chars.length() &&
+      chars[body_start - 1].is_whitespace() &&
+      chars[stroke_end].is_whitespace()
+    guard stroke_end - body_start >= 2 ||
+      has_direction ||
+      start < body_start ||
+      has_right_decor ||
+      separated_single else {
+      continue
     }
     guard end > body_start else { continue }
     return Some((line[start:end].to_owned(), start, end))
@@ -884,7 +1111,9 @@ fn left_relation_end(arrow : String) -> RelationEnd {
     CircleEnd
   } else if arrow.has_prefix("@") {
     FilledCircle
-  } else if arrow.has_prefix(")") {
+  } else if arrow.has_prefix("()") ||
+    arrow.has_prefix("))") ||
+    arrow.has_prefix(")") {
     Parenthesis
   } else if arrow.has_prefix("#") {
     Square
@@ -929,7 +1158,9 @@ fn right_relation_end(arrow : String) -> RelationEnd {
     CircleEnd
   } else if arrow.has_suffix("@") {
     FilledCircle
-  } else if arrow.has_suffix("(") {
+  } else if arrow.has_suffix("()") ||
+    arrow.has_suffix("((") ||
+    arrow.has_suffix("(") {
     Parenthesis
   } else if arrow.has_suffix("#") {
     Square
@@ -1074,6 +1305,60 @@ fn relation_suffix(raw : String) -> (String, String?, String?, String?) {
 }
 
 ///|
+fn relation_label_separator(raw : String) -> Int? {
+  let chars = raw.to_array()
+  let mut quoted = false
+  let mut in_url = false
+  let mut in_stereotype = false
+  for index in 0..<chars.length() {
+    if chars[index] == '"' {
+      quoted = !quoted
+      continue
+    }
+    if !quoted &&
+      index + 1 < chars.length() &&
+      chars[index] == '[' &&
+      chars[index + 1] == '[' {
+      in_url = true
+      continue
+    }
+    if !quoted &&
+      in_url &&
+      index + 1 < chars.length() &&
+      chars[index] == ']' &&
+      chars[index + 1] == ']' {
+      in_url = false
+      continue
+    }
+    if !quoted &&
+      !in_url &&
+      index + 1 < chars.length() &&
+      chars[index] == '<' &&
+      chars[index + 1] == '<' {
+      in_stereotype = true
+      continue
+    }
+    if !quoted &&
+      in_stereotype &&
+      index + 1 < chars.length() &&
+      chars[index] == '>' &&
+      chars[index + 1] == '>' {
+      in_stereotype = false
+      continue
+    }
+    guard !quoted && !in_url && !in_stereotype && chars[index] == ':' else {
+      continue
+    }
+    guard !(index > 0 && chars[index - 1] == ':') &&
+      !(index + 1 < chars.length() && chars[index + 1] == ':') else {
+      continue
+    }
+    return Some(index)
+  }
+  None
+}
+
+///|
 fn parse_relation_couple(raw : String) -> (String, String)? {
   let value = raw.trim()
   guard value.has_prefix("(") && value.has_suffix(")") else { return None }
@@ -1100,19 +1385,23 @@ fn note_position(word : String) -> NotePosition? {
 ///|
 fn parse_single_line_note(line : String) -> Note? {
   let tokens = words(line)
-  guard tokens.length() >= 4 && tokens[0].to_lower() == "note" else {
+  guard tokens.length() >= 3 && tokens[0].to_lower() == "note" else {
     return None
   }
   guard note_position(tokens[1]) is Some(position) else { return None }
-  guard tokens[2].to_lower() == "of" else { return None }
-  let rest = tokens[3:].join(" ")
+  let (target_prefix, rest) = if tokens[2].to_lower() == "of" {
+    guard tokens.length() >= 4 else { return None }
+    (true, tokens[3:].join(" "))
+  } else {
+    (false, tokens[2:].join(" "))
+  }
   guard find_substring(rest, ":") is Some(separator) else { return None }
-  let (target_raw, color, url, stereotype) = relation_suffix(
+  let (metadata, color, url, stereotype, tags, _) = note_header_metadata(
     rest[0:separator].trim().to_owned(),
   )
-  let target = normalize_name(target_raw)
+  let target = if target_prefix { normalize_name(metadata) } else { "" }
   let text = rest[separator + 1:].trim().to_owned()
-  guard target.length() > 0 else { return None }
+  guard !target_prefix || target.length() > 0 else { return None }
   Some({
     target,
     position,
@@ -1124,22 +1413,28 @@ fn parse_single_line_note(line : String) -> Note? {
     color,
     url,
     stereotype,
+    tags,
   })
 }
 
 ///|
 fn parse_multiline_note_header(line : String) -> (String, NotePosition)? {
   let tokens = words(line)
-  guard tokens.length() == 4 && tokens[0].to_lower() == "note" else {
+  guard tokens.length() >= 2 && tokens[0].to_lower() == "note" else {
     return None
   }
   guard note_position(tokens[1]) is Some(position) else { return None }
-  guard tokens[2].to_lower() == "of" else { return None }
-  let target = normalize_name(tokens[3])
-  if target.length() == 0 {
-    None
+  if tokens.length() == 2 {
+    Some(("", position))
+  } else if tokens.length() == 4 && tokens[2].to_lower() == "of" {
+    let target = normalize_name(tokens[3])
+    if target.length() == 0 {
+      None
+    } else {
+      Some((target, position))
+    }
   } else {
-    Some((target, position))
+    None
   }
 }
 
@@ -1166,6 +1461,7 @@ fn Parser::consume_multiline_note(
         color: None,
         url: None,
         stereotype: None,
+        tags: [],
       })
       return
     }
@@ -1181,14 +1477,43 @@ fn Parser::consume_multiline_note(
 
 ///|
 fn text_block_header(line : String) -> String? {
-  let keyword = line.to_lower()
-  match keyword {
-    "title" => Some("title")
-    "legend" => Some("legend")
-    "header" => Some("header")
-    "footer" => Some("footer")
-    "caption" => Some("caption")
+  let tokens = words(line.to_lower())
+  if tokens.length() > 1 && tokens[0] == "legend" {
+    let alignments = tokens[1:].to_owned()
+    if alignments.all(word => {
+        word == "top" ||
+        word == "bottom" ||
+        word == "left" ||
+        word == "right" ||
+        word == "center"
+      }) {
+      return Some("legend")
+    }
+  }
+  if tokens.length() == 2 &&
+    (tokens[0] == "left" || tokens[0] == "right" || tokens[0] == "center") &&
+    (tokens[1] == "header" || tokens[1] == "footer") {
+    return Some(tokens[1])
+  }
+  match tokens {
+    [keyword] =>
+      match keyword {
+        "title" => Some("title")
+        "legend" => Some("legend")
+        "header" => Some("header")
+        "footer" => Some("footer")
+        "caption" => Some("caption")
+        _ => None
+      }
     _ => None
+  }
+}
+
+///|
+fn text_block_end(line : String, keyword : String) -> Bool {
+  match line.to_lower() {
+    value if value == "end " + keyword || value == "end" + keyword => true
+    _ => false
   }
 }
 
@@ -1201,7 +1526,7 @@ fn Parser::consume_text_block(
   let text = StringBuilder()
   let mut first = true
   while self.index < self.lines.length() {
-    if strip_comment(self.lines[self.index]).to_lower() == "end \{keyword}" {
+    if text_block_end(strip_comment(self.lines[self.index]), keyword) {
       self.style.apply(TextBlock(keyword, text.to_string()))
       return
     }
@@ -1220,10 +1545,21 @@ fn Parser::consume_braced_block(
   self : Parser,
   kind : String,
 ) -> Unit raise ParseError {
+  let package_depth = self.package_stack.length()
   self.index += 1
   while self.index < self.lines.length() {
-    if strip_comment(self.lines[self.index]) == "}" {
+    let line = strip_comment(self.lines[self.index])
+    if line == "}" && self.package_stack.length() == package_depth {
       return
+    }
+    let reference = normalize_name(line)
+    let existing_reference = words(line).length() == 1 &&
+      self.entities.any(entity => {
+        entity.qualified_code == self.resolve(reference) ||
+        entity.code == reference
+      })
+    if !existing_reference {
+      self.parse_line(self.lines[self.index])
     }
     self.index += 1
   }
@@ -1248,6 +1584,21 @@ fn Parser::consume_skinparam_block(self : Parser) -> Unit raise ParseError {
 }
 
 ///|
+fn Parser::consume_common_block(
+  self : Parser,
+  terminator : String,
+) -> Unit raise ParseError {
+  self.index += 1
+  while self.index < self.lines.length() {
+    if strip_comment(self.lines[self.index]).to_lower() == terminator {
+      return
+    }
+    self.index += 1
+  }
+  self.raise_parse_error("unclosed common definition block")
+}
+
+///|
 fn quoted_end(raw : Array[Char], start : Int) -> Int? {
   for index in (start + 1)..<raw.length() {
     if raw[index] == '"' {
@@ -1259,37 +1610,64 @@ fn quoted_end(raw : Array[Char], start : Int) -> Int? {
 
 ///|
 fn endpoint(raw : String, cardinality_before : Bool) -> (String, String?) {
+  let value = raw.trim().to_owned()
+  let value_chars = value.to_array()
+  if value.length() >= 2 &&
+    value.has_prefix("\"") &&
+    value.has_suffix("\"") &&
+    quoted_end(value_chars, 0) == Some(value_chars.length() - 1) {
+    return (normalize_name(value), None)
+  }
   let chars = raw.to_array()
-  let mut quote_start = None
+  let spans : Array[(Int, Int)] = []
+  let mut start = None
   for index in 0..<chars.length() {
     if chars[index] == '"' {
-      quote_start = Some(index)
-      break
+      match start {
+        Some(open) => {
+          spans.push((open, index))
+          start = None
+        }
+        None => start = Some(index)
+      }
     }
   }
-  match quote_start {
-    Some(start) =>
-      match quoted_end(chars, start) {
-        Some(end) => {
-          let cardinality = raw[start + 1:end].to_owned()
-          let before = raw[0:start].trim().to_owned()
-          let after = raw[end + 1:].trim().to_owned()
-          let code = if cardinality_before { before } else { after }
-          (normalize_name(code), Some(cardinality))
-        }
-        None => (normalize_name(raw), None)
-      }
-    None => (normalize_name(raw), None)
+  guard !spans.is_empty() else { return (normalize_name(raw), None) }
+  let (start, end) = if cardinality_before {
+    spans[spans.length() - 1]
+  } else {
+    spans[0]
   }
+  let cardinality = raw[start + 1:end].to_owned()
+  let before = raw[0:start].trim().to_owned()
+  let after = raw[end + 1:].trim().to_owned()
+  let code = if cardinality_before { before } else { after }
+  guard code.length() > 0 else { return (normalize_name(raw), None) }
+  (normalize_name(code), Some(cardinality))
 }
 
 ///|
 fn split_role(raw : String, role_after_entity : Bool) -> (String, String?) {
-  guard find_substring(raw, "/") is Some(separator) else { (raw, None) }
+  let chars = raw.to_array()
+  let mut separator = None
+  let mut quoted = false
+  for index in 0..<chars.length() {
+    if chars[index] == '"' {
+      quoted = !quoted
+      continue
+    }
+    if !quoted &&
+      chars[index] == '/' &&
+      (index == 0 || chars[index - 1].is_whitespace()) {
+      separator = Some(index)
+      break
+    }
+  }
+  guard separator is Some(separator) else { return (raw, None) }
   let before = raw[0:separator].trim().to_owned()
   let after = raw[separator + 1:].trim()
   if role_after_entity {
-    let role = after.to_owned()
+    let role = normalize_name(after.to_owned())
     if before.length() == 0 || role.length() == 0 {
       (raw, None)
     } else {
@@ -1298,7 +1676,7 @@ fn split_role(raw : String, role_after_entity : Bool) -> (String, String?) {
   } else {
     let parts = words(after.to_owned())
     guard parts.length() >= 2 else { return (raw, None) }
-    (parts[1:].join(" "), Some(parts[0]))
+    (parts[1:].join(" "), Some(normalize_name(parts[0])))
   }
 }
 
@@ -1365,9 +1743,9 @@ fn Parser::parse_relation(self : Parser, line : String) -> Bool {
   }
   let right_raw = line[end:].trim()
   guard left_raw.length() > 0 && right_raw.length() > 0 else { false }
-  let label_index = find_substring(right_raw.to_owned(), " : ")
+  let label_index = relation_label_separator(right_raw.to_owned())
   let label = if label_index is Some(index) {
-    Some(right_raw[index + 3:].trim().to_owned())
+    Some(right_raw[index + 1:].trim().to_owned())
   } else {
     None
   }
@@ -1449,6 +1827,24 @@ fn Parser::finish_entity(self : Parser) -> Unit {
 fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
   let line = strip_comment(line)
   guard line.length() > 0 else { return }
+  match @core.common_block_terminator(line) {
+    Some(terminator) => {
+      self.consume_common_block(terminator)
+      return
+    }
+    None => ()
+  }
+  match @core.parse_namespace_separator(line) {
+    Some(separator) => {
+      self.namespace_separator = separator
+      match separator {
+        Some(value) => self.style.apply(Property("namespace separator", value))
+        None => self.style.apply(Property("namespace separator", "none"))
+      }
+      return
+    }
+    None => ()
+  }
   match @core.parse_style_directive(line) {
     Some(directive) => {
       self.style.apply(directive)
@@ -1460,6 +1856,10 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     return
   }
   guard !@core.is_preprocessor_directive(line) else { return }
+  if line.to_lower() == "allowmixing" || line.to_lower() == "allow_mixing" {
+    self.allow_mixing = true
+    return
+  }
   if self.current_entity is Some(entity_index) {
     self.consume_entity_body_line(entity_index, line)
     return
@@ -1523,7 +1923,17 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
   }
   match parse_single_line_note(line) {
     Some(note) => {
-      let target = self.ensure_entity(note.target)
+      let target = if note.target.length() == 0 {
+        match self.last_entity {
+          Some(target) => target
+          None => {
+            self.raise_parse_error("nothing to note to")
+            ""
+          }
+        }
+      } else {
+        self.ensure_entity(note.target)
+      }
       self.notes.push({ ..note, target, })
       return
     }
@@ -1545,7 +1955,9 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
   }
   match stereotype_assignment(line) {
     Some((code, stereotype)) => {
-      self.set_entity_stereotype(code, stereotype)
+      guard self.set_entity_stereotype(code, stereotype) else {
+        self.raise_parse_error("no such class \{code}")
+      }
       return
     }
     None => ()
@@ -1561,7 +1973,17 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
   }
   match parse_multiline_note_header(line) {
     Some((target, position)) => {
-      let target = self.ensure_entity(target)
+      let target = if target.length() == 0 {
+        match self.last_entity {
+          Some(target) => target
+          None => {
+            self.raise_parse_error("nothing to note to")
+            ""
+          }
+        }
+      } else {
+        self.ensure_entity(target)
+      }
       self.consume_multiline_note(target, position)
       return
     }
@@ -1582,6 +2004,13 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     self.consume_braced_block("together")
     return
   }
+  match parse_multiline_element_header(line) {
+    Some(header) => {
+      self.consume_multiline_element(header)
+      return
+    }
+    None => ()
+  }
   match package_declaration(line) {
     Some(group) => {
       let parent = self.current_package()
@@ -1595,7 +2024,7 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
         }
         let is_last = segment_index == segments.length() - 1
         let display = if is_last { group.display } else { segment }
-        self.packages.push({
+        let package_value : Package = {
           name: segment,
           qualified_name,
           display,
@@ -1621,7 +2050,18 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
           } else {
             None
           },
-        })
+        }
+        let mut existing = None
+        for index, item in self.packages {
+          if item.qualified_name == qualified_name {
+            existing = Some(index)
+            break
+          }
+        }
+        match existing {
+          Some(index) => if is_last { self.packages[index] = package_value }
+          None => self.packages.push(package_value)
+        }
         prefix = qualified_name
       }
       if !group.empty {
@@ -1638,9 +2078,58 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     }
     None => ()
   }
+  // Relations may contain endpoint ports (`A::out --> B::in`) and may start
+  // with words that are also element keywords (for example `Port ()-- A`).
+  if self.parse_relation(line) {
+    return
+  }
   match parse_declaration(line) {
     Some(declaration) => {
-      self.add_entity(declaration, declaration_opens_body(line))
+      let (_, declaration_line) = leading_visibility(line)
+      let mix_prefixed = declaration_line.to_lower().has_prefix("mix_")
+      guard native_class_kind(declaration.kind) ||
+        self.allow_mixing ||
+        mix_prefixed else {
+        self.raise_parse_error(
+          "use allowmixing to mix classes and other UML elements",
+        )
+      }
+      let opens_body = declaration_opens_body(line)
+      let qualified_code = self.qualify(declaration.code)
+      let exists = self.entities.any(entity => {
+        entity.qualified_code == qualified_code
+      })
+      if exists &&
+        (
+          declaration.kind is Map ||
+          declaration.kind is Json ||
+          line.trim().has_prefix("<>") ||
+          line.trim().has_prefix("()") ||
+          (declaration.kind is Object && !opens_body)
+        ) {
+        let kind = match declaration.kind {
+          Map => "map"
+          Json => "JSON"
+          Diamond => "association"
+          Interface if line.trim().has_prefix("()") => "interface"
+          Object => "object"
+          _ => "entity"
+        }
+        self.raise_parse_error("\{kind} already exists: \{declaration.code}")
+      }
+      let declaration = if exists && declaration.kind is Object && opens_body {
+        let mut existing_kind = Object
+        for entity in self.entities {
+          if entity.qualified_code == qualified_code {
+            existing_kind = entity.kind
+            break
+          }
+        }
+        { ..declaration, kind: existing_kind }
+      } else {
+        declaration
+      }
+      self.add_entity(declaration, opens_body)
       for parent in declaration.extends {
         let child = self.resolve(declaration.code)
         let parent_kind = if declaration.kind is Interface {
@@ -1711,11 +2200,6 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
       return
     }
     None => ()
-  }
-  // Relations may contain endpoint ports (`A::out --> B::in`) and therefore
-  // also contain colons. Parse them before the `A : member` shorthand.
-  if self.parse_relation(line) {
-    return
   }
   match parse_external_member(line) {
     Some((target, entry)) => {

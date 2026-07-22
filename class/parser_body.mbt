@@ -60,6 +60,77 @@ fn brace_delta(line : String) -> Int {
 }
 
 ///|
+priv struct MultilineElementHeader {
+  declaration : Declaration
+  first_line : String
+  terminator : Char
+}
+
+///|
+fn parse_multiline_element_header(line : String) -> MultilineElementHeader? {
+  let marker = match find_substring(line, " as \"") {
+    Some(index) => Some((index, 5, '"'))
+    None =>
+      match find_substring(line, " [") {
+        Some(index) => Some((index, 2, ']'))
+        None => None
+      }
+  }
+  guard marker is Some((start, offset, terminator)) else { return None }
+  let first_line = line[start + offset:].to_owned()
+  guard !first_line.contains(terminator.to_string()) else { return None }
+  guard parse_declaration(line[0:start].trim().to_owned()) is Some(declaration) else {
+    return None
+  }
+  Some({ declaration, first_line, terminator })
+}
+
+///|
+fn Parser::consume_multiline_element(
+  self : Parser,
+  header : MultilineElementHeader,
+) -> Unit raise ParseError {
+  let display = StringBuilder()
+  if header.first_line.length() > 0 {
+    display.write_string(header.first_line)
+  }
+  self.index += 1
+  while self.index < self.lines.length() {
+    let line = strip_comment(self.lines[self.index])
+    let chars = line.to_array()
+    let mut closing = None
+    for index in 0..<chars.length() {
+      if chars[index] == header.terminator {
+        closing = Some(index)
+        break
+      }
+    }
+    match closing {
+      Some(index) => {
+        let tail = line[0:index].to_owned()
+        if display.to_string().length() > 0 && tail.length() > 0 {
+          display.write_char('\n')
+        }
+        display.write_string(tail)
+        self.add_entity(
+          { ..header.declaration, display: display.to_string() },
+          false,
+        )
+        return
+      }
+      None => {
+        if display.to_string().length() > 0 {
+          display.write_char('\n')
+        }
+        display.write_string(line)
+      }
+    }
+    self.index += 1
+  }
+  self.raise_parse_error("unclosed multiline element description")
+}
+
+///|
 priv struct JsonSingleDeclaration {
   declaration : Declaration
   data : String

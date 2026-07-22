@@ -98,6 +98,15 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
   if lower == "hide empty description" {
     return Some(Property("hide empty description", "true"))
   }
+  if lower.has_prefix("set namespace_separator ") ||
+    lower.has_prefix("set namespaceseparator ") {
+    return Some(
+      Property(
+        "namespace separator",
+        syntax_words(trimmed.to_owned()).last().unwrap_or(""),
+      ),
+    )
+  }
   if lower == "footbox" ||
     lower == "newpage" ||
     lower.has_prefix("newpage ") ||
@@ -107,9 +116,33 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
   if lower.has_prefix("scale ") {
     return Some(Scale(trimmed[6:].trim().to_owned()))
   }
+  if lower == "rotate" ||
+    lower.has_prefix("skin ") ||
+    lower.has_prefix("minwidth ") ||
+    lower.has_prefix("page ") ||
+    lower.has_prefix("mainframe ") ||
+    lower.has_prefix("mainframe:") ||
+    (lower.has_prefix("sprite ") && !lower.has_suffix("{")) ||
+    (lower.has_prefix("<style") && lower.has_suffix(">") && lower != "<style>") {
+    return Some(Property(lower.to_owned(), "true"))
+  }
   for kind in ["title", "caption", "legend", "header", "footer"] {
     if lower.has_prefix(kind + ":") || lower.has_prefix(kind + " ") {
       let value = trimmed[kind.length():].trim_start(chars=": ").to_owned()
+      if kind == "legend" &&
+        !lower.has_prefix("legend:") &&
+        value
+        .split(" ")
+        .all(word => {
+          let word = word.trim().to_lower()
+          word == "top" ||
+          word == "bottom" ||
+          word == "left" ||
+          word == "right" ||
+          word == "center"
+        }) {
+        return None
+      }
       return Some(TextBlock(kind, value))
     }
   }
@@ -118,6 +151,11 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     .map(part => part.trim().to_owned())
     .filter(part => part.length() > 0)
     .to_array()
+  if words.length() >= 3 &&
+    (words[0] == "left" || words[0] == "right" || words[0] == "center") &&
+    (words[1] == "header" || words[1] == "footer") {
+    return Some(TextBlock(words[1], words[2:].to_owned().join(" ")))
+  }
   match words {
     ["!theme", theme, ..] => Some(Theme(theme))
     ["left", "to", "right", ..] => Some(Direction(LeftToRight))
@@ -183,14 +221,14 @@ pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
     _ if family.contains("mono") ||
       family.contains("courier") ||
       family.contains("consolas") ||
-      family.contains("menlo") => @metrics.Monospace
+      family.contains("menlo") => Monospace
     _ if !family.contains("sans") &&
       (
         family.contains("serif") ||
         family.contains("times") ||
         family.contains("georgia")
-      ) => @metrics.Serif
-    _ => @metrics.Sans
+      ) => Serif
+    _ => Sans
   }
 }
 
@@ -200,7 +238,7 @@ pub fn DocumentStyle::font_metrics(
   self : DocumentStyle,
   font_size? : Int = 0,
   font_weight? : Int = 400,
-  font_style? : @metrics.FontStyle = @metrics.Normal,
+  font_style? : @metrics.FontStyle = Normal,
   line_height? : Int = 0,
 ) -> @metrics.FontMetrics {
   let resolved_size = if font_size > 0 {

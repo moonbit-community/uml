@@ -9,21 +9,27 @@ priv struct SpecialNoteHeader {
   color : String?
   url : String?
   stereotype : String?
+  tags : Array[String]
   braced : Bool
 }
 
 ///|
 fn note_header_metadata(
   raw : String,
-) -> (String, String?, String?, String?, Bool) {
+) -> (String, String?, String?, String?, Array[String], Bool) {
   let braced = raw.trim().has_suffix("{")
   let raw = if braced {
     raw.trim()[0:raw.trim().length() - 1].trim().to_owned()
   } else {
     raw.trim().to_owned()
   }
+  let tags = declaration_tags(raw)
   let (target, color, url, stereotype) = relation_suffix(raw)
-  (target, color, url, stereotype, braced)
+  let target = match @core.find_unquoted_literal(target, " $") {
+    Some(index) => target[0:index].trim().to_owned()
+    None => target
+  }
+  (target, color, url, stereotype, tags, braced)
 }
 
 ///|
@@ -54,7 +60,7 @@ fn parse_link_note_header(line : String) -> (SpecialNoteHeader, String?)? {
     return None
   }
   let metadata = tokens[connector_index + 2:].join(" ")
-  let (_, color, url, stereotype, braced) = note_header_metadata(metadata)
+  let (_, color, url, stereotype, tags, braced) = note_header_metadata(metadata)
   Some(
     (
       {
@@ -67,6 +73,7 @@ fn parse_link_note_header(line : String) -> (SpecialNoteHeader, String?)? {
         color,
         url,
         stereotype,
+        tags,
         braced,
       },
       text,
@@ -88,7 +95,7 @@ fn parse_member_tip_header(line : String) -> SpecialNoteHeader? {
   let rest = tokens[3:].join(" ")
   guard find_substring(rest, "::") is Some(separator) else { return None }
   let entity = normalize_name(rest[0:separator].trim().to_owned())
-  let (member_name, color, url, stereotype, braced) = note_header_metadata(
+  let (member_name, color, url, stereotype, tags, braced) = note_header_metadata(
     rest[separator + 2:].to_owned(),
   )
   guard entity.length() > 0 && member_name.length() > 0 else { return None }
@@ -102,6 +109,7 @@ fn parse_member_tip_header(line : String) -> SpecialNoteHeader? {
     color,
     url,
     stereotype,
+    tags,
     braced,
   })
 }
@@ -110,17 +118,23 @@ fn parse_member_tip_header(line : String) -> SpecialNoteHeader? {
 fn parse_entity_note_header(line : String) -> SpecialNoteHeader? {
   guard find_substring(line, " : ") is None else { return None }
   let tokens = words(line)
-  guard tokens.length() >= 4 && tokens[0].to_lower() == "note" else {
+  guard tokens.length() >= 2 && tokens[0].to_lower() == "note" else {
     return None
   }
-  guard note_position(tokens[1]) is Some(position) &&
-    tokens[2].to_lower() == "of" else {
-    return None
+  guard note_position(tokens[1]) is Some(position) else { return None }
+  let metadata = if tokens.length() >= 4 && tokens[2].to_lower() == "of" {
+    tokens[3:].join(" ")
+  } else {
+    tokens[2:].join(" ")
   }
-  let (target, color, url, stereotype, braced) = note_header_metadata(
-    tokens[3:].join(" "),
+  let (target, color, url, stereotype, tags, braced) = note_header_metadata(
+    metadata,
   )
-  guard target.length() > 0 else { return None }
+  guard tokens.length() == 2 ||
+    tokens[2].to_lower() != "of" ||
+    target.length() > 0 else {
+    return None
+  }
   Some({
     target,
     position,
@@ -131,6 +145,7 @@ fn parse_entity_note_header(line : String) -> SpecialNoteHeader? {
     color,
     url,
     stereotype,
+    tags,
     braced,
   })
 }
@@ -140,7 +155,7 @@ fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
   let lower = line.to_lower()
   guard lower.has_prefix("note ") else { return None }
   if lower.has_prefix("note as ") {
-    let (code, color, url, stereotype, braced) = note_header_metadata(
+    let (code, color, url, stereotype, tags, braced) = note_header_metadata(
       line[8:].to_owned(),
     )
     guard code.length() > 0 else { return None }
@@ -156,6 +171,7 @@ fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
           color,
           url,
           stereotype,
+          tags,
           braced,
         },
         None,
@@ -168,7 +184,7 @@ fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
   let text = line[6:end].to_owned()
   let tail = line[end + 1:].trim().to_owned()
   guard tail.to_lower().has_prefix("as ") else { return None }
-  let (code, color, url, stereotype, braced) = note_header_metadata(
+  let (code, color, url, stereotype, tags, braced) = note_header_metadata(
     tail[3:].to_owned(),
   )
   guard code.length() > 0 else { return None }
@@ -184,6 +200,7 @@ fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
         color,
         url,
         stereotype,
+        tags,
         braced,
       },
       Some(text),
@@ -213,10 +230,24 @@ fn Parser::push_special_note(
       header = { ..header, target, }
     }
     EntityNote => {
-      let target = self.ensure_entity(header.target)
+      let target = if header.target.length() == 0 {
+        match self.last_entity {
+          Some(target) => target
+          None => {
+            self.raise_parse_error("nothing to note to")
+            ""
+          }
+        }
+      } else {
+        self.ensure_entity(header.target)
+      }
       header = { ..header, target, }
     }
     FloatingNote => {
+      let existing = self.resolve(header.target)
+      guard !self.entities.any(entity => entity.qualified_code == existing) else {
+        self.raise_parse_error("note already created: \{header.target}")
+      }
       let target = self.ensure_entity_as(header.target, NamedNote)
       header = { ..header, target, code: Some(target) }
     }
@@ -232,6 +263,7 @@ fn Parser::push_special_note(
     color: header.color,
     url: header.url,
     stereotype: header.stereotype,
+    tags: header.tags,
   })
 }
 
