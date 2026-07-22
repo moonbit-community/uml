@@ -77,6 +77,18 @@ test "notes and references normalize quoted participant codes" {
 }
 
 ///|
+test "parsec participant lists keep commas inside quoted names" {
+  let result = parse(
+    "@startuml\nparticipant \"Alice, Inc.\"\nparticipant Bob\nnote over \"Alice, Inc.\", Bob : shared\n@enduml",
+  )
+  match result.events[0] {
+    Note(note) =>
+      @test.assert_eq(note.participant_codes, ["Alice, Inc.", "Bob"])
+    _ => fail("expected participant note")
+  }
+}
+
+///|
 test "parse grouping" {
   let result = parse(
     "@startuml\nAlice -> Bob\nopt condition\nBob -> Carol\nend\n@enduml",
@@ -254,6 +266,31 @@ test "parse async arrow" {
         _ => fail("expected async arrow")
       }
     _ => fail("not a message")
+  }
+}
+
+///|
+test "parsec message grammar preserves decorated arrows and aliases" {
+  let result = parse(
+    "@startuml\nparticipant \"Alice Agent\" as alice\nalice o<<-->>ox Bob ++ : dispatch\n@enduml",
+  )
+  match result.events[0] {
+    Message(message) => {
+      @test.assert_eq(message.from_code, "alice")
+      @test.assert_eq(message.to_code, "Bob")
+      @test.assert_eq(message.label, Some("dispatch"))
+      match message.activation_spec {
+        Some(Activate) => ()
+        _ => fail("expected activation")
+      }
+      @test.assert_eq(message.arrow_config.circle_start, true)
+      @test.assert_eq(message.arrow_config.circle_end, true)
+      match (message.arrow_config.body, message.arrow_config.head1) {
+        (Dotted, Async) => ()
+        _ => fail("expected dotted asynchronous arrow")
+      }
+    }
+    _ => fail("expected message")
   }
 }
 

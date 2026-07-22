@@ -302,38 +302,17 @@ fn is_arrow_char(char : Char) -> Bool {
 
 ///|
 fn Source::try_color(self : Source) -> String? {
-  let checkpoint = self.save()
-  guard self.consume('#') else { return None }
-  let color = self.take_while(c => !is_inline_whitespace(c) && c != '\n')
-  guard color.length() > 0 else {
-    self.restore(checkpoint)
-    return None
-  }
-  Some(color)
+  self.try_parsec(color_parser())
 }
 
 ///|
 fn Source::try_anchor(self : Source) -> String? {
-  let checkpoint = self.save()
-  guard self.consume('{') else { return None }
-  let anchor = self.take_while(is_ident_char)
-  guard anchor.length() > 0 && self.consume('}') else {
-    self.restore(checkpoint)
-    return None
-  }
-  Some(anchor)
+  self.try_parsec(anchor_parser())
 }
 
 ///|
 fn Source::try_quoted_string(self : Source) -> String? {
-  let checkpoint = self.save()
-  guard self.consume('"') else { return None }
-  let value = self.take_while(c => c != '"')
-  guard self.consume('"') else {
-    self.restore(checkpoint)
-    return None
-  }
-  Some(value)
+  self.try_parsec(quoted_string_parser())
 }
 
 ///|

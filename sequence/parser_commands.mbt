@@ -5,84 +5,30 @@ fn take_optional_decimal(src : Source) -> Int? {
 
 ///|
 fn parse_participant_type(src : Source) -> ParticipantType? {
-  let typ = match src.peek_word().to_lower() {
-    "participant" => Participant
-    "actor" => Actor
-    "boundary" => Boundary
-    "control" => Control
-    "entity" => Entity
-    "database" => Database
-    "collections" => Collections
-    "queue" => Queue
-    _ => return None
-  }
-  src.skip_word()
-  Some(typ)
+  src.try_parsec(participant_type_parser())
 }
 
 ///|
 fn parse_group_keyword(src : Source) -> GroupKeyword? {
-  let keyword = match src.peek_word().to_lower() {
-    "opt" => Opt
-    "alt" => Alt
-    "loop" => Loop
-    "par2" => Par2
-    "par" => Par
-    "break" => Break
-    "critical" => Critical
-    "group" => Group
-    "partition" => Partition
-    _ => return None
-  }
-  src.skip_word()
-  Some(keyword)
+  src.try_parsec(group_keyword_parser())
 }
 
 ///|
 fn parse_note_style(src : Source) -> NoteStyle? {
-  let style = match src.peek_word().to_lower() {
-    "note" => NodeNormal
-    "hnote" => Hexagonal
-    "rnote" => Box
-    _ => return None
-  }
-  src.skip_word()
-  Some(style)
+  src.try_parsec(note_style_parser())
 }
 
 ///|
 fn parse_note_position(src : Source) -> NotePosition? {
-  let position = match src.peek_word().to_lower() {
-    "left" => Left
-    "right" => Right
-    "bottom" => Bottom
-    "top" => Top
-    "over" => Over
-    "across" => Across
-    _ => return None
-  }
-  src.skip_word()
-  Some(position)
+  src.try_parsec(note_position_parser())
 }
 
 ///|
 fn split_participant_list(raw : StringView) -> Array[String] {
-  raw
-  .split(",")
-  .map(c => c.trim())
-  .filter(c => c.length() > 0)
-  .map(unquote_participant_code)
-  .to_array()
-}
-
-///|
-fn unquote_participant_code(code : StringView) -> String {
-  let trimmed = code.trim()
-  let length = trimmed.length()
-  if length >= 2 && trimmed.has_prefix("\"") && trimmed.has_suffix("\"") {
-    trimmed[1:length - 1].to_owned()
-  } else {
-    trimmed.to_owned()
+  match
+    participant_list_parser().parse(@talcparsec.Input::new(raw.to_owned())) {
+    Ok(participants) => participants
+    Err(_) => []
   }
 }
 

@@ -24,20 +24,69 @@ pub fn normalize_url_target(value : String) -> String {
 }
 
 ///|
+fn url_target_prefix_parser() -> @talcparsec.StringParser[UrlTarget] {
+  let quoted_part = @talcparsec.string("\\\"").or(
+    @talcparsec.none_of("\"").string_map(char => char.to_string()),
+  )
+  let quoted_target = @talcparsec.char('"')
+    .then(quoted_part.many().map(parts => parts.join("")))
+    .skip(@talcparsec.char('"'))
+  let unquoted_target = @talcparsec.many_chars1(
+    @talcparsec.satisfy("URL target", char => {
+      !char.is_whitespace() && char != ']'
+    }),
+  )
+  let target = quoted_target.attempt().or(unquoted_target)
+  let terminator = @talcparsec.string("]]")
+  let label_char = terminator
+    .not_followed_by("URL terminator")
+    .then(@talcparsec.char(']'))
+    .or(@talcparsec.none_of("]"))
+  let label = @talcparsec.many_chars(label_char).skip(terminator)
+  let no_label = @talcparsec.spaces().then(terminator).map(_ => None)
+  let with_label = @talcparsec.whitespace()
+    .some()
+    .then(label)
+    .map(label => {
+      let label = label.trim().to_owned()
+      if label.length() == 0 {
+        None
+      } else {
+        Some(label)
+      }
+    })
+  @talcparsec.string("[[")
+  .then(@talcparsec.spaces())
+  .then(
+    target.bind(target => {
+      no_label.attempt().or(with_label).map(label => { target, label })
+    }),
+  )
+}
+
+///|
+fn url_target_parser() -> @talcparsec.StringParser[UrlTarget] {
+  @talcparsec.spaces()
+  .then(url_target_prefix_parser())
+  .skip(@talcparsec.spaces())
+  .skip(@talcparsec.eof())
+}
+
+///|
+/// Parse a URL target at the beginning of a larger PlantUML command.
+pub fn parse_url_target_prefix(value : String) -> (UrlTarget, String)? {
+  match url_target_prefix_parser().run(@talcparsec.Input::new(value)) {
+    Ok((target, rest)) => Some((target, rest.remaining().to_owned()))
+    Err(_) => None
+  }
+}
+
+///|
 pub fn parse_url_target(value : String) -> UrlTarget? {
-  let value = value.trim()
-  guard value.has_prefix("[[") && value.has_suffix("]]") else { return None }
-  let content = value[2:value.length() - 2].trim().to_owned()
-  let parts = content
-    .split(" ")
-    .map(part => part.trim().to_owned())
-    .filter(part => part.length() > 0)
-    .to_array()
-  guard parts.length() > 0 else { return None }
-  let target = normalize_url_target(parts[0])
-  guard target.length() > 0 else { return None }
-  let label = if parts.length() > 1 { Some(parts[1:].join(" ")) } else { None }
-  Some({ target, label })
+  match url_target_parser().parse(@talcparsec.Input::new(value)) {
+    Ok(target) if target.target.length() > 0 => Some(target)
+    _ => None
+  }
 }
 
 ///|

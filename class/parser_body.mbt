@@ -1,20 +1,6 @@
 ///|
 fn linked_map_arrow(line : String) -> (String, Int, Int)? {
-  let chars = line.to_array()
-  for start in 0..<chars.length() {
-    guard chars[start] == '*' else { continue }
-    let mut end = start + 1
-    while end < chars.length() && chars[end] == '-' {
-      end += 1
-    }
-    if end < chars.length() && chars[end] == '_' {
-      end += 1
-    }
-    if end < chars.length() && chars[end] == '>' && end > start + 1 {
-      return Some((line[start:end + 1].to_owned(), start, end + 1))
-    }
-  }
-  None
+  parse_linked_map_arrow(line)
 }
 
 ///|
@@ -34,29 +20,7 @@ fn parse_map_entry(line : String) -> MapEntry? {
 
 ///|
 fn brace_delta(line : String) -> Int {
-  let mut quoted = false
-  let mut escaped = false
-  let mut delta = 0
-  for char in line {
-    if escaped {
-      escaped = false
-      continue
-    }
-    if char == '\\' && quoted {
-      escaped = true
-      continue
-    }
-    if char == '"' {
-      quoted = !quoted
-      continue
-    }
-    if !quoted && char == '{' {
-      delta += 1
-    } else if !quoted && char == '}' {
-      delta -= 1
-    }
-  }
-  delta
+  parse_brace_delta(line)
 }
 
 ///|

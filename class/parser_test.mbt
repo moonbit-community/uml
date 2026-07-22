@@ -209,6 +209,20 @@ test "accepts PlantUML single-stroke relation bodies" {
 }
 
 ///|
+test "parsec relation grammar skips protected punctuation" {
+  let diagram = parse(
+    "@startuml\nclass order-item\nclass target\norder-item --> target [[https://host:8443/item]] <<phase:value>> : \"sync: now\"\n@enduml",
+  )
+  @test.assert_eq(diagram.relations.length(), 1)
+  let relation = diagram.relations[0]
+  @test.assert_eq(relation.left, "order-item")
+  @test.assert_eq(relation.right, "target")
+  @test.assert_eq(relation.url, Some("https://host:8443/item"))
+  @test.assert_eq(relation.stereotype, Some("<<phase:value>>"))
+  @test.assert_eq(relation.label, Some("\"sync: now\""))
+}
+
+///|
 test "parses members declared outside a class body" {
   let diagram = parse("@startuml\nUser : + id : Int\nUser : + login()\n@enduml")
   let user = diagram.entity("User").unwrap()
@@ -220,10 +234,10 @@ test "parses members declared outside a class body" {
 ///|
 test "accepts both PlantUML alias directions" {
   let diagram = parse(
-    "@startuml\nclass \"Display A\" as A\nclass B as \"Display B\"\n@enduml",
+    "@startuml\nclass \"Display as A\" as A\nclass B as \"Display as B\"\n@enduml",
   )
-  @test.assert_eq(diagram.entity("A").unwrap().display, "Display A")
-  @test.assert_eq(diagram.entity("B").unwrap().display, "Display B")
+  @test.assert_eq(diagram.entity("A").unwrap().display, "Display as A")
+  @test.assert_eq(diagram.entity("B").unwrap().display, "Display as B")
 }
 
 ///|
@@ -669,6 +683,18 @@ test "preserves relation directions and weights" {
 }
 
 ///|
+test "parsec relation choices backtrack across shared prefixes" {
+  let diagram = parse(
+    "@startuml\nA -r-> B\nC <||-- D\nE --||> F\nG <|:-- H\nI --:|> J\n@enduml",
+  )
+  @test.assert_eq(diagram.relations[0].direction, Rightward)
+  @test.assert_eq(diagram.relations[1].left_end, Redefines)
+  @test.assert_eq(diagram.relations[2].right_end, Redefines)
+  @test.assert_eq(diagram.relations[3].left_end, DefinedBy)
+  @test.assert_eq(diagram.relations[4].right_end, DefinedBy)
+}
+
+///|
 test "creates interface targets for implements and lollipop links" {
   let diagram = parse(
     "@startuml\nclass Service implements API\nService --( Port\n@enduml",
@@ -918,6 +944,17 @@ test "parses multiline and single-line JSON entities" {
   @test.assert_eq(
     diagram.entity("Flags").unwrap().json_data,
     Some("[true, false]"),
+  )
+}
+
+///|
+test "parsec brace grammar ignores braces inside JSON strings" {
+  let diagram = parse(
+    "@startuml\njson Template {\n\"pattern\": \"{user}/{id}\"\n}\n@enduml",
+  )
+  @test.assert_eq(
+    diagram.entity("Template").unwrap().json_data,
+    Some("{\"pattern\": \"{user}/{id}\"}"),
   )
 }
 

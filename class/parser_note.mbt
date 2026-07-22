@@ -178,14 +178,11 @@ fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
       ),
     )
   }
-  let chars = line.to_array()
-  guard chars.length() > 6 && chars[5] == '"' else { return None }
-  guard quoted_end(chars, 5) is Some(end) else { return None }
-  let text = line[6:end].to_owned()
-  let tail = line[end + 1:].trim().to_owned()
-  guard tail.to_lower().has_prefix("as ") else { return None }
+  guard parse_named_note_text(line[5:].to_owned()) is Some((text, metadata)) else {
+    return None
+  }
   let (code, color, url, stereotype, tags, braced) = note_header_metadata(
-    tail[3:].to_owned(),
+    metadata,
   )
   guard code.length() > 0 else { return None }
   Some(

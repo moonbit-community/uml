@@ -179,19 +179,11 @@ fn leading_visibility(line : String) -> (Visibility, String) {
 
 ///|
 fn extract_stereotype(body : String) -> (String, String?) {
-  guard @core.find_unquoted_literal(body, "<<") is Some(start) else {
-    return (body, None)
+  match parse_stereotype_split(body) {
+    Some((prefix, stereotype)) =>
+      (prefix.trim().to_owned(), @core.normalize_stereotype(stereotype))
+    None => (body, None)
   }
-  let chars = body.to_array()
-  for end in (start + 2)..<(chars.length() - 1) {
-    if chars[end] == '>' && chars[end + 1] == '>' {
-      return (
-        body[0:start].trim().to_owned(),
-        @core.normalize_stereotype(body[start:end + 2].to_owned()),
-      )
-    }
-  }
-  (body, None)
 }
 
 ///|
@@ -243,24 +235,10 @@ fn declaration_tags(body : String) -> Array[String] {
 
 ///|
 fn extract_generic(body : String) -> (String, String?) {
-  guard @core.find_unquoted_literal(body, "<") is Some(start) else {
-    return (body, None)
+  match parse_generic_split(body) {
+    Some((prefix, generic)) => (prefix.trim().to_owned(), Some(generic))
+    None => (body, None)
   }
-  let chars = body.to_array()
-  let mut depth = 0
-  for end in (start + 1)..<chars.length() {
-    if chars[end] == '<' {
-      depth += 1
-    } else if chars[end] == '>' && depth > 0 {
-      depth -= 1
-    } else if chars[end] == '>' {
-      return (
-        body[0:start].trim().to_owned(),
-        Some(body[start + 1:end].to_owned()),
-      )
-    }
-  }
-  (body, None)
 }
 
 ///|
@@ -293,10 +271,10 @@ fn tail_targets(
 
 ///|
 fn name_and_code(body : String) -> (String, String) {
-  match @core.find_unquoted_literal(body, " as ") {
-    Some(separator) => {
-      let name = body[0:separator].trim()
-      let alternate = body[separator + 4:].trim()
+  match @core.parse_alias_identifier(body) {
+    Some((name, alternate)) => {
+      let name = name.trim()
+      let alternate = alternate.trim()
       if alternate.has_prefix("\"") && alternate.has_suffix("\"") {
         (normalize_name(alternate.to_owned()), normalize_name(name.to_owned()))
       } else {
@@ -933,146 +911,31 @@ fn find_substring(haystack : String, needle : String) -> Int? {
 }
 
 ///|
-fn arrow_body_char(char : Char) -> Bool {
-  char == '-' || char == '=' || char == '.'
-}
-
-///|
-fn prefix_at(line : String, index : Int, prefix : String) -> Bool {
-  index + prefix.length() <= line.length() &&
-  line[index:index + prefix.length()].to_owned() == prefix
-}
-
-///|
-fn longest_prefix_at(
-  line : String,
-  index : Int,
-  candidates : Array[String],
-) -> String? {
-  for candidate in candidates {
-    if prefix_at(line, index, candidate) {
-      return Some(candidate)
-    }
-  }
-  None
-}
-
-///|
-fn consume_style(line : String, start : Int) -> Int {
-  guard start < line.length() && line[start] == '[' else { start }
-  for index in (start + 1)..<line.length() {
-    if line[index] == ']' {
-      return index + 1
-    }
-  }
-  start
-}
-
-///|
 fn relation_arrow(line : String) -> (String, Int, Int)? {
   let chars = line.to_array()
-  let left_decors = [
-    "<|:", "<||", "}o", "|o", "}|", "<|", "<<", "0)", "()", "))", "||", "*", "o",
-    "x", "}", "<_", "<", "0", "@", ")", "#", "+",
-  ]
-  let right_decors = [
-    ":|>", "||>", "o{", "o|", "|{", "|>", ">>", "(0", "()", "((", "||", "*", "o",
-    "x", "{", "_>", ">", "0", "@", "(", "#", "+", "\\", "//",
-  ]
-  let directions = [
-    "right", "down", "left", "up", "ri", "do", "le", "r", "d", "l", "u",
-  ]
-  let insides = ["(0)", "(0", "0)", "0"]
-  let mut quoted = false
-  let mut in_url = false
-  let mut in_stereotype = false
-  for body_start in 0..<chars.length() {
-    if chars[body_start] == '"' {
-      quoted = !quoted
-      continue
-    }
-    if !quoted &&
-      body_start + 1 < chars.length() &&
-      chars[body_start] == '[' &&
-      chars[body_start + 1] == '[' {
-      in_url = true
-      continue
-    }
-    if !quoted &&
-      in_url &&
-      body_start + 1 < chars.length() &&
-      chars[body_start] == ']' &&
-      chars[body_start + 1] == ']' {
-      in_url = false
-      continue
-    }
-    if !quoted &&
-      !in_url &&
-      body_start + 1 < chars.length() &&
-      chars[body_start] == '<' &&
-      chars[body_start + 1] == '<' {
-      in_stereotype = true
-      continue
-    }
-    if !quoted &&
-      in_stereotype &&
-      body_start + 1 < chars.length() &&
-      chars[body_start] == '>' &&
-      chars[body_start + 1] == '>' {
-      in_stereotype = false
-      continue
-    }
-    guard !quoted &&
-      !in_url &&
-      !in_stereotype &&
-      arrow_body_char(chars[body_start]) else {
-      continue
-    }
-    let mut start = body_start
-    for decor in left_decors {
-      if decor.length() <= body_start &&
-        line[body_start - decor.length():body_start].to_owned() == decor {
-        start = body_start - decor.length()
-        break
+  guard parse_relation_scan(line) is Some(tokens) else { return None }
+  let mut start = 0
+  for token in tokens {
+    match token {
+      RelationText(text) => start += text.length()
+      RelationCandidate(candidate) => {
+        let body_start = start + candidate.left_length
+        let stroke_end = body_start + candidate.first_length
+        let separated_single = candidate.first_length == 1 &&
+          body_start > 0 &&
+          stroke_end < chars.length() &&
+          chars[body_start - 1].is_whitespace() &&
+          chars[stroke_end].is_whitespace()
+        if candidate.first_length >= 2 ||
+          candidate.has_direction ||
+          candidate.has_left_decor ||
+          candidate.has_right_decor ||
+          separated_single {
+          return Some((candidate.text, start, start + candidate.text.length()))
+        }
+        start += candidate.text.length()
       }
     }
-    let mut end = body_start
-    while end < chars.length() && arrow_body_char(chars[end]) {
-      end += 1
-    }
-    let stroke_end = end
-    let has_direction = longest_prefix_at(line, end, directions) is Some(_)
-    end = consume_style(line, end)
-    if longest_prefix_at(line, end, directions) is Some(direction) {
-      end += direction.length()
-    }
-    if longest_prefix_at(line, end, insides) is Some(inside) &&
-      end + inside.length() < chars.length() &&
-      arrow_body_char(chars[end + inside.length()]) {
-      end += inside.length()
-    }
-    end = consume_style(line, end)
-    while end < chars.length() && arrow_body_char(chars[end]) {
-      end += 1
-    }
-    let has_right_decor = longest_prefix_at(line, end, right_decors) is Some(_)
-    if longest_prefix_at(line, end, right_decors) is Some(decor) {
-      end += decor.length()
-    }
-    let separated_single = stroke_end - body_start == 1 &&
-      body_start > 0 &&
-      stroke_end < chars.length() &&
-      chars[body_start - 1].is_whitespace() &&
-      chars[stroke_end].is_whitespace()
-    guard stroke_end - body_start >= 2 ||
-      has_direction ||
-      start < body_start ||
-      has_right_decor ||
-      separated_single else {
-      continue
-    }
-    guard end > body_start else { continue }
-    return Some((line[start:end].to_owned(), start, end))
   }
   None
 }
@@ -1306,56 +1169,7 @@ fn relation_suffix(raw : String) -> (String, String?, String?, String?) {
 
 ///|
 fn relation_label_separator(raw : String) -> Int? {
-  let chars = raw.to_array()
-  let mut quoted = false
-  let mut in_url = false
-  let mut in_stereotype = false
-  for index in 0..<chars.length() {
-    if chars[index] == '"' {
-      quoted = !quoted
-      continue
-    }
-    if !quoted &&
-      index + 1 < chars.length() &&
-      chars[index] == '[' &&
-      chars[index + 1] == '[' {
-      in_url = true
-      continue
-    }
-    if !quoted &&
-      in_url &&
-      index + 1 < chars.length() &&
-      chars[index] == ']' &&
-      chars[index + 1] == ']' {
-      in_url = false
-      continue
-    }
-    if !quoted &&
-      !in_url &&
-      index + 1 < chars.length() &&
-      chars[index] == '<' &&
-      chars[index + 1] == '<' {
-      in_stereotype = true
-      continue
-    }
-    if !quoted &&
-      in_stereotype &&
-      index + 1 < chars.length() &&
-      chars[index] == '>' &&
-      chars[index + 1] == '>' {
-      in_stereotype = false
-      continue
-    }
-    guard !quoted && !in_url && !in_stereotype && chars[index] == ':' else {
-      continue
-    }
-    guard !(index > 0 && chars[index - 1] == ':') &&
-      !(index + 1 < chars.length() && chars[index + 1] == ':') else {
-      continue
-    }
-    return Some(index)
-  }
-  None
+  parse_relation_label_prefix(raw)
 }
 
 ///|
@@ -1599,84 +1413,24 @@ fn Parser::consume_common_block(
 }
 
 ///|
-fn quoted_end(raw : Array[Char], start : Int) -> Int? {
-  for index in (start + 1)..<raw.length() {
-    if raw[index] == '"' {
-      return Some(index)
-    }
-  }
-  None
-}
-
-///|
 fn endpoint(raw : String, cardinality_before : Bool) -> (String, String?) {
-  let value = raw.trim().to_owned()
-  let value_chars = value.to_array()
-  if value.length() >= 2 &&
-    value.has_prefix("\"") &&
-    value.has_suffix("\"") &&
-    quoted_end(value_chars, 0) == Some(value_chars.length() - 1) {
-    return (normalize_name(value), None)
+  match parse_endpoint_parts(raw, cardinality_before) {
+    Some((code, cardinality)) => (normalize_name(code), cardinality)
+    None => (normalize_name(raw), None)
   }
-  let chars = raw.to_array()
-  let spans : Array[(Int, Int)] = []
-  let mut start = None
-  for index in 0..<chars.length() {
-    if chars[index] == '"' {
-      match start {
-        Some(open) => {
-          spans.push((open, index))
-          start = None
-        }
-        None => start = Some(index)
-      }
-    }
-  }
-  guard !spans.is_empty() else { return (normalize_name(raw), None) }
-  let (start, end) = if cardinality_before {
-    spans[spans.length() - 1]
-  } else {
-    spans[0]
-  }
-  let cardinality = raw[start + 1:end].to_owned()
-  let before = raw[0:start].trim().to_owned()
-  let after = raw[end + 1:].trim().to_owned()
-  let code = if cardinality_before { before } else { after }
-  guard code.length() > 0 else { return (normalize_name(raw), None) }
-  (normalize_name(code), Some(cardinality))
 }
 
 ///|
 fn split_role(raw : String, role_after_entity : Bool) -> (String, String?) {
-  let chars = raw.to_array()
-  let mut separator = None
-  let mut quoted = false
-  for index in 0..<chars.length() {
-    if chars[index] == '"' {
-      quoted = !quoted
-      continue
-    }
-    if !quoted &&
-      chars[index] == '/' &&
-      (index == 0 || chars[index - 1].is_whitespace()) {
-      separator = Some(index)
-      break
-    }
-  }
-  guard separator is Some(separator) else { return (raw, None) }
-  let before = raw[0:separator].trim().to_owned()
-  let after = raw[separator + 1:].trim()
-  if role_after_entity {
-    let role = normalize_name(after.to_owned())
-    if before.length() == 0 || role.length() == 0 {
-      (raw, None)
-    } else {
-      (before, Some(role))
-    }
+  let parser = if role_after_entity {
+    left_role_parser()
   } else {
-    let parts = words(after.to_owned())
-    guard parts.length() >= 2 else { return (raw, None) }
-    (parts[1:].join(" "), Some(normalize_name(parts[0])))
+    right_role_parser()
+  }
+  match parser.parse(@talcparsec.Input::new(raw)) {
+    Ok((entity, role)) if entity.length() > 0 && role.length() > 0 =>
+      (entity, Some(normalize_name(role)))
+    _ => (raw, None)
   }
 }
 
@@ -1685,37 +1439,21 @@ fn split_qualifier(
   raw : String,
   qualifier_after_entity : Bool,
 ) -> (String, String?) {
-  guard find_substring(raw, "[") is Some(start) else { (raw, None) }
-  let chars = raw.to_array()
-  let mut end = None
-  for index in (start + 1)..<chars.length() {
-    if chars[index] == ']' {
-      end = Some(index)
-      break
-    }
-  }
-  match end {
-    Some(end) => {
-      let qualifier = raw[start + 1:end].trim().to_owned()
-      let before = raw[0:start].trim().to_owned()
-      let after = raw[end + 1:].trim().to_owned()
-      let entity = if qualifier_after_entity { before } else { after }
-      if entity.length() == 0 || qualifier.length() == 0 {
-        (raw, None)
-      } else {
-        (entity, Some(qualifier))
-      }
-    }
-    None => (raw, None)
+  match
+    qualifier_parser(qualifier_after_entity).parse(@talcparsec.Input::new(raw)) {
+    Ok((entity, qualifier)) if entity.length() > 0 && qualifier.length() > 0 =>
+      (entity, Some(qualifier))
+    _ => (raw, None)
   }
 }
 
 ///|
 fn Parser::split_port(self : Parser, raw : String) -> (String, String?) {
-  guard find_substring(raw, "::") is Some(separator) else { (raw, None) }
-  let base = raw[0:separator].trim().to_owned()
-  let port = raw[separator + 2:].trim().to_owned()
-  guard base.length() > 0 && port.length() > 0 else { (raw, None) }
+  guard port_parser().parse(@talcparsec.Input::new(raw)) is Ok((base, port)) &&
+    base.length() > 0 &&
+    port.length() > 0 else {
+    return (raw, None)
+  }
   // `A::B` is a qualified entity name when it already exists. Otherwise,
   // PlantUML treats the suffix as a port/member id on entity `A`.
   let full = normalize_name(raw)

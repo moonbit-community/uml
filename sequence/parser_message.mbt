@@ -1,212 +1,33 @@
 ///|
 fn Source::try_participant_ref(self : Source) -> PartRef? {
-  let checkpoint = self.save()
-  if self.consume('"') {
-    let display = self.take_while(c => c != '"')
-    guard self.consume('"') else {
-      self.restore(checkpoint)
-      return None
-    }
-    self.skip_whitespace()
-    guard !self.try_keyword("as") else {
-      self.skip_whitespace()
-      let code = self.take_while(is_ident_char)
-      guard code.length() > 0 else {
-        self.restore(checkpoint)
-        return None
-      }
-      return Some({ code, display })
-    }
-    return Some({ code: display, display })
-  }
-  let code = self.take_while(is_ident_char)
-  guard code.length() > 0 else {
-    self.restore(checkpoint)
-    return None
-  }
-  self.skip_whitespace()
-  guard self.try_keyword("as") else { return Some({ code, display: code }) }
-  self.skip_whitespace()
-  let display = if self.consume('"') {
-    let quoted = self.take_while(c => c != '"')
-    guard self.consume('"') else {
-      self.restore(checkpoint)
-      return None
-    }
-    quoted
-  } else {
-    self.take_while(is_ident_char)
-  }
-  Some({ code, display })
+  self.try_parsec(participant_ref_parser())
 }
 
 ///|
 fn Source::try_participant_decl_ref(self : Source) -> PartRef? {
-  let checkpoint = self.save()
-  if self.consume('"') {
-    let display = self.take_while(c => c != '"')
-    guard self.consume('"') else {
-      self.restore(checkpoint)
-      return None
-    }
-    self.skip_whitespace()
-    guard !self.try_keyword("as") else {
-      self.skip_whitespace()
-      let code = self.take_while(is_ident_char)
-      guard code.length() > 0 else {
-        self.restore(checkpoint)
-        return None
-      }
-      return Some({ code, display })
-    }
-    return Some({ code: display, display })
-  }
-  let first = self.take_while(is_ident_char)
-  guard first.length() > 0 else {
-    self.restore(checkpoint)
-    return None
-  }
-  self.skip_whitespace()
-  guard self.try_keyword("as") else {
-    return Some({ code: first, display: first })
-  }
-  self.skip_whitespace()
-  if self.consume('"') {
-    let display = self.take_while(c => c != '"')
-    guard self.consume('"') else {
-      self.restore(checkpoint)
-      return None
-    }
-    return Some({ code: first, display })
-  }
-  let code = self.take_while(is_ident_char)
-  guard code.length() > 0 else {
-    self.restore(checkpoint)
-    return None
-  }
-  Some({ code, display: first })
+  self.try_parsec(participant_decl_ref_parser())
 }
 
 ///|
 fn Source::try_participant_code(self : Source) -> String? {
-  let checkpoint = self.save()
-  if self.consume('"') {
-    let code = self.take_while(c => c != '"')
-    guard self.consume('"') && code.length() > 0 else {
-      self.restore(checkpoint)
-      return None
-    }
-    return Some(code)
-  }
-  let code = self.take_while(is_ident_char)
-  guard code.length() > 0 else {
-    self.restore(checkpoint)
-    return None
-  }
-  Some(code)
-}
-
-///|
-fn Source::take_left_dressing(self : Source) -> DressingResult {
-  let circle = self.consume('o')
-  let cross = self.consume('x')
-  let (head, part) = if self.consume('<') {
-    (if self.consume('<') { Async } else { Normal }, Full)
-  } else if self.consume('/') {
-    (if self.consume('/') { Async } else { Normal }, TopPart)
-  } else if self.consume('\\') {
-    (if self.consume('\\') { Async } else { Normal }, BottomPart)
-  } else {
-    (NoneHead, Full)
-  }
-  if self.consume('(') {
-    let _ = self.take_while(Char::is_ascii_digit)
-    let _ = self.consume(')')
-  }
-  { head, circle, cross, has_dir: head.has_direction(), part }
-}
-
-///|
-fn Source::take_right_dressing(self : Source) -> DressingResult {
-  let _ = self.consume('_')
-  let (head, part) = if self.consume('>') {
-    (if self.consume('>') { Async } else { Normal }, Full)
-  } else if self.consume('/') {
-    (if self.consume('/') { Async } else { Normal }, BottomPart)
-  } else if self.consume('\\') {
-    (if self.consume('\\') { Async } else { Normal }, TopPart)
-  } else {
-    (NoneHead, Full)
-  }
-  let circle = self.consume('o')
-  let cross = self.consume('x')
-  if self.consume('(') {
-    let _ = self.take_while(Char::is_ascii_digit)
-    let _ = self.consume(')')
-  }
-  { head, circle, cross, has_dir: head.has_direction(), part }
+  self.try_parsec(participant_code_parser())
 }
 
 ///|
 fn Source::try_arrow_dressing(
   self : Source,
 ) -> (DressingResult, ArrowBody, DressingResult)? {
-  let left = self.take_left_dressing()
-  let first_dashes = self.take_while(c => c == '-')
-  if self.consume('[') {
-    let _ = self.take_while(c => c != ']')
-    let _ = self.consume(']')
-  }
-  let second_dashes = self.take_while(c => c == '-')
-  guard first_dashes.length() + second_dashes.length() > 0 else { None }
-  let body = if first_dashes.length() + second_dashes.length() > 1 {
-    Dotted
-  } else {
-    Solid
-  }
-  Some((left, body, self.take_right_dressing()))
+  self.try_parsec(arrow_dressing_parser())
 }
 
 ///|
 fn Source::take_activation_spec(self : Source) -> ActivationSpec? {
-  if self.try_string("++") {
-    Some(Activate)
-  } else if self.try_string("--") {
-    Some(Deactivate)
-  } else if self.try_string("!!") {
-    Some(Destroy)
-  } else if self.try_string("**") {
-    Some(Create)
-  } else {
-    None
-  }
+  self.try_parsec(activation_spec_parser())
 }
 
 ///|
 fn Source::try_url_link(self : Source) -> String? {
-  let checkpoint = self.save()
-  guard self.try_string("[[") else { return None }
-  self.skip_whitespace()
-  let link = if self.consume('"') {
-    let quoted = self.take_while(c => c != '"')
-    guard self.consume('"') else {
-      self.restore(checkpoint)
-      return None
-    }
-    quoted
-  } else {
-    self.take_while(c => !is_inline_whitespace(c) && c != '{' && c != ']')
-  }
-  guard link.length() > 0 else {
-    self.restore(checkpoint)
-    return None
-  }
-  let _ = self.take_while(c => c != ']')
-  guard self.try_string("]]") else {
-    self.restore(checkpoint)
-    return None
-  }
-  Some(@core.normalize_url_target(link))
+  self.try_url_target().map(target => target.target)
 }
 
 ///|
@@ -264,15 +85,10 @@ fn message_direction(left : DressingResult, right : DressingResult) -> Bool? {
 
 ///|
 fn Source::take_multicast(self : Source) -> Array[String]? {
-  let targets = []
-  while self.consume('&') {
-    self.skip_whitespace()
-    let target = self.take_while(is_ident_char)
-    guard target.length() > 0 else { return None }
-    targets.push(target)
-    self.skip_whitespace()
+  match self.try_parsec(multicast_parser()) {
+    Some(targets) => Some(targets)
+    None => Some([])
   }
-  Some(targets)
 }
 
 ///|

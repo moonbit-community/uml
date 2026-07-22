@@ -43,64 +43,54 @@ fn Source::advance(self : Source) -> Char {
 
 ///|
 fn Source::consume(self : Source, expected : Char) -> Bool {
-  guard self.peek() is Some(char) && char == expected else { false }
-  self.pos += 1
-  true
+  if expected == '\n' {
+    guard self.peek() is Some('\n') else { return false }
+    self.pos += 1
+    return true
+  }
+  self.try_parsec(@talcparsec.char(expected)) is Some(_)
 }
 
 ///|
 fn Source::try_string(self : Source, expected : String) -> Bool {
-  let checkpoint = self.save()
-  for char in expected {
-    guard self.consume(char) else {
-      self.restore(checkpoint)
-      return false
-    }
-  }
-  true
+  self.try_parsec(@talcparsec.string(expected)) is Some(_)
 }
 
 ///|
 fn Source::skip_whitespace(self : Source) -> Unit {
-  while self.peek().map_or(false, is_inline_whitespace) {
-    self.pos += 1
-  }
+  ignore(
+    self.try_parsec(
+      @talcparsec.satisfy("inline whitespace", is_inline_whitespace).many(),
+    ),
+  )
 }
 
 ///|
 fn Source::take_while(self : Source, predicate : (Char) -> Bool) -> String {
-  let start = self.pos
-  while self.peek().map_or(false, predicate) {
-    self.pos += 1
-  }
-  let output = StringBuilder()
-  for index in start..<self.pos {
-    output.write_char(self.chars[index])
-  }
-  output.to_string()
+  self
+  .try_parsec(@talcparsec.take_while("matching character", predicate))
+  .unwrap_or("")
 }
 
 ///|
 fn Source::peek_word(self : Source) -> String {
-  let output = StringBuilder()
-  let mut index = self.pos
-  while index < self.chars.length() && is_ident_char(self.chars[index]) {
-    output.write_char(self.chars[index])
-    index += 1
+  match
+    identifier_word_parser().run(@talcparsec.Input::new(self.current_line())) {
+    Ok((word, _)) => word
+    Err(_) => ""
   }
-  output.to_string()
-}
-
-///|
-fn Source::skip_word(self : Source) -> Unit {
-  let _ = self.take_while(is_ident_char)
 }
 
 ///|
 fn Source::try_keyword(self : Source, keyword : String) -> Bool {
-  guard self.peek_word().equal_ignore_ascii_case(keyword) else { false }
-  self.skip_word()
-  true
+  let checkpoint = self.save()
+  match self.try_parsec(identifier_word_parser()) {
+    Some(word) if word.equal_ignore_ascii_case(keyword) => true
+    _ => {
+      self.restore(checkpoint)
+      false
+    }
+  }
 }
 
 ///|
@@ -155,5 +145,35 @@ fn Source::finish_command(self : Source, start : Int) -> Bool {
     }
     None => true
     _ => false
+  }
+}
+
+///|
+/// Run a stateless line grammar and advance this source by its consumed input.
+fn[T] Source::try_parsec(
+  self : Source,
+  parser : @talcparsec.StringParser[T],
+) -> T? {
+  let line = self.current_line()
+  match parser.run(@talcparsec.Input::new(line)) {
+    Ok((value, rest)) => {
+      let consumed = line.length() - rest.remaining().length()
+      self.pos += line[0:consumed].to_array().length()
+      Some(value)
+    }
+    Err(_) => None
+  }
+}
+
+///|
+fn Source::try_url_target(self : Source) -> @core.UrlTarget? {
+  let line = self.current_line()
+  match @core.parse_url_target_prefix(line) {
+    Some((target, remaining)) => {
+      let consumed = line.length() - remaining.length()
+      self.pos += line[0:consumed].to_array().length()
+      Some(target)
+    }
+    None => None
   }
 }
