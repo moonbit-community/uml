@@ -37,8 +37,13 @@ fn main {
           return println("error: line \{line}: \{message}")
       }
   }
-  guard write_output(output_path, svg) else { return }
-  println("output: \{output_path}")
+
+  try @fs.write_string_to_file(output_path, svg) catch {
+    IOError(message) =>
+      println("error: unable to write \{output_path}: \{message}")
+  } noraise {
+    _ => println("output: \{output_path}")
+  }
 }
 
 ///|
@@ -53,19 +58,6 @@ fn read_input(path : String) -> String? {
     IOError(message) => {
       println("error: unable to read \{path}: \{message}")
       None
-    }
-  }
-}
-
-///|
-fn write_output(path : String, content : String) -> Bool {
-  try {
-    @fs.write_string_to_file(path, content)
-    true
-  } catch {
-    IOError(message) => {
-      println("error: unable to write \{path}: \{message}")
-      false
     }
   }
 }
