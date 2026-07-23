@@ -51,7 +51,7 @@ fn Source::diagnostic(self : Source, message : String) -> @core.ParseDiagnostic 
 fn Source::raise_parse_error(
   self : Source,
   message : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }

@@ -126,7 +126,7 @@ priv struct GroupingLeaf {
 }
 
 ///|
-#warnings("-unused_value")
+#warnings("-unused_value-unused_field")
 priv struct Message {
   from_code : String
   to_code : String

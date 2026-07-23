@@ -106,7 +106,7 @@ fn parse_class_line(line : String) -> ClassLineSyntax? {
 fn Parser::apply_declaration_syntax(
   self : Parser,
   syntax : DeclarationLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let declaration = syntax.declaration
   guard native_class_kind(declaration.kind) ||
     self.allow_mixing ||
@@ -223,7 +223,7 @@ fn Parser::apply_declaration_syntax(
 fn Parser::apply_class_line_syntax(
   self : Parser,
   syntax : ClassLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   match syntax {
     ParsedAllowMixing => self.allow_mixing = true
     ParsedPackageClose => {

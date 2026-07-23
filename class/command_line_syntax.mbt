@@ -205,7 +205,7 @@ fn Parser::apply_package_declaration(
 fn Parser::apply_class_command(
   self : Parser,
   syntax : ClassCommandLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   match syntax {
     ParsedPackage(group) => self.apply_package_declaration(group)
     ParsedStereotypeAssignment(code~, stereotype~) => {

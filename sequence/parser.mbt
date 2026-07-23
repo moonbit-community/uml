@@ -1,5 +1,5 @@
 ///|
-fn ParseCtx::consume_style_directive(self : ParseCtx) -> Bool raise ParseError {
+fn ParseCtx::consume_style_directive(self : ParseCtx) -> Bool raise @core.ParseError {
   let line = @core.strip_line_comment(self.source.current_line())
   let lower = line.trim().to_lower()
   guard lower != "newpage" && !lower.has_prefix("newpage ") else {
@@ -65,7 +65,7 @@ fn skip_ignored_line(source : Source) -> Bool {
 /// - `input`: the raw PlantUML source text, optionally wrapped with `@startuml` / `@enduml`.
 ///
 /// Returns a `SequenceDiagram` containing the parsed participants and events.
-pub fn parse(input : String) -> SequenceDiagram raise ParseError {
+pub fn parse(input : String) -> SequenceDiagram raise @core.ParseError {
   let ctx = ParseCtx::new(input)
 
   while !ctx.source.eof() {

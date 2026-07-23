@@ -62,7 +62,7 @@ fn Parser::diagnostic(self : Parser, message : String) -> @core.ParseDiagnostic 
 fn Parser::raise_parse_error(
   self : Parser,
   message : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }
@@ -697,7 +697,7 @@ fn text_block_end(line : String, keyword : String) -> Bool {
 fn Parser::consume_text_block(
   self : Parser,
   keyword : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   self.index += 1
   let text = StringBuilder()
   let mut first = true
@@ -720,7 +720,7 @@ fn Parser::consume_text_block(
 fn Parser::consume_braced_block(
   self : Parser,
   kind : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let package_depth = self.package_stack.length()
   self.index += 1
   while self.index < self.lines.length() {
@@ -743,7 +743,7 @@ fn Parser::consume_braced_block(
 }
 
 ///|
-fn Parser::consume_skinparam_block(self : Parser) -> Unit raise ParseError {
+fn Parser::consume_skinparam_block(self : Parser) -> Unit raise @core.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
     let property = strip_comment(self.lines[self.index])
@@ -763,7 +763,7 @@ fn Parser::consume_skinparam_block(self : Parser) -> Unit raise ParseError {
 fn Parser::consume_common_block(
   self : Parser,
   terminator : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
     if strip_comment(self.lines[self.index]).to_lower() == terminator {
@@ -891,7 +891,7 @@ fn Parser::finish_entity(self : Parser) -> Unit {
 }
 
 ///|
-fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
+fn Parser::parse_line(self : Parser, line : String) -> Unit raise @core.ParseError {
   let line = strip_comment(line)
   guard line.length() > 0 else { return }
   match @core.common_block_terminator(line) {
@@ -934,7 +934,7 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
 
 ///|
 /// Parse a PlantUML class diagram source.
-pub fn parse(input : String) -> ClassDiagram raise ParseError {
+pub fn parse(input : String) -> ClassDiagram raise @core.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]

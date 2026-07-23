@@ -81,7 +81,19 @@ priv struct GroupSpan {
   keyword : GroupKeyword
   header : String
   color : String?
-  body_color : String?
+  header_color : String?
+  parallel : Bool
+  first_participant : Int?
+  last_participant : Int?
+  branches : Array[GroupBranch]
+}
+
+///|
+priv struct GroupBranch {
+  start_y : Int
+  end_y : Int
+  label : String?
+  color : String?
 }
 
 ///|
@@ -169,8 +181,8 @@ fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
       }
     MessageExo(_) => 14
     Note(note) => note.height(text_metrics) + 10
-    GroupingStart(_) => 34
-    GroupingLeaf(leaf) => if leaf.is_end { 12 } else { 24 }
+    GroupingStart(_) => 22
+    GroupingLeaf(leaf) => if leaf.is_end { 0 } else { 29 }
     LifeEvent(_) => 0
     Delay(_) => 28
     Divider(_) => 34
@@ -227,19 +239,52 @@ fn Event::required_gap_before(
 }
 
 ///|
-fn Event::is_parallel(self : Event) -> Bool {
+fn Event::participant_span(
+  self : Event,
+  participant_index : Map[String, Int],
+) -> (Int, Int)? {
+  let index_for = (code : String) => participant_index.get(code)
+  let between = (first : String, last : String) => {
+    match (index_for(first), index_for(last)) {
+      (Some(left), Some(right)) => Some((left.min(right), left.max(right)))
+      _ => None
+    }
+  }
   match self {
-    Message(message) => message.parallel
-    GroupingStart(group) => group.parallel
-    _ => false
+    Message(message) => between(message.from_code, message.to_code)
+    MessageExo(message) =>
+      index_for(message.participant_code).map(index => (index, index))
+    Note(note) =>
+      match (note.participant_codes.get(0), note.participant_codes.last()) {
+        (Some(first), Some(last)) => between(first, last)
+        _ => None
+      }
+    Reference(reference) =>
+      match
+        (reference.participant_codes.get(0), reference.participant_codes.last()) {
+        (Some(first), Some(last)) => between(first, last)
+        _ => None
+      }
+    LifeEvent(life) =>
+      index_for(life.participant_code).map(index => (index, index))
+    _ => None
   }
 }
 
 ///|
-fn Event::shares_message_row_with(self : Event, previous : Event?) -> Bool {
-  match (self, previous) {
-    (Message(message), Some(Message(_))) => message.parallel
-    _ => false
+fn GroupSpan::include_participant_span(
+  self : GroupSpan,
+  span : (Int, Int),
+) -> GroupSpan {
+  let (first, last) = span
+  {
+    ..self,
+    first_participant: Some(
+      self.first_participant.map_or(first, value => value.min(first)),
+    ),
+    last_participant: Some(
+      self.last_participant.map_or(last, value => value.max(last)),
+    ),
   }
 }
 
@@ -286,8 +331,8 @@ fn Message::gap_requirement(
   number : String?,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
-  // Leave room for the next participant's half-width and englober margin.
-  TextSize::of_with(self.rendered_label(number), text_metrics.body).width + 72
+  // The participant gap already includes both half-widths and the group margin.
+  TextSize::of_with(self.rendered_label(number), text_metrics.body).width + 38
 }
 
 ///|
@@ -616,7 +661,7 @@ fn initial_participant_layout(
       participant.display,
       text_metrics.participant,
     ).width +
-    28).max(80)
+    14).max(32)
     layouts.push({
       participant,
       text_metrics,
@@ -800,6 +845,7 @@ fn apply_activation_spec(
 ///|
 fn layout_events(
   diagram : SequenceDiagram,
+  participant_index : Map[String, Int],
   start_y : Int,
   text_metrics : SequenceTextMetrics,
 ) -> (
@@ -853,12 +899,6 @@ fn layout_events(
       last_visual_bottom += 40
       messages_since_auto_newpage = 0
     }
-    let previous = if event_index > 0 {
-      Some(diagram.events[event_index - 1])
-    } else {
-      None
-    }
-    let shares_message_row = event.shares_message_row_with(previous)
     let ignored = event is Newpage(_) && ignore_newpage
     let event_height = if ignored { 0 } else { event.height(text_metrics) }
     let advances = !ignored && event_advances_layout(event, text_metrics)
@@ -873,13 +913,7 @@ fn layout_events(
     }
     let y = match event {
       Note(note) if note.on_arrow => previous_top + 4
-      _ =>
-        if shares_message_row ||
-          (event is GroupingStart(_) && event.is_parallel()) {
-          previous_top
-        } else {
-          current_y
-        }
+      _ => current_y
     }
     let number = match event {
       Message(_) | MessageExo(_) | Return(_) if autonumber => {
@@ -895,23 +929,28 @@ fn layout_events(
     placements.push({ y, height, number, ignored })
     if !advances {
       ()
-    } else if shares_message_row ||
-      (event is GroupingStart(_) && event.is_parallel()) {
-      parallel_bottom = parallel_bottom.max(y + height)
-      current_y = parallel_bottom
     } else {
       previous_top = y
       parallel_bottom = y + height
       current_y = parallel_bottom
     }
 
+    match event.participant_span(participant_index) {
+      Some(span) =>
+        for group_index in group_stack {
+          let group = groups[group_index]
+          groups[group_index] = GroupSpan::include_participant_span(group, span)
+        }
+      None => ()
+    }
+
     match event {
       Message(message) => {
         messages_since_auto_newpage += 1
         let arrow_extra = if message.from_code == message.to_code {
-          22
+          28
         } else {
-          0
+          6
         }
         last_visual_bottom = last_visual_bottom.max(y + 18 + arrow_extra)
         apply_activation_spec(
@@ -970,14 +1009,38 @@ fn layout_events(
           keyword: group.keyword,
           header: group.header,
           color: group.back_color_header,
-          body_color: group.back_color_body,
+          header_color: group.back_color_body,
+          parallel: group.parallel,
+          first_participant: None,
+          last_participant: None,
+          branches: [
+            { start_y: y, end_y: y + height, label: None, color: None },
+          ],
         })
         group_stack.push(groups.length() - 1)
       }
       GroupingLeaf(leaf) =>
-        if leaf.is_end {
-          if group_stack.pop() is Some(index) {
-            groups[index] = { ..groups[index], end_y: y + height }
+        if group_stack.last() is Some(index) {
+          let group = groups[index]
+          let branch_index = group.branches.length() - 1
+          let branches = group.branches
+          let end_y = y.max(last_visual_bottom)
+          branches[branch_index] = { ..branches[branch_index], end_y, }
+          if leaf.is_end {
+            groups[index] = { ..group, end_y, branches }
+            let _ = group_stack.pop()
+          } else {
+            let branch_color = match leaf.back_color {
+              Some(color) => Some(color)
+              None => if group.parallel { group.color } else { None }
+            }
+            branches.push({
+              start_y: y,
+              end_y: y,
+              label: leaf.label,
+              color: branch_color,
+            })
+            groups[index] = { ..group, branches, }
           }
         }
       Autoactivate(enabled) => autoactivate = enabled
@@ -1018,7 +1081,12 @@ fn layout_events(
     }
   }
   for index in group_stack {
-    groups[index] = { ..groups[index], end_y: current_y }
+    let group = groups[index]
+    let branch_index = group.branches.length() - 1
+    let branches = group.branches
+    let end_y = current_y.max(last_visual_bottom)
+    branches[branch_index] = { ..branches[branch_index], end_y, }
+    groups[index] = { ..group, end_y, branches }
   }
   (placements, activations, groups, destroys, auto_page_breaks, current_y)
 }
@@ -1115,6 +1183,11 @@ fn DiagramLayout::content_horizontal_bounds(
       _ => ()
     }
   }
+  for group in self.groups {
+    let (x, width) = self.group_bounds(group)
+    min_x = min_x.min(x)
+    max_x = max_x.max(x + width)
+  }
   let mut max_box_depth = 0
   for participant in self.participants {
     max_box_depth = max_box_depth.max(participant.participant.boxes.length())
@@ -1204,6 +1277,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   }
   let (placements, activations, groups, destroys, auto_page_breaks, body_bottom) = layout_events(
     self,
+    participant_index,
     participant_header_height + vertical_margin + 8,
     text_metrics,
   )

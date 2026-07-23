@@ -48,7 +48,7 @@ fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
 fn ParseCtx::apply_note_syntax(
   self : ParseCtx,
   syntax : NoteLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   self.source.skip_line()
   let text = match syntax.text {
     Inline(text) => text
@@ -83,7 +83,7 @@ fn ParseCtx::apply_note_syntax(
 fn ParseCtx::apply_reference_syntax(
   self : ParseCtx,
   syntax : ReferenceLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   self.source.skip_line()
   let label = match syntax.text {
     Inline(text) => text.optional_text()
@@ -108,7 +108,7 @@ fn ParseCtx::apply_reference_syntax(
 fn ParseCtx::apply_line_syntax(
   self : ParseCtx,
   syntax : SequenceLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   match syntax {
     ParsedEvent(event) => {
       self.source.skip_line()

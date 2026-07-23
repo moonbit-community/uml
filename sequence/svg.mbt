@@ -338,28 +338,107 @@ fn append_participant_boxes(
 }
 
 ///|
+fn DiagramLayout::group_bounds(
+  self : DiagramLayout,
+  group : GroupSpan,
+) -> (Int, Int) {
+  guard self.participants.length() > 0 else { (18, self.width - 36) }
+  let first_index = group.first_participant.unwrap_or(0)
+  let last_index = group.last_participant.unwrap_or(
+    self.participants.length() - 1,
+  )
+  let first = self.participants[first_index]
+  let last = self.participants[last_index]
+  let inset = 10 + group.depth * 8
+  let x = first.center_x - first.width / 2 - inset
+  let right = last.center_x + last.width / 2 + inset
+  (x, (right - x).max(1))
+}
+
+///|
+fn GroupSpan::header_text(self : GroupSpan) -> String {
+  match self.keyword {
+    Group => self.header
+    _ => self.keyword.label()
+  }
+}
+
+///|
+fn GroupSpan::comment_text(self : GroupSpan) -> String? {
+  match self.keyword {
+    Group => None
+    _ => self.header.optional_text()
+  }
+}
+
+///|
 fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
   for group in layout.groups {
-    let inset = 8 + group.depth * 12
-    let x = 18 + inset
-    let width = layout.width - 36 - inset * 2
-    let height = (group.end_y - group.start_y).max(22)
-    let body_color = svg_color(group.body_color)
-    let header_color = svg_color(group.color)
+    let (x, width) = layout.group_bounds(group)
+    let height = (group.end_y - group.start_y).max(1)
+    let body_class = match group.color {
+      Some(_) => "group-body group-body-colored"
+      None => "group-body"
+    }
     output <+ "<g class=\"group\" data-keyword=\"\{group.keyword.label()}\">\n"
-    output <+
-      "<rect x=\"\{x}\" y=\"\{group.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"group-body\" fill=\"\{body_color}\"/>\n"
-    output <+
-      "<path d=\"M\{x} \{group.start_y}h\{(TextSize::of_with(group.header, layout.text_metrics.body_bold).width + 38).max(54)}v22h-8l-5 5-5-5h-\{(TextSize::of_with(group.header, layout.text_metrics.body_bold).width + 20).max(36)}z\" class=\"group-header\" fill=\"\{header_color}\"/>\n"
-    append_text(
-      output,
-      x + 8,
-      group.start_y + 16,
-      "\{group.keyword.label()} \{group.header}",
-      "group-label",
-      anchor="start",
-      line_height=layout.text_metrics.body_bold.line_height,
-    )
+    if !group.parallel {
+      output <+
+        "<rect x=\"\{x}\" y=\"\{group.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"\{body_class}\" fill=\"\{svg_color(group.color)}\"/>\n"
+    }
+    for branch_index, branch in group.branches {
+      match branch.color {
+        Some(color) => {
+          let branch_height = (branch.end_y - branch.start_y).max(1)
+          output <+
+            "<rect x=\"\{x}\" y=\"\{branch.start_y}\" width=\"\{width}\" height=\"\{branch_height}\" class=\"group-branch\" fill=\"\{svg_color(Some(color))}\"/>\n"
+        }
+        None => ()
+      }
+      if branch_index > 0 {
+        append_line(
+          output,
+          x,
+          branch.start_y,
+          x + width,
+          branch.start_y,
+          "group-separator",
+        )
+        match branch.label {
+          Some(label) =>
+            append_text(
+              output,
+              x + 8,
+              branch.start_y + 12,
+              "[\{label}]",
+              "group-label",
+              anchor="start",
+              line_height=layout.text_metrics.body_bold.line_height,
+            )
+          None => ()
+        }
+      }
+    }
+    if !group.parallel {
+      let header = group.header_text()
+      let comment = group.comment_text()
+      let label = comment.map_or(header, value => "\{header} [\{value}]")
+      let header_width = (TextSize::of_with(
+        label,
+        layout.text_metrics.body_bold,
+      ).width +
+      38).max(54)
+      output <+
+        "<path d=\"M\{x} \{group.start_y}h\{header_width}v22h-8l-5 5-5-5h-\{header_width - 18}z\" class=\"group-header\" fill=\"\{svg_color(group.header_color)}\"/>\n"
+      append_text(
+        output,
+        x + 8,
+        group.start_y + 16,
+        label,
+        "group-label",
+        anchor="start",
+        line_height=layout.text_metrics.body_bold.line_height,
+      )
+    }
     output.write_string("</g>\n")
   }
 }
@@ -874,36 +953,7 @@ fn append_event(
       append_reference(output, layout, reference, placement)
     Return(value) =>
       append_return(output, layout, value, placement, arrow_anchor)
-    GroupingLeaf(leaf) =>
-      if !leaf.is_end {
-        match leaf.back_color {
-          Some(color) =>
-            output <+
-              "<rect x=\"32\" y=\"\{placement.y}\" width=\"\{layout.width - 64}\" height=\"24\" class=\"group-leaf-color\" fill=\"\{svg_color(Some(color))}\"/>\n"
-          None => ()
-        }
-        append_line(
-          output,
-          32,
-          placement.y + 12,
-          layout.width - 32,
-          placement.y + 12,
-          "group-separator",
-        )
-        match leaf.label {
-          Some(label) =>
-            append_text(
-              output,
-              42,
-              placement.y + 8,
-              label,
-              "group-label",
-              anchor="start",
-              line_height=layout.text_metrics.body_bold.line_height,
-            )
-          None => ()
-        }
-      }
+    GroupingLeaf(_) => ()
     Newpage(page) => {
       append_line(
         output,
@@ -1012,6 +1062,8 @@ fn append_svg_preamble(
     $|.message-label,.reference-label,.delay-label{fill:#181818;font-size:\{body_font_size}px}
     $|.note-label{fill:#181818;font-size:\{base_font_size}px}
     $|.group-body{fill-opacity:.18;stroke:#181818;stroke-width:1.1}
+    $|.group-body-colored,.group-branch{fill-opacity:1}
+    $|.group-branch{stroke:none}
     $|.group-header{stroke:#181818;stroke-width:1.1}
     $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:#181818}
     $|.note{fill:#FEFFDD}
@@ -1084,6 +1136,6 @@ pub fn render_svg(diagram : SequenceDiagram) -> String {
 
 ///|
 /// Parse PlantUML sequence-diagram text and render it as standalone SVG.
-pub fn render_sequence_svg(input : String) -> String raise ParseError {
+pub fn render_sequence_svg(input : String) -> String raise @core.ParseError {
   parse(input).render_svg()
 }

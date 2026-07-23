@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/string",
   "moonbitlang/x/fs",
   "kokic/uml/api",
+  "kokic/uml/core",
 }
 
 pkgtype(kind: "executable")

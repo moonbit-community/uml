@@ -3,7 +3,7 @@ fn Parser::push_note_syntax(
   self : Parser,
   syntax : NoteLineSyntax,
   text : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let mut target = ""
   let mut target_kind = EntityNote
   let mut relation_index = None
@@ -66,7 +66,7 @@ fn Parser::push_note_syntax(
 fn Parser::consume_note_syntax(
   self : Parser,
   syntax : NoteLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   match syntax.content {
     NoteInline(text) => self.push_note_syntax(syntax, text)
     NoteBlock => {
@@ -99,7 +99,7 @@ fn Parser::consume_note_syntax(
 fn Parser::apply_annotation_syntax(
   self : Parser,
   syntax : ClassAnnotationLineSyntax,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   match syntax {
     ParsedClassNote(note) => self.consume_note_syntax(note)
     ParsedLinkConstraint(constraint) =>

@@ -77,11 +77,73 @@ test "render groups notes and activation as distinct layers" {
     true,
   )
   @test.assert_eq(result.destroys.length(), 1)
-  @test.assert_eq(svg.contains("class=\"group-body\""), true)
+  @test.assert_eq(svg.contains("class=\"group-body"), true)
   @test.assert_eq(svg.contains("class=\"activation\""), true)
   @test.assert_eq(svg.contains("class=\"note\""), true)
   @test.assert_eq(svg.contains("class=\"group-separator\""), true)
   @test.assert_eq(svg.contains("class=\"destroy\""), true)
+}
+
+///|
+test "group layouts follow their participant spans and branch lifetimes" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob\nbreak timeout\nBob -> Alice\nend\ncritical transaction\nBob -> Carol\nend\nalt #lightgreen accepted\nAlice -> Bob\nelse #mistyrose rejected\nBob --> Alice\nend\n@enduml",
+  )
+  let layout = diagram.layout()
+  let break_group = layout.groups[0]
+  let critical_group = layout.groups[1]
+  let alt_group = layout.groups[2]
+  let (_, break_width) = layout.group_bounds(break_group)
+  let (_, critical_width) = layout.group_bounds(critical_group)
+  @test.assert_eq(break_width < layout.width, true)
+  @test.assert_eq(critical_width < layout.width, true)
+  @test.assert_eq(
+    break_group.last_participant < critical_group.last_participant,
+    true,
+  )
+  @test.assert_eq(alt_group.branches.length(), 2)
+  @test.assert_eq(
+    alt_group.branches[1].end_y > alt_group.branches[1].start_y,
+    true,
+  )
+  @test.assert_eq(alt_group.branches[1].color, Some("mistyrose"))
+}
+
+///|
+test "parallel messages reserve separate rows and parallel groups omit a frame" {
+  let diagram = parse(
+    "@startuml\n& par parallel\n& Alice -> Bob : first\n& Alice -> Carol : second\nelse\nAlice -> Bob : alternate\nend\n@enduml",
+  )
+  let layout = diagram.layout()
+  let svg = diagram.render_svg()
+  @test.assert_eq(layout.placements[1].y < layout.placements[2].y, true)
+  @test.assert_eq(layout.groups[0].parallel, true)
+  @test.assert_eq(svg.contains("class=\"group-body\""), false)
+  @test.assert_eq(svg.contains("class=\"group-separator\""), true)
+}
+
+///|
+test "group labels and colors follow PlantUML grouping roles" {
+  let svg = render_sequence_svg(
+    "@startuml\ngroup custom label\nAlice -> Bob\nend\nalt #lightgreen accepted\nAlice -> Bob\nelse #mistyrose rejected\nBob --> Alice\nend\n@enduml",
+  )
+  @test.assert_eq(svg.contains(">custom label</tspan>"), true)
+  @test.assert_eq(svg.contains(">group custom label</tspan>"), false)
+  @test.assert_eq(svg.contains("class=\"group-body group-body-colored\""), true)
+  @test.assert_eq(
+    svg.contains("class=\"group-branch\" fill=\"mistyrose\""),
+    true,
+  )
+}
+
+///|
+test "group frames include the final message arrow" {
+  let diagram = parse(
+    "@startuml\npar alternatives\nAlice -> Bob : first\nalso\nAlice -> Carol : final\nend\n@enduml",
+  )
+  let layout = diagram.layout()
+  let final_message = layout.placements[3]
+  @test.assert_eq(layout.groups[0].end_y >= final_message.y + 24, true)
 }
 
 ///|

@@ -88,7 +88,7 @@ priv struct MultilineElementHeader {
 fn Parser::consume_multiline_element(
   self : Parser,
   header : MultilineElementHeader,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let display = StringBuilder()
   if header.first_line.length() > 0 {
     display.write_string(header.first_line)
@@ -149,7 +149,7 @@ fn valid_json(source : String) -> Bool {
 fn Parser::add_single_line_json(
   self : Parser,
   value : JsonSingleDeclaration,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let qualified_code = self.qualify(value.declaration.code)
   guard !self.entities.any(entity => entity.qualified_code == qualified_code) else {
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
@@ -206,7 +206,7 @@ fn Parser::consume_json_body_line(
   self : Parser,
   entity_index : Int,
   line : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let delta = brace_delta(line)
   if self.body_depth + delta <= 0 {
     let body = self.entities[entity_index].json_data.unwrap_or("")
@@ -240,7 +240,7 @@ fn Parser::consume_entity_body_line(
   self : Parser,
   entity_index : Int,
   line : String,
-) -> Unit raise ParseError {
+) -> Unit raise @core.ParseError {
   let entity = self.entities[entity_index]
   if entity.kind is Json {
     self.consume_json_body_line(entity_index, line)
