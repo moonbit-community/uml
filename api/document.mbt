@@ -21,12 +21,12 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 }
 
 ///|
-pub fn parse_class(input : String) -> Document raise @class.ParseError {
+pub fn parse_class(input : String) -> Document raise @core.ParseError {
   { diagram: Class(@class.parse(input)) }
 }
 
 ///|
-pub fn parse(input : String) -> Document raise @sequence.ParseError {
+pub fn parse(input : String) -> Document raise @core.ParseError {
   { diagram: Sequence(@sequence.parse(input)) }
 }
 

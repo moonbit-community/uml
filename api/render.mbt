@@ -9,12 +9,12 @@ pub fn Document::render_svg(self : Document) -> String {
 }
 
 ///|
-pub fn render_class_svg(input : String) -> String raise @class.ParseError {
+pub fn render_class_svg(input : String) -> String raise @core.ParseError {
   parse_class(input).render_svg()
 }
 
 ///|
-pub fn render_svg(input : String) -> String raise @sequence.ParseError {
+pub fn render_svg(input : String) -> String raise @core.ParseError {
   parse(input).render_svg()
 }
 

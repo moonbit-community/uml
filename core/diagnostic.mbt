@@ -6,6 +6,15 @@ pub struct ParseDiagnostic {
 } derive(Eq, Debug)
 
 ///|
+/// A syntax or semantic parsing error reported at a source line.
+///
+/// This is shared by every PlantUML diagram parser so callers can handle
+/// malformed source independently of the selected diagram family.
+pub(all) suberror ParseError {
+  SyntaxError(Int, String)
+} derive(Debug)
+
+///|
 pub fn ParseDiagnostic::line_number(self : ParseDiagnostic) -> Int {
   self.span.line
 }
