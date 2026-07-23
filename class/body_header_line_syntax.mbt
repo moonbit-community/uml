@@ -1,5 +1,5 @@
 ///|
-fn declaration_metadata_tail_parser() -> @talcparsec.StringParser[
+fn declaration_metadata_tail_parser() -> @talc.StringParser[
   DeclarationMetadataSyntax,
 ] {
   inline_space1()
@@ -10,7 +10,7 @@ fn declaration_metadata_tail_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn json_single_declaration_parser() -> @talcparsec.StringParser[
+fn json_single_declaration_parser() -> @talc.StringParser[
   JsonSingleDeclaration,
 ] {
   declaration_visibility_parser()
@@ -22,12 +22,12 @@ fn json_single_declaration_parser() -> @talcparsec.StringParser[
       declaration_metadata_tail_parser().bind(metadata => {
         inline_space1()
         .then(
-          @talcparsec.many_chars1(@talcparsec.satisfy("JSON data", _ => true)),
+          @talc.many_chars1(@talc.satisfy("JSON data", _ => true)),
         )
         .bind(data => {
           let data = data.trim().to_owned()
           if valid_json(data) {
-            @talcparsec.pure({
+            @talc.pure({
               declaration: declaration_from_syntax(
                 Json,
                 visibility,
@@ -38,17 +38,17 @@ fn json_single_declaration_parser() -> @talcparsec.StringParser[
               data,
             })
           } else {
-            @talcparsec.fail("valid JSON data")
+            @talc.fail("valid JSON data")
           }
         })
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn multiline_element_header_parser() -> @talcparsec.StringParser[
+fn multiline_element_header_parser() -> @talc.StringParser[
   MultilineElementHeader,
 ] {
   declaration_visibility_parser()
@@ -62,17 +62,17 @@ fn multiline_element_header_parser() -> @talcparsec.StringParser[
           let quoted_marker = inline_space1()
             .then(inline_keyword_parser("as"))
             .then(inline_space1())
-            .then(@talcparsec.char('"'))
+            .then(@talc.char('"'))
             .map(_ => '"')
           let bracket_marker = inline_space1()
-            .then(@talcparsec.char('['))
+            .then(@talc.char('['))
             .map(_ => ']')
           quoted_marker
           .attempt()
           .or(bracket_marker)
           .bind(terminator => {
-            @talcparsec.many_chars(
-              @talcparsec.satisfy("multiline description", char => {
+            @talc.many_chars(
+              @talc.satisfy("multiline description", char => {
                 char != terminator
               }),
             ).map(first_line => {
@@ -87,19 +87,19 @@ fn multiline_element_header_parser() -> @talcparsec.StringParser[
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn external_member_line_parser() -> @talcparsec.StringParser[(String, Member)] {
-  let separator = @talcparsec.char(':')
-  let qualified = @talcparsec.string("::")
+fn external_member_line_parser() -> @talc.StringParser[(String, Member)] {
+  let separator = @talc.char(':')
+  let qualified = @talc.string("::")
   let target_part = qualified
     .attempt()
     .or(
       separator
       .not_followed_by("external member separator")
-      .then(@talcparsec.satisfy("external member target", _ => true))
+      .then(@talc.satisfy("external member target", _ => true))
       .string_map(char => char.to_string()),
     )
   target_part
@@ -107,8 +107,8 @@ fn external_member_line_parser() -> @talcparsec.StringParser[(String, Member)] {
   .map(parts => parts.join("").trim().to_owned())
   .skip(separator)
   .bind(target => {
-    @talcparsec.many_chars1(
-      @talcparsec.satisfy("external member body", _ => true),
+    @talc.many_chars1(
+      @talc.satisfy("external member body", _ => true),
     ).bind(body => {
       let target = normalize_name(target)
       let body = body.trim().to_owned()
@@ -120,21 +120,21 @@ fn external_member_line_parser() -> @talcparsec.StringParser[(String, Member)] {
         target.contains("<") ||
         target.contains("[[")
       if invalid_target {
-        @talcparsec.fail("external member")
+        @talc.fail("external member")
       } else {
-        @talcparsec.pure((target, member_of(body)))
+        @talc.pure((target, member_of(body)))
       }
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn text_block_header_parser() -> @talcparsec.StringParser[String] {
+fn text_block_header_parser() -> @talc.StringParser[String] {
   let alignment = inline_word_parser("text block alignment").bind(word => {
     match word.to_lower() {
-      "top" | "bottom" | "left" | "right" | "center" => @talcparsec.pure(())
-      _ => @talcparsec.fail("text block alignment")
+      "top" | "bottom" | "left" | "right" | "center" => @talc.pure(())
+      _ => @talc.fail("text block alignment")
     }
   })
   let legend = inline_keyword_parser("legend")
@@ -151,13 +151,13 @@ fn text_block_header_parser() -> @talcparsec.StringParser[String] {
   let simple = inline_word_parser("text block keyword").bind(word => {
     match word.to_lower() {
       "title" | "legend" | "header" | "footer" | "caption" =>
-        @talcparsec.pure(word.to_lower())
-      _ => @talcparsec.fail("text block keyword")
+        @talc.pure(word.to_lower())
+      _ => @talc.fail("text block keyword")
     }
   })
   legend
   .attempt()
   .or(aligned_header.attempt())
   .or(simple)
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }

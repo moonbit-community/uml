@@ -1,27 +1,27 @@
 ///|
-fn inline_space1() -> @talcparsec.StringParser[Unit] {
-  @talcparsec.satisfy("inline whitespace", is_inline_whitespace)
+fn inline_space1() -> @talc.StringParser[Unit] {
+  @talc.satisfy("inline whitespace", is_inline_whitespace)
   .some()
   .map(_ => ())
 }
 
 ///|
-fn keyword_parser(keyword : String) -> @talcparsec.StringParser[Unit] {
+fn keyword_parser(keyword : String) -> @talc.StringParser[Unit] {
   identifier_word_parser().bind(word => {
     if word.equal_ignore_ascii_case(keyword) {
-      @talcparsec.pure(())
+      @talc.pure(())
     } else {
-      @talcparsec.fail(keyword)
+      @talc.fail(keyword)
     }
   })
 }
 
 ///|
-fn signed_integer_parser() -> @talcparsec.StringParser[Int] {
-  @talcparsec.char('-')
+fn signed_integer_parser() -> @talc.StringParser[Int] {
+  @talc.char('-')
   .optional()
   .bind(sign => {
-    @talcparsec.many_chars1(@talcparsec.ascii_digit()).map(digits => {
+    @talc.many_chars1(@talc.ascii_digit()).map(digits => {
       @string.parse_int((if sign is Some(_) { "-" } else { "" }) + digits) catch {
         _ => 0
       }
@@ -30,24 +30,24 @@ fn signed_integer_parser() -> @talcparsec.StringParser[Int] {
 }
 
 ///|
-fn url_value_parser() -> @talcparsec.StringParser[String] {
-  let terminator = @talcparsec.string("]]")
+fn url_value_parser() -> @talc.StringParser[String] {
+  let terminator = @talc.string("]]")
   let character = terminator
     .not_followed_by("URL terminator")
-    .then(@talcparsec.satisfy("URL character", _ => true))
-  @talcparsec.string("[[")
-  .then(@talcparsec.many_chars(character))
+    .then(@talc.satisfy("URL character", _ => true))
+  @talc.string("[[")
+  .then(@talc.many_chars(character))
   .skip(terminator)
   .bind(content => {
     match @core.parse_url_target("[[" + content + "]]") {
-      Some(target) => @talcparsec.pure(target.target)
-      None => @talcparsec.fail("URL")
+      Some(target) => @talc.pure(target.target)
+      None => @talc.fail("URL")
     }
   })
 }
 
 ///|
-fn participant_declaration_line_parser() -> @talcparsec.StringParser[
+fn participant_declaration_line_parser() -> @talc.StringParser[
   ParticipantDecl,
 ] {
   keyword_parser("create")
@@ -75,7 +75,7 @@ fn participant_declaration_line_parser() -> @talcparsec.StringParser[
       })
     }
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
@@ -83,7 +83,7 @@ fn participant_declaration_tail_parser(
   typ : ParticipantType,
   reference : PartRef,
   created : Bool,
-) -> @talcparsec.StringParser[ParticipantDecl] {
+) -> @talc.StringParser[ParticipantDecl] {
   inline_space1()
   .then(keyword_parser("order"))
   .then(inline_space1())
@@ -110,7 +110,7 @@ fn participant_declaration_tail_parser(
 fn life_event_line_parser(
   keyword : String,
   event_type : ActivationSpec,
-) -> @talcparsec.StringParser[Event] {
+) -> @talc.StringParser[Event] {
   keyword_parser(keyword)
   .then(
     inline_space1()
@@ -124,20 +124,20 @@ fn life_event_line_parser(
       .map(color => LifeEvent({ participant_code, event_type, color }))
     }),
   )
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn deactivate_line_parser() -> @talcparsec.StringParser[Event] {
+fn deactivate_line_parser() -> @talc.StringParser[Event] {
   let latest = keyword_parser("deactivate")
     .skip(inline_spaces())
-    .skip(@talcparsec.eof())
+    .skip(@talc.eof())
     .map(_ => DeactivateLatest)
   latest.attempt().or(life_event_line_parser("deactivate", Deactivate))
 }
 
 ///|
-fn url_command_line_parser() -> @talcparsec.StringParser[Event] {
+fn url_command_line_parser() -> @talc.StringParser[Event] {
   keyword_parser("url")
   .then(inline_space1())
   .then(
@@ -155,16 +155,16 @@ fn url_command_line_parser() -> @talcparsec.StringParser[Event] {
     .skip(inline_spaces())
     .map(url => Url(code, url))
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn line_rest_parser(description : String) -> @talcparsec.StringParser[String] {
-  @talcparsec.many_chars(@talcparsec.satisfy(description, _ => true))
+fn line_rest_parser(description : String) -> @talc.StringParser[String] {
+  @talc.many_chars(@talc.satisfy(description, _ => true))
 }
 
 ///|
-fn grouping_line_parser() -> @talcparsec.StringParser[Event] {
+fn grouping_line_parser() -> @talc.StringParser[Event] {
   let leaf = keyword_parser("else")
     .attempt()
     .or(keyword_parser("also"))
@@ -179,7 +179,7 @@ fn grouping_line_parser() -> @talcparsec.StringParser[Event] {
   let end = keyword_parser("end")
     .then(line_rest_parser("group end"))
     .map(_ => GroupingLeaf({ is_end: true, label: None, back_color: None }))
-  let start = @talcparsec.char('&')
+  let start = @talc.char('&')
     .optional()
     .bind(parallel => {
       inline_spaces()
@@ -210,22 +210,22 @@ fn grouping_line_parser() -> @talcparsec.StringParser[Event] {
         })
       })
     })
-  start.attempt().or(leaf.attempt()).or(end).skip(@talcparsec.eof())
+  start.attempt().or(leaf.attempt()).or(end).skip(@talc.eof())
 }
 
 ///|
-fn box_line_parser() -> @talcparsec.StringParser[Event] {
+fn box_line_parser() -> @talc.StringParser[Event] {
   let end = keyword_parser("end")
     .then(inline_space1())
     .then(keyword_parser("box"))
     .skip(inline_spaces())
     .map(_ => BoxEnd)
-  let label_character = @talcparsec.char('#')
+  let label_character = @talc.char('#')
     .not_followed_by("box color")
-    .then(@talcparsec.satisfy("box label", _ => true))
+    .then(@talc.satisfy("box label", _ => true))
   let start = keyword_parser("box")
     .then(inline_spaces())
-    .then(@talcparsec.many_chars(label_character))
+    .then(@talc.many_chars(label_character))
     .bind(label => {
       color_parser()
       .attempt()
@@ -233,88 +233,88 @@ fn box_line_parser() -> @talcparsec.StringParser[Event] {
       .skip(inline_spaces())
       .map(color => BoxStart({ label: label.optional_text(), color }))
     })
-  end.attempt().or(start).skip(@talcparsec.eof())
+  end.attempt().or(start).skip(@talc.eof())
 }
 
 ///|
-fn divider_line_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.string("==")
+fn divider_line_parser() -> @talc.StringParser[Event] {
+  @talc.string("==")
   .then(
-    @talcparsec.string("==")
+    @talc.string("==")
     .not_followed_by("divider close")
-    .then(@talcparsec.satisfy("divider title", _ => true))
+    .then(@talc.satisfy("divider title", _ => true))
     .string_map(char => char.to_string())
     .many()
     .map(parts => parts.join("")),
   )
-  .skip(@talcparsec.string("=="))
+  .skip(@talc.string("=="))
   .skip(inline_spaces())
   .map(title => Divider({ title: title.trim().to_owned() }))
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn delay_line_parser() -> @talcparsec.StringParser[Event] {
-  let bare = @talcparsec.string("...")
+fn delay_line_parser() -> @talc.StringParser[Event] {
+  let bare = @talc.string("...")
     .attempt()
-    .or(@talcparsec.char('…').string_map(char => char.to_string()))
+    .or(@talc.char('…').string_map(char => char.to_string()))
     .skip(inline_spaces())
-    .skip(@talcparsec.eof())
+    .skip(@talc.eof())
     .map(_ => "")
-  let ascii = @talcparsec.string("...")
+  let ascii = @talc.string("...")
     .then(
-      @talcparsec.string("...")
+      @talc.string("...")
       .not_followed_by("delay close")
-      .then(@talcparsec.satisfy("delay label", _ => true))
+      .then(@talc.satisfy("delay label", _ => true))
       .string_map(char => char.to_string())
       .many()
       .map(parts => parts.join("")),
     )
-    .skip(@talcparsec.string("..."))
-  let unicode = @talcparsec.char('…')
+    .skip(@talc.string("..."))
+  let unicode = @talc.char('…')
     .then(
-      @talcparsec.char('…')
+      @talc.char('…')
       .not_followed_by("delay close")
-      .then(@talcparsec.satisfy("delay label", _ => true))
+      .then(@talc.satisfy("delay label", _ => true))
       .string_map(char => char.to_string())
       .many()
       .map(parts => parts.join("")),
     )
-    .skip(@talcparsec.char('…'))
+    .skip(@talc.char('…'))
   bare
   .attempt()
   .or(ascii.attempt())
   .or(unicode)
   .skip(inline_spaces())
   .map(label => Delay({ label: label.optional_text() }))
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn hspace_line_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.string("||")
-  .then(@talcparsec.many_chars(@talcparsec.ascii_digit()))
+fn hspace_line_parser() -> @talc.StringParser[Event] {
+  @talc.string("||")
+  .then(@talc.many_chars(@talc.ascii_digit()))
   .bind(raw_pixels => {
-    @talcparsec.char('|')
-    .then(@talcparsec.char('|').many())
+    @talc.char('|')
+    .then(@talc.char('|').many())
     .map(_ => HSpace({ pixels: raw_pixels.optional_integer() }))
   })
   .skip(inline_spaces())
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn newpage_line_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.char('@')
+fn newpage_line_parser() -> @talc.StringParser[Event] {
+  @talc.char('@')
   .optional()
   .then(keyword_parser("newpage"))
   .then(line_rest_parser("newpage title"))
   .map(title => Newpage({ title: title.optional_text() }))
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn autonumber_line_parser() -> @talcparsec.StringParser[Event] {
+fn autonumber_line_parser() -> @talc.StringParser[Event] {
   let stop = keyword_parser("autonumber")
     .then(inline_space1())
     .then(keyword_parser("stop"))
@@ -325,7 +325,7 @@ fn autonumber_line_parser() -> @talcparsec.StringParser[Event] {
     .then(keyword_parser("resume"))
     .then(
       inline_space1()
-      .then(@talcparsec.many_chars1(@talcparsec.ascii_digit()))
+      .then(@talc.many_chars1(@talc.ascii_digit()))
       .map(value => value.optional_integer().unwrap())
       .attempt()
       .optional(),
@@ -344,8 +344,8 @@ fn autonumber_line_parser() -> @talcparsec.StringParser[Event] {
     .then(
       inline_space1()
       .then(
-        @talcparsec.many_chars1(
-          @talcparsec.satisfy("autonumber increment", Char::is_ascii_alphabetic),
+        @talc.many_chars1(
+          @talc.satisfy("autonumber increment", Char::is_ascii_alphabetic),
         ),
       )
       .attempt()
@@ -353,8 +353,8 @@ fn autonumber_line_parser() -> @talcparsec.StringParser[Event] {
     )
     .skip(inline_spaces())
     .map(value => AutonumberIncrement(value))
-  let start_value = @talcparsec.many_chars1(
-      @talcparsec.satisfy("autonumber start", char => {
+  let start_value = @talc.many_chars1(
+      @talc.satisfy("autonumber start", char => {
         !is_inline_whitespace(char)
       }),
     )
@@ -365,7 +365,7 @@ fn autonumber_line_parser() -> @talcparsec.StringParser[Event] {
     .then(start_value)
     .bind(start => {
       inline_space1()
-      .then(@talcparsec.many_chars1(@talcparsec.ascii_digit()))
+      .then(@talc.many_chars1(@talc.ascii_digit()))
       .map(value => value.optional_integer().unwrap())
       .attempt()
       .optional()
@@ -378,16 +378,16 @@ fn autonumber_line_parser() -> @talcparsec.StringParser[Event] {
         .map(format => Autonumber({ start, increment, format }))
       })
     })
-  @talcparsec.choice([
+  @talc.choice([
     stop.attempt(),
     resume_event.attempt(),
     increment.attempt(),
     start,
-  ]).skip(@talcparsec.eof())
+  ]).skip(@talc.eof())
 }
 
 ///|
-fn toggle_line_parser() -> @talcparsec.StringParser[Event] {
+fn toggle_line_parser() -> @talc.StringParser[Event] {
   let state = keyword_parser("on")
     .map(_ => true)
     .attempt()
@@ -410,31 +410,31 @@ fn toggle_line_parser() -> @talcparsec.StringParser[Event] {
     .or(keyword_parser("show").map(_ => false))
     .bind(hidden => {
       inline_space1()
-      .then(@talcparsec.char('@').optional())
+      .then(@talc.char('@').optional())
       .then(keyword_parser("unlinked"))
       .map(_ => HideUnlinked(hidden))
     })
-  @talcparsec.choice([
+  @talc.choice([
     autoactivate.attempt(),
     hide_footbox.attempt(),
     footbox.attempt(),
     unlinked,
   ])
   .skip(inline_spaces())
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn miscellaneous_event_line_parser() -> @talcparsec.StringParser[Event] {
+fn miscellaneous_event_line_parser() -> @talc.StringParser[Event] {
   let ignore_newpage = keyword_parser("ignore")
     .then(inline_space1())
     .then(keyword_parser("newpage"))
     .map(_ => IgnoreNewpage)
   let auto_newpage = keyword_parser("autonewpage")
     .then(inline_space1())
-    .then(@talcparsec.many_chars1(@talcparsec.ascii_digit()))
+    .then(@talc.many_chars1(@talc.ascii_digit()))
     .map(value => AutoNewpage(value.optional_integer()))
-  let return_event = @talcparsec.char('&')
+  let return_event = @talc.char('&')
     .optional()
     .then(inline_spaces())
     .then(keyword_parser("return"))
@@ -442,13 +442,13 @@ fn miscellaneous_event_line_parser() -> @talcparsec.StringParser[Event] {
     .map(value => Return({ value: value.optional_text() }))
   let link_anchor = anchor_parser().bind(_ => {
     inline_spaces()
-    .then(@talcparsec.string("<->"))
+    .then(@talc.string("<->"))
     .then(inline_spaces())
     .then(anchor_parser())
     .bind(_ => {
       inline_spaces()
       .then(
-        @talcparsec.char(':')
+        @talc.char(':')
         .then(line_rest_parser("anchor label"))
         .map(value => value.optional_text())
         .optional(),
@@ -456,19 +456,19 @@ fn miscellaneous_event_line_parser() -> @talcparsec.StringParser[Event] {
       .map(_ => LinkAnchor)
     })
   })
-  @talcparsec.choice([
+  @talc.choice([
     ignore_newpage.attempt(),
     auto_newpage.attempt(),
     return_event.attempt(),
     link_anchor,
   ])
   .skip(inline_spaces())
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn simple_event_line_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.choice([
+fn simple_event_line_parser() -> @talc.StringParser[Event] {
+  @talc.choice([
     box_line_parser().attempt(),
     grouping_line_parser().attempt(),
     life_event_line_parser("activate", Activate).attempt(),

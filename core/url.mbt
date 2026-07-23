@@ -24,27 +24,27 @@ pub fn normalize_url_target(value : String) -> String {
 }
 
 ///|
-fn url_target_prefix_parser() -> @talcparsec.StringParser[UrlTarget] {
-  let quoted_part = @talcparsec.string("\\\"").or(
-    @talcparsec.none_of("\"").string_map(char => char.to_string()),
+fn url_target_prefix_parser() -> @talc.StringParser[UrlTarget] {
+  let quoted_part = @talc.string("\\\"").or(
+    @talc.none_of("\"").string_map(char => char.to_string()),
   )
-  let quoted_target = @talcparsec.char('"')
+  let quoted_target = @talc.char('"')
     .then(quoted_part.many().map(parts => parts.join("")))
-    .skip(@talcparsec.char('"'))
-  let unquoted_target = @talcparsec.many_chars1(
-    @talcparsec.satisfy("URL target", char => {
+    .skip(@talc.char('"'))
+  let unquoted_target = @talc.many_chars1(
+    @talc.satisfy("URL target", char => {
       !char.is_whitespace() && char != ']'
     }),
   )
   let target = quoted_target.attempt().or(unquoted_target)
-  let terminator = @talcparsec.string("]]")
+  let terminator = @talc.string("]]")
   let label_char = terminator
     .not_followed_by("URL terminator")
-    .then(@talcparsec.char(']'))
-    .or(@talcparsec.none_of("]"))
-  let label = @talcparsec.many_chars(label_char).skip(terminator)
-  let no_label = @talcparsec.spaces().then(terminator).map(_ => None)
-  let with_label = @talcparsec.whitespace()
+    .then(@talc.char(']'))
+    .or(@talc.none_of("]"))
+  let label = @talc.many_chars(label_char).skip(terminator)
+  let no_label = @talc.spaces().then(terminator).map(_ => None)
+  let with_label = @talc.whitespace()
     .some()
     .then(label)
     .map(label => {
@@ -55,8 +55,8 @@ fn url_target_prefix_parser() -> @talcparsec.StringParser[UrlTarget] {
         Some(label)
       }
     })
-  @talcparsec.string("[[")
-  .then(@talcparsec.spaces())
+  @talc.string("[[")
+  .then(@talc.spaces())
   .then(
     target.bind(target => {
       no_label.attempt().or(with_label).map(label => { target, label })
@@ -65,17 +65,17 @@ fn url_target_prefix_parser() -> @talcparsec.StringParser[UrlTarget] {
 }
 
 ///|
-fn url_target_parser() -> @talcparsec.StringParser[UrlTarget] {
-  @talcparsec.spaces()
+fn url_target_parser() -> @talc.StringParser[UrlTarget] {
+  @talc.spaces()
   .then(url_target_prefix_parser())
-  .skip(@talcparsec.spaces())
-  .skip(@talcparsec.eof())
+  .skip(@talc.spaces())
+  .skip(@talc.eof())
 }
 
 ///|
 /// Parse a URL target at the beginning of a larger PlantUML command.
 pub fn parse_url_target_prefix(value : String) -> (UrlTarget, String)? {
-  match url_target_prefix_parser().run(@talcparsec.Input::new(value)) {
+  match url_target_prefix_parser().run(@talc.Input::new(value)) {
     Ok((target, rest)) => Some((target, rest.remaining().to_owned()))
     Err(_) => None
   }
@@ -83,7 +83,7 @@ pub fn parse_url_target_prefix(value : String) -> (UrlTarget, String)? {
 
 ///|
 pub fn parse_url_target(value : String) -> UrlTarget? {
-  match url_target_parser().parse(@talcparsec.Input::new(value)) {
+  match url_target_parser().parse(@talc.Input::new(value)) {
     Ok(target) if target.target.length() > 0 => Some(target)
     _ => None
   }

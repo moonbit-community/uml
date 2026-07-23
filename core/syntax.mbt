@@ -2,7 +2,7 @@
 /// Remove a PlantUML apostrophe comment while preserving apostrophes inside
 /// quoted strings.
 pub fn strip_line_comment(line : String) -> String {
-  match line_without_comment_parser().run(@talcparsec.Input::new(line)) {
+  match line_without_comment_parser().run(@talc.Input::new(line)) {
     Ok((content, _)) => content.trim().to_owned()
     Err(_) => ""
   }
@@ -11,7 +11,7 @@ pub fn strip_line_comment(line : String) -> String {
 ///|
 /// Split a PlantUML command into whitespace-delimited words.
 pub fn syntax_words(line : String) -> Array[String] {
-  match syntax_words_parser().parse(@talcparsec.Input::new(line)) {
+  match syntax_words_parser().parse(@talc.Input::new(line)) {
     Ok(words) => words
     Err(_) => []
   }
@@ -32,7 +32,7 @@ pub fn unquote_identifier(raw : String) -> String {
 /// Find a literal substring and return its character offset.
 pub fn find_literal(haystack : String, needle : String) -> Int? {
   guard needle.length() > 0 else { return Some(0) }
-  match literal_prefix_parser(needle).run(@talcparsec.Input::new(haystack)) {
+  match literal_prefix_parser(needle).run(@talc.Input::new(haystack)) {
     Ok((prefix, _)) => Some(prefix.length())
     Err(_) => None
   }
@@ -43,7 +43,7 @@ pub fn find_literal(haystack : String, needle : String) -> Int? {
 pub fn find_unquoted_literal(haystack : String, needle : String) -> Int? {
   guard needle.length() > 0 else { return Some(0) }
   match
-    unquoted_literal_prefix_parser(needle).run(@talcparsec.Input::new(haystack)) {
+    unquoted_literal_prefix_parser(needle).run(@talc.Input::new(haystack)) {
     Ok((prefix, _)) => Some(prefix.length())
     Err(_) => None
   }
@@ -52,7 +52,7 @@ pub fn find_unquoted_literal(haystack : String, needle : String) -> Int? {
 ///|
 /// Split on a delimiter outside quoted strings.
 pub fn split_unquoted(value : String, delimiter : Char) -> Array[String] {
-  match split_unquoted_parser(delimiter).parse(@talcparsec.Input::new(value)) {
+  match split_unquoted_parser(delimiter).parse(@talc.Input::new(value)) {
     Ok(parts) => parts
     Err(_) => [value]
   }

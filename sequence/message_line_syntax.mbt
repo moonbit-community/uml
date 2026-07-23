@@ -1,5 +1,5 @@
 ///|
-fn message_tail_parser() -> @talcparsec.StringParser[
+fn message_tail_parser() -> @talc.StringParser[
   (ActivationSpec?, String?, String?),
 ] {
   inline_spaces()
@@ -10,10 +10,10 @@ fn message_tail_parser() -> @talcparsec.StringParser[
     .bind(color => {
       inline_spaces()
       .then(
-        @talcparsec.char(':')
+        @talc.char(':')
         .then(
-          @talcparsec.many_chars(
-            @talcparsec.satisfy("message label", _ => true),
+          @talc.many_chars(
+            @talc.satisfy("message label", _ => true),
           ),
         )
         .map(@core.normalize_label)
@@ -25,8 +25,8 @@ fn message_tail_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn message_line_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.char('&')
+fn message_line_parser() -> @talc.StringParser[Event] {
+  @talc.char('&')
   .optional()
   .bind(parallel => {
     inline_spaces()
@@ -52,7 +52,7 @@ fn message_line_parser() -> @talcparsec.StringParser[Event] {
               .then(message_tail_parser())
               .bind(tail => {
                 guard message_direction(left, right) is Some(reverse) else {
-                  return @talcparsec.fail("message direction")
+                  return @talc.fail("message direction")
                 }
                 let (activation_spec, life_color, label) = tail
                 let (from, to) = if reverse {
@@ -60,7 +60,7 @@ fn message_line_parser() -> @talcparsec.StringParser[Event] {
                 } else {
                   (first.code, second.code)
                 }
-                @talcparsec.pure(
+                @talc.pure(
                   Message({
                     from_code: from,
                     to_code: to,
@@ -84,16 +84,16 @@ fn message_line_parser() -> @talcparsec.StringParser[Event] {
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn left_exo_message_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.char('&')
+fn left_exo_message_parser() -> @talc.StringParser[Event] {
+  @talc.char('&')
   .optional()
   .then(inline_spaces())
-  .then(@talcparsec.char('['))
-  .then(@talcparsec.char('?').optional())
+  .then(@talc.char('['))
+  .then(@talc.char('?').optional())
   .bind(short_arrow => {
     arrow_dressing_parser().bind(dressing => {
       let (left, body, right) = dressing
@@ -101,7 +101,7 @@ fn left_exo_message_parser() -> @talcparsec.StringParser[Event] {
       .then(participant_ref_parser())
       .bind(participant => {
         guard from_left_exo_type(left, right) is Some(exo_type) else {
-          return @talcparsec.fail("external message direction")
+          return @talc.fail("external message direction")
         }
         message_tail_parser().map(tail => {
           let (activation_spec, life_color, label) = tail
@@ -123,12 +123,12 @@ fn left_exo_message_parser() -> @talcparsec.StringParser[Event] {
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn right_exo_message_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.char('&')
+fn right_exo_message_parser() -> @talc.StringParser[Event] {
+  @talc.char('&')
   .optional()
   .then(inline_spaces())
   .then(participant_ref_parser())
@@ -137,12 +137,12 @@ fn right_exo_message_parser() -> @talcparsec.StringParser[Event] {
     .then(arrow_dressing_parser())
     .bind(dressing => {
       let (left, body, right) = dressing
-      @talcparsec.char('?')
+      @talc.char('?')
       .optional()
-      .skip(@talcparsec.char(']'))
+      .skip(@talc.char(']'))
       .bind(short_arrow => {
         guard to_right_exo_type(left, right) is Some(exo_type) else {
-          return @talcparsec.fail("external message direction")
+          return @talc.fail("external message direction")
         }
         message_tail_parser().map(tail => {
           let (activation_spec, life_color, label) = tail
@@ -164,12 +164,12 @@ fn right_exo_message_parser() -> @talcparsec.StringParser[Event] {
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn complete_message_line_parser() -> @talcparsec.StringParser[Event] {
-  @talcparsec.choice([
+fn complete_message_line_parser() -> @talc.StringParser[Event] {
+  @talc.choice([
     left_exo_message_parser().attempt(),
     right_exo_message_parser().attempt(),
     message_line_parser(),

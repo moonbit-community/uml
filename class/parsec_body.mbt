@@ -1,11 +1,11 @@
 ///|
-fn linked_map_arrow_parser() -> @talcparsec.StringParser[(String, String)] {
-  let arrow = @talcparsec.char('*').bind(_ => {
-    @talcparsec.many_chars1(@talcparsec.char('-')).bind(dashes => {
-      @talcparsec.char('_')
+fn linked_map_arrow_parser() -> @talc.StringParser[(String, String)] {
+  let arrow = @talc.char('*').bind(_ => {
+    @talc.many_chars1(@talc.char('-')).bind(dashes => {
+      @talc.char('_')
       .optional()
       .bind(underscore => {
-        @talcparsec.char('>').map(_ => {
+        @talc.char('>').map(_ => {
           "*" + dashes + underscore.map_or("", _ => "_") + ">"
         })
       })
@@ -13,35 +13,35 @@ fn linked_map_arrow_parser() -> @talcparsec.StringParser[(String, String)] {
   })
   let prefix_character = arrow
     .not_followed_by("map link arrow")
-    .then(@talcparsec.satisfy("map entry text", _ => true))
-  @talcparsec.many_chars(prefix_character).bind(prefix => {
+    .then(@talc.satisfy("map entry text", _ => true))
+  @talc.many_chars(prefix_character).bind(prefix => {
     arrow.map(arrow => (prefix, arrow))
   })
 }
 
 ///|
-fn brace_delta_parser() -> @talcparsec.StringParser[Int] {
-  let quoted_part = @talcparsec.char('\\')
-    .then(@talcparsec.satisfy("escaped JSON character", _ => true))
-    .or(@talcparsec.none_of("\""))
-  let quoted = @talcparsec.char('"')
+fn brace_delta_parser() -> @talc.StringParser[Int] {
+  let quoted_part = @talc.char('\\')
+    .then(@talc.satisfy("escaped JSON character", _ => true))
+    .or(@talc.none_of("\""))
+  let quoted = @talc.char('"')
     .then(quoted_part.many())
-    .skip(@talcparsec.char('"').optional())
+    .skip(@talc.char('"').optional())
     .map(_ => 0)
   let token = quoted
     .attempt()
-    .or(@talcparsec.char('{').map(_ => 1))
-    .or(@talcparsec.char('}').map(_ => -1))
-    .or(@talcparsec.satisfy("JSON character", _ => true).map(_ => 0))
+    .or(@talc.char('{').map(_ => 1))
+    .or(@talc.char('}').map(_ => -1))
+    .or(@talc.satisfy("JSON character", _ => true).map(_ => 0))
   token
   .many()
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
   .map(tokens => tokens.fold(init=0, (sum, value) => sum + value))
 }
 
 ///|
 fn parse_brace_delta(line : String) -> Int {
-  match brace_delta_parser().parse(@talcparsec.Input::new(line)) {
+  match brace_delta_parser().parse(@talc.Input::new(line)) {
     Ok(delta) => delta
     Err(_) => 0
   }

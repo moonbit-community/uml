@@ -15,19 +15,19 @@ priv struct RelationArrowCandidate {
 }
 
 ///|
-fn relation_symbol(value : String) -> @talcparsec.StringParser[String] {
-  @talcparsec.string(value).attempt()
+fn relation_symbol(value : String) -> @talc.StringParser[String] {
+  @talc.string(value).attempt()
 }
 
 ///|
-fn relation_stroke_parser() -> @talcparsec.StringParser[RelationStroke] {
-  let stroke = @talcparsec.many_chars1(@talcparsec.one_of("-=."))
-  let style = @talcparsec.char('[')
-    .then(@talcparsec.many_chars(@talcparsec.none_of("]")))
-    .skip(@talcparsec.char(']'))
+fn relation_stroke_parser() -> @talc.StringParser[RelationStroke] {
+  let stroke = @talc.many_chars1(@talc.one_of("-=."))
+  let style = @talc.char('[')
+    .then(@talc.many_chars(@talc.none_of("]")))
+    .skip(@talc.char(']'))
     .attempt()
     .optional()
-  let direction = @talcparsec.choice([
+  let direction = @talc.choice([
     relation_symbol("right"),
     relation_symbol("down"),
     relation_symbol("left"),
@@ -44,7 +44,7 @@ fn relation_stroke_parser() -> @talcparsec.StringParser[RelationStroke] {
     style.bind(first_style => {
       direction.bind(direction => {
         style.bind(second_style => {
-          @talcparsec.many_chars(@talcparsec.one_of("-=.")).map(second => {
+          @talc.many_chars(@talc.one_of("-=.")).map(second => {
             let text = first +
               first_style.map_or("", value => "[" + value + "]") +
               direction.unwrap_or("") +
@@ -63,10 +63,10 @@ fn relation_stroke_parser() -> @talcparsec.StringParser[RelationStroke] {
 }
 
 ///|
-fn relation_arrow_candidate_parser() -> @talcparsec.StringParser[
+fn relation_arrow_candidate_parser() -> @talc.StringParser[
   RelationArrowCandidate,
 ] {
-  let left_decor = @talcparsec.choice([
+  let left_decor = @talc.choice([
       relation_symbol("<|:"),
       relation_symbol("<||"),
       relation_symbol("}o"),
@@ -92,7 +92,7 @@ fn relation_arrow_candidate_parser() -> @talcparsec.StringParser[
     ])
     .attempt()
     .optional()
-  let right_decor = @talcparsec.choice([
+  let right_decor = @talc.choice([
       relation_symbol(":|>"),
       relation_symbol("||>"),
       relation_symbol("o{"),
@@ -120,14 +120,14 @@ fn relation_arrow_candidate_parser() -> @talcparsec.StringParser[
     ])
     .attempt()
     .optional()
-  let inside = @talcparsec.choice([
+  let inside = @talc.choice([
       relation_symbol("(0)"),
       relation_symbol("(0"),
       relation_symbol("0)"),
       relation_symbol("0"),
     ])
     .bind(value => {
-      @talcparsec.many_chars1(@talcparsec.one_of("-=.")).map(stroke => {
+      @talc.many_chars1(@talc.one_of("-=.")).map(stroke => {
         value + stroke
       })
     })

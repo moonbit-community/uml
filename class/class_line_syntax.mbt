@@ -20,17 +20,17 @@ priv enum ClassLineSyntax {
 fn[T] validated_whole_line_parser(
   label : String,
   classify : (String) -> T?,
-) -> @talcparsec.StringParser[T] {
-  @talcparsec.many_chars1(@talcparsec.satisfy(label, _ => true)).bind(line => {
+) -> @talc.StringParser[T] {
+  @talc.many_chars1(@talc.satisfy(label, _ => true)).bind(line => {
     match classify(line) {
-      Some(value) => @talcparsec.pure(value)
-      None => @talcparsec.fail(label)
+      Some(value) => @talc.pure(value)
+      None => @talc.fail(label)
     }
   })
 }
 
 ///|
-fn class_control_line_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
+fn class_control_line_parser() -> @talc.StringParser[ClassLineSyntax] {
   validated_whole_line_parser("class control line", line => {
     match line.to_lower() {
       "allowmixing" | "allow_mixing" => Some(ParsedAllowMixing)
@@ -44,7 +44,7 @@ fn class_control_line_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
 }
 
 ///|
-fn ignored_class_directive_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
+fn ignored_class_directive_parser() -> @talc.StringParser[ClassLineSyntax] {
   validated_whole_line_parser("ignored class directive", line => {
     let lower = line.to_lower()
     if lower.has_prefix("skinparam ") ||
@@ -65,8 +65,8 @@ fn ignored_class_directive_parser() -> @talcparsec.StringParser[ClassLineSyntax]
 }
 
 ///|
-fn class_line_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
-  @talcparsec.choice([
+fn class_line_parser() -> @talc.StringParser[ClassLineSyntax] {
+  @talc.choice([
     class_control_line_parser().attempt(),
     class_annotation_line_parser()
     .map(syntax => ParsedAnnotation(syntax))
@@ -91,12 +91,12 @@ fn class_line_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
     })
     .attempt(),
     ignored_class_directive_parser(),
-  ]).skip(@talcparsec.eof())
+  ]).skip(@talc.eof())
 }
 
 ///|
 fn parse_class_line(line : String) -> ClassLineSyntax? {
-  match class_line_parser().parse(@talcparsec.Input::new(line)) {
+  match class_line_parser().parse(@talc.Input::new(line)) {
     Ok(syntax) => Some(syntax)
     Err(_) => None
   }

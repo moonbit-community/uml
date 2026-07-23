@@ -33,18 +33,18 @@ fn parsed_note_position(
 }
 
 ///|
-fn sequence_text_parser() -> @talcparsec.StringParser[SequenceTextSyntax] {
-  @talcparsec.char(':')
+fn sequence_text_parser() -> @talc.StringParser[SequenceTextSyntax] {
+  @talc.char(':')
   .then(line_rest_parser("inline text"))
   .map(text => Inline(text.trim().to_owned()))
-  .or(@talcparsec.pure(Multiline))
+  .or(@talc.pure(Multiline))
 }
 
 ///|
 fn note_on_arrow_tail_parser(
   position : NotePosition,
   note_style : NoteStyle,
-) -> @talcparsec.StringParser[NoteLineSyntax] {
+) -> @talc.StringParser[NoteLineSyntax] {
   sequence_text_parser().map(text => {
     participant_codes: [],
     position,
@@ -60,7 +60,7 @@ fn participant_note_tail_parser(
   position : NotePosition,
   note_style : NoteStyle,
   require_of : Bool,
-) -> @talcparsec.StringParser[NoteLineSyntax] {
+) -> @talc.StringParser[NoteLineSyntax] {
   let connector = if require_of {
     keyword_parser("of").skip(inline_space1())
   } else {
@@ -74,7 +74,7 @@ fn participant_note_tail_parser(
       Over => participant_codes.length() >= 1 && participant_codes.length() <= 2
       _ => false
     }
-    guard valid else { return @talcparsec.fail("note participants") }
+    guard valid else { return @talc.fail("note participants") }
     inline_space1()
     .then(color_parser())
     .attempt()
@@ -97,7 +97,7 @@ fn participant_note_tail_parser(
 ///|
 fn across_note_tail_parser(
   note_style : NoteStyle,
-) -> @talcparsec.StringParser[NoteLineSyntax] {
+) -> @talc.StringParser[NoteLineSyntax] {
   inline_space1()
   .then(color_parser())
   .attempt()
@@ -117,10 +117,10 @@ fn across_note_tail_parser(
 }
 
 ///|
-fn note_line_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
-  @talcparsec.char('&')
+fn note_line_parser() -> @talc.StringParser[NoteLineSyntax] {
+  @talc.char('&')
   .optional()
-  .then(@talcparsec.char('/').optional())
+  .then(@talc.char('/').optional())
   .then(inline_spaces())
   .then(note_style_parser())
   .bind(note_style => {
@@ -136,16 +136,16 @@ fn note_line_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
             .or(note_on_arrow_tail_parser(position, note_style))
           Over => participant_note_tail_parser(position, note_style, false)
           Across => across_note_tail_parser(note_style)
-          OverSeveral => @talcparsec.fail("note position")
+          OverSeveral => @talc.fail("note position")
         },
       )
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn reference_line_parser() -> @talcparsec.StringParser[ReferenceLineSyntax] {
+fn reference_line_parser() -> @talc.StringParser[ReferenceLineSyntax] {
   keyword_parser("ref")
   .then(inline_space1())
   .then(keyword_parser("over"))
@@ -156,7 +156,7 @@ fn reference_line_parser() -> @talcparsec.StringParser[ReferenceLineSyntax] {
     .then(sequence_text_parser())
     .map(text => { participant_codes, text })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|

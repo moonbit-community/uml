@@ -142,33 +142,33 @@ priv enum FilterLineSyntax {
 }
 
 ///|
-fn filter_token_parser() -> @talcparsec.StringParser[String] {
+fn filter_token_parser() -> @talc.StringParser[String] {
   stereotype_value_parser()
   .attempt()
   .or(quoted_value_parser().attempt())
   .or(
-    @talcparsec.many_chars1(
-      @talcparsec.satisfy("filter token", char => !char.is_whitespace()),
+    @talc.many_chars1(
+      @talc.satisfy("filter token", char => !char.is_whitespace()),
     ),
   )
 }
 
 ///|
-fn filter_line_parser() -> @talcparsec.StringParser[FilterLineSyntax] {
+fn filter_line_parser() -> @talc.StringParser[FilterLineSyntax] {
   filter_token_parser()
   .sep_by1(inline_space1())
   .bind(tokens => {
     match portion_rule_from_tokens(tokens) {
-      Some(rule) => @talcparsec.pure(ParsedPortionRule(rule))
+      Some(rule) => @talc.pure(ParsedPortionRule(rule))
       None =>
         match entity_rule_from_tokens(tokens) {
-          Some(rule) => @talcparsec.pure(ParsedEntityRule(rule))
-          None => @talcparsec.fail("class filter command")
+          Some(rule) => @talc.pure(ParsedEntityRule(rule))
+          None => @talc.fail("class filter command")
         }
     }
   })
   .skip(inline_spaces())
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|

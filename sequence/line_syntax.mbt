@@ -8,7 +8,7 @@ priv enum SequenceLineSyntax {
 }
 
 ///|
-fn title_line_parser() -> @talcparsec.StringParser[SequenceLineSyntax] {
+fn title_line_parser() -> @talc.StringParser[SequenceLineSyntax] {
   keyword_parser("title")
   .then(line_rest_parser("title"))
   .map(rest => {
@@ -17,12 +17,12 @@ fn title_line_parser() -> @talcparsec.StringParser[SequenceLineSyntax] {
       None => ParsedTitle(Multiline)
     }
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn sequence_line_parser() -> @talcparsec.StringParser[SequenceLineSyntax] {
-  @talcparsec.choice([
+fn sequence_line_parser() -> @talc.StringParser[SequenceLineSyntax] {
+  @talc.choice([
     complete_message_line_parser().attempt().map(event => ParsedEvent(event)),
     note_line_parser().attempt().map(note => ParsedNote(note)),
     reference_line_parser()
@@ -38,7 +38,7 @@ fn sequence_line_parser() -> @talcparsec.StringParser[SequenceLineSyntax] {
 
 ///|
 fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
-  match sequence_line_parser().parse(@talcparsec.Input::new(line)) {
+  match sequence_line_parser().parse(@talc.Input::new(line)) {
     Ok(syntax) => Some(syntax)
     Err(_) => None
   }

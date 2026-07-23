@@ -1,7 +1,7 @@
 ///|
 test "sequence line dispatcher accepts complete example commands" {
   guard left_exo_message_parser().parse(
-      @talcparsec.Input::new("[-> client : HTTP request"),
+      @talc.Input::new("[-> client : HTTP request"),
     )
     is Ok(_) else {
     @test.fail("left exo parser rejected")

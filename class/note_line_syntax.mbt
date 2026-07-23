@@ -50,19 +50,19 @@ priv enum ClassAnnotationLineSyntax {
 }
 
 ///|
-fn note_position_parser() -> @talcparsec.StringParser[NotePosition] {
+fn note_position_parser() -> @talc.StringParser[NotePosition] {
   inline_word_parser("note position").bind(word => {
     match note_position(word) {
-      Some(position) => @talcparsec.pure(position)
-      None => @talcparsec.fail("note position")
+      Some(position) => @talc.pure(position)
+      None => @talc.fail("note position")
     }
   })
 }
 
 ///|
-fn note_name_parser(label : String) -> @talcparsec.StringParser[String] {
-  let plain = @talcparsec.many_chars1(
-    @talcparsec.satisfy(label, char => {
+fn note_name_parser(label : String) -> @talc.StringParser[String] {
+  let plain = @talc.many_chars1(
+    @talc.satisfy(label, char => {
       !char.is_whitespace() &&
       char != ':' &&
       char != '#' &&
@@ -76,20 +76,20 @@ fn note_name_parser(label : String) -> @talcparsec.StringParser[String] {
 }
 
 ///|
-fn note_entity_name_parser() -> @talcparsec.StringParser[String] {
+fn note_entity_name_parser() -> @talc.StringParser[String] {
   note_name_parser("note entity").bind(name => {
     if name.equal_ignore_ascii_case("of") {
-      @talcparsec.fail("note entity")
+      @talc.fail("note entity")
     } else {
-      @talcparsec.pure(name)
+      @talc.pure(name)
     }
   })
 }
 
 ///|
-fn note_member_name_parser() -> @talcparsec.StringParser[String] {
-  @talcparsec.many_chars1(
-    @talcparsec.satisfy("note member", char => {
+fn note_member_name_parser() -> @talc.StringParser[String] {
+  @talc.many_chars1(
+    @talc.satisfy("note member", char => {
       !char.is_whitespace() &&
       char != '#' &&
       char != '$' &&
@@ -101,10 +101,10 @@ fn note_member_name_parser() -> @talcparsec.StringParser[String] {
 }
 
 ///|
-fn note_metadata_item_parser() -> @talcparsec.StringParser[
+fn note_metadata_item_parser() -> @talc.StringParser[
   NoteMetadataItemSyntax,
 ] {
-  @talcparsec.choice([
+  @talc.choice([
     url_value_parser().attempt().map(value => NoteUrl(value)),
     stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
     color_value_parser("note color").attempt().map(value => NoteColor(value)),
@@ -133,14 +133,14 @@ fn note_metadata_from(
 }
 
 ///|
-fn note_metadata_parser() -> @talcparsec.StringParser[NoteMetadataSyntax] {
+fn note_metadata_parser() -> @talc.StringParser[NoteMetadataSyntax] {
   inline_space1()
   .then(note_metadata_item_parser())
   .attempt()
   .many()
   .bind(items => {
     inline_spaces()
-    .then(@talcparsec.char('{'))
+    .then(@talc.char('{'))
     .attempt()
     .optional()
     .map(brace => note_metadata_from(items, brace is Some(_)))
@@ -148,13 +148,13 @@ fn note_metadata_parser() -> @talcparsec.StringParser[NoteMetadataSyntax] {
 }
 
 ///|
-fn note_content_parser() -> @talcparsec.StringParser[NoteContentSyntax] {
+fn note_content_parser() -> @talc.StringParser[NoteContentSyntax] {
   inline_spaces()
-  .then(@talcparsec.char(':'))
-  .skip(@talcparsec.char(':').not_followed_by("qualified member"))
+  .then(@talc.char(':'))
+  .skip(@talc.char(':').not_followed_by("qualified member"))
   .then(
     inline_spaces().then(
-      @talcparsec.many_chars(@talcparsec.satisfy("note text", _ => true)),
+      @talc.many_chars(@talc.satisfy("note text", _ => true)),
     ),
   )
   .map(text => NoteInline(text.trim().to_owned()))
@@ -164,7 +164,7 @@ fn note_content_parser() -> @talcparsec.StringParser[NoteContentSyntax] {
 }
 
 ///|
-fn named_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
+fn named_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
   let multiline = inline_keyword_parser("as")
     .then(inline_space1())
     .then(note_name_parser("named note code"))
@@ -191,7 +191,7 @@ fn named_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
 }
 
 ///|
-fn link_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
+fn link_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
   note_position_parser()
   .skip(inline_space1())
   .attempt()
@@ -215,17 +215,17 @@ fn link_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
 }
 
 ///|
-fn member_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
+fn member_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
   note_position_parser().bind(position => {
     guard position is Left || position is Right else {
-      return @talcparsec.fail("member note position")
+      return @talc.fail("member note position")
     }
     inline_space1()
     .then(inline_keyword_parser("of"))
     .then(inline_space1())
     .then(note_entity_name_parser())
     .bind(entity => {
-      @talcparsec.string("::")
+      @talc.string("::")
       .then(note_member_name_parser())
       .bind(entry => {
         note_metadata_parser().map(metadata => {
@@ -240,7 +240,7 @@ fn member_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
 }
 
 ///|
-fn entity_note_target_parser() -> @talcparsec.StringParser[String?] {
+fn entity_note_target_parser() -> @talc.StringParser[String?] {
   let explicit = inline_space1()
     .then(inline_keyword_parser("of"))
     .then(inline_space1())
@@ -250,7 +250,7 @@ fn entity_note_target_parser() -> @talcparsec.StringParser[String?] {
 }
 
 ///|
-fn entity_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
+fn entity_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
   note_position_parser().bind(position => {
     entity_note_target_parser().bind(target => {
       note_metadata_parser().bind(metadata => {
@@ -266,11 +266,11 @@ fn entity_note_tail_parser() -> @talcparsec.StringParser[NoteLineSyntax] {
 }
 
 ///|
-fn note_line_parser() -> @talcparsec.StringParser[ClassAnnotationLineSyntax] {
+fn note_line_parser() -> @talc.StringParser[ClassAnnotationLineSyntax] {
   inline_keyword_parser("note")
   .then(inline_space1())
   .then(
-    @talcparsec.choice([
+    @talc.choice([
       named_note_tail_parser().attempt(),
       link_note_tail_parser().attempt(),
       member_note_tail_parser().attempt(),
@@ -278,12 +278,12 @@ fn note_line_parser() -> @talcparsec.StringParser[ClassAnnotationLineSyntax] {
     ]),
   )
   .skip(inline_spaces())
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
   .map(note => ParsedClassNote(note))
 }
 
 ///|
-fn link_constraint_line_parser() -> @talcparsec.StringParser[
+fn link_constraint_line_parser() -> @talc.StringParser[
   ClassAnnotationLineSyntax,
 ] {
   inline_keyword_parser("constraint")
@@ -299,18 +299,18 @@ fn link_constraint_line_parser() -> @talcparsec.StringParser[
   )
   .bind(color => {
     inline_spaces()
-    .then(@talcparsec.char(':'))
+    .then(@talc.char(':'))
     .then(inline_spaces())
     .then(
-      @talcparsec.many_chars(@talcparsec.satisfy("constraint text", _ => true)),
+      @talc.many_chars(@talc.satisfy("constraint text", _ => true)),
     )
     .map(text => ParsedLinkConstraint({ text: text.trim().to_owned(), color }))
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn class_annotation_line_parser() -> @talcparsec.StringParser[
+fn class_annotation_line_parser() -> @talc.StringParser[
   ClassAnnotationLineSyntax,
 ] {
   note_line_parser().attempt().or(link_constraint_line_parser())

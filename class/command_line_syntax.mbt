@@ -6,7 +6,7 @@ priv enum ClassCommandLineSyntax {
 }
 
 ///|
-fn package_keyword_parser() -> @talcparsec.StringParser[Bool] {
+fn package_keyword_parser() -> @talc.StringParser[Bool] {
   inline_keyword_parser("package")
   .map(_ => false)
   .attempt()
@@ -14,7 +14,7 @@ fn package_keyword_parser() -> @talcparsec.StringParser[Bool] {
 }
 
 ///|
-fn package_body_parser() -> @talcparsec.StringParser[
+fn package_body_parser() -> @talc.StringParser[
   (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool),
 ] {
   declaration_name_syntax_parser().bind(name => {
@@ -25,10 +25,10 @@ fn package_body_parser() -> @talcparsec.StringParser[
     .bind(suffixes => {
       inline_spaces()
       .then(
-        @talcparsec.string("{}")
+        @talc.string("{}")
         .map(_ => true)
         .attempt()
-        .or(@talcparsec.char('{').map(_ => false)),
+        .or(@talc.char('{').map(_ => false)),
       )
       .attempt()
       .optional()
@@ -41,7 +41,7 @@ fn package_body_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn package_line_parser() -> @talcparsec.StringParser[ClassCommandLineSyntax] {
+fn package_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
   declaration_visibility_parser()
   .bind(visibility => {
     package_keyword_parser().bind(is_namespace => {
@@ -62,18 +62,18 @@ fn package_line_parser() -> @talcparsec.StringParser[ClassCommandLineSyntax] {
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn stereotype_assignment_line_parser() -> @talcparsec.StringParser[
+fn stereotype_assignment_line_parser() -> @talc.StringParser[
   ClassCommandLineSyntax,
 ] {
   let code = quoted_value_parser()
     .attempt()
     .or(
-      @talcparsec.many_chars1(
-        @talcparsec.satisfy("stereotype assignment target", char => {
+      @talc.many_chars1(
+        @talc.satisfy("stereotype assignment target", char => {
           !char.is_whitespace() && char != '<'
         }),
       ),
@@ -85,16 +85,16 @@ fn stereotype_assignment_line_parser() -> @talcparsec.StringParser[
     .then(stereotype_value_parser())
     .map(stereotype => ParsedStereotypeAssignment(code~, stereotype~))
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn url_assignment_target_parser() -> @talcparsec.StringParser[String] {
+fn url_assignment_target_parser() -> @talc.StringParser[String] {
   quoted_value_parser()
   .attempt()
   .or(
-    @talcparsec.many_chars1(
-      @talcparsec.satisfy("URL assignment target", char => {
+    @talc.many_chars1(
+      @talc.satisfy("URL assignment target", char => {
         !char.is_whitespace() && char != '['
       }),
     ),
@@ -103,7 +103,7 @@ fn url_assignment_target_parser() -> @talcparsec.StringParser[String] {
 }
 
 ///|
-fn url_assignment_line_parser() -> @talcparsec.StringParser[
+fn url_assignment_line_parser() -> @talc.StringParser[
   ClassCommandLineSyntax,
 ] {
   inline_keyword_parser("url")
@@ -127,11 +127,11 @@ fn url_assignment_line_parser() -> @talcparsec.StringParser[
       .map(url => ParsedUrlAssignment(code~, url~))
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
-fn class_command_line_parser() -> @talcparsec.StringParser[
+fn class_command_line_parser() -> @talc.StringParser[
   ClassCommandLineSyntax,
 ] {
   package_line_parser()

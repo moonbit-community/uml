@@ -11,18 +11,18 @@ priv enum ParsedMapEntrySyntax {
 }
 
 ///|
-fn map_value_entry_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
-  let separator = @talcparsec.string("=>")
+fn map_value_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
+  let separator = @talc.string("=>")
   separator
   .not_followed_by("map value separator")
-  .then(@talcparsec.satisfy("map key", _ => true))
+  .then(@talc.satisfy("map key", _ => true))
   .string_map(char => char.to_string())
   .many()
   .map(parts => parts.join("").trim().to_owned())
   .skip(separator)
   .bind(key => {
-    guard key.length() > 0 else { return @talcparsec.fail("map key") }
-    @talcparsec.many_chars(@talcparsec.satisfy("map value", _ => true)).map(value => {
+    guard key.length() > 0 else { return @talc.fail("map key") }
+    @talc.many_chars(@talc.satisfy("map value", _ => true)).map(value => {
       let value = value.trim().to_owned()
       ParsedMapValue(key~, value~)
     })
@@ -30,17 +30,17 @@ fn map_value_entry_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
 }
 
 ///|
-fn map_link_entry_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
+fn map_link_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
   linked_map_arrow_parser().bind(prefix => {
     let (key, arrow) = prefix
     let key = key.trim().to_owned()
-    guard key.length() > 0 else { return @talcparsec.fail("map link key") }
-    @talcparsec.many_chars1(@talcparsec.satisfy("map link target", _ => true)).bind(target => {
+    guard key.length() > 0 else { return @talc.fail("map link key") }
+    @talc.many_chars1(@talc.satisfy("map link target", _ => true)).bind(target => {
         let target = normalize_name(target.trim().to_owned())
         if target.length() > 0 {
-          @talcparsec.pure(ParsedMapLink(key~, arrow~, target~))
+          @talc.pure(ParsedMapLink(key~, arrow~, target~))
         } else {
-          @talcparsec.fail("map link target")
+          @talc.fail("map link target")
         }
       },
     )
@@ -48,16 +48,16 @@ fn map_link_entry_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
 }
 
 ///|
-fn map_entry_line_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
+fn map_entry_line_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
   map_value_entry_parser()
   .attempt()
   .or(map_link_entry_parser())
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }
 
 ///|
 fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
-  match map_entry_line_parser().parse(@talcparsec.Input::new(line)) {
+  match map_entry_line_parser().parse(@talc.Input::new(line)) {
     Ok(ParsedMapValue(key~, value~)) =>
       Some({
         entry: { key, value: Some(value), link_target: None, raw: line },

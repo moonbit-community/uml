@@ -43,12 +43,12 @@ priv enum RelationMetadataSyntax {
 ///|
 fn relation_name_parser(
   stop_at_arrow : Bool,
-) -> @talcparsec.StringParser[RelationNameSyntax] {
-  let shaped = @talcparsec.string("()")
+) -> @talc.StringParser[RelationNameSyntax] {
+  let shaped = @talc.string("()")
     .then(inline_spaces())
     .then(
-      @talcparsec.many_chars1(
-        @talcparsec.satisfy("interface relation name", char => {
+      @talc.many_chars1(
+        @talc.satisfy("interface relation name", char => {
           !char.is_whitespace() &&
           char != ':' &&
           char != '[' &&
@@ -59,24 +59,24 @@ fn relation_name_parser(
       ),
     )
     .map(name => { name: "()" + name, port_base: None, port_value: None })
-  let usecase = @talcparsec.char('(')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of(")")))
-    .skip(@talcparsec.char(')'))
+  let usecase = @talc.char('(')
+    .then(@talc.many_chars1(@talc.none_of(")")))
+    .skip(@talc.char(')'))
     .map(name => { name: "(" + name + ")", port_base: None, port_value: None })
-  let actor = @talcparsec.char(':')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of(":")))
-    .skip(@talcparsec.char(':'))
+  let actor = @talc.char(':')
+    .then(@talc.many_chars1(@talc.none_of(":")))
+    .skip(@talc.char(':'))
     .map(name => { name: ":" + name + ":", port_base: None, port_value: None })
-  let component = @talcparsec.char('[')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of("]")))
-    .skip(@talcparsec.char(']'))
+  let component = @talc.char('[')
+    .then(@talc.many_chars1(@talc.none_of("]")))
+    .skip(@talc.char(']'))
     .map(name => { name: "[" + name + "]", port_base: None, port_value: None })
   let quoted = quoted_value_parser().map(name => {
     name,
     port_base: None,
     port_value: None,
   })
-  let base_name_character = @talcparsec.satisfy("relation name", char => {
+  let base_name_character = @talc.satisfy("relation name", char => {
     !char.is_whitespace() &&
     char != ':' &&
     char != '[' &&
@@ -92,9 +92,9 @@ fn relation_name_parser(
   } else {
     base_name_character
   }
-  let segment = @talcparsec.many_chars1(name_character)
+  let segment = @talc.many_chars1(name_character)
   let qualified = segment
-    .sep_by1(@talcparsec.string("::"))
+    .sep_by1(@talc.string("::"))
     .map(parts => {
       let name = parts.join("::")
       if parts.length() > 1 {
@@ -117,20 +117,20 @@ fn relation_name_parser(
 }
 
 ///|
-fn relation_couple_parser() -> @talcparsec.StringParser[
+fn relation_couple_parser() -> @talc.StringParser[
   (RelationNameSyntax, (String, String)),
 ] {
-  @talcparsec.char('(')
+  @talc.char('(')
   .then(inline_spaces())
   .then(relation_name_parser(false))
   .bind(first => {
     inline_spaces()
-    .then(@talcparsec.char(','))
+    .then(@talc.char(','))
     .then(inline_spaces())
     .then(relation_name_parser(false))
     .bind(second => {
       inline_spaces()
-      .then(@talcparsec.char(')'))
+      .then(@talc.char(')'))
       .map(_ => {
         let left = normalize_name(first.name)
         let right = normalize_name(second.name)
@@ -143,7 +143,7 @@ fn relation_couple_parser() -> @talcparsec.StringParser[
 ///|
 fn relation_target_parser(
   stop_at_arrow : Bool,
-) -> @talcparsec.StringParser[(RelationNameSyntax, (String, String)?)] {
+) -> @talc.StringParser[(RelationNameSyntax, (String, String)?)] {
   relation_couple_parser()
   .attempt()
   .map(pair => {
@@ -154,32 +154,32 @@ fn relation_target_parser(
 }
 
 ///|
-fn relation_role_value_parser() -> @talcparsec.StringParser[String] {
+fn relation_role_value_parser() -> @talc.StringParser[String] {
   quoted_value_parser()
   .attempt()
   .or(
-    @talcparsec.many_chars1(
-      @talcparsec.satisfy("relation role", char => !char.is_whitespace()),
+    @talc.many_chars1(
+      @talc.satisfy("relation role", char => !char.is_whitespace()),
     ),
   )
   .map(normalize_name)
 }
 
 ///|
-fn relation_modifier_parser() -> @talcparsec.StringParser[
+fn relation_modifier_parser() -> @talc.StringParser[
   RelationEndpointModifier,
 ] {
   let cardinality = quoted_value_parser().map(value => {
     RelationCardinality(value)
   })
-  let role = @talcparsec.char('/')
+  let role = @talc.char('/')
     .then(relation_role_value_parser())
     .map(value => RelationRole(value))
-  let qualifier = @talcparsec.char('[')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of("]")))
-    .skip(@talcparsec.char(']'))
+  let qualifier = @talc.char('[')
+    .then(@talc.many_chars1(@talc.none_of("]")))
+    .skip(@talc.char(']'))
     .map(value => RelationQualifier(value.trim().to_owned()))
-  @talcparsec.choice([cardinality.attempt(), role.attempt(), qualifier])
+  @talc.choice([cardinality.attempt(), role.attempt(), qualifier])
 }
 
 ///|
@@ -202,7 +202,7 @@ fn relation_endpoint_from(
 }
 
 ///|
-fn left_relation_endpoint_parser() -> @talcparsec.StringParser[
+fn left_relation_endpoint_parser() -> @talc.StringParser[
   RelationEndpointSyntax,
 ] {
   relation_target_parser(true).bind(target => {
@@ -216,7 +216,7 @@ fn left_relation_endpoint_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn right_relation_endpoint_parser() -> @talcparsec.StringParser[
+fn right_relation_endpoint_parser() -> @talc.StringParser[
   RelationEndpointSyntax,
 ] {
   relation_modifier_parser()
@@ -232,52 +232,52 @@ fn right_relation_endpoint_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn relation_non_single_arrow_parser() -> @talcparsec.StringParser[String] {
+fn relation_non_single_arrow_parser() -> @talc.StringParser[String] {
   relation_arrow_candidate_parser().bind(candidate => {
     guard candidate.first_length >= 2 ||
       candidate.has_direction ||
       candidate.has_left_decor ||
       candidate.has_right_decor else {
-      return @talcparsec.fail("relation arrow")
+      return @talc.fail("relation arrow")
     }
-    @talcparsec.pure(candidate.text)
+    @talc.pure(candidate.text)
   })
 }
 
 ///|
-fn relation_separator_parser() -> @talcparsec.StringParser[String] {
+fn relation_separator_parser() -> @talc.StringParser[String] {
   let regular = inline_spaces()
     .then(relation_non_single_arrow_parser())
     .skip(inline_spaces())
   let single = inline_space1()
-    .then(@talcparsec.one_of("-=.").string_map(char => char.to_string()))
+    .then(@talc.one_of("-=.").string_map(char => char.to_string()))
     .skip(inline_space1())
   regular.attempt().or(single)
 }
 
 ///|
-fn relation_color_parser() -> @talcparsec.StringParser[RelationMetadataSyntax] {
+fn relation_color_parser() -> @talc.StringParser[RelationMetadataSyntax] {
   color_value_parser("relation color").map(value => RelationColor(value))
 }
 
 ///|
-fn relation_url_parser() -> @talcparsec.StringParser[RelationMetadataSyntax] {
+fn relation_url_parser() -> @talc.StringParser[RelationMetadataSyntax] {
   url_value_parser().map(value => RelationUrl(value))
 }
 
 ///|
-fn relation_stereotype_parser() -> @talcparsec.StringParser[
+fn relation_stereotype_parser() -> @talc.StringParser[
   RelationMetadataSyntax,
 ] {
   stereotype_value_parser().map(value => RelationStereotype(value))
 }
 
 ///|
-fn relation_metadata_parser() -> @talcparsec.StringParser[
+fn relation_metadata_parser() -> @talc.StringParser[
   RelationMetadataSyntax,
 ] {
   inline_space1().then(
-    @talcparsec.choice([
+    @talc.choice([
       relation_color_parser().attempt(),
       relation_url_parser().attempt(),
       relation_stereotype_parser(),
@@ -286,15 +286,15 @@ fn relation_metadata_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn relation_label_start_parser() -> @talcparsec.StringParser[Unit] {
+fn relation_label_start_parser() -> @talc.StringParser[Unit] {
   inline_spaces()
-  .then(@talcparsec.char(':'))
-  .skip(@talcparsec.char(':').not_followed_by("qualified name"))
+  .then(@talc.char(':'))
+  .skip(@talc.char(':').not_followed_by("qualified name"))
   .map(_ => ())
 }
 
 ///|
-fn right_relation_syntax_parser() -> @talcparsec.StringParser[
+fn right_relation_syntax_parser() -> @talc.StringParser[
   (RelationEndpointSyntax, Array[RelationMetadataSyntax], String?),
 ] {
   right_relation_endpoint_parser().bind(endpoint => {
@@ -304,7 +304,7 @@ fn right_relation_syntax_parser() -> @talcparsec.StringParser[
     .bind(metadata => {
       relation_label_start_parser()
       .then(
-        @talcparsec.many_chars(@talcparsec.satisfy("relation label", _ => true)),
+        @talc.many_chars(@talc.satisfy("relation label", _ => true)),
       )
       .optional()
       .map(label => {
@@ -333,13 +333,13 @@ fn relation_metadata_from(
 }
 
 ///|
-fn left_relation_syntax_parser() -> @talcparsec.StringParser[
+fn left_relation_syntax_parser() -> @talc.StringParser[
   (String?, RelationEndpointSyntax),
 ] {
-  let weight = @talcparsec.char('@')
+  let weight = @talc.char('@')
     .then(
-      @talcparsec.many_chars1(
-        @talcparsec.satisfy("relation weight", char => !char.is_whitespace()),
+      @talc.many_chars1(
+        @talc.satisfy("relation weight", char => !char.is_whitespace()),
       ),
     )
     .skip(inline_space1())
@@ -351,7 +351,7 @@ fn left_relation_syntax_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn relation_line_parser() -> @talcparsec.StringParser[RelationLineSyntax] {
+fn relation_line_parser() -> @talc.StringParser[RelationLineSyntax] {
   left_relation_syntax_parser()
   .bind(left_syntax => {
     let (weight, left) = left_syntax
@@ -363,5 +363,5 @@ fn relation_line_parser() -> @talcparsec.StringParser[RelationLineSyntax] {
       })
     })
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }

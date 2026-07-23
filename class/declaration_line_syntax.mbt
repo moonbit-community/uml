@@ -44,8 +44,8 @@ priv struct DeclarationLineSyntax {
 }
 
 ///|
-fn declaration_visibility_parser() -> @talcparsec.StringParser[Visibility] {
-  @talcparsec.one_of("+-#~")
+fn declaration_visibility_parser() -> @talc.StringParser[Visibility] {
+  @talc.one_of("+-#~")
   .map(char => {
     match char {
       '+' => Public
@@ -61,38 +61,38 @@ fn declaration_visibility_parser() -> @talcparsec.StringParser[Visibility] {
 }
 
 ///|
-fn declaration_generic_parser() -> @talcparsec.StringParser[String] {
-  @talcparsec.char('<')
-  .skip(@talcparsec.char('<').not_followed_by("stereotype"))
+fn declaration_generic_parser() -> @talc.StringParser[String] {
+  @talc.char('<')
+  .skip(@talc.char('<').not_followed_by("stereotype"))
   .then(generic_content_parser())
-  .skip(@talcparsec.char('>'))
+  .skip(@talc.char('>'))
 }
 
 ///|
-fn declaration_shaped_name_parser() -> @talcparsec.StringParser[String] {
-  let parentheses = @talcparsec.char('(')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of(")")))
-    .skip(@talcparsec.char(')'))
+fn declaration_shaped_name_parser() -> @talc.StringParser[String] {
+  let parentheses = @talc.char('(')
+    .then(@talc.many_chars1(@talc.none_of(")")))
+    .skip(@talc.char(')'))
     .map(value => "(" + value + ")")
-  let actor = @talcparsec.char(':')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of(":")))
-    .skip(@talcparsec.char(':'))
+  let actor = @talc.char(':')
+    .then(@talc.many_chars1(@talc.none_of(":")))
+    .skip(@talc.char(':'))
     .map(value => ":" + value + ":")
-  let component = @talcparsec.char('[')
-    .then(@talcparsec.many_chars1(@talcparsec.none_of("]")))
-    .skip(@talcparsec.char(']'))
+  let component = @talc.char('[')
+    .then(@talc.many_chars1(@talc.none_of("]")))
+    .skip(@talc.char(']'))
     .map(value => "[" + value + "]")
-  @talcparsec.choice([parentheses, actor, component])
+  @talc.choice([parentheses, actor, component])
 }
 
 ///|
-fn declaration_name_atom_parser() -> @talcparsec.StringParser[
+fn declaration_name_atom_parser() -> @talc.StringParser[
   DeclarationNameAtom,
 ] {
   let quoted = quoted_value_parser().map(value => (value, true))
   let shaped = declaration_shaped_name_parser().map(value => (value, false))
-  let plain = @talcparsec.many_chars1(
-    @talcparsec.satisfy("declaration name", char => {
+  let plain = @talc.many_chars1(
+    @talc.satisfy("declaration name", char => {
       !char.is_whitespace() &&
       char != '<' &&
       char != '{' &&
@@ -115,7 +115,7 @@ fn declaration_name_atom_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn declaration_name_syntax_parser() -> @talcparsec.StringParser[
+fn declaration_name_syntax_parser() -> @talc.StringParser[
   DeclarationNameSyntax,
 ] {
   declaration_name_atom_parser().bind(first => {
@@ -146,12 +146,12 @@ fn declaration_name_syntax_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn declaration_target_parser() -> @talcparsec.StringParser[String] {
+fn declaration_target_parser() -> @talc.StringParser[String] {
   quoted_value_parser()
   .attempt()
   .or(
-    @talcparsec.many_chars1(
-      @talcparsec.satisfy("inheritance target", char => {
+    @talc.many_chars1(
+      @talc.satisfy("inheritance target", char => {
         !char.is_whitespace() && char != ','
       }),
     ),
@@ -160,63 +160,63 @@ fn declaration_target_parser() -> @talcparsec.StringParser[String] {
 }
 
 ///|
-fn declaration_target_list_parser() -> @talcparsec.StringParser[Array[String]] {
+fn declaration_target_list_parser() -> @talc.StringParser[Array[String]] {
   let separator = inline_spaces()
-    .then(@talcparsec.char(','))
+    .then(@talc.char(','))
     .skip(inline_spaces())
     .attempt()
   declaration_target_parser().sep_by1(separator)
 }
 
 ///|
-fn declaration_stereotype_parser() -> @talcparsec.StringParser[
+fn declaration_stereotype_parser() -> @talc.StringParser[
   DeclarationSuffixSyntax,
 ] {
-  @talcparsec.string("<<")
+  @talc.string("<<")
   .then(
-    @talcparsec.string(">>")
+    @talc.string(">>")
     .not_followed_by("stereotype terminator")
-    .then(@talcparsec.satisfy("stereotype", _ => true))
+    .then(@talc.satisfy("stereotype", _ => true))
     .string_map(char => char.to_string())
     .many()
     .map(parts => parts.join("")),
   )
-  .skip(@talcparsec.string(">>"))
+  .skip(@talc.string(">>"))
   .map(value => DeclarationStereotype("<<" + value + ">>"))
 }
 
 ///|
-fn declaration_url_parser() -> @talcparsec.StringParser[DeclarationSuffixSyntax] {
-  let terminator = @talcparsec.string("]]")
+fn declaration_url_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
+  let terminator = @talc.string("]]")
   let character = terminator
     .not_followed_by("URL terminator")
-    .then(@talcparsec.satisfy("URL character", _ => true))
-  @talcparsec.string("[[")
-  .then(@talcparsec.many_chars(character))
+    .then(@talc.satisfy("URL character", _ => true))
+  @talc.string("[[")
+  .then(@talc.many_chars(character))
   .skip(terminator)
   .bind(content => {
     match @core.parse_url_target("[[" + content + "]]") {
-      Some(target) => @talcparsec.pure(DeclarationUrl(target.target))
-      None => @talcparsec.fail("URL")
+      Some(target) => @talc.pure(DeclarationUrl(target.target))
+      None => @talc.fail("URL")
     }
   })
 }
 
 ///|
-fn declaration_line_style_parser() -> @talcparsec.StringParser[
+fn declaration_line_style_parser() -> @talc.StringParser[
   DeclarationSuffixSyntax,
 ] {
-  @talcparsec.string("##")
+  @talc.string("##")
   .then(
-    @talcparsec.char('[')
-    .then(@talcparsec.many_chars(@talcparsec.none_of("]")))
-    .skip(@talcparsec.char(']'))
+    @talc.char('[')
+    .then(@talc.many_chars(@talc.none_of("]")))
+    .skip(@talc.char(']'))
     .attempt()
     .optional(),
   )
   .bind(style => {
-    @talcparsec.many_chars(
-      @talcparsec.satisfy("line color", char => !char.is_whitespace()),
+    @talc.many_chars(
+      @talc.satisfy("line color", char => !char.is_whitespace()),
     ).map(color => {
       let color = if color.length() == 0 { None } else { Some(color) }
       DeclarationLine(style~, color~)
@@ -225,7 +225,7 @@ fn declaration_line_style_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn declaration_suffix_parser() -> @talcparsec.StringParser[
+fn declaration_suffix_parser() -> @talc.StringParser[
   DeclarationSuffixSyntax,
 ] {
   let extends = inline_keyword_parser("extends")
@@ -236,21 +236,21 @@ fn declaration_suffix_parser() -> @talcparsec.StringParser[
     .then(inline_space1())
     .then(declaration_target_list_parser())
     .map(values => DeclarationImplements(values))
-  let tag = @talcparsec.char('$')
+  let tag = @talc.char('$')
     .then(
-      @talcparsec.many_chars1(
-        @talcparsec.satisfy("declaration tag", char => !char.is_whitespace()),
+      @talc.many_chars1(
+        @talc.satisfy("declaration tag", char => !char.is_whitespace()),
       ),
     )
     .map(value => DeclarationTag(value))
-  let color = @talcparsec.char('#')
+  let color = @talc.char('#')
     .then(
-      @talcparsec.many_chars1(
-        @talcparsec.satisfy("declaration color", char => !char.is_whitespace()),
+      @talc.many_chars1(
+        @talc.satisfy("declaration color", char => !char.is_whitespace()),
       ),
     )
     .map(value => DeclarationColor(value))
-  @talcparsec.choice([
+  @talc.choice([
     extends.attempt(),
     implements.attempt(),
     declaration_stereotype_parser().attempt(),
@@ -292,7 +292,7 @@ fn declaration_metadata_from(
 }
 
 ///|
-fn declaration_body_parser() -> @talcparsec.StringParser[
+fn declaration_body_parser() -> @talc.StringParser[
   (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool),
 ] {
   declaration_name_syntax_parser().bind(name => {
@@ -303,10 +303,10 @@ fn declaration_body_parser() -> @talcparsec.StringParser[
     .bind(suffixes => {
       inline_spaces()
       .then(
-        @talcparsec.string("{}")
+        @talc.string("{}")
         .map(_ => false)
         .attempt()
-        .or(@talcparsec.string("{").map(_ => true)),
+        .or(@talc.string("{").map(_ => true)),
       )
       .attempt()
       .optional()
@@ -319,7 +319,7 @@ fn declaration_body_parser() -> @talcparsec.StringParser[
 }
 
 ///|
-fn declaration_kind_parser() -> @talcparsec.StringParser[
+fn declaration_kind_parser() -> @talc.StringParser[
   (EntityKind, Bool, Bool),
 ] {
   let static_class = inline_keyword_parser("static")
@@ -335,8 +335,8 @@ fn declaration_kind_parser() -> @talcparsec.StringParser[
     let mix_prefixed = word.to_lower().has_prefix("mix_")
     let word = if mix_prefixed { word[4:].to_owned() } else { word }
     match declaration_kind(word) {
-      Some(kind) => @talcparsec.pure((kind, false, mix_prefixed))
-      None => @talcparsec.fail("declaration kind")
+      Some(kind) => @talc.pure((kind, false, mix_prefixed))
+      None => @talc.fail("declaration kind")
     }
   })
   static_class.attempt().or(abstract_class.attempt()).or(regular)
@@ -372,7 +372,7 @@ fn declaration_from_syntax(
 ///|
 fn regular_declaration_parser(
   visibility : Visibility,
-) -> @talcparsec.StringParser[DeclarationLineSyntax] {
+) -> @talc.StringParser[DeclarationLineSyntax] {
   declaration_kind_parser().bind(kind_and_static => {
     let (kind, is_static, mix_prefixed) = kind_and_static
     inline_space1()
@@ -394,8 +394,8 @@ fn regular_declaration_parser(
 ///|
 fn symbol_declaration_parser(
   visibility : Visibility,
-) -> @talcparsec.StringParser[DeclarationLineSyntax] {
-  let diamond = @talcparsec.string("<>")
+) -> @talc.StringParser[DeclarationLineSyntax] {
+  let diamond = @talc.string("<>")
     .then(inline_spaces())
     .then(declaration_name_syntax_parser())
     .map(name => {
@@ -410,13 +410,13 @@ fn symbol_declaration_parser(
       mix_prefixed: false,
       symbol: true,
     })
-  let interface = @talcparsec.string("()")
+  let interface = @talc.string("()")
     .then(inline_spaces())
     .then(
-      @talcparsec.char('#')
+      @talc.char('#')
       .then(
-        @talcparsec.many_chars1(
-          @talcparsec.satisfy("ignored interface color", char => {
+        @talc.many_chars1(
+          @talc.satisfy("ignored interface color", char => {
             !char.is_whitespace()
           }),
         ),
@@ -445,12 +445,12 @@ fn symbol_declaration_parser(
 }
 
 ///|
-fn declaration_line_parser() -> @talcparsec.StringParser[DeclarationLineSyntax] {
+fn declaration_line_parser() -> @talc.StringParser[DeclarationLineSyntax] {
   declaration_visibility_parser()
   .bind(visibility => {
     symbol_declaration_parser(visibility)
     .attempt()
     .or(regular_declaration_parser(visibility))
   })
-  .skip(@talcparsec.eof())
+  .skip(@talc.eof())
 }

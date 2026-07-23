@@ -1,6 +1,6 @@
 /// Shared document infrastructure.
 import {
-  "kokic/talcparsec",
+  "kokic/talcparsec" @talc,
   "kokic/uml/metrics",
   "moonbitlang/core/string",
 }
