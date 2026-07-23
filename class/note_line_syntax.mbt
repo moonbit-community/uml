@@ -315,11 +315,3 @@ fn class_annotation_line_parser() -> @talcparsec.StringParser[
 ] {
   note_line_parser().attempt().or(link_constraint_line_parser())
 }
-
-///|
-fn parse_class_annotation_line(line : String) -> ClassAnnotationLineSyntax? {
-  match class_annotation_line_parser().parse(@talcparsec.Input::new(line)) {
-    Ok(syntax) => Some(syntax)
-    Err(_) => None
-  }
-}

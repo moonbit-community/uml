@@ -48,11 +48,6 @@ fn quoted_value_parser() -> @talcparsec.StringParser[String] {
 }
 
 ///|
-fn raw_quoted_value_parser() -> @talcparsec.StringParser[String] {
-  quoted_value_parser().map(value => "\"" + value + "\"")
-}
-
-///|
 fn stereotype_value_parser() -> @talcparsec.StringParser[String] {
   let terminator = @talcparsec.string(">>")
   let character = terminator

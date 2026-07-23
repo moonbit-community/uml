@@ -1,21 +1,75 @@
 ///|
-fn linked_map_arrow(line : String) -> (String, Int, Int)? {
-  parse_linked_map_arrow(line)
+priv struct MapEntryLineSyntax {
+  entry : MapEntry
+  arrow : String?
 }
 
 ///|
-fn parse_map_entry(line : String) -> MapEntry? {
-  guard find_substring(line, "=>") is Some(separator) else {
-    guard linked_map_arrow(line) is Some((_, start, end)) else { return None }
-    let key = line[0:start].trim().to_owned()
-    let target = normalize_name(line[end:].trim().to_owned())
-    guard key.length() > 0 && target.length() > 0 else { return None }
-    return Some({ key, value: None, link_target: Some(target), raw: line })
+priv enum ParsedMapEntrySyntax {
+  ParsedMapValue(key~ : String, value~ : String)
+  ParsedMapLink(key~ : String, arrow~ : String, target~ : String)
+}
+
+///|
+fn map_value_entry_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
+  let separator = @talcparsec.string("=>")
+  separator
+  .not_followed_by("map value separator")
+  .then(@talcparsec.satisfy("map key", _ => true))
+  .string_map(char => char.to_string())
+  .many()
+  .map(parts => parts.join("").trim().to_owned())
+  .skip(separator)
+  .bind(key => {
+    guard key.length() > 0 else { return @talcparsec.fail("map key") }
+    @talcparsec.many_chars(@talcparsec.satisfy("map value", _ => true)).map(value => {
+      let value = value.trim().to_owned()
+      ParsedMapValue(key~, value~)
+    })
+  })
+}
+
+///|
+fn map_link_entry_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
+  linked_map_arrow_parser().bind(prefix => {
+    let (key, arrow) = prefix
+    let key = key.trim().to_owned()
+    guard key.length() > 0 else { return @talcparsec.fail("map link key") }
+    @talcparsec.many_chars1(@talcparsec.satisfy("map link target", _ => true)).bind(target => {
+        let target = normalize_name(target.trim().to_owned())
+        if target.length() > 0 {
+          @talcparsec.pure(ParsedMapLink(key~, arrow~, target~))
+        } else {
+          @talcparsec.fail("map link target")
+        }
+      },
+    )
+  })
+}
+
+///|
+fn map_entry_line_parser() -> @talcparsec.StringParser[ParsedMapEntrySyntax] {
+  map_value_entry_parser()
+  .attempt()
+  .or(map_link_entry_parser())
+  .skip(@talcparsec.eof())
+}
+
+///|
+fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
+  match map_entry_line_parser().parse(@talcparsec.Input::new(line)) {
+    Ok(ParsedMapValue(key~, value~)) =>
+      Some({
+        entry: { key, value: Some(value), link_target: None, raw: line },
+        arrow: None,
+      })
+    Ok(ParsedMapLink(key~, arrow~, target~)) =>
+      Some({
+        entry: { key, value: None, link_target: Some(target), raw: line },
+        arrow: Some(arrow),
+      })
+    Err(_) => None
   }
-  let key = line[0:separator].trim().to_owned()
-  let value = line[separator + 2:].trim().to_owned()
-  guard key.length() > 0 else { return None }
-  Some({ key, value: Some(value), link_target: None, raw: line })
 }
 
 ///|
@@ -28,25 +82,6 @@ priv struct MultilineElementHeader {
   declaration : Declaration
   first_line : String
   terminator : Char
-}
-
-///|
-fn parse_multiline_element_header(line : String) -> MultilineElementHeader? {
-  let marker = match find_substring(line, " as \"") {
-    Some(index) => Some((index, 5, '"'))
-    None =>
-      match find_substring(line, " [") {
-        Some(index) => Some((index, 2, ']'))
-        None => None
-      }
-  }
-  guard marker is Some((start, offset, terminator)) else { return None }
-  let first_line = line[start + offset:].to_owned()
-  guard !first_line.contains(terminator.to_string()) else { return None }
-  guard parse_declaration(line[0:start].trim().to_owned()) is Some(declaration) else {
-    return None
-  }
-  Some({ declaration, first_line, terminator })
 }
 
 ///|
@@ -111,26 +146,6 @@ fn valid_json(source : String) -> Bool {
 }
 
 ///|
-fn parse_single_line_json(line : String) -> JsonSingleDeclaration? {
-  guard line.to_lower().has_prefix("json ") && !line.trim().has_suffix("{") else {
-    return None
-  }
-  let chars = line.to_array()
-  for separator in 5..<chars.length() {
-    guard chars[separator] == ' ' else { continue }
-    let data = line[separator + 1:].trim().to_owned()
-    guard data.length() > 0 && valid_json(data) else { continue }
-    guard parse_declaration(line[0:separator].trim().to_owned())
-      is Some(declaration) &&
-      declaration.kind is Json else {
-      continue
-    }
-    return Some({ declaration, data })
-  }
-  None
-}
-
-///|
 fn Parser::add_single_line_json(
   self : Parser,
   value : JsonSingleDeclaration,
@@ -153,13 +168,13 @@ fn Parser::add_map_link(
   self : Parser,
   source : Entity,
   entry : MapEntry,
+  arrow : String,
 ) -> Unit raise ParseError {
   guard entry.link_target is Some(target) else { return }
   let resolved = self.resolve(target)
   guard self.entities.any(entity => entity.qualified_code == resolved) else {
     self.raise_parse_error("no such entity \{target}")
   }
-  let arrow = linked_map_arrow(entry.raw).unwrap().0
   self.relations.push({
     left: source.qualified_code,
     right: resolved,
@@ -239,11 +254,14 @@ fn Parser::consume_entity_body_line(
     return
   }
   if entity.kind is Map {
-    guard parse_map_entry(line) is Some(entry) else {
+    guard parse_map_entry_line(line) is Some(syntax) else {
       self.raise_parse_error("map definition should contain key => value")
     }
-    self.entities[entity_index].map_entries.push(entry)
-    self.add_map_link(entity, entry)
+    self.entities[entity_index].map_entries.push(syntax.entry)
+    match syntax.arrow {
+      Some(arrow) => self.add_map_link(entity, syntax.entry, arrow)
+      None => ()
+    }
     return
   }
   self.entities[entity_index].members.push(member_of(line))

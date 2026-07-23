@@ -7,7 +7,7 @@ test "relation line grammar accepts supported syntax" {
     "(A, B) -- Label : association", "A-->B", "order-item-->target-item",
   ]
   for line in lines {
-    guard parse_relation_line(line) is Some(_) else {
+    guard relation_line_parser().parse(@talcparsec.Input::new(line)) is Ok(_) else {
       @test.fail("relation grammar rejected: " + line)
     }
   }
@@ -16,7 +16,8 @@ test "relation line grammar accepts supported syntax" {
 ///|
 test "relation line grammar parses each typed phase" {
   let line = "U <|.. Auth : implements"
-  guard parse_relation_line(line) is Some(relation) else {
+  guard relation_line_parser().parse(@talcparsec.Input::new(line))
+    is Ok(relation) else {
     @test.fail("complete relation grammar failed")
   }
   @test.assert_eq(relation.left.name.name, "U")

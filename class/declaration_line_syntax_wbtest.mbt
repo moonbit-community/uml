@@ -20,7 +20,7 @@ test "declaration line grammar accepts supported declarations" {
     "<> association",
   ]
   for line in lines {
-    guard parse_declaration_line(line) is Some(_) else {
+    guard declaration_line_parser().parse(@talcparsec.Input::new(line)) is Ok(_) else {
       @test.fail("declaration grammar rejected: " + line)
     }
   }

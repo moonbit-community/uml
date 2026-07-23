@@ -20,17 +20,6 @@ fn linked_map_arrow_parser() -> @talcparsec.StringParser[(String, String)] {
 }
 
 ///|
-fn parse_linked_map_arrow(line : String) -> (String, Int, Int)? {
-  match linked_map_arrow_parser().run(@talcparsec.Input::new(line)) {
-    Ok(((prefix, arrow), _)) => {
-      let start = prefix.length()
-      Some((arrow, start, start + arrow.length()))
-    }
-    Err(_) => None
-  }
-}
-
-///|
 fn brace_delta_parser() -> @talcparsec.StringParser[Int] {
   let quoted_part = @talcparsec.char('\\')
     .then(@talcparsec.satisfy("escaped JSON character", _ => true))

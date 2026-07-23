@@ -28,17 +28,16 @@ fn visibility_word(word : String) -> Visibility? {
 }
 
 ///|
-fn selector_for(raw : String) -> EntitySelector {
-  let raw = raw.trim().to_owned()
-  if raw.length() == 0 {
+fn selector_for_tokens(tokens : Array[String]) -> EntitySelector {
+  if tokens.is_empty() {
     return AllEntities
   }
+  if tokens.length() > 1 {
+    return AnyEntities(tokens.map(token => selector_for_tokens([token])))
+  }
+  let raw = tokens[0]
   if raw.has_prefix("<<") && @core.normalize_stereotype(raw) is Some(value) {
     return StereotypedEntities(value)
-  }
-  let tokens = words(raw)
-  if tokens.length() > 1 {
-    return AnyEntities(tokens.map(selector_for))
   }
   if raw.to_lower() == "abstract" {
     return KindEntities(AbstractClass)
@@ -68,8 +67,7 @@ fn visibility_list(tokens : Array[String]) -> Array[Visibility]? {
 }
 
 ///|
-fn parse_portion_rule(line : String, scope : String) -> PortionRule? {
-  let tokens = words(line)
+fn portion_rule_from_tokens(tokens : Array[String]) -> PortionRule? {
   guard tokens.length() >= 2 else { return None }
   let show = match tokens[0].to_lower() {
     "hide" => false
@@ -109,24 +107,24 @@ fn parse_portion_rule(line : String, scope : String) -> PortionRule? {
         show,
         empty_only,
         visibilities,
-        scope,
+        scope: "",
       })
     None =>
       Some({
-        selector: selector_for(selector_tokens.join(" ")),
+        selector: selector_for_tokens(selector_tokens),
         portion,
         show,
         empty_only,
         visibilities: [],
-        scope,
+        scope: "",
       })
   }
 }
 
 ///|
-fn parse_entity_rule(line : String) -> EntityRule? {
-  guard @core.find_literal(line, " ") is Some(separator) else { return None }
-  let command = line[0:separator].to_lower()
+fn entity_rule_from_tokens(tokens : Array[String]) -> EntityRule? {
+  guard tokens.length() >= 2 else { return None }
+  let command = tokens[0].to_lower()
   let action = match command {
     "hide" | "hide-class" => HideEntity
     "show" | "show-class" => ShowEntity
@@ -134,9 +132,55 @@ fn parse_entity_rule(line : String) -> EntityRule? {
     "restore" => RestoreEntity
     _ => return None
   }
-  let target = line[separator + 1:].trim().to_owned()
-  guard target.length() > 0 else { return None }
-  Some({ selector: selector_for(target), action })
+  Some({ selector: selector_for_tokens(tokens[1:].to_owned()), action })
+}
+
+///|
+priv enum FilterLineSyntax {
+  ParsedPortionRule(PortionRule)
+  ParsedEntityRule(EntityRule)
+}
+
+///|
+fn filter_token_parser() -> @talcparsec.StringParser[String] {
+  stereotype_value_parser()
+  .attempt()
+  .or(quoted_value_parser().attempt())
+  .or(
+    @talcparsec.many_chars1(
+      @talcparsec.satisfy("filter token", char => !char.is_whitespace()),
+    ),
+  )
+}
+
+///|
+fn filter_line_parser() -> @talcparsec.StringParser[FilterLineSyntax] {
+  filter_token_parser()
+  .sep_by1(inline_space1())
+  .bind(tokens => {
+    match portion_rule_from_tokens(tokens) {
+      Some(rule) => @talcparsec.pure(ParsedPortionRule(rule))
+      None =>
+        match entity_rule_from_tokens(tokens) {
+          Some(rule) => @talcparsec.pure(ParsedEntityRule(rule))
+          None => @talcparsec.fail("class filter command")
+        }
+    }
+  })
+  .skip(inline_spaces())
+  .skip(@talcparsec.eof())
+}
+
+///|
+fn Parser::apply_filter_syntax(
+  self : Parser,
+  syntax : FilterLineSyntax,
+) -> Unit {
+  match syntax {
+    ParsedPortionRule(rule) =>
+      self.portion_rules.push({ ..rule, scope: self.current_package() })
+    ParsedEntityRule(rule) => self.entity_rules.push(rule)
+  }
 }
 
 ///|

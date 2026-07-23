@@ -36,12 +36,33 @@ pub fn parse_json(input : String) -> Document raise @json.ParseError {
 }
 
 ///|
+/// Returns whether the source contains a sequence-diagram-specific command.
+///
+/// This deliberately covers commands that cannot be inferred from an arrow
+/// alone: a sequence reply such as `A --> B` otherwise looks like a class
+/// relation to the class-diagram heuristic.
+pub fn is_sequence_source(input : String) -> Bool {
+  let input = input.to_lower()
+  input.contains("participant ") ||
+  input.contains("\nbox ") ||
+  input.has_prefix("box ") ||
+  input.contains("autonumber") ||
+  input.contains("autoactivate") ||
+  input.contains("hide footbox") ||
+  input.contains("show footbox") ||
+  input.contains("ref over ") ||
+  input.contains("ignore newpage") ||
+  input.contains("autonewpage")
+}
+
+///|
 /// Returns whether the source contains a class-diagram-specific construct.
 ///
 /// PlantUML selects a diagram factory from the first meaningful command. The
 /// facade deliberately uses only unambiguous class constructs here, so a
 /// sequence message such as `Alice -> Bob` remains a sequence diagram.
 pub fn is_class_source(input : String) -> Bool {
+  guard !is_sequence_source(input) else { return false }
   let input = input.to_lower()
   input.contains("--") ||
   input.contains("..") ||

@@ -73,11 +73,6 @@ fn strip_comment(line : String) -> String {
 }
 
 ///|
-fn words(line : String) -> Array[String] {
-  @core.syntax_words(line)
-}
-
-///|
 fn normalize_name(raw : String) -> String {
   @core.unquote_identifier(raw)
 }
@@ -164,66 +159,6 @@ fn native_class_kind(kind : EntityKind) -> Bool {
 }
 
 ///|
-fn leading_visibility(line : String) -> (Visibility, String) {
-  let chars = line.to_array()
-  guard chars.length() > 0 else { (Unknown, line) }
-  let visibility = match chars[0] {
-    '+' => Public
-    '-' => Private
-    '#' => Protected
-    '~' => Package
-    _ => return (Unknown, line)
-  }
-  (visibility, line[1:].trim().to_owned())
-}
-
-///|
-fn extract_stereotype(body : String) -> (String, String?) {
-  match parse_stereotype_split(body) {
-    Some((prefix, stereotype)) =>
-      (prefix.trim().to_owned(), @core.normalize_stereotype(stereotype))
-    None => (body, None)
-  }
-}
-
-///|
-fn declaration_color(body : String) -> String? {
-  guard @core.find_unquoted_literal(body, " #") is Some(start) else {
-    return None
-  }
-  guard start + 2 < body.length() && body[start + 2] != '#' else { return None }
-  let suffix = body[start + 2:].trim().to_owned()
-  match find_substring(suffix, " ") {
-    Some(end) => Some(suffix[0:end].to_owned())
-    None => Some(suffix)
-  }
-}
-
-///|
-fn name_and_code(body : String) -> (String, String) {
-  match @core.parse_alias_identifier(body) {
-    Some((name, alternate)) => {
-      let name = name.trim()
-      let alternate = alternate.trim()
-      if alternate.has_prefix("\"") && alternate.has_suffix("\"") {
-        (normalize_name(alternate.to_owned()), normalize_name(name.to_owned()))
-      } else {
-        (normalize_name(name.to_owned()), normalize_name(alternate.to_owned()))
-      }
-    }
-    None => {
-      let name = normalize_name(body)
-      (name, name)
-    }
-  }
-}
-
-///|
-fn parse_declaration(line : String) -> Declaration? {
-  parse_declaration_line(line)
-}
-
-///|
 fn shaped_declaration(
   kind : EntityKind,
   display : String,
@@ -281,11 +216,6 @@ fn shaped_declaration(
     }
   }
   (kind, display, code)
-}
-
-///|
-fn declaration_opens_body(line : String) -> Bool {
-  line.trim().has_suffix("{") && !line.trim().has_suffix("{}")
 }
 
 ///|
@@ -565,41 +495,6 @@ fn Parser::set_entity_stereotype(
 }
 
 ///|
-fn stereotype_assignment(line : String) -> (String, String)? {
-  guard parse_declaration(line) is None else { return None }
-  guard find_substring(line, " <<") is Some(start) else { return None }
-  let code = normalize_name(line[0:start].trim().to_owned())
-  let stereotype = line[start + 1:].trim().to_owned()
-  guard code.length() > 0 &&
-    @core.normalize_stereotype(stereotype) is Some(normalized) else {
-    return None
-  }
-  Some((code, normalized))
-}
-
-///|
-fn url_assignment(line : String) -> (String, String)? {
-  guard line.to_lower().has_prefix("url ") ||
-    line.to_lower().has_prefix("url of ") ||
-    line.to_lower().has_prefix("url for ") else {
-    return None
-  }
-  guard find_substring(line, "[[") is Some(url_start) else { return None }
-  guard @core.parse_url_target(line[url_start:].to_owned()) is Some(url) else {
-    return None
-  }
-  let prefix = words(line[0:url_start].trim().to_owned())
-  guard prefix.length() >= 2 else { return None }
-  let mut code_index = prefix.length() - 1
-  if prefix[code_index].to_lower() == "is" && code_index > 0 {
-    code_index -= 1
-  }
-  let code = normalize_name(prefix[code_index])
-  guard code.length() > 0 else { return None }
-  Some((code, url.target))
-}
-
-///|
 fn Parser::add_member_to(self : Parser, code : String, entry : Member) -> Unit {
   let qualified_code = self.ensure_entity(code)
   for index, entity in self.entities {
@@ -608,71 +503,6 @@ fn Parser::add_member_to(self : Parser, code : String, entry : Member) -> Unit {
       return
     }
   }
-}
-
-///|
-fn parse_external_member(line : String) -> (String, Member)? {
-  let head = words(line)
-  guard head.length() > 0 &&
-    !head[0].to_lower().has_prefix("mix_") &&
-    declaration_kind(head[0]) is None else {
-    return None
-  }
-  guard find_substring(line, ":") is Some(separator) else { return None }
-  let target = line[0:separator].trim().to_owned()
-  let body = line[separator + 1:].trim().to_owned()
-  guard target.length() > 0 && body.length() > 0 else { return None }
-  guard !target.contains("-") && !target.contains("<") && !target.contains("[[") else {
-    return None
-  }
-  Some((normalize_name(target), member_of(body)))
-}
-
-///|
-fn package_declaration(raw : String) -> GroupDeclaration? {
-  let (visibility, line) = leading_visibility(raw)
-  let (prefix, is_namespace) = if line.has_prefix("package ") {
-    (8, false)
-  } else if line.has_prefix("namespace ") {
-    (10, true)
-  } else {
-    return None
-  }
-  let value = line[prefix:].trim()
-  guard value.length() > 0 else { return None }
-  let empty = value.has_suffix("{}")
-  let mut body = if empty {
-    value[0:value.length() - 2].trim().to_owned()
-  } else if value.has_suffix("{") {
-    value[0:value.length() - 1].trim().to_owned()
-  } else {
-    value.to_owned()
-  }
-  let color = declaration_color(body)
-  if @core.find_unquoted_literal(body, " #") is Some(start) {
-    body = body[0:start].trim().to_owned()
-  }
-  let (_, stereotype) = extract_stereotype(body)
-  let url = match @core.extract_url(body) {
-    Some(value) => Some(value.target.target)
-    None => None
-  }
-  let mut name_end = body.length()
-  name_end = earlier(name_end, @core.find_unquoted_literal(body, " <<"))
-  name_end = earlier(name_end, @core.find_unquoted_literal(body, " [["))
-  body = body[0:name_end].trim().to_owned()
-  let (display, code) = name_and_code(body)
-  guard code.length() > 0 else { return None }
-  Some({
-    code,
-    display,
-    is_namespace,
-    visibility,
-    stereotype,
-    url,
-    color,
-    empty,
-  })
 }
 
 ///|
@@ -845,54 +675,12 @@ fn relation_inside(arrow : String) -> String? {
 }
 
 ///|
-fn earlier(current : Int, candidate : Int?) -> Int {
-  match candidate {
-    Some(value) => current.min(value)
-    None => current
-  }
-}
-
-///|
 fn note_position(word : String) -> NotePosition? {
   match word.to_lower() {
     "left" => Some(Left)
     "right" => Some(Right)
     "top" => Some(Top)
     "bottom" => Some(Bottom)
-    _ => None
-  }
-}
-
-///|
-fn text_block_header(line : String) -> String? {
-  let tokens = words(line.to_lower())
-  if tokens.length() > 1 && tokens[0] == "legend" {
-    let alignments = tokens[1:].to_owned()
-    if alignments.all(word => {
-        word == "top" ||
-        word == "bottom" ||
-        word == "left" ||
-        word == "right" ||
-        word == "center"
-      }) {
-      return Some("legend")
-    }
-  }
-  if tokens.length() == 2 &&
-    (tokens[0] == "left" || tokens[0] == "right" || tokens[0] == "center") &&
-    (tokens[1] == "header" || tokens[1] == "footer") {
-    return Some(tokens[1])
-  }
-  match tokens {
-    [keyword] =>
-      match keyword {
-        "title" => Some("title")
-        "legend" => Some("legend")
-        "header" => Some("header")
-        "footer" => Some("footer")
-        "caption" => Some("caption")
-        _ => None
-      }
     _ => None
   }
 }
@@ -941,7 +729,7 @@ fn Parser::consume_braced_block(
       return
     }
     let reference = normalize_name(line)
-    let existing_reference = words(line).length() == 1 &&
+    let existing_reference = @core.syntax_words(line).length() == 1 &&
       self.entities.any(entity => {
         entity.qualified_code == self.resolve(reference) ||
         entity.code == reference
@@ -1066,13 +854,6 @@ fn Parser::apply_relation_syntax(
 }
 
 ///|
-fn Parser::parse_relation(self : Parser, line : String) -> Bool {
-  guard parse_relation_line(line) is Some(syntax) else { false }
-  self.apply_relation_syntax(syntax)
-  true
-}
-
-///|
 fn Parser::finish_entity(self : Parser) -> Unit {
   self.current_entity = None
   self.body_depth = 0
@@ -1111,303 +892,14 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     return
   }
   guard !@core.is_preprocessor_directive(line) else { return }
-  if line.to_lower() == "allowmixing" || line.to_lower() == "allow_mixing" {
-    self.allow_mixing = true
-    return
-  }
   if self.current_entity is Some(entity_index) {
     self.consume_entity_body_line(entity_index, line)
     return
   }
-  if line == "}" || line == "};" {
-    guard !self.package_stack.is_empty() else {
-      self.raise_parse_error("unexpected }")
-    }
-    let _ = self.package_stack.pop()
-    return
+  match parse_class_line(line) {
+    Some(syntax) => self.apply_class_line_syntax(syntax)
+    None => self.raise_parse_error(line)
   }
-  if line.to_lower() == "end package" || line.to_lower() == "end namespace" {
-    guard !self.package_stack.is_empty() else {
-      self.raise_parse_error("unexpected package end")
-    }
-    let _ = self.package_stack.pop()
-    return
-  }
-  match parse_class_annotation_line(line) {
-    Some(syntax) => {
-      self.apply_annotation_syntax(syntax)
-      return
-    }
-    None => ()
-  }
-  match parse_portion_rule(line, self.current_package()) {
-    Some(rule) => {
-      self.portion_rules.push(rule)
-      return
-    }
-    None => ()
-  }
-  match parse_entity_rule(line) {
-    Some(rule) => {
-      self.entity_rules.push(rule)
-      return
-    }
-    None => ()
-  }
-  match stereotype_assignment(line) {
-    Some((code, stereotype)) => {
-      guard self.set_entity_stereotype(code, stereotype) else {
-        self.raise_parse_error("no such class \{code}")
-      }
-      return
-    }
-    None => ()
-  }
-  match url_assignment(line) {
-    Some((code, url)) => {
-      guard self.set_entity_url(code, url) else {
-        self.raise_parse_error("unknown entity \{code}")
-      }
-      return
-    }
-    None => ()
-  }
-  match text_block_header(line) {
-    Some(keyword) => {
-      self.consume_text_block(keyword)
-      return
-    }
-    None => ()
-  }
-  if line.to_lower().has_prefix("skinparam") && line.has_suffix("{") {
-    self.consume_skinparam_block()
-    return
-  }
-  if line.to_lower() == "together {" {
-    self.consume_braced_block("together")
-    return
-  }
-  match parse_multiline_element_header(line) {
-    Some(header) => {
-      self.consume_multiline_element(header)
-      return
-    }
-    None => ()
-  }
-  match package_declaration(line) {
-    Some(group) => {
-      let parent = self.current_package()
-      let segments = @core.split_unquoted(group.code, '.')
-      let mut prefix = parent
-      for segment_index, segment in segments {
-        let qualified_name = if prefix.length() == 0 {
-          segment
-        } else {
-          prefix + "." + segment
-        }
-        let is_last = segment_index == segments.length() - 1
-        let display = if is_last { group.display } else { segment }
-        let package_value : Package = {
-          name: segment,
-          qualified_name,
-          display,
-          parent: prefix,
-          is_namespace: group.is_namespace,
-          visibility: if is_last {
-            group.visibility
-          } else {
-            Unknown
-          },
-          stereotype: if is_last {
-            group.stereotype
-          } else {
-            None
-          },
-          url: if is_last {
-            group.url
-          } else {
-            None
-          },
-          color: if is_last {
-            group.color
-          } else {
-            None
-          },
-        }
-        let mut existing = None
-        for index, item in self.packages {
-          if item.qualified_name == qualified_name {
-            existing = Some(index)
-            break
-          }
-        }
-        match existing {
-          Some(index) => if is_last { self.packages[index] = package_value }
-          None => self.packages.push(package_value)
-        }
-        prefix = qualified_name
-      }
-      if !group.empty {
-        self.package_stack.push(group.code)
-      }
-      return
-    }
-    None => ()
-  }
-  match parse_single_line_json(line) {
-    Some(value) => {
-      self.add_single_line_json(value)
-      return
-    }
-    None => ()
-  }
-  // Relations may contain endpoint ports (`A::out --> B::in`) and may start
-  // with words that are also element keywords (for example `Port ()-- A`).
-  if self.parse_relation(line) {
-    return
-  }
-  match parse_declaration(line) {
-    Some(declaration) => {
-      let (_, declaration_line) = leading_visibility(line)
-      let mix_prefixed = declaration_line.to_lower().has_prefix("mix_")
-      guard native_class_kind(declaration.kind) ||
-        self.allow_mixing ||
-        mix_prefixed else {
-        self.raise_parse_error(
-          "use allowmixing to mix classes and other UML elements",
-        )
-      }
-      let opens_body = declaration_opens_body(line)
-      let qualified_code = self.qualify(declaration.code)
-      let exists = self.entities.any(entity => {
-        entity.qualified_code == qualified_code
-      })
-      if exists &&
-        (
-          declaration.kind is Map ||
-          declaration.kind is Json ||
-          line.trim().has_prefix("<>") ||
-          line.trim().has_prefix("()") ||
-          (declaration.kind is Object && !opens_body)
-        ) {
-        let kind = match declaration.kind {
-          Map => "map"
-          Json => "JSON"
-          Diamond => "association"
-          Interface if line.trim().has_prefix("()") => "interface"
-          Object => "object"
-          _ => "entity"
-        }
-        self.raise_parse_error("\{kind} already exists: \{declaration.code}")
-      }
-      let declaration = if exists && declaration.kind is Object && opens_body {
-        let mut existing_kind = Object
-        for entity in self.entities {
-          if entity.qualified_code == qualified_code {
-            existing_kind = entity.kind
-            break
-          }
-        }
-        { ..declaration, kind: existing_kind }
-      } else {
-        declaration
-      }
-      self.add_entity(declaration, opens_body)
-      for parent in declaration.extends {
-        let child = self.resolve(declaration.code)
-        let parent_kind = if declaration.kind is Interface {
-          Interface
-        } else {
-          Class
-        }
-        let parent = self.ensure_entity_as(parent, parent_kind)
-        self.relations.push({
-          left: child,
-          right: parent,
-          kind: Extension,
-          left_cardinality: None,
-          right_cardinality: None,
-          left_role: None,
-          right_role: None,
-          left_qualifier: None,
-          right_qualifier: None,
-          label: None,
-          dotted: false,
-          raw_arrow: "--|>",
-          left_end: Plain,
-          right_end: Extension,
-          direction: Automatic,
-          line_style: None,
-          color: None,
-          url: None,
-          stereotype: None,
-          weight: None,
-          inside: None,
-          left_port: None,
-          right_port: None,
-          left_couple: None,
-          right_couple: None,
-        })
-      }
-      for interface in declaration.implements {
-        let child = self.resolve(declaration.code)
-        let interface = self.ensure_entity_as(interface, Interface)
-        self.relations.push({
-          left: child,
-          right: interface,
-          kind: Realization,
-          left_cardinality: None,
-          right_cardinality: None,
-          left_role: None,
-          right_role: None,
-          left_qualifier: None,
-          right_qualifier: None,
-          label: None,
-          dotted: true,
-          raw_arrow: "..|>",
-          left_end: Plain,
-          right_end: Extension,
-          direction: Automatic,
-          line_style: None,
-          color: None,
-          url: None,
-          stereotype: None,
-          weight: None,
-          inside: None,
-          left_port: None,
-          right_port: None,
-          left_couple: None,
-          right_couple: None,
-        })
-      }
-      return
-    }
-    None => ()
-  }
-  match parse_external_member(line) {
-    Some((target, entry)) => {
-      self.add_member_to(target, entry)
-      return
-    }
-    None => ()
-  }
-  // PlantUML accepts many global/style commands. They do not alter the core
-  // class graph and are intentionally retained as no-op parser directives.
-  if line.has_prefix("skinparam ") ||
-    line.to_lower() == "allowmixing" ||
-    line.to_lower() == "allow_mixing" ||
-    line.to_lower().has_prefix("set namespace_separator ") ||
-    line.to_lower().has_prefix("set namespaceseparator ") ||
-    line.to_lower() == "footbox" ||
-    line.to_lower() == "newpage" ||
-    line.to_lower().has_prefix("newpage ") ||
-    line.to_lower() == "layout newline" ||
-    line.to_lower().has_prefix("left to right") ||
-    line.to_lower().has_prefix("top to bottom") ||
-    line.to_lower().has_prefix("title ") {
-    return
-  }
-  self.raise_parse_error(line)
 }
 
 ///|

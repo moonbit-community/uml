@@ -10,6 +10,13 @@ test "document facade dispatches a sequence diagram" {
 }
 
 ///|
+test "sequence commands win over dotted reply arrows" {
+  let source = "@startuml\nparticipant Client\nparticipant Server\nServer -> Client -- : response\n@enduml"
+  @test.assert_eq(is_sequence_source(source), true)
+  @test.assert_eq(is_class_source(source), false)
+}
+
+///|
 test "document facade renders a class diagram" {
   let document = parse_class("@startuml\nclass User\nUser --> Account\n@enduml")
   match document.kind() {

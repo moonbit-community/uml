@@ -332,11 +332,3 @@ fn relation_line_parser() -> @talcparsec.StringParser[RelationLineSyntax] {
   })
   .skip(@talcparsec.eof())
 }
-
-///|
-fn parse_relation_line(line : String) -> RelationLineSyntax? {
-  match relation_line_parser().parse(@talcparsec.Input::new(line)) {
-    Ok(relation) => Some(relation)
-    Err(_) => None
-  }
-}

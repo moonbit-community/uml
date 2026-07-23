@@ -36,43 +36,11 @@ priv struct DeclarationMetadataSyntax {
 }
 
 ///|
-fn declaration_spaces() -> @talcparsec.StringParser[Unit] {
-  @talcparsec.satisfy("inline whitespace", char => {
-    char == ' ' || char == '\t' || char == '\r'
-  })
-  .many()
-  .map(_ => ())
-}
-
-///|
-fn declaration_space1() -> @talcparsec.StringParser[Unit] {
-  @talcparsec.satisfy("inline whitespace", char => {
-    char == ' ' || char == '\t' || char == '\r'
-  })
-  .some()
-  .map(_ => ())
-}
-
-///|
-fn declaration_word_parser() -> @talcparsec.StringParser[String] {
-  @talcparsec.many_chars1(
-    @talcparsec.satisfy("declaration word", char => {
-      char.is_ascii_alphabetic() || char == '_' || char == '/'
-    }),
-  )
-}
-
-///|
-fn declaration_keyword_parser(
-  keyword : String,
-) -> @talcparsec.StringParser[Unit] {
-  declaration_word_parser().bind(word => {
-    if word.equal_ignore_ascii_case(keyword) {
-      @talcparsec.pure(())
-    } else {
-      @talcparsec.fail(keyword)
-    }
-  })
+priv struct DeclarationLineSyntax {
+  declaration : Declaration
+  opens_body : Bool
+  mix_prefixed : Bool
+  symbol : Bool
 }
 
 ///|
@@ -87,7 +55,7 @@ fn declaration_visibility_parser() -> @talcparsec.StringParser[Visibility] {
       _ => Unknown
     }
   })
-  .skip(declaration_spaces())
+  .skip(inline_spaces())
   .optional()
   .map(value => value.unwrap_or(Unknown))
 }
@@ -151,9 +119,9 @@ fn declaration_name_syntax_parser() -> @talcparsec.StringParser[
   DeclarationNameSyntax,
 ] {
   declaration_name_atom_parser().bind(first => {
-    declaration_space1()
-    .then(declaration_keyword_parser("as"))
-    .then(declaration_space1())
+    inline_space1()
+    .then(inline_keyword_parser("as"))
+    .then(inline_space1())
     .then(declaration_name_atom_parser())
     .attempt()
     .optional()
@@ -193,9 +161,9 @@ fn declaration_target_parser() -> @talcparsec.StringParser[String] {
 
 ///|
 fn declaration_target_list_parser() -> @talcparsec.StringParser[Array[String]] {
-  let separator = declaration_spaces()
+  let separator = inline_spaces()
     .then(@talcparsec.char(','))
-    .skip(declaration_spaces())
+    .skip(inline_spaces())
     .attempt()
   declaration_target_parser().sep_by1(separator)
 }
@@ -260,12 +228,12 @@ fn declaration_line_style_parser() -> @talcparsec.StringParser[
 fn declaration_suffix_parser() -> @talcparsec.StringParser[
   DeclarationSuffixSyntax,
 ] {
-  let extends = declaration_keyword_parser("extends")
-    .then(declaration_space1())
+  let extends = inline_keyword_parser("extends")
+    .then(inline_space1())
     .then(declaration_target_list_parser())
     .map(values => DeclarationExtends(values))
-  let implements = declaration_keyword_parser("implements")
-    .then(declaration_space1())
+  let implements = inline_keyword_parser("implements")
+    .then(inline_space1())
     .then(declaration_target_list_parser())
     .map(values => DeclarationImplements(values))
   let tag = @talcparsec.char('$')
@@ -325,46 +293,49 @@ fn declaration_metadata_from(
 
 ///|
 fn declaration_body_parser() -> @talcparsec.StringParser[
-  (DeclarationNameSyntax, DeclarationMetadataSyntax),
+  (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool),
 ] {
   declaration_name_syntax_parser().bind(name => {
-    declaration_space1()
+    inline_space1()
     .then(declaration_suffix_parser())
     .attempt()
     .many()
     .bind(suffixes => {
-      declaration_spaces()
-      .then(@talcparsec.string("{}").attempt().or(@talcparsec.string("{")))
+      inline_spaces()
+      .then(
+        @talcparsec.string("{}")
+        .map(_ => false)
+        .attempt()
+        .or(@talcparsec.string("{").map(_ => true)),
+      )
       .attempt()
       .optional()
-      .skip(declaration_spaces())
-      .map(_ => (name, declaration_metadata_from(suffixes)))
+      .skip(inline_spaces())
+      .map(opens_body => {
+        (name, declaration_metadata_from(suffixes), opens_body.unwrap_or(false))
+      })
     })
   })
 }
 
 ///|
-fn declaration_kind_parser() -> @talcparsec.StringParser[(EntityKind, Bool)] {
-  let static_class = declaration_keyword_parser("static")
-    .then(declaration_space1())
-    .then(declaration_keyword_parser("class"))
-    .map(_ => (Class, true))
-  let abstract_class = declaration_keyword_parser("abstract")
+fn declaration_kind_parser() -> @talcparsec.StringParser[
+  (EntityKind, Bool, Bool),
+] {
+  let static_class = inline_keyword_parser("static")
+    .then(inline_space1())
+    .then(inline_keyword_parser("class"))
+    .map(_ => (Class, true, false))
+  let abstract_class = inline_keyword_parser("abstract")
     .then(
-      declaration_space1()
-      .then(declaration_keyword_parser("class"))
-      .attempt()
-      .optional(),
+      inline_space1().then(inline_keyword_parser("class")).attempt().optional(),
     )
-    .map(_ => (AbstractClass, false))
-  let regular = declaration_word_parser().bind(word => {
-    let word = if word.to_lower().has_prefix("mix_") {
-      word[4:].to_owned()
-    } else {
-      word
-    }
+    .map(_ => (AbstractClass, false, false))
+  let regular = inline_word_parser("declaration word").bind(word => {
+    let mix_prefixed = word.to_lower().has_prefix("mix_")
+    let word = if mix_prefixed { word[4:].to_owned() } else { word }
     match declaration_kind(word) {
-      Some(kind) => @talcparsec.pure((kind, false))
+      Some(kind) => @talcparsec.pure((kind, false, mix_prefixed))
       None => @talcparsec.fail("declaration kind")
     }
   })
@@ -401,14 +372,21 @@ fn declaration_from_syntax(
 ///|
 fn regular_declaration_parser(
   visibility : Visibility,
-) -> @talcparsec.StringParser[Declaration] {
+) -> @talcparsec.StringParser[DeclarationLineSyntax] {
   declaration_kind_parser().bind(kind_and_static => {
-    let (kind, is_static) = kind_and_static
-    declaration_space1()
+    let (kind, is_static, mix_prefixed) = kind_and_static
+    inline_space1()
     .then(declaration_body_parser())
     .map(body => {
-      let (name, metadata) = body
-      declaration_from_syntax(kind, visibility, is_static, name, metadata)
+      let (name, metadata, opens_body) = body
+      {
+        declaration: declaration_from_syntax(
+          kind, visibility, is_static, name, metadata,
+        ),
+        opens_body,
+        mix_prefixed,
+        symbol: false,
+      }
     })
   })
 }
@@ -416,21 +394,24 @@ fn regular_declaration_parser(
 ///|
 fn symbol_declaration_parser(
   visibility : Visibility,
-) -> @talcparsec.StringParser[Declaration] {
+) -> @talcparsec.StringParser[DeclarationLineSyntax] {
   let diamond = @talcparsec.string("<>")
-    .then(declaration_spaces())
+    .then(inline_spaces())
     .then(declaration_name_syntax_parser())
     .map(name => {
-      declaration_from_syntax(
+      declaration: declaration_from_syntax(
         Diamond,
         visibility,
         false,
         name,
         declaration_metadata_from([]),
-      )
+      ),
+      opens_body: false,
+      mix_prefixed: false,
+      symbol: true,
     })
   let interface = @talcparsec.string("()")
-    .then(declaration_spaces())
+    .then(inline_spaces())
     .then(
       @talcparsec.char('#')
       .then(
@@ -440,20 +421,31 @@ fn symbol_declaration_parser(
           }),
         ),
       )
-      .skip(declaration_space1())
+      .skip(inline_space1())
       .attempt()
       .optional(),
     )
     .then(declaration_body_parser())
     .map(body => {
-      let (name, metadata) = body
-      declaration_from_syntax(Interface, visibility, false, name, metadata)
+      let (name, metadata, opens_body) = body
+      {
+        declaration: declaration_from_syntax(
+          Interface,
+          visibility,
+          false,
+          name,
+          metadata,
+        ),
+        opens_body,
+        mix_prefixed: false,
+        symbol: true,
+      }
     })
   diamond.attempt().or(interface)
 }
 
 ///|
-fn declaration_line_parser() -> @talcparsec.StringParser[Declaration] {
+fn declaration_line_parser() -> @talcparsec.StringParser[DeclarationLineSyntax] {
   declaration_visibility_parser()
   .bind(visibility => {
     symbol_declaration_parser(visibility)
@@ -461,12 +453,4 @@ fn declaration_line_parser() -> @talcparsec.StringParser[Declaration] {
     .or(regular_declaration_parser(visibility))
   })
   .skip(@talcparsec.eof())
-}
-
-///|
-fn parse_declaration_line(line : String) -> Declaration? {
-  match declaration_line_parser().parse(@talcparsec.Input::new(line)) {
-    Ok(declaration) if declaration.code.length() > 0 => Some(declaration)
-    _ => None
-  }
 }
