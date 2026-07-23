@@ -98,6 +98,7 @@ priv struct DiagramLayout {
   activations : Array[ActivationSpan]
   groups : Array[GroupSpan]
   destroys : Array[DestroyMark]
+  auto_page_breaks : Array[Int]
   width : Int
   height : Int
   body_top : Int
@@ -185,10 +186,7 @@ fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
     Create => 0
     Url(_, _) => 0
     DeactivateLatest => 0
-    LinkAnchor(_, _, label) =>
-      (TextSize::of_with(label.unwrap_or(""), text_metrics.body).height + 24).max(
-        34,
-      )
+    LinkAnchor => 0
     Autonumber(_)
     | AutonumberStop
     | AutonumberResume(_)
@@ -407,8 +405,7 @@ fn SequenceDiagram::minimum_text_width(
       Return(value) =>
         TextSize::of_with(value.value.unwrap_or(""), text_metrics.body).width +
         48
-      LinkAnchor(_, _, label) =>
-        TextSize::of_with(label.unwrap_or(""), text_metrics.body).width + 48
+      LinkAnchor => 0
       BoxStart(box) =>
         TextSize::of_with(box.label.unwrap_or(""), text_metrics.small_bold).width +
         32
@@ -810,6 +807,7 @@ fn layout_events(
   Array[ActivationSpan],
   Array[GroupSpan],
   Array[DestroyMark],
+  Array[Int],
   Int,
 ) {
   let placements = []
@@ -824,6 +822,9 @@ fn layout_events(
   let mut last_visual_bottom = start_y
   let mut autoactivate = diagram.autoactivate
   let mut ignore_newpage = false
+  let auto_page_breaks = []
+  let mut auto_newpage : Int? = None
+  let mut messages_since_auto_newpage = 0
   let mut autonumber = false
   let mut next_number = diagram.auto_number.map_or("1", config => {
     config.start.unwrap_or("1")
@@ -836,6 +837,22 @@ fn layout_events(
   })
 
   for event_index, event in diagram.events {
+    // Auto pagination is a layout marker inserted before the next message;
+    // it keeps the parsed event stream unchanged for metadata and numbering.
+    let auto_page_break = match auto_newpage {
+      Some(threshold) if threshold > 0 &&
+        messages_since_auto_newpage >= threshold =>
+        event is Message(_) || event is MessageExo(_)
+      _ => false
+    }
+    if auto_page_break {
+      auto_page_breaks.push(current_y + 20)
+      current_y += 40
+      previous_top += 40
+      parallel_bottom += 40
+      last_visual_bottom += 40
+      messages_since_auto_newpage = 0
+    }
     let previous = if event_index > 0 {
       Some(diagram.events[event_index - 1])
     } else {
@@ -890,6 +907,7 @@ fn layout_events(
 
     match event {
       Message(message) => {
+        messages_since_auto_newpage += 1
         let arrow_extra = if message.from_code == message.to_code {
           22
         } else {
@@ -920,6 +938,7 @@ fn layout_events(
         }
       }
       MessageExo(message) => {
+        messages_since_auto_newpage += 1
         last_visual_bottom = last_visual_bottom.max(y + 18)
         apply_activation_spec(
           message.activation_spec,
@@ -982,6 +1001,10 @@ fn layout_events(
           next_number, position, number_increment,
         )
       IgnoreNewpage => ignore_newpage = true
+      AutoNewpage(size) => {
+        auto_newpage = size
+        messages_since_auto_newpage = 0
+      }
       _ => ()
     }
   }
@@ -997,7 +1020,7 @@ fn layout_events(
   for index in group_stack {
     groups[index] = { ..groups[index], end_y: current_y }
   }
-  (placements, activations, groups, destroys, current_y)
+  (placements, activations, groups, destroys, auto_page_breaks, current_y)
 }
 
 ///|
@@ -1062,21 +1085,21 @@ fn DiagramLayout::content_horizontal_bounds(
       MessageExo(message) =>
         match self.participant_at(message.participant_code) {
           Some(participant) => {
-            let length = if message.short_arrow { 40 } else { 90 }
-            let outside = match message.exo_type {
-              FromLeft | ToLeft => participant.center_x - length
-              FromRight | ToRight => participant.center_x + length
-            }
             let label_width = TextSize::of_with(
                 message.label.unwrap_or(""),
                 self.text_metrics.body,
               ).width
-            min_x = min_x.min(
-              outside.min(participant.center_x) - label_width / 2,
-            )
-            max_x = max_x.max(
-              outside.max(participant.center_x) + label_width / 2,
-            )
+            let extent = if message.short_arrow {
+              40
+            } else {
+              (label_width + 32).max(90)
+            }
+            match message.exo_type {
+              FromLeft | ToLeft =>
+                min_x = min_x.min(participant.center_x - extent)
+              FromRight | ToRight =>
+                max_x = max_x.max(participant.center_x + extent)
+            }
           }
           None => ()
         }
@@ -1179,7 +1202,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
       participant.participant.typ.header_height(),
     )
   }
-  let (placements, activations, groups, destroys, body_bottom) = layout_events(
+  let (placements, activations, groups, destroys, auto_page_breaks, body_bottom) = layout_events(
     self,
     participant_header_height + vertical_margin + 8,
     text_metrics,
@@ -1202,6 +1225,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     activations,
     groups,
     destroys,
+    auto_page_breaks,
     width,
     height: body_bottom + footbox_height + vertical_margin,
     body_top: participant_header_height + vertical_margin,

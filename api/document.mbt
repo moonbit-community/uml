@@ -52,7 +52,25 @@ fn meaningful_source_lines(input : String) -> Array[String] {
 ///|
 fn is_sequence_command(line : String) -> Bool {
   let lower = line.to_lower()
+  let words = @core.syntax_words(line)
+  let grouping_keyword = match words {
+    ["&", keyword, ..] | [keyword, ..] =>
+      match keyword.to_lower() {
+        "opt"
+        | "alt"
+        | "loop"
+        | "par"
+        | "par2"
+        | "break"
+        | "critical"
+        | "group"
+        | "partition" => true
+        _ => false
+      }
+    _ => false
+  }
   lower == "autonewpage" ||
+  grouping_keyword ||
   lower.has_prefix("participant ") ||
   lower.has_prefix("create ") ||
   lower.has_prefix("box ") ||

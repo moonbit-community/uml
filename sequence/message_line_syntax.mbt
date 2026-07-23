@@ -46,7 +46,7 @@ fn message_line_parser() -> @talcparsec.StringParser[Event] {
           .bind(second => {
             inline_spaces()
             .then(multicast_parser().attempt().optional())
-            .bind(multicast => {
+            .bind(_ => {
               inline_spaces()
               .then(anchor_parser().attempt().optional())
               .then(message_tail_parser())
@@ -70,7 +70,9 @@ fn message_line_parser() -> @talcparsec.StringParser[Event] {
                     ),
                     parallel: parallel is Some(_),
                     anchor,
-                    multicast: multicast.unwrap_or([]),
+                    // PlantUML accepts trailing `& participant` here without
+                    // creating an additional message branch.
+                    multicast: [],
                     activation_spec,
                     life_color,
                   }),

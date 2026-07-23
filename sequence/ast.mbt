@@ -261,7 +261,7 @@ priv enum Event {
   Autoactivate(Bool)
   Footbox(Bool)
   HideUnlinked(Bool)
-  LinkAnchor(String, String, String?)
+  LinkAnchor
   Return(Return)
   Create
   Url(String, String)

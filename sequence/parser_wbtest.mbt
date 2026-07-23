@@ -596,7 +596,7 @@ test "parse a complete sequence diagram" {
     Message(message) => {
       @test.assert_eq(message.anchor, Some("request"))
       @test.assert_eq(message.parallel, true)
-      @test.assert_eq(message.multicast, ["Service"])
+      @test.assert_eq(message.multicast, [])
     }
     _ => fail("not a multicast message")
   }
@@ -828,3 +828,5 @@ test "parses shared arrow color style" {
   @test.assert_eq(diagram.style.line_color, Some("#ff0000"))
   @test.assert_eq(diagram.render_svg().contains("stroke:#ff0000"), true)
 }
+
+

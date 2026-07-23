@@ -17,6 +17,13 @@ test "sequence commands win over dotted reply arrows" {
 }
 
 ///|
+test "sequence grouping commands win over class-style reply arrows" {
+  let source = "@startuml\nAlice -> Bob\nalt success\nBob --> Alice : response\nend\n@enduml"
+  @test.assert_eq(is_sequence_source(source), true)
+  @test.assert_eq(is_class_source(source), false)
+}
+
+///|
 test "document facade renders a class diagram" {
   let document = parse_class("@startuml\nclass User\nUser --> Account\n@enduml")
   match document.kind() {

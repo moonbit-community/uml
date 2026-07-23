@@ -146,6 +146,33 @@ test "ignore newpage suppresses later page breaks" {
 }
 
 ///|
+test "autonewpage inserts a page break after the message threshold" {
+  let diagram = parse(
+    "@startuml\nautonewpage 2\nAlice -> Bob : one\nBob -> Alice : two\nAlice -> Bob : three\n@enduml",
+  )
+  let layout = diagram.layout()
+  @test.assert_eq(layout.auto_page_breaks.length(), 1)
+  @test.assert_eq(
+    layout.placements[3].y,
+    layout.placements[2].y + layout.placements[2].height + 40,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"page-break\""), true)
+  @test.assert_eq(
+    svg.contains("class=\"auto-newpage\" data-height=\"2\""),
+    true,
+  )
+}
+
+///|
+test "autonewpage resets its message count after an automatic break" {
+  let diagram = parse(
+    "@startuml\nautonewpage 2\nAlice -> Bob\nBob -> Alice\nAlice -> Bob\nBob -> Alice\nAlice -> Bob\nBob -> Alice\n@enduml",
+  )
+  @test.assert_eq(diagram.layout().auto_page_breaks.length(), 2)
+}
+
+///|
 test "render the advanced sequence example semantics" {
   let source : String =
     #|@startuml

@@ -619,10 +619,25 @@ fn append_exo_message(
     return
   }
   let y = placement.y + 18
-  let length = if message.short_arrow { 40 } else { 90 }
   let (outside_x, participant_x) = match message.exo_type {
-    FromLeft | ToLeft => (participant.center_x - length, participant.center_x)
-    FromRight | ToRight => (participant.center_x + length, participant.center_x)
+    FromLeft | ToLeft =>
+      (
+        if message.short_arrow {
+          participant.center_x - 40
+        } else {
+          0
+        },
+        participant.center_x,
+      )
+    FromRight | ToRight =>
+      (
+        if message.short_arrow {
+          participant.center_x + 40
+        } else {
+          layout.width - 8
+        },
+        participant.center_x,
+      )
   }
   let (start_x, end_x) = match message.exo_type {
     FromLeft | FromRight => (outside_x, participant_x)
@@ -637,10 +652,11 @@ fn append_exo_message(
     .unwrap_or_else(() => raw_label)
   append_text(
     output,
-    (start_x + end_x) / 2,
+    start_x.min(end_x) + 7,
     y - 6,
     label,
     "message-label",
+    anchor="start",
     line_height=layout.text_metrics.body.line_height,
   )
 }
@@ -910,23 +926,7 @@ fn append_event(
         None => ()
       }
     }
-    LinkAnchor(from, to, label) => {
-      output <+
-        "<g class=\"anchor-link\" data-from=\"\{xml_escape(from)}\" data-to=\"\{xml_escape(to)}\">\n"
-      match label {
-        Some(text) =>
-          append_text(
-            output,
-            layout.width / 2,
-            placement.y + 18,
-            text,
-            "anchor-link-label",
-            line_height=layout.text_metrics.body.line_height,
-          )
-        None => ()
-      }
-      output.write_string("</g>\n")
-    }
+    LinkAnchor => ()
     AutoNewpage(size) =>
       match size {
         Some(height) =>
@@ -1058,6 +1058,9 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
   }
   append_lifelines(output, layout, self.events)
   append_activations(output, layout)
+  for y in layout.auto_page_breaks {
+    append_line(output, 18, y, layout.width - 18, y, "page-break")
+  }
   let mut arrow_anchor : Message? = None
   for index, event in self.events {
     append_event(output, layout, event, layout.placements[index], arrow_anchor)

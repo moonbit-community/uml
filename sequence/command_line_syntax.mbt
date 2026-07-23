@@ -440,12 +440,12 @@ fn miscellaneous_event_line_parser() -> @talcparsec.StringParser[Event] {
     .then(keyword_parser("return"))
     .then(line_rest_parser("return value"))
     .map(value => Return({ value: value.optional_text() }))
-  let link_anchor = anchor_parser().bind(from => {
+  let link_anchor = anchor_parser().bind(_ => {
     inline_spaces()
     .then(@talcparsec.string("<->"))
     .then(inline_spaces())
     .then(anchor_parser())
-    .bind(to => {
+    .bind(_ => {
       inline_spaces()
       .then(
         @talcparsec.char(':')
@@ -453,7 +453,7 @@ fn miscellaneous_event_line_parser() -> @talcparsec.StringParser[Event] {
         .map(value => value.optional_text())
         .optional(),
       )
-      .map(label => LinkAnchor(from, to, label.bind(value => value)))
+      .map(_ => LinkAnchor)
     })
   })
   @talcparsec.choice([
