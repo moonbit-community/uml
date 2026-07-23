@@ -1,10 +1,14 @@
 ///|
-fn ParseCtx::try_style_directive(self : ParseCtx) -> Bool raise ParseError {
-  let line = self.source.current_line()
+fn ParseCtx::consume_style_directive(self : ParseCtx) -> Bool raise ParseError {
+  let line = @core.strip_line_comment(self.source.current_line())
+  let lower = line.trim().to_lower()
+  guard lower != "newpage" && !lower.has_prefix("newpage ") else {
+    return false
+  }
   if line.trim().to_lower() == "skinparam {" {
     self.source.skip_line()
     while !self.source.eof() {
-      let property = self.source.collect_line()
+      let property = @core.strip_line_comment(self.source.collect_line())
       if property.trim() == "}" {
         return true
       }
@@ -64,25 +68,28 @@ fn skip_ignored_line(source : Source) -> Bool {
 pub fn parse(input : String) -> SequenceDiagram raise ParseError {
   let ctx = ParseCtx::new(input)
 
-  if ctx.source.current_line().trim().equal_ignore_ascii_case("@startuml") {
-    ctx.source.skip_line()
-  }
-
   while !ctx.source.eof() {
     guard !skip_ignored_line(ctx.source) else { continue }
-    if ctx.source.current_line().trim().equal_ignore_ascii_case("@enduml") {
+    let raw_line = ctx.source.current_line()
+    let line = @core.strip_line_comment(raw_line)
+    if line.trim().equal_ignore_ascii_case("@startuml") {
+      ctx.source.skip_line()
+      continue
+    }
+    if line.trim().equal_ignore_ascii_case("@enduml") {
       ctx.source.skip_line()
       break
     }
-    if ctx.try_style_directive() {
+    if ctx.consume_style_directive() {
       continue
     }
-    let directive = ctx.source.current_line()
+    let directive = line
     if @core.is_preprocessor_directive(directive) {
       ctx.source.skip_line()
       continue
     }
-    let line = ctx.source.current_line().trim().to_owned()
+    let line = line.trim().to_owned()
+    guard line.length() > 0 else { continue }
     guard parse_sequence_line(line) is Some(syntax) else {
       let diagnostic = ctx.source.diagnostic(ctx.source.current_line())
       raise SyntaxError(diagnostic.line_number(), diagnostic.message)

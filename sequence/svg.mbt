@@ -269,15 +269,15 @@ fn append_participant_box(
   layouts : Array[ParticipantLayout],
   box : ParticipantBox,
   depth : Int,
+  diagram_layout : DiagramLayout,
 ) -> Unit {
   guard layouts.length() > 0 else { return }
   let first = layouts[0]
-  let last = layouts[layouts.length() - 1]
-  let left = first.center_x - first.width / 2 - 10
-  let right = last.center_x + last.width / 2 + 10
-  let y = 4 + depth * 3
+  let (left, right) = participant_box_horizontal_bounds(layouts, box)
+  let y = 4 + depth * (first.text_metrics.small_bold.line_height + 5)
+  let height = (diagram_layout.height - y - 5).max(22)
   output <+
-    "<rect x=\"\{left}\" y=\"\{y}\" width=\"\{right - left}\" height=\"56\" class=\"participant-box-group\" fill=\"\{svg_color(box.color)}\"/>\n"
+    "<rect x=\"\{left}\" y=\"\{y}\" width=\"\{right - left}\" height=\"\{height}\" class=\"participant-box-group\" fill=\"\{svg_color(box.color)}\"/>\n"
   match box.label {
     Some(label) =>
       append_text(
@@ -315,6 +315,7 @@ fn append_participant_boxes(
               layout.participants[start:index].to_owned(),
               box,
               depth,
+              layout,
             )
           None => ()
         }
@@ -329,6 +330,7 @@ fn append_participant_boxes(
           layout.participants[start:].to_owned(),
           box,
           depth,
+          layout,
         )
       None => ()
     }
@@ -508,9 +510,7 @@ fn append_message(
   guard layout.participant_at(message.from_code) is Some(from) else { return }
   guard layout.participant_at(message.to_code) is Some(to) else { return }
   let y = placement.y + 18
-  let label = placement.number
-    .map(number => "\{number} \{message.display_label()}")
-    .unwrap_or_else(() => message.display_label())
+  let label = message.rendered_label(placement.number)
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
   let line_class = "message\{dotted}"
   let start_y = y
@@ -562,13 +562,15 @@ fn append_message(
       end_y,
       end_x >= start_x,
     )
-    let label_x = (start_x + end_x) / 2
+    // Sequence labels occupy the arrow corridor from its left endpoint.
+    let label_x = start_x.min(end_x) + 7
     append_text(
       output,
       label_x,
       start_y.min(end_y) - 6,
       label,
       "message-label",
+      anchor="start",
       line_height=layout.text_metrics.body.line_height,
     )
   }
@@ -748,15 +750,27 @@ fn append_reference(
   let last = centers.last().unwrap_or(layout.width - 36)
   let x = first.min(last) - 36
   let width = (first - last).abs() + 72
+  let tab_width = TextSize::of_with("ref", layout.text_metrics.body_bold).width +
+    34
   output <+
     "<rect x=\"\{x}\" y=\"\{placement.y}\" width=\"\{width}\" height=\"\{placement.height}\" class=\"reference\"/>\n"
+  output <+
+    "<path d=\"M\{x},\{placement.y}h\{tab_width}v7l-10,10h\{-tab_width + 10}z\" class=\"reference-tab\"/>\n"
   append_text(
     output,
-    x + 9,
-    placement.y + 20,
-    reference.label.unwrap_or("ref"),
-    "reference-label",
+    x + 12,
+    placement.y + 16,
+    "ref",
+    "reference-tab-label",
     anchor="start",
+    line_height=layout.text_metrics.body_bold.line_height,
+  )
+  append_text(
+    output,
+    x + width / 2,
+    placement.y + placement.height - 7,
+    reference.label.unwrap_or(""),
+    "reference-label",
     line_height=layout.text_metrics.body.line_height,
   )
 }
@@ -767,6 +781,7 @@ fn append_return(
   layout : DiagramLayout,
   value : Return,
   placement : EventPlacement,
+  preceding_message : Message?,
 ) -> Unit {
   guard layout.participants.length() >= 2 else { return }
   let y = placement.y + 18
@@ -776,21 +791,40 @@ fn append_return(
       activation = Some(candidate)
     }
   }
-  let from = match activation {
+  let (from, to) = match activation {
     Some(span) =>
-      layout
-      .participant_at(span.participant_code)
-      .unwrap_or(layout.participants[layout.participants.length() - 1])
-    None => layout.participants[layout.participants.length() - 1]
-  }
-  let to = match activation {
-    Some(span) =>
-      match span.caller_code {
-        Some(caller) =>
-          layout.participant_at(caller).unwrap_or(layout.participants[0])
-        None => layout.participants[0]
+      (
+        layout
+        .participant_at(span.participant_code)
+        .unwrap_or(layout.participants[layout.participants.length() - 1]),
+        match span.caller_code {
+          Some(caller) =>
+            layout.participant_at(caller).unwrap_or(layout.participants[0])
+          None => layout.participants[0]
+        },
+      )
+    None =>
+      match preceding_message {
+        Some(message) =>
+          (
+            layout
+            .participant_at(message.to_code)
+            .unwrap_or(layout.participants[layout.participants.length() - 1]),
+            layout
+            .participant_at(message.from_code)
+            .unwrap_or(layout.participants[0]),
+          )
+        None =>
+          (
+            layout.participants[layout.participants.length() - 1],
+            layout.participants[0],
+          )
       }
-    None => layout.participants[0]
+  }
+  let return_value = value.value.unwrap_or("")
+  let label = match placement.number {
+    Some(number) => "\{number} \{return_value}"
+    None => return_value
   }
   output <+
     "<line x1=\"\{from.center_x}\" y1=\"\{y}\" x2=\"\{to.center_x}\" y2=\"\{y}\" class=\"message dotted\" marker-end=\"url(#arrow)\"/>\n"
@@ -798,7 +832,7 @@ fn append_return(
     output,
     (from.center_x + to.center_x) / 2,
     y - 6,
-    value.value.unwrap_or(""),
+    label,
     "message-label",
     line_height=layout.text_metrics.body.line_height,
   )
@@ -812,6 +846,7 @@ fn append_event(
   placement : EventPlacement,
   arrow_anchor : Message?,
 ) -> Unit {
+  guard !placement.ignored else { return }
   match event {
     Message(message) => append_message(output, layout, message, placement)
     MessageExo(message) =>
@@ -821,7 +856,8 @@ fn append_event(
     Delay(delay) => append_delay(output, layout, delay, placement)
     Reference(reference) =>
       append_reference(output, layout, reference, placement)
-    Return(value) => append_return(output, layout, value, placement)
+    Return(value) =>
+      append_return(output, layout, value, placement, arrow_anchor)
     GroupingLeaf(leaf) =>
       if !leaf.is_end {
         match leaf.back_color {
@@ -986,6 +1022,8 @@ fn append_svg_preamble(
     $|.divider-label{font-size:\{body_font_size}px;font-weight:bold}
     $|.delay{stroke:#777;stroke-dasharray:3 3}
     $|.reference{fill:#fff;stroke:#181818;stroke-width:1.2}
+    $|.reference-tab{fill:#eee;stroke:#181818;stroke-width:1.2}
+    $|.reference-tab-label{fill:#181818;font-size:\{body_font_size}px;font-weight:bold}
     $|.group-separator{stroke:#181818;stroke-dasharray:4 3}
     $|.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
@@ -1005,6 +1043,9 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
   let layout = self.layout()
   let output = StringBuilder()
   append_svg_preamble(output, layout, self.style)
+  let background = @core.svg_color(self.style.background_color, "#fff")
+  output <+
+    "<rect x=\"0\" y=\"0\" width=\"\{layout.width}\" height=\"\{layout.height}\" fill=\"\{background}\"/>\n"
   append_groups(output, layout)
   append_participant_boxes(output, layout)
   for participant in layout.participants {

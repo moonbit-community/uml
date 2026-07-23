@@ -24,3 +24,12 @@ test "sequence line dispatcher accepts complete example commands" {
     }
   }
 }
+
+///|
+test "newpage line produces a page-break event" {
+  match parse_sequence_line("newpage summary") {
+    Some(ParsedEvent(Newpage(page))) =>
+      @test.assert_eq(page.title, Some("summary"))
+    _ => fail("newpage was not parsed as a page-break event")
+  }
+}

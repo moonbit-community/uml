@@ -60,6 +60,7 @@ priv struct EventPlacement {
   y : Int
   height : Int
   number : String?
+  ignored : Bool
 }
 
 ///|
@@ -237,6 +238,14 @@ fn Event::is_parallel(self : Event) -> Bool {
 }
 
 ///|
+fn Event::shares_message_row_with(self : Event, previous : Event?) -> Bool {
+  match (self, previous) {
+    (Message(message), Some(Message(_))) => message.parallel
+    _ => false
+  }
+}
+
+///|
 fn event_advances_layout(
   event : Event,
   text_metrics : SequenceTextMetrics,
@@ -276,9 +285,46 @@ fn participant_code_index(
 ///|
 fn Message::gap_requirement(
   self : Message,
+  number : String?,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
-  TextSize::of_with(self.display_label(), text_metrics.body).width + 48
+  // Leave room for the next participant's half-width and englober margin.
+  TextSize::of_with(self.rendered_label(number), text_metrics.body).width + 72
+}
+
+///|
+fn Message::rendered_label(self : Message, number : String?) -> String {
+  number
+  .map(number => "\{number} \{self.display_label()}")
+  .unwrap_or_else(() => self.display_label())
+}
+
+///|
+fn ParticipantBox::minimum_width(
+  self : ParticipantBox,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
+  match self.label {
+    Some(label) => TextSize::of_with(label, text_metrics.small_bold).width + 16
+    None => 0
+  }
+}
+
+///|
+fn participant_box_horizontal_bounds(
+  layouts : Array[ParticipantLayout],
+  box : ParticipantBox,
+) -> (Int, Int) {
+  let first = layouts[0]
+  let last = layouts[layouts.length() - 1]
+  let mut left = first.center_x - first.width / 2 - 10
+  let mut right = last.center_x + last.width / 2 + 10
+  let missing = box.minimum_width(first.text_metrics) - (right - left)
+  if missing > 0 {
+    left -= missing / 2
+    right += missing - missing / 2
+  }
+  (left, right)
 }
 
 ///|
@@ -395,6 +441,15 @@ fn increment_autonumber(value : String, increment : Int) -> String {
 }
 
 ///|
+fn format_autonumber(format : String, value : String) -> String {
+  if format.contains("#") {
+    format.replace(old="#", new=value)
+  } else {
+    format.replace(old="0", new=value)
+  }
+}
+
+///|
 fn increment_autonumber_part(
   value : String,
   position : String?,
@@ -432,6 +487,7 @@ fn constrain_message_gap(
   gaps : Array[Int],
   participant_index : Map[String, Int],
   message : Message,
+  number : String?,
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
   guard participant_index.get(message.from_code) is Some(from) else { return }
@@ -440,7 +496,7 @@ fn constrain_message_gap(
   let last = if from < to { to } else { from }
   let span = last - first
   guard span > 0 else { return }
-  let required = message.gap_requirement(text_metrics)
+  let required = message.gap_requirement(number, text_metrics)
   let per_gap = (required + span - 1) / span
   for index in first..<last {
     gaps[index] = gaps[index].max(per_gap)
@@ -468,6 +524,83 @@ fn constrain_note_gap(
   for index in left..<right {
     gaps[index] = gaps[index].max(per_gap)
   }
+}
+
+///|
+fn constrain_participant_box_gap(
+  gaps : Array[Int],
+  layouts : Array[ParticipantLayout],
+  start : Int,
+  end : Int,
+  box : ParticipantBox,
+  text_metrics : SequenceTextMetrics,
+) -> Unit {
+  let gap_count = end - start - 1
+  guard gap_count > 0 else { return }
+  let mut available = layouts[start].width / 2 + layouts[end - 1].width / 2 + 20
+  for index in start..<(end - 1) {
+    available += gaps[index]
+  }
+  let missing = box.minimum_width(text_metrics) - available
+  guard missing > 0 else { return }
+  let extra_per_gap = (missing + gap_count - 1) / gap_count
+  for index in start..<(end - 1) {
+    gaps[index] += extra_per_gap
+  }
+}
+
+///|
+fn constrain_participant_box_gaps(
+  gaps : Array[Int],
+  layouts : Array[ParticipantLayout],
+  text_metrics : SequenceTextMetrics,
+) -> Unit {
+  let mut max_depth = 0
+  for layout in layouts {
+    max_depth = max_depth.max(layout.participant.boxes.length())
+  }
+  for depth in 0..<max_depth {
+    let mut active : ParticipantBox? = None
+    let mut start = 0
+    for index, layout in layouts {
+      let current = layout.participant.boxes.get(depth)
+      if current != active {
+        match active {
+          Some(box) =>
+            constrain_participant_box_gap(
+              gaps, layouts, start, index, box, text_metrics,
+            )
+          None => ()
+        }
+        active = current
+        start = index
+      }
+    }
+    match active {
+      Some(box) =>
+        constrain_participant_box_gap(
+          gaps,
+          layouts,
+          start,
+          layouts.length(),
+          box,
+          text_metrics,
+        )
+      None => ()
+    }
+  }
+}
+
+///|
+fn SequenceDiagram::participant_box_header_height(
+  self : SequenceDiagram,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
+  let mut max_depth = 0
+  for _, participant in self.participants {
+    max_depth = max_depth.max(participant.boxes.length())
+  }
+  max_depth * (text_metrics.small_bold.line_height + 5)
 }
 
 ///|
@@ -534,14 +667,49 @@ fn layout_participants(
     let right = layouts[participant_index + 1]
     gaps.push(left.width / 2 + right.width / 2 + 32)
   }
+  let mut autonumber = false
+  let mut next_number = "1"
+  let mut number_increment = 1
+  let mut number_format : String? = None
   for event in diagram.events {
     match event {
-      Message(message) =>
-        constrain_message_gap(gaps, index, message, text_metrics)
+      Message(message) => {
+        let number = if autonumber {
+          let value = next_number
+          next_number = increment_autonumber(next_number, number_increment)
+          match number_format {
+            Some(format) => Some(format_autonumber(format, value))
+            None => Some(value)
+          }
+        } else {
+          None
+        }
+        constrain_message_gap(gaps, index, message, number, text_metrics)
+      }
       Note(note) => constrain_note_gap(gaps, index, note, text_metrics)
+      Autonumber(config) => {
+        autonumber = true
+        next_number = config.start.unwrap_or("1")
+        number_increment = config.increment.unwrap_or(1)
+        number_format = config.format
+      }
+      AutonumberStop => autonumber = false
+      AutonumberResume(config) => {
+        autonumber = true
+        number_increment = config.increment.unwrap_or(number_increment)
+        number_format = match config.format {
+          Some(format) => Some(format)
+          None => number_format
+        }
+      }
+      AutonumberIncrement(position) =>
+        next_number = increment_autonumber_part(
+          next_number, position, number_increment,
+        )
       _ => ()
     }
   }
+  constrain_participant_box_gaps(gaps, layouts, text_metrics)
 
   let mut center_x = horizontal_margin + layouts[0].width / 2
   layouts[0] = { ..layouts[0], center_x, }
@@ -655,6 +823,7 @@ fn layout_events(
   let mut parallel_bottom = current_y
   let mut last_visual_bottom = start_y
   let mut autoactivate = diagram.autoactivate
+  let mut ignore_newpage = false
   let mut autonumber = false
   let mut next_number = diagram.auto_number.map_or("1", config => {
     config.start.unwrap_or("1")
@@ -667,8 +836,15 @@ fn layout_events(
   })
 
   for event_index, event in diagram.events {
-    let event_height = event.height(text_metrics)
-    let advances = event_advances_layout(event, text_metrics)
+    let previous = if event_index > 0 {
+      Some(diagram.events[event_index - 1])
+    } else {
+      None
+    }
+    let shares_message_row = event.shares_message_row_with(previous)
+    let ignored = event is Newpage(_) && ignore_newpage
+    let event_height = if ignored { 0 } else { event.height(text_metrics) }
+    let advances = !ignored && event_advances_layout(event, text_metrics)
     let height = if !advances {
       0
     } else if event is Note(_) {
@@ -680,23 +856,30 @@ fn layout_events(
     }
     let y = match event {
       Note(note) if note.on_arrow => previous_top + 4
-      _ => if event.is_parallel() { previous_top } else { current_y }
+      _ =>
+        if shares_message_row ||
+          (event is GroupingStart(_) && event.is_parallel()) {
+          previous_top
+        } else {
+          current_y
+        }
     }
     let number = match event {
-      Message(_) | MessageExo(_) if autonumber => {
+      Message(_) | MessageExo(_) | Return(_) if autonumber => {
         let value = next_number
         next_number = increment_autonumber(next_number, number_increment)
         match number_format {
-          Some(format) => Some(format.replace(old="0", new=value))
+          Some(format) => Some(format_autonumber(format, value))
           None => Some(value)
         }
       }
       _ => None
     }
-    placements.push({ y, height, number })
+    placements.push({ y, height, number, ignored })
     if !advances {
       ()
-    } else if event.is_parallel() {
+    } else if shares_message_row ||
+      (event is GroupingStart(_) && event.is_parallel()) {
       parallel_bottom = parallel_bottom.max(y + height)
       current_y = parallel_bottom
     } else {
@@ -798,6 +981,7 @@ fn layout_events(
         next_number = increment_autonumber_part(
           next_number, position, number_increment,
         )
+      IgnoreNewpage => ignore_newpage = true
       _ => ()
     }
   }
@@ -908,6 +1092,43 @@ fn DiagramLayout::content_horizontal_bounds(
       _ => ()
     }
   }
+  let mut max_box_depth = 0
+  for participant in self.participants {
+    max_box_depth = max_box_depth.max(participant.participant.boxes.length())
+  }
+  for depth in 0..<max_box_depth {
+    let mut active : ParticipantBox? = None
+    let mut start = 0
+    for index, participant in self.participants {
+      let current = participant.participant.boxes.get(depth)
+      if current != active {
+        match active {
+          Some(box) => {
+            let (left, right) = participant_box_horizontal_bounds(
+              self.participants[start:index].to_owned(),
+              box,
+            )
+            min_x = min_x.min(left)
+            max_x = max_x.max(right)
+          }
+          None => ()
+        }
+        active = current
+        start = index
+      }
+    }
+    match active {
+      Some(box) => {
+        let (left, right) = participant_box_horizontal_bounds(
+          self.participants[start:].to_owned(),
+          box,
+        )
+        min_x = min_x.min(left)
+        max_x = max_x.max(right)
+      }
+      None => ()
+    }
+  }
   (min_x, max_x)
 }
 
@@ -951,7 +1172,8 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   let (participants, participant_index, width) = layout_participants(
     self, text_metrics,
   )
-  let mut participant_header_height = 36
+  let mut participant_header_height = 36 +
+    self.participant_box_header_height(text_metrics)
   for participant in participants {
     participant_header_height = participant_header_height.max(
       participant.participant.typ.header_height(),
@@ -959,7 +1181,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
   }
   let (placements, activations, groups, destroys, body_bottom) = layout_events(
     self,
-    participant_header_height - 6 + vertical_margin,
+    participant_header_height + vertical_margin + 8,
     text_metrics,
   )
   let (births, deaths) = participant_lifetimes(self.events, placements)

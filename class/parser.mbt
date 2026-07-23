@@ -795,6 +795,41 @@ fn Parser::resolve_relation_name(
 }
 
 ///|
+fn relation_shape(raw : String) -> (String, EntityKind)? {
+  let value = raw.trim()
+  if value.has_prefix("()") {
+    Some((value[2:].trim().to_owned(), Interface))
+  } else if value.length() >= 2 &&
+    value.has_prefix("(") &&
+    value.has_suffix(")") {
+    Some((value[1:value.length() - 1].trim().to_owned(), Usecase))
+  } else if value.length() >= 2 &&
+    value.has_prefix(":") &&
+    value.has_suffix(":") {
+    Some((value[1:value.length() - 1].trim().to_owned(), Actor))
+  } else if value.length() >= 2 &&
+    value.has_prefix("[") &&
+    value.has_suffix("]") {
+    Some((value[1:value.length() - 1].trim().to_owned(), Component))
+  } else {
+    None
+  }
+}
+
+///|
+fn Parser::ensure_relation_entity(
+  self : Parser,
+  raw : String,
+  endpoint : RelationEnd,
+) -> String {
+  match relation_shape(raw) {
+    Some((code, kind)) => self.ensure_entity_as(normalize_name(code), kind)
+    None if endpoint is Parenthesis => self.ensure_entity_as(raw, Interface)
+    None => self.ensure_entity(raw)
+  }
+}
+
+///|
 fn Parser::apply_relation_syntax(
   self : Parser,
   syntax : RelationLineSyntax,
@@ -806,17 +841,13 @@ fn Parser::apply_relation_syntax(
   let (right_name, right_port) = self.resolve_relation_name(syntax.right.name)
   let left = if syntax.left.couple is Some((couple_left, _)) {
     self.ensure_entity(couple_left)
-  } else if left_end is Parenthesis {
-    self.ensure_entity_as(left_name, Interface)
   } else {
-    self.ensure_entity(left_name)
+    self.ensure_relation_entity(left_name, left_end)
   }
   let right = if syntax.right.couple is Some((_, couple_right)) {
     self.ensure_entity(couple_right)
-  } else if right_end is Parenthesis {
-    self.ensure_entity_as(right_name, Interface)
   } else {
-    self.ensure_entity(right_name)
+    self.ensure_relation_entity(right_name, right_end)
   }
   self.relations.push({
     left,
@@ -888,9 +919,8 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     }
     None => ()
   }
-  guard !line.has_prefix("@startuml") && !line.has_prefix("@enduml") else {
-    return
-  }
+  let marker = line.to_lower()
+  guard marker != "@startuml" && marker != "@enduml" else { return }
   guard !@core.is_preprocessor_directive(line) else { return }
   if self.current_entity is Some(entity_index) {
     self.consume_entity_body_line(entity_index, line)

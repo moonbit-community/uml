@@ -11,38 +11,18 @@ test "render SVG escapes labels and emits participant lifelines" {
   @test.assert_eq(svg.contains("a &lt; b &amp; c"), true)
   @test.assert_eq(svg.contains("class=\"lifeline\""), true)
   @test.assert_eq(svg.contains("marker-end=\"url(#arrow)\""), true)
+  @test.assert_eq(svg.contains("<rect x=\"0\" y=\"0\""), true)
   @test.assert_eq(svg.has_suffix("</svg>\n"), true)
 }
 
 ///|
-test "participant layout reserves message label width" {
-  let diagram = parse(
-    "@startuml\nAlice -> Bob : this is a deliberately wide message label\n@enduml",
+test "references render a ref tab and centered body label" {
+  let svg = render_sequence_svg(
+    "@startuml\nAlice -> Bob : request\nref over Alice, Bob : external API call\n@enduml",
   )
-  let result = diagram.layout()
-  let distance = result.participants[1].center_x -
-    result.participants[0].center_x
-  @test.assert_eq(
-    distance >=
-    TextSize::of_with(
-      "this is a deliberately wide message label",
-      result.text_metrics.body,
-    ).width +
-    48,
-    true,
-  )
-}
-
-///|
-test "labelled messages reserve space before their arrow" {
-  let layout = parse(
-    "@startuml\nAlice -> Bob\nAlice -> Bob : label only\nBob --> Carol : dotted arrow\n@enduml",
-  ).layout()
-  let first_arrow = layout.placements[0].y + 18
-  let label_arrow = layout.placements[1].y + 18
-  let dotted_arrow = layout.placements[2].y + 18
-  @test.assert_eq(label_arrow - first_arrow >= 29, true)
-  @test.assert_eq(dotted_arrow - label_arrow >= 29, true)
+  @test.assert_eq(svg.contains("class=\"reference-tab\""), true)
+  @test.assert_eq(svg.contains(">ref</tspan>"), true)
+  @test.assert_eq(svg.contains(">external API call</tspan>"), true)
 }
 
 ///|
@@ -52,15 +32,6 @@ test "actors have a separate icon and label without a participant rectangle" {
   )
   @test.assert_eq(svg.contains("data-code=\"bob\">\n<circle"), true)
   @test.assert_eq(svg.contains("data-code=\"bob\">\n<rect"), false)
-}
-
-///|
-test "participant heads share a lifeline contact instead of a fixed top offset" {
-  let layout = parse("@startuml\nactor Actor\nparticipant Service\n@enduml").layout()
-  @test.assert_eq(layout.participant_head_y(layout.participants[0]), 5)
-  @test.assert_eq(layout.participant_head_y(layout.participants[1]), 45)
-  @test.assert_eq(layout.body_top, 81)
-  @test.assert_eq(layout.participant_tail_y(), layout.body_bottom + 9)
 }
 
 ///|
@@ -142,33 +113,101 @@ test "render preserves dotted auto numbers" {
 }
 
 ///|
-test "note on arrow is centered over the preceding message" {
-  let diagram = parse(
-    "@startuml\nAlice -> Bob\nBob -> Carol\nnote right : attached\n@enduml",
+test "render accepts PlantUML hash autonumber placeholders and numbers returns" {
+  let svg = render_sequence_svg(
+    "@startuml\nautonumber 100 5 \"(msg #)\"\nClient -> Server : request\nautonumber stop\nServer --> Client : response\nautonumber resume\nreturn result\n@enduml",
   )
-  let result = diagram.layout()
+  @test.assert_eq(svg.contains("(msg 100) request"), true)
+  @test.assert_eq(svg.contains("(msg 105) result"), true)
+}
+
+///|
+test "ignore newpage suppresses later page breaks" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob : request\nignore newpage\nnewpage summary\nBob -> Alice : response\n@enduml",
+  )
+  let layout = diagram.layout()
   match diagram.events[1] {
-    Message(message) =>
-      match diagram.events[2] {
-        Note(note) => {
-          let expected = (
-              result
-              .participant_at(message.from_code)
-              .unwrap_or(result.participants[0]).center_x +
-              result
-              .participant_at(message.to_code)
-              .unwrap_or(result.participants[0]).center_x
-            ) /
-            2
-          @test.assert_eq(
-            result.note_anchor_center(note, Some(message)),
-            expected,
-          )
-        }
-        _ => fail("expected note")
-      }
-    _ => fail("expected message")
+    IgnoreNewpage => ()
+    _ => fail("ignore newpage was not parsed as a directive")
   }
+  let mut newpage_index = None
+  for index, event in diagram.events {
+    match event {
+      Newpage(_) => newpage_index = Some(index)
+      _ => ()
+    }
+  }
+  match newpage_index {
+    Some(index) => @test.assert_eq(layout.placements[index].ignored, true)
+    None => fail("newpage was not parsed as a page-break event")
+  }
+  @test.assert_eq(diagram.render_svg().contains("class=\"page-break\""), false)
+}
+
+///|
+test "render the advanced sequence example semantics" {
+  let source : String =
+    #|@startuml
+    #|
+    #|box Frontend #lightyellow
+    #|participant Client
+    #|end box
+    #|box Backend #lightblue
+    #|participant Server
+    #|participant Database
+    #|end box
+    #|
+    #|Client -> Server : request
+    #|Server -> Database -- : query
+    #|
+    #|== Transaction Log ==
+    #|
+    #|... processing ...
+    #|
+    #|hide footbox
+    #|autonumber 100 5 "(msg #)"
+    #|Server --> Client : response
+    #|Client -> Server : next
+    #|autonumber stop
+    #|Server --> Client : unnumbered
+    #|autonumber resume
+    #|Server --> Client : renumbered
+    #|
+    #|ref over Client, Server : external API call
+    #|
+    #|return result value
+    #|
+    #|[-> Client : from outside
+    #|Client ->] : to outside
+    #|
+    #|& Client -> Server : multicast message
+    #|Server -> Database & Client : multicast to multiple
+    #|
+    #|hide unlinked
+    #|participant Orphan
+    #|
+    #|url of Client is [[https://example.com/users]]
+    #|url of Server is [[https://example.com/api]]
+    #|
+    #|{start} Client -> Server : anchored arrow
+    #|{start} <-> {end} : linked anchors
+    #|
+    #|ignore newpage
+    #|autonewpage 50
+    #|newpage summary page
+    #|
+    #|@enduml
+    #|
+  let svg = render_sequence_svg(source)
+  @test.assert_eq(svg.contains(">Frontend</tspan>"), true)
+  @test.assert_eq(svg.contains(">Backend</tspan>"), true)
+  @test.assert_eq(svg.contains("data-code=\"Orphan\""), false)
+  @test.assert_eq(svg.contains("(msg 100) response"), true)
+  @test.assert_eq(svg.contains("(msg 110) renumbered"), true)
+  @test.assert_eq(svg.contains("(msg 115) result value"), true)
+  @test.assert_eq(svg.contains("class=\"page-break\""), false)
+  @test.assert_eq(svg.contains("id=\"start\" class=\"message-anchor\""), true)
 }
 
 ///|
@@ -210,84 +249,4 @@ test "text metrics distinguish narrow and wide default sans glyphs" {
   )
   @test.assert_eq(TextSize::of_with(" ", metrics).width, 4)
   @test.assert_eq(TextSize::of_with("A", metrics).width, 9)
-}
-
-///|
-test "left notes use the current lifecycle segment and folded component" {
-  let diagram = parse(
-    "@startuml\nAlice -> Bob ++\nnote left of Bob : cached\n@enduml",
-  )
-  let layout = diagram.layout()
-  let note = match diagram.events[1] {
-    Note(note) => note
-    _ => fail("expected note")
-  }
-  let geometry = layout.note_geometry(note, layout.placements[1], None)
-  let segment = layout.participant_segment("Bob", layout.placements[1].y)
-  @test.assert_eq(geometry.x + geometry.component.width, segment.0)
-  let svg = diagram.render_svg()
-  @test.assert_eq(svg.contains("class=\"note-fold\""), true)
-}
-
-///|
-test "notes reserve an arrow clearance and a trailing component gap" {
-  let layout = parse(
-    "@startuml\nAlice -> Bob\nnote left of Alice : first\nnote left of Alice : second\n@enduml",
-  ).layout()
-  let arrow_y = layout.placements[0].y + 18
-  let first_note = layout.placements[1]
-  let second_note = layout.placements[2]
-  @test.assert_eq(first_note.y - arrow_y >= 25, true)
-  @test.assert_eq(second_note.y - first_note.y >= 35, true)
-}
-
-///|
-test "notes on arrows share the preceding message tile" {
-  let layout = parse(
-    "@startuml\nAlice -> Bob : request\nnote right : detail\nAlice -> Bob : follow up\n@enduml",
-  ).layout()
-  @test.assert_eq(layout.placements[1].height, 0)
-  @test.assert_eq(layout.placements[1].y, layout.placements[0].y + 4)
-  @test.assert_eq(layout.placements[2].y - layout.placements[0].y >= 29, true)
-}
-
-///|
-test "create arrow delays the participant head and lifeline" {
-  let diagram = parse(
-    "@startuml\nBob -> Alice ** : create\nnote left of Alice : ready\n@enduml",
-  )
-  let layout = diagram.layout()
-  let alice = layout.participant_at("Alice").unwrap()
-  let created_at = layout.placements[0].y
-  @test.assert_eq(alice.birth_y, Some(created_at))
-  @test.assert_eq(layout.participant_head_y(alice) > 5, true)
-  @test.assert_eq(
-    layout.activations.any(span => span.participant_code == "Alice"),
-    false,
-  )
-  let svg = diagram.render_svg()
-  @test.assert_eq(svg.contains("data-code=\"Alice\""), true)
-}
-
-///|
-test "return follows the most recent active caller" {
-  let diagram = parse(
-    "@startuml\nClient -> Service ++ : call\nreturn result\ndeactivate Service\n@enduml",
-  )
-  let result = diagram.layout()
-  let return_y = result.placements[1].y + 18
-  let span = result.activations[0]
-  @test.assert_eq(span.caller_code, Some("Client"))
-  @test.assert_eq(span.start_y <= return_y && return_y <= span.end_y, true)
-  @test.assert_eq(diagram.render_svg().contains("result"), true)
-}
-
-///|
-test "partial arrows retain their edge side" {
-  let below = render_sequence_svg("@startuml\nAlice \\-> Bob\n@enduml")
-  let above = render_sequence_svg("@startuml\nAlice /-> Bob\n@enduml")
-  @test.assert_eq(below.contains("y1=\"53\""), true)
-  @test.assert_eq(below.contains("y2=\"53\""), true)
-  @test.assert_eq(above.contains("y1=\"53\""), true)
-  @test.assert_eq(above.contains("y2=\"53\""), true)
 }

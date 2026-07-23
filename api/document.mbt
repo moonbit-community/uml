@@ -36,23 +36,127 @@ pub fn parse_json(input : String) -> Document raise @json.ParseError {
 }
 
 ///|
+fn meaningful_source_lines(input : String) -> Array[String] {
+  input
+  .split("\n")
+  .map(line => @core.strip_line_comment(line.to_owned()).trim().to_owned())
+  .filter(line => {
+    line.length() > 0 &&
+    !line.equal_ignore_ascii_case("@startuml") &&
+    !line.equal_ignore_ascii_case("@enduml") &&
+    !@core.is_preprocessor_directive(line)
+  })
+  .to_array()
+}
+
+///|
+fn is_sequence_command(line : String) -> Bool {
+  let lower = line.to_lower()
+  lower == "autonewpage" ||
+  lower.has_prefix("participant ") ||
+  lower.has_prefix("create ") ||
+  lower.has_prefix("box ") ||
+  lower.has_prefix("autonumber") ||
+  lower.has_prefix("autoactivate") ||
+  lower == "hide footbox" ||
+  lower == "show footbox" ||
+  lower.has_prefix("ref over ") ||
+  lower.has_prefix("ignore newpage")
+}
+
+///|
+fn is_ambiguous_participant_declaration(line : String) -> Bool {
+  let words = @core.syntax_words(line)
+  guard words.length() > 0 else { return false }
+  match words[0].to_lower() {
+    "actor"
+    | "boundary"
+    | "control"
+    | "entity"
+    | "database"
+    | "queue"
+    | "collections"
+    | "port"
+    | "portin"
+    | "portout"
+    | "participant" => true
+    _ => false
+  }
+}
+
+///|
+fn has_message_arrow(line : String) -> Bool {
+  @core.find_unquoted_literal(line, "->") is Some(_) ||
+  @core.find_unquoted_literal(line, "<-") is Some(_)
+}
+
+///|
+fn is_class_declaration(line : String) -> Bool {
+  let words = @core.syntax_words(line)
+  guard words.length() > 0 else { return false }
+  match words[0].to_lower() {
+    "class"
+    | "interface"
+    | "enum"
+    | "annotation"
+    | "abstract"
+    | "object"
+    | "entity"
+    | "exception"
+    | "metaclass"
+    | "stereotype"
+    | "dataclass"
+    | "record"
+    | "map"
+    | "json"
+    | "component"
+    | "database"
+    | "queue"
+    | "actor"
+    | "usecase"
+    | "struct"
+    | "protocol"
+    | "state"
+    | "folder"
+    | "file"
+    | "node"
+    | "cloud"
+    | "person"
+    | "artifact"
+    | "boundary"
+    | "control"
+    | "port"
+    | "portin"
+    | "portout"
+    | "package"
+    | "namespace"
+    | "rectangle"
+    | "hexagon"
+    | "label"
+    | "frame"
+    | "action"
+    | "process"
+    | "stack"
+    | "storage"
+    | "agent"
+    | "collections" => true
+    _ => false
+  }
+}
+
+///|
 /// Returns whether the source contains a sequence-diagram-specific command.
 ///
 /// This deliberately covers commands that cannot be inferred from an arrow
 /// alone: a sequence reply such as `A --> B` otherwise looks like a class
 /// relation to the class-diagram heuristic.
 pub fn is_sequence_source(input : String) -> Bool {
-  let input = input.to_lower()
-  input.contains("participant ") ||
-  input.contains("\nbox ") ||
-  input.has_prefix("box ") ||
-  input.contains("autonumber") ||
-  input.contains("autoactivate") ||
-  input.contains("hide footbox") ||
-  input.contains("show footbox") ||
-  input.contains("ref over ") ||
-  input.contains("ignore newpage") ||
-  input.contains("autonewpage")
+  let lines = meaningful_source_lines(input)
+  lines.any(is_sequence_command) ||
+  (
+    lines.any(is_ambiguous_participant_declaration) &&
+    lines.any(has_message_arrow)
+  )
 }
 
 ///|
@@ -63,56 +167,22 @@ pub fn is_sequence_source(input : String) -> Bool {
 /// sequence message such as `Alice -> Bob` remains a sequence diagram.
 pub fn is_class_source(input : String) -> Bool {
   guard !is_sequence_source(input) else { return false }
-  let input = input.to_lower()
-  input.contains("--") ||
-  input.contains("..") ||
-  input.contains("<|") ||
-  input.contains("class ") ||
-  input.contains("interface ") ||
-  input.contains("enum ") ||
-  input.contains("annotation ") ||
-  input.contains("abstract ") ||
-  input.contains("object ") ||
-  input.contains("entity ") ||
-  input.contains("exception ") ||
-  input.contains("metaclass ") ||
-  input.contains("stereotype ") ||
-  input.contains("dataclass ") ||
-  input.contains("record ") ||
-  input.contains("circle ") ||
-  input.contains("map ") ||
-  input.contains("json ") ||
-  input.contains("component ") ||
-  input.contains("database ") ||
-  input.contains("queue ") ||
-  input.contains("actor ") ||
-  input.contains("usecase ") ||
-  input.contains("struct ") ||
-  input.contains("protocol ") ||
-  input.contains("state ") ||
-  input.contains("folder ") ||
-  input.contains("file ") ||
-  input.contains("node ") ||
-  input.contains("cloud ") ||
-  input.contains("person ") ||
-  input.contains("artifact ") ||
-  input.contains("boundary ") ||
-  input.contains("control ") ||
-  input.contains("port ") ||
-  input.contains("portin ") ||
-  input.contains("portout ") ||
-  input.contains("mix_") ||
-  input.contains("() ") ||
-  input.contains("usecase (") ||
-  input.contains("actor :") ||
-  input.contains("component [") ||
-  input.contains(" .>") ||
-  input.contains(" <.") ||
-  input.contains("note on link") ||
-  input.contains("constraint on links") ||
-  input.contains("<> ") ||
-  input.contains("package ") ||
-  input.contains("namespace ")
+  for line in meaningful_source_lines(input) {
+    if is_class_declaration(line) ||
+      @core.find_unquoted_literal(line, "--") is Some(_) ||
+      @core.find_unquoted_literal(line, "..") is Some(_) ||
+      @core.find_unquoted_literal(line, "<|") is Some(_) ||
+      @core.find_unquoted_literal(line, ".>") is Some(_) ||
+      @core.find_unquoted_literal(line, "<.") is Some(_) ||
+      line.to_lower().has_prefix("allowmixing") ||
+      line.to_lower().has_prefix("mix_") ||
+      line.to_lower().has_prefix("note on link") ||
+      line.to_lower().has_prefix("constraint on links") ||
+      line.has_prefix("<>") {
+      return true
+    }
+  }
+  false
 }
 
 ///|

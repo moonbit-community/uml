@@ -226,6 +226,25 @@ test "parse participant declaration" {
 }
 
 ///|
+test "sequence parser accepts comments before start and inline comments" {
+  let result = parse(
+    "\n' header comment\n@STARTUML\nAlice -> Bob : request ' trailing comment\n@ENDUML",
+  )
+  match result.events[0] {
+    Message(message) => @test.assert_eq(message.label, Some("request"))
+    _ => @test.fail("expected message")
+  }
+}
+
+///|
+test "participant redeclaration updates visible metadata" {
+  let result = parse(
+    "@startuml\nparticipant A #red\nparticipant A #blue\nA -> B\n@enduml",
+  )
+  @test.assert_eq(result.participants["A"].color, Some("blue"))
+}
+
+///|
 test "parse right-to-left arrow" {
   let result = parse("@startuml\nAlice <- Bob\n@enduml")
   guard result.events.length() == 1 else { fail("expected 1 event") }
@@ -563,7 +582,7 @@ test "parse a complete sequence diagram" {
     #|
   let result = parse(input)
 
-  @test.assert_eq(result.events.length(), 26)
+  @test.assert_eq(result.events.length(), 27)
   @test.assert_eq(result.participants.contains("client"), true)
   @test.assert_eq(result.participants.contains("Gateway"), true)
   @test.assert_eq(result.participants.contains("Service"), true)
@@ -635,6 +654,21 @@ test "parse a complete sequence diagram" {
     }
     None => fail("missing autonumber configuration")
   }
+}
+
+///|
+test "parse colored participant boxes from the advanced example" {
+  let diagram = parse(
+    "@startuml\n\nbox Frontend #lightyellow\nparticipant Client\nend box\n@enduml",
+  )
+  @test.assert_eq(
+    diagram.participants["Client"].boxes[0].label,
+    Some("Frontend"),
+  )
+  @test.assert_eq(
+    diagram.participants["Client"].boxes[0].color,
+    Some("lightyellow"),
+  )
 }
 
 ///|

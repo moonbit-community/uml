@@ -47,7 +47,7 @@ fn class_control_line_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
 fn ignored_class_directive_parser() -> @talcparsec.StringParser[ClassLineSyntax] {
   validated_whole_line_parser("ignored class directive", line => {
     let lower = line.to_lower()
-    if line.has_prefix("skinparam ") ||
+    if lower.has_prefix("skinparam ") ||
       lower.has_prefix("set namespace_separator ") ||
       lower.has_prefix("set namespaceseparator ") ||
       lower == "footbox" ||

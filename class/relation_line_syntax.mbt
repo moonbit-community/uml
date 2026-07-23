@@ -44,12 +44,39 @@ priv enum RelationMetadataSyntax {
 fn relation_name_parser(
   stop_at_arrow : Bool,
 ) -> @talcparsec.StringParser[RelationNameSyntax] {
+  let shaped = @talcparsec.string("()")
+    .then(inline_spaces())
+    .then(
+      @talcparsec.many_chars1(
+        @talcparsec.satisfy("interface relation name", char => {
+          !char.is_whitespace() &&
+          char != ':' &&
+          char != '[' &&
+          char != ']' &&
+          char != '(' &&
+          char != ')'
+        }),
+      ),
+    )
+    .map(name => { name: "()" + name, port_base: None, port_value: None })
+  let usecase = @talcparsec.char('(')
+    .then(@talcparsec.many_chars1(@talcparsec.none_of(")")))
+    .skip(@talcparsec.char(')'))
+    .map(name => { name: "(" + name + ")", port_base: None, port_value: None })
+  let actor = @talcparsec.char(':')
+    .then(@talcparsec.many_chars1(@talcparsec.none_of(":")))
+    .skip(@talcparsec.char(':'))
+    .map(name => { name: ":" + name + ":", port_base: None, port_value: None })
+  let component = @talcparsec.char('[')
+    .then(@talcparsec.many_chars1(@talcparsec.none_of("]")))
+    .skip(@talcparsec.char(']'))
+    .map(name => { name: "[" + name + "]", port_base: None, port_value: None })
   let quoted = quoted_value_parser().map(name => {
     name,
     port_base: None,
     port_value: None,
   })
-  let name_character = @talcparsec.satisfy("relation name", char => {
+  let base_name_character = @talcparsec.satisfy("relation name", char => {
     !char.is_whitespace() &&
     char != ':' &&
     char != '[' &&
@@ -61,9 +88,9 @@ fn relation_name_parser(
   let name_character = if stop_at_arrow {
     relation_separator_parser()
     .not_followed_by("relation separator")
-    .then(name_character)
+    .then(base_name_character)
   } else {
-    name_character
+    base_name_character
   }
   let segment = @talcparsec.many_chars1(name_character)
   let qualified = segment
@@ -80,7 +107,13 @@ fn relation_name_parser(
         { name, port_base: None, port_value: None }
       }
     })
-  quoted.attempt().or(qualified)
+  shaped
+  .attempt()
+  .or(usecase.attempt())
+  .or(actor.attempt())
+  .or(component.attempt())
+  .or(quoted.attempt())
+  .or(qualified)
 }
 
 ///|

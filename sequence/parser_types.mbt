@@ -88,6 +88,20 @@ fn ParseCtx::declare_participant(
     let participant = self.participants[reference.code]
     self.participants[reference.code] = {
       ..participant,
+      display: reference.display,
+      typ: declaration.typ,
+      color: match declaration.color {
+        Some(value) => Some(value)
+        None => participant.color
+      },
+      url: match declaration.url {
+        Some(value) => Some(value)
+        None => participant.url
+      },
+      order: match declaration.order {
+        Some(value) => Some(value)
+        None => participant.order
+      },
       boxes: self.box_stack.copy(),
     }
     return

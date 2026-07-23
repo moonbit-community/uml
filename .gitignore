@@ -6,3 +6,4 @@ target/
 .local/
 *.mbti
 *.svg
+AGENTS.md

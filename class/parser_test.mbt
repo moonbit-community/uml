@@ -719,6 +719,24 @@ test "parses full and half lollipop decorators on either side" {
 }
 
 ///|
+test "parses shaped relation endpoints" {
+  let diagram = parse(
+    "@startuml\n(Login) --> User\n:Admin: --> [Gateway]\n() API --> Service\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("Login").unwrap().kind, Usecase)
+  @test.assert_eq(diagram.entity("Admin").unwrap().kind, Actor)
+  @test.assert_eq(diagram.entity("Gateway").unwrap().kind, Component)
+  @test.assert_eq(diagram.entity("API").unwrap().kind, Interface)
+}
+
+///|
+test "map links create implicit target entities" {
+  let diagram = parse("@startuml\nmap Values {\nkey *--> Missing\n}\n@enduml")
+  @test.assert_eq(diagram.has_entity("Missing"), true)
+  @test.assert_eq(diagram.relations.length(), 1)
+}
+
+///|
 test "parses standalone urls and association diamonds" {
   let diagram = parse(
     "@startuml\nclass User\nurl of User is [[https://example.com/user]]\n<> membership\n@enduml",

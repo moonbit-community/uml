@@ -58,3 +58,24 @@ test "detects the remaining class-only declarations and dotted arrows" {
   @test.assert_eq(is_class_source("@startuml\nAlice -> Bob\n@enduml"), false)
   @test.assert_eq(is_class_source("@startuml\nANNOTATION A\n@enduml"), true)
 }
+
+///|
+test "diagram source detection ignores comments and labels" {
+  let sequence_with_label = "@startuml\nAlice -> Bob : class diagram\n@enduml"
+  let class_with_label = "@startuml\nA --> B : participant service\n@enduml"
+  @test.assert_eq(is_sequence_source(sequence_with_label), false)
+  @test.assert_eq(is_class_source(sequence_with_label), false)
+  @test.assert_eq(is_sequence_source(class_with_label), false)
+  @test.assert_eq(is_class_source(class_with_label), true)
+  @test.assert_eq(
+    is_sequence_source("@startuml\n' participant Fake\nAlice -> Bob\n@enduml"),
+    false,
+  )
+}
+
+///|
+test "sequence participant shapes are classified with their messages" {
+  let source = "@startuml\nactor User\nUser -> Service : call\n@enduml"
+  @test.assert_eq(is_sequence_source(source), true)
+  @test.assert_eq(is_class_source(source), false)
+}

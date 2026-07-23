@@ -2,9 +2,10 @@
 test "command line grammar parses complete single-line commands" {
   let lines = [
     "alt #green #white accepted", "else #red rejected", "end", "box Infrastructure #lightblue",
-    "end box", "activate Service #lime", "deactivate Service", "deactivate", "destroy Service",
-    "== section ==", "... waiting ...", "||20||", "newpage summary", "autonumber 1.2 3 \"(0)\"",
-    "autonumber inc b", "autoactivate on", "hide footbox", "hide @unlinked", "url of Alice is [[https://example.com User]]",
+    "box Frontend #lightyellow", "end box", "activate Service #lime", "deactivate Service",
+    "deactivate", "destroy Service", "== section ==", "... waiting ...", "||20||",
+    "newpage summary", "autonumber 1.2 3 \"(0)\"", "autonumber inc b", "autoactivate on",
+    "hide footbox", "hide @unlinked", "url of Alice is [[https://example.com User]]",
     "return response", "ignore newpage", "autonewpage 10", "{left} <-> {right} : link",
   ]
   for line in lines {
