@@ -73,11 +73,15 @@ fn note_position_parser() -> @talcparsec.StringParser[NotePosition] {
 }
 
 ///|
-fn participant_list_parser() -> @talcparsec.StringParser[Array[String]] {
-  let participant = inline_spaces()
-    .then(quoted_participant().attempt().or(participant_identifier()))
+fn participant_list_prefix_parser() -> @talcparsec.StringParser[Array[String]] {
+  let participant = inline_spaces().then(
+    quoted_participant().attempt().or(participant_identifier()),
+  )
+  let separator = inline_spaces()
+    .then(@talcparsec.char(','))
     .skip(inline_spaces())
-  participant.sep_by(@talcparsec.char(',')).skip(@talcparsec.eof())
+    .attempt()
+  participant.sep_by1(separator)
 }
 
 ///|

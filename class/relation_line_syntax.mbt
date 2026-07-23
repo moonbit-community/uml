@@ -1,0 +1,342 @@
+///|
+priv struct RelationNameSyntax {
+  name : String
+  port_base : String?
+  port_value : String?
+}
+
+///|
+priv struct RelationEndpointSyntax {
+  name : RelationNameSyntax
+  cardinality : String?
+  role : String?
+  qualifier : String?
+  couple : (String, String)?
+}
+
+///|
+priv struct RelationLineSyntax {
+  weight : String?
+  left : RelationEndpointSyntax
+  arrow : String
+  right : RelationEndpointSyntax
+  label : String?
+  color : String?
+  url : String?
+  stereotype : String?
+}
+
+///|
+priv enum RelationEndpointModifier {
+  RelationCardinality(String)
+  RelationRole(String)
+  RelationQualifier(String)
+}
+
+///|
+priv enum RelationMetadataSyntax {
+  RelationColor(String)
+  RelationUrl(String)
+  RelationStereotype(String)
+}
+
+///|
+fn relation_name_parser(
+  stop_at_arrow : Bool,
+) -> @talcparsec.StringParser[RelationNameSyntax] {
+  let quoted = quoted_value_parser().map(name => {
+    name,
+    port_base: None,
+    port_value: None,
+  })
+  let name_character = @talcparsec.satisfy("relation name", char => {
+    !char.is_whitespace() &&
+    char != ':' &&
+    char != '[' &&
+    char != ']' &&
+    char != ',' &&
+    char != '(' &&
+    char != ')'
+  })
+  let name_character = if stop_at_arrow {
+    relation_separator_parser()
+    .not_followed_by("relation separator")
+    .then(name_character)
+  } else {
+    name_character
+  }
+  let segment = @talcparsec.many_chars1(name_character)
+  let qualified = segment
+    .sep_by1(@talcparsec.string("::"))
+    .map(parts => {
+      let name = parts.join("::")
+      if parts.length() > 1 {
+        {
+          name,
+          port_base: Some(parts[0]),
+          port_value: Some(parts[1:].to_owned().join("::")),
+        }
+      } else {
+        { name, port_base: None, port_value: None }
+      }
+    })
+  quoted.attempt().or(qualified)
+}
+
+///|
+fn relation_couple_parser() -> @talcparsec.StringParser[
+  (RelationNameSyntax, (String, String)),
+] {
+  @talcparsec.char('(')
+  .then(inline_spaces())
+  .then(relation_name_parser(false))
+  .bind(first => {
+    inline_spaces()
+    .then(@talcparsec.char(','))
+    .then(inline_spaces())
+    .then(relation_name_parser(false))
+    .bind(second => {
+      inline_spaces()
+      .then(@talcparsec.char(')'))
+      .map(_ => {
+        let left = normalize_name(first.name)
+        let right = normalize_name(second.name)
+        ({ name: left, port_base: None, port_value: None }, (left, right))
+      })
+    })
+  })
+}
+
+///|
+fn relation_target_parser(
+  stop_at_arrow : Bool,
+) -> @talcparsec.StringParser[(RelationNameSyntax, (String, String)?)] {
+  relation_couple_parser()
+  .attempt()
+  .map(pair => {
+    let (name, couple) = pair
+    (name, Some(couple))
+  })
+  .or(relation_name_parser(stop_at_arrow).map(name => (name, None)))
+}
+
+///|
+fn relation_role_value_parser() -> @talcparsec.StringParser[String] {
+  quoted_value_parser()
+  .attempt()
+  .or(
+    @talcparsec.many_chars1(
+      @talcparsec.satisfy("relation role", char => !char.is_whitespace()),
+    ),
+  )
+  .map(normalize_name)
+}
+
+///|
+fn relation_modifier_parser() -> @talcparsec.StringParser[
+  RelationEndpointModifier,
+] {
+  let cardinality = quoted_value_parser().map(value => {
+    RelationCardinality(value)
+  })
+  let role = @talcparsec.char('/')
+    .then(relation_role_value_parser())
+    .map(value => RelationRole(value))
+  let qualifier = @talcparsec.char('[')
+    .then(@talcparsec.many_chars1(@talcparsec.none_of("]")))
+    .skip(@talcparsec.char(']'))
+    .map(value => RelationQualifier(value.trim().to_owned()))
+  @talcparsec.choice([cardinality.attempt(), role.attempt(), qualifier])
+}
+
+///|
+fn relation_endpoint_from(
+  name : RelationNameSyntax,
+  couple : (String, String)?,
+  modifiers : Array[RelationEndpointModifier],
+) -> RelationEndpointSyntax {
+  let mut cardinality = None
+  let mut role = None
+  let mut qualifier = None
+  for modifier in modifiers {
+    match modifier {
+      RelationCardinality(value) => cardinality = Some(value)
+      RelationRole(value) => role = Some(value)
+      RelationQualifier(value) => qualifier = Some(value)
+    }
+  }
+  { name, cardinality, role, qualifier, couple }
+}
+
+///|
+fn left_relation_endpoint_parser() -> @talcparsec.StringParser[
+  RelationEndpointSyntax,
+] {
+  relation_target_parser(true).bind(target => {
+    let (name, couple) = target
+    inline_space1()
+    .then(relation_modifier_parser())
+    .attempt()
+    .many()
+    .map(modifiers => relation_endpoint_from(name, couple, modifiers))
+  })
+}
+
+///|
+fn right_relation_endpoint_parser() -> @talcparsec.StringParser[
+  RelationEndpointSyntax,
+] {
+  relation_modifier_parser()
+  .skip(inline_space1())
+  .attempt()
+  .many()
+  .bind(modifiers => {
+    relation_target_parser(false).map(target => {
+      let (name, couple) = target
+      relation_endpoint_from(name, couple, modifiers)
+    })
+  })
+}
+
+///|
+fn relation_non_single_arrow_parser() -> @talcparsec.StringParser[String] {
+  relation_arrow_candidate_parser().bind(candidate => {
+    guard candidate.first_length >= 2 ||
+      candidate.has_direction ||
+      candidate.has_left_decor ||
+      candidate.has_right_decor else {
+      return @talcparsec.fail("relation arrow")
+    }
+    @talcparsec.pure(candidate.text)
+  })
+}
+
+///|
+fn relation_separator_parser() -> @talcparsec.StringParser[String] {
+  let regular = inline_spaces()
+    .then(relation_non_single_arrow_parser())
+    .skip(inline_spaces())
+  let single = inline_space1()
+    .then(@talcparsec.one_of("-=.").string_map(char => char.to_string()))
+    .skip(inline_space1())
+  regular.attempt().or(single)
+}
+
+///|
+fn relation_color_parser() -> @talcparsec.StringParser[RelationMetadataSyntax] {
+  color_value_parser("relation color").map(value => RelationColor(value))
+}
+
+///|
+fn relation_url_parser() -> @talcparsec.StringParser[RelationMetadataSyntax] {
+  url_value_parser().map(value => RelationUrl(value))
+}
+
+///|
+fn relation_stereotype_parser() -> @talcparsec.StringParser[
+  RelationMetadataSyntax,
+] {
+  stereotype_value_parser().map(value => RelationStereotype(value))
+}
+
+///|
+fn relation_metadata_parser() -> @talcparsec.StringParser[
+  RelationMetadataSyntax,
+] {
+  inline_space1().then(
+    @talcparsec.choice([
+      relation_color_parser().attempt(),
+      relation_url_parser().attempt(),
+      relation_stereotype_parser(),
+    ]),
+  )
+}
+
+///|
+fn relation_label_start_parser() -> @talcparsec.StringParser[Unit] {
+  inline_spaces()
+  .then(@talcparsec.char(':'))
+  .skip(@talcparsec.char(':').not_followed_by("qualified name"))
+  .map(_ => ())
+}
+
+///|
+fn right_relation_syntax_parser() -> @talcparsec.StringParser[
+  (RelationEndpointSyntax, Array[RelationMetadataSyntax], String?),
+] {
+  right_relation_endpoint_parser().bind(endpoint => {
+    relation_metadata_parser()
+    .attempt()
+    .many()
+    .bind(metadata => {
+      relation_label_start_parser()
+      .then(
+        @talcparsec.many_chars(@talcparsec.satisfy("relation label", _ => true)),
+      )
+      .optional()
+      .map(label => {
+        let label = label.map(value => value.trim().to_owned())
+        (endpoint, metadata, label)
+      })
+    })
+  })
+}
+
+///|
+fn relation_metadata_from(
+  metadata : Array[RelationMetadataSyntax],
+) -> (String?, String?, String?) {
+  let mut color = None
+  let mut url = None
+  let mut stereotype = None
+  for item in metadata {
+    match item {
+      RelationColor(value) => color = Some(value)
+      RelationUrl(value) => url = Some(value)
+      RelationStereotype(value) => stereotype = Some(value)
+    }
+  }
+  (color, url, stereotype)
+}
+
+///|
+fn left_relation_syntax_parser() -> @talcparsec.StringParser[
+  (String?, RelationEndpointSyntax),
+] {
+  let weight = @talcparsec.char('@')
+    .then(
+      @talcparsec.many_chars1(
+        @talcparsec.satisfy("relation weight", char => !char.is_whitespace()),
+      ),
+    )
+    .skip(inline_space1())
+    .attempt()
+    .optional()
+  weight.bind(weight => {
+    left_relation_endpoint_parser().map(endpoint => (weight, endpoint))
+  })
+}
+
+///|
+fn relation_line_parser() -> @talcparsec.StringParser[RelationLineSyntax] {
+  left_relation_syntax_parser()
+  .bind(left_syntax => {
+    let (weight, left) = left_syntax
+    relation_separator_parser().bind(arrow => {
+      right_relation_syntax_parser().map(right_syntax => {
+        let (right, metadata, label) = right_syntax
+        let (color, url, stereotype) = relation_metadata_from(metadata)
+        { weight, left, arrow, right, label, color, url, stereotype }
+      })
+    })
+  })
+  .skip(@talcparsec.eof())
+}
+
+///|
+fn parse_relation_line(line : String) -> RelationLineSyntax? {
+  match relation_line_parser().parse(@talcparsec.Input::new(line)) {
+    Ok(relation) => Some(relation)
+    Err(_) => None
+  }
+}

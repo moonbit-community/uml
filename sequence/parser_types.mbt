@@ -284,38 +284,6 @@ fn is_ident_char(char : Char) -> Bool {
 }
 
 ///|
-fn is_arrow_char(char : Char) -> Bool {
-  char == '-' ||
-  char == '<' ||
-  char == '>' ||
-  char == 'o' ||
-  char == 'x' ||
-  char == '\\' ||
-  char == '/' ||
-  char == '[' ||
-  char == ']' ||
-  char == '#' ||
-  char == '_' ||
-  char == '(' ||
-  char == ')'
-}
-
-///|
-fn Source::try_color(self : Source) -> String? {
-  self.try_parsec(color_parser())
-}
-
-///|
-fn Source::try_anchor(self : Source) -> String? {
-  self.try_parsec(anchor_parser())
-}
-
-///|
-fn Source::try_quoted_string(self : Source) -> String? {
-  self.try_parsec(quoted_string_parser())
-}
-
-///|
 fn ArrowHead::has_direction(self : ArrowHead) -> Bool {
   !(self is NoneHead)
 }

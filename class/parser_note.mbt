@@ -1,312 +1,115 @@
 ///|
-priv struct SpecialNoteHeader {
-  target : String
-  position : NotePosition
-  target_kind : NoteTargetKind
-  relation_index : Int?
-  member_name : String?
-  code : String?
-  color : String?
-  url : String?
-  stereotype : String?
-  tags : Array[String]
-  braced : Bool
-}
-
-///|
-fn note_header_metadata(
-  raw : String,
-) -> (String, String?, String?, String?, Array[String], Bool) {
-  let braced = raw.trim().has_suffix("{")
-  let raw = if braced {
-    raw.trim()[0:raw.trim().length() - 1].trim().to_owned()
-  } else {
-    raw.trim().to_owned()
-  }
-  let tags = declaration_tags(raw)
-  let (target, color, url, stereotype) = relation_suffix(raw)
-  let target = match @core.find_unquoted_literal(target, " $") {
-    Some(index) => target[0:index].trim().to_owned()
-    None => target
-  }
-  (target, color, url, stereotype, tags, braced)
-}
-
-///|
-fn parse_link_note_header(line : String) -> (SpecialNoteHeader, String?)? {
-  let colon = find_substring(line, ":")
-  let header = match colon {
-    Some(index) => line[0:index].trim().to_owned()
-    None => line.trim().to_owned()
-  }
-  let text = match colon {
-    Some(index) => Some(line[index + 1:].trim().to_owned())
-    None => None
-  }
-  let tokens = words(header)
-  guard tokens.length() >= 3 && tokens[0].to_lower() == "note" else {
-    return None
-  }
-  let (position, connector_index) = match note_position(tokens[1]) {
-    Some(position) => (position, 2)
-    None => (Bottom, 1)
-  }
-  guard connector_index + 1 < tokens.length() &&
-    (
-      tokens[connector_index].to_lower() == "on" ||
-      tokens[connector_index].to_lower() == "of"
-    ) &&
-    tokens[connector_index + 1].to_lower() == "link" else {
-    return None
-  }
-  let metadata = tokens[connector_index + 2:].join(" ")
-  let (_, color, url, stereotype, tags, braced) = note_header_metadata(metadata)
-  Some(
-    (
-      {
-        target: "",
-        position,
-        target_kind: LinkNote,
-        relation_index: None,
-        member_name: None,
-        code: None,
-        color,
-        url,
-        stereotype,
-        tags,
-        braced,
-      },
-      text,
-    ),
-  )
-}
-
-///|
-fn parse_member_tip_header(line : String) -> SpecialNoteHeader? {
-  let tokens = words(line)
-  guard tokens.length() >= 4 && tokens[0].to_lower() == "note" else {
-    return None
-  }
-  guard note_position(tokens[1]) is Some(position) &&
-    (position is Left || position is Right) &&
-    tokens[2].to_lower() == "of" else {
-    return None
-  }
-  let rest = tokens[3:].join(" ")
-  guard find_substring(rest, "::") is Some(separator) else { return None }
-  let entity = normalize_name(rest[0:separator].trim().to_owned())
-  let (member_name, color, url, stereotype, tags, braced) = note_header_metadata(
-    rest[separator + 2:].to_owned(),
-  )
-  guard entity.length() > 0 && member_name.length() > 0 else { return None }
-  Some({
-    target: entity,
-    position,
-    target_kind: MemberTip,
-    relation_index: None,
-    member_name: Some(normalize_name(member_name)),
-    code: None,
-    color,
-    url,
-    stereotype,
-    tags,
-    braced,
-  })
-}
-
-///|
-fn parse_entity_note_header(line : String) -> SpecialNoteHeader? {
-  guard find_substring(line, " : ") is None else { return None }
-  let tokens = words(line)
-  guard tokens.length() >= 2 && tokens[0].to_lower() == "note" else {
-    return None
-  }
-  guard note_position(tokens[1]) is Some(position) else { return None }
-  let metadata = if tokens.length() >= 4 && tokens[2].to_lower() == "of" {
-    tokens[3:].join(" ")
-  } else {
-    tokens[2:].join(" ")
-  }
-  let (target, color, url, stereotype, tags, braced) = note_header_metadata(
-    metadata,
-  )
-  guard tokens.length() == 2 ||
-    tokens[2].to_lower() != "of" ||
-    target.length() > 0 else {
-    return None
-  }
-  Some({
-    target,
-    position,
-    target_kind: EntityNote,
-    relation_index: None,
-    member_name: None,
-    code: None,
-    color,
-    url,
-    stereotype,
-    tags,
-    braced,
-  })
-}
-
-///|
-fn parse_named_note(line : String) -> (SpecialNoteHeader, String?)? {
-  let lower = line.to_lower()
-  guard lower.has_prefix("note ") else { return None }
-  if lower.has_prefix("note as ") {
-    let (code, color, url, stereotype, tags, braced) = note_header_metadata(
-      line[8:].to_owned(),
-    )
-    guard code.length() > 0 else { return None }
-    return Some(
-      (
-        {
-          target: code,
-          position: Right,
-          target_kind: FloatingNote,
-          relation_index: None,
-          member_name: None,
-          code: Some(code),
-          color,
-          url,
-          stereotype,
-          tags,
-          braced,
-        },
-        None,
-      ),
-    )
-  }
-  guard parse_named_note_text(line[5:].to_owned()) is Some((text, metadata)) else {
-    return None
-  }
-  let (code, color, url, stereotype, tags, braced) = note_header_metadata(
-    metadata,
-  )
-  guard code.length() > 0 else { return None }
-  Some(
-    (
-      {
-        target: code,
-        position: Right,
-        target_kind: FloatingNote,
-        relation_index: None,
-        member_name: None,
-        code: Some(code),
-        color,
-        url,
-        stereotype,
-        tags,
-        braced,
-      },
-      Some(text),
-    ),
-  )
-}
-
-///|
-fn Parser::push_special_note(
+fn Parser::push_note_syntax(
   self : Parser,
-  header : SpecialNoteHeader,
+  syntax : NoteLineSyntax,
   text : String,
 ) -> Unit raise ParseError {
-  let mut header = header
-  match header.target_kind {
-    LinkNote => {
+  let mut target = ""
+  let mut target_kind = EntityNote
+  let mut relation_index = None
+  let mut member_name = None
+  let mut code = None
+  match syntax.target {
+    NoteLinkTarget => {
       guard !self.relations.is_empty() else {
         self.raise_parse_error("no link defined")
       }
-      header = { ..header, relation_index: Some(self.relations.length() - 1) }
+      target_kind = LinkNote
+      relation_index = Some(self.relations.length() - 1)
     }
-    MemberTip => {
-      let target = self.resolve(header.target)
-      guard self.entities.any(entity => entity.qualified_code == target) else {
+    NoteMemberTarget(entity~, entry~) => {
+      target = self.resolve(entity)
+      guard self.entities.any(item => item.qualified_code == target) else {
         self.raise_parse_error("nothing to note to")
       }
-      header = { ..header, target, }
+      target_kind = MemberTip
+      member_name = Some(entry)
     }
-    EntityNote => {
-      let target = if header.target.length() == 0 {
-        match self.last_entity {
-          Some(target) => target
-          None => {
-            self.raise_parse_error("nothing to note to")
-            ""
+    NoteEntityTarget(entity) =>
+      target = match entity {
+        Some(value) => self.ensure_entity(value)
+        None =>
+          match self.last_entity {
+            Some(value) => value
+            None => {
+              self.raise_parse_error("nothing to note to")
+              ""
+            }
           }
-        }
-      } else {
-        self.ensure_entity(header.target)
       }
-      header = { ..header, target, }
-    }
-    FloatingNote => {
-      let existing = self.resolve(header.target)
-      guard !self.entities.any(entity => entity.qualified_code == existing) else {
-        self.raise_parse_error("note already created: \{header.target}")
+    NoteFloatingTarget(note_code) => {
+      let existing = self.resolve(note_code)
+      guard !self.entities.any(item => item.qualified_code == existing) else {
+        self.raise_parse_error("note already created: \{note_code}")
       }
-      let target = self.ensure_entity_as(header.target, NamedNote)
-      header = { ..header, target, code: Some(target) }
+      target = self.ensure_entity_as(note_code, NamedNote)
+      target_kind = FloatingNote
+      code = Some(target)
     }
   }
   self.notes.push({
-    target: header.target,
-    position: header.position,
+    target,
+    position: syntax.position,
     text,
-    target_kind: header.target_kind,
-    relation_index: header.relation_index,
-    member_name: header.member_name,
-    code: header.code,
-    color: header.color,
-    url: header.url,
-    stereotype: header.stereotype,
-    tags: header.tags,
+    target_kind,
+    relation_index,
+    member_name,
+    code,
+    color: syntax.metadata.color,
+    url: syntax.metadata.url,
+    stereotype: syntax.metadata.stereotype,
+    tags: syntax.metadata.tags,
   })
 }
 
 ///|
-fn Parser::consume_special_note(
+fn Parser::consume_note_syntax(
   self : Parser,
-  header : SpecialNoteHeader,
+  syntax : NoteLineSyntax,
 ) -> Unit raise ParseError {
-  let text = StringBuilder()
-  let mut first = true
-  self.index += 1
-  while self.index < self.lines.length() {
-    let line = self.lines[self.index]
-    let terminator = strip_comment(line).to_lower()
-    if terminator == "end note" ||
-      terminator == "endnote" ||
-      (header.braced && terminator == "}") {
-      guard !first else { self.raise_parse_error("no note defined") }
-      self.push_special_note(header, text.to_string())
-      return
+  match syntax.content {
+    NoteInline(text) => self.push_note_syntax(syntax, text)
+    NoteBlock => {
+      let text = StringBuilder()
+      let mut first = true
+      self.index += 1
+      while self.index < self.lines.length() {
+        let line = self.lines[self.index]
+        let terminator = strip_comment(line).to_lower()
+        if terminator == "end note" ||
+          terminator == "endnote" ||
+          (syntax.metadata.braced && terminator == "}") {
+          guard !first else { self.raise_parse_error("no note defined") }
+          self.push_note_syntax(syntax, text.to_string())
+          return
+        }
+        if !first {
+          text.write_char('\n')
+        }
+        text.write_string(line)
+        first = false
+        self.index += 1
+      }
+      self.raise_parse_error("unclosed note")
     }
-    if !first {
-      text.write_char('\n')
-    }
-    text.write_string(line)
-    first = false
-    self.index += 1
   }
-  self.raise_parse_error("unclosed note")
 }
 
 ///|
-fn parse_link_constraint(
-  line : String,
-  relation_count : Int,
-) -> LinkConstraint? {
-  let lower = line.to_lower()
-  guard lower.has_prefix("constraint on links") else { return None }
-  guard find_substring(line, ":") is Some(separator) else { return None }
-  guard relation_count >= 2 else { return None }
-  let header = line[0:separator].trim().to_owned()
-  let color = declaration_color(header)
-  Some({
-    first_relation: relation_count - 2,
-    second_relation: relation_count - 1,
-    text: line[separator + 1:].trim().to_owned(),
-    color,
-  })
+fn Parser::apply_annotation_syntax(
+  self : Parser,
+  syntax : ClassAnnotationLineSyntax,
+) -> Unit raise ParseError {
+  match syntax {
+    ParsedClassNote(note) => self.consume_note_syntax(note)
+    ParsedLinkConstraint(constraint) =>
+      if self.relations.length() >= 2 {
+        self.constraints.push({
+          first_relation: self.relations.length() - 2,
+          second_relation: self.relations.length() - 1,
+          text: constraint.text,
+          color: constraint.color,
+        })
+      }
+  }
 }

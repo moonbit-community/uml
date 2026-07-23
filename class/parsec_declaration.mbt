@@ -28,20 +28,3 @@ fn generic_content_parser() -> @talcparsec.StringParser[String] {
     .map(content => "<" + content + ">")
   nested.attempt().or(plain).many().map(parts => parts.join(""))
 }
-
-///|
-fn generic_split_parser() -> @talcparsec.StringParser[(String, String)] {
-  text_before_parser("<").bind(prefix => {
-    generic_content_parser()
-    .skip(@talcparsec.char('>'))
-    .map(generic => (prefix, generic))
-  })
-}
-
-///|
-fn parse_generic_split(body : String) -> (String, String)? {
-  match generic_split_parser().run(@talcparsec.Input::new(body)) {
-    Ok((result, _)) => Some(result)
-    Err(_) => None
-  }
-}

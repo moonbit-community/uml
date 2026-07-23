@@ -1,43 +1,8 @@
 ///|
-fn ParseCtx::try_event(
-  self : ParseCtx,
-  parsers : Array[(Source) -> Event?],
-) -> Bool raise ParseError {
-  for parser in parsers {
-    let start = self.source.save()
-    match parser(self.source) {
-      Some(event) if self.source.finish_command(start) => {
-        self.push_event(event)
-        return true
-      }
-      Some(_) | None => self.source.restore(start)
-    }
-  }
-  false
-}
-
-///|
-fn ParseCtx::try_participant_declaration(
-  self : ParseCtx,
-) -> Bool raise ParseError {
-  let start = self.source.save()
-  match try_participant_decl(self.source) {
-    Some(declaration) if self.source.finish_command(start) => {
-      self.declare_participant(declaration)
-      true
-    }
-    Some(_) | None => {
-      self.source.restore(start)
-      false
-    }
-  }
-}
-
-///|
 fn ParseCtx::try_style_directive(self : ParseCtx) -> Bool raise ParseError {
-  let start = self.source.save()
-  let line = self.source.collect_line()
+  let line = self.source.current_line()
   if line.trim().to_lower() == "skinparam {" {
+    self.source.skip_line()
     while !self.source.eof() {
       let property = self.source.collect_line()
       if property.trim() == "}" {
@@ -52,13 +17,11 @@ fn ParseCtx::try_style_directive(self : ParseCtx) -> Bool raise ParseError {
   }
   match @core.parse_style_directive(line) {
     Some(directive) => {
+      self.source.skip_line()
       self.style.apply(directive)
       true
     }
-    None => {
-      self.source.restore(start)
-      false
-    }
+    None => false
   }
 }
 
@@ -81,16 +44,12 @@ fn diagram_options(events : Array[Event]) -> (Autonumber?, Bool, Bool) {
 
 ///|
 fn skip_ignored_line(source : Source) -> Bool {
-  match source.peek() {
-    Some('\n') => {
-      let _ = source.advance()
-      true
-    }
-    Some('\'') => {
-      source.skip_line()
-      true
-    }
-    _ => false
+  let line = source.current_line().trim()
+  if line.length() == 0 || line.has_prefix("'") {
+    source.skip_line()
+    true
+  } else {
+    false
   }
 }
 
@@ -104,43 +63,32 @@ fn skip_ignored_line(source : Source) -> Bool {
 /// Returns a `SequenceDiagram` containing the parsed participants and events.
 pub fn parse(input : String) -> SequenceDiagram raise ParseError {
   let ctx = ParseCtx::new(input)
-  let parsers : Array[(Source) -> Event?] = [
-    arrow, try_exo_arrow, try_note, try_box, try_grouping, try_activate, try_deactivate,
-    try_destroy, try_return, try_divider, try_delay, try_hspace, try_newpage, try_reference,
-    try_autonumber, try_autoactivate, try_footbox, try_hide_unlinked, try_url, try_ignore_newpage,
-    try_auto_newpage, try_link_anchor,
-  ]
 
-  ctx.source.skip_whitespace()
-  if ctx.source.try_keyword("@startuml") {
+  if ctx.source.current_line().trim().equal_ignore_ascii_case("@startuml") {
     ctx.source.skip_line()
   }
 
   while !ctx.source.eof() {
-    ctx.source.skip_whitespace()
-    guard !ctx.source.eof() else { break }
     guard !skip_ignored_line(ctx.source) else { continue }
-    if ctx.source.try_keyword("@enduml") {
+    if ctx.source.current_line().trim().equal_ignore_ascii_case("@enduml") {
       ctx.source.skip_line()
       break
-    }
-    if try_title(ctx.source) {
-      continue
     }
     if ctx.try_style_directive() {
       continue
     }
-    let directive_start = ctx.source.save()
-    let directive = ctx.source.collect_line()
+    let directive = ctx.source.current_line()
     if @core.is_preprocessor_directive(directive) {
+      ctx.source.skip_line()
       continue
     }
-    ctx.source.restore(directive_start)
-    if ctx.try_event(parsers) || ctx.try_participant_declaration() {
-      continue
+    let line = ctx.source.current_line().trim().to_owned()
+    guard parse_sequence_line(line) is Some(syntax) else {
+      let diagnostic = ctx.source.diagnostic(ctx.source.current_line())
+      raise SyntaxError(diagnostic.line_number(), diagnostic.message)
     }
-    let diagnostic = ctx.source.diagnostic(ctx.source.current_line())
-    raise SyntaxError(diagnostic.line_number(), diagnostic.message)
+    ctx.apply_line_syntax(syntax)
+    continue
   }
 
   ctx.ensure_no_pending_create()

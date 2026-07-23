@@ -200,76 +200,6 @@ fn declaration_color(body : String) -> String? {
 }
 
 ///|
-fn declaration_line(body : String) -> (String?, String?) {
-  guard @core.find_unquoted_literal(body, "##") is Some(start) else {
-    return (None, None)
-  }
-  let suffix = body[start + 2:].trim().to_owned()
-  let (style, color_body) = if suffix.has_prefix("[") &&
-    find_substring(suffix, "]") is Some(end) {
-    (Some(suffix[1:end].trim().to_owned()), suffix[end + 1:].trim().to_owned())
-  } else {
-    (None, suffix)
-  }
-  let color = if color_body.length() == 0 {
-    None
-  } else {
-    match find_substring(color_body, " ") {
-      Some(end) => Some(color_body[0:end].to_owned())
-      None => Some(color_body)
-    }
-  }
-  (style, color)
-}
-
-///|
-fn declaration_tags(body : String) -> Array[String] {
-  let result : Array[String] = []
-  for token in words(body) {
-    if token.has_prefix("$") && token.length() > 1 {
-      result.push(token[1:].to_owned())
-    }
-  }
-  result
-}
-
-///|
-fn extract_generic(body : String) -> (String, String?) {
-  match parse_generic_split(body) {
-    Some((prefix, generic)) => (prefix.trim().to_owned(), Some(generic))
-    None => (body, None)
-  }
-}
-
-///|
-fn tail_targets(
-  body : String,
-  keyword : String,
-  following_keyword : String?,
-) -> Array[String] {
-  guard @core.find_unquoted_literal(body.to_lower(), keyword) is Some(start) else {
-    return []
-  }
-  let tail = body[start + keyword.length():].trim().to_owned()
-  let targets = match following_keyword {
-    Some(next) =>
-      match @core.find_unquoted_literal(tail.to_lower(), next) {
-        Some(end) => tail[0:end].trim().to_owned()
-        None => tail
-      }
-    None => tail
-  }
-  let result : Array[String] = []
-  for raw in @core.split_unquoted(targets, ',') {
-    let target = normalize_name(raw)
-    if target.length() > 0 {
-      result.push(target)
-    }
-  }
-  result
-}
-
-///|
 fn name_and_code(body : String) -> (String, String) {
   match @core.parse_alias_identifier(body) {
     Some((name, alternate)) => {
@@ -289,168 +219,8 @@ fn name_and_code(body : String) -> (String, String) {
 }
 
 ///|
-fn declaration_name_code_generic(body : String) -> (String, String, String?) {
-  match @core.find_unquoted_literal(body, " as ") {
-    Some(separator) => {
-      let (name, name_generic) = extract_generic(
-        body[0:separator].trim().to_owned(),
-      )
-      let (alternate, alternate_generic) = extract_generic(
-        body[separator + 4:].trim().to_owned(),
-      )
-      let generic = match name_generic {
-        Some(value) => Some(value)
-        None => alternate_generic
-      }
-      let (display, code) = name_and_code(name + " as " + alternate)
-      (display, code, generic)
-    }
-    None => {
-      let (name, generic) = extract_generic(body)
-      let name = normalize_name(name)
-      (name, name, generic)
-    }
-  }
-}
-
-///|
 fn parse_declaration(line : String) -> Declaration? {
-  let (visibility, line) = leading_visibility(line)
-  if line.has_prefix("<>") {
-    let code = normalize_name(line[2:].trim().to_owned())
-    guard code.length() > 0 else { return None }
-    return Some({
-      kind: Diamond,
-      code,
-      display: "",
-      visibility,
-      is_static: false,
-      generic: None,
-      stereotype: None,
-      extends: [],
-      implements: [],
-      url: None,
-      color: None,
-      line_color: None,
-      line_style: None,
-      tags: [],
-    })
-  }
-  if line.has_prefix("()") {
-    let mut body = line[2:].trim().to_owned()
-    if body.has_prefix("#") {
-      let tokens = words(body)
-      if tokens.length() > 1 {
-        body = tokens[1:].to_owned().join(" ")
-      }
-    }
-    let color = declaration_color(body)
-    let (line_style, line_color) = declaration_line(body)
-    let tags = declaration_tags(body)
-    if @core.find_unquoted_literal(body, " #") is Some(index) {
-      body = body[0:index].trim().to_owned()
-    }
-    let (_, stereotype) = extract_stereotype(body)
-    let url = match @core.extract_url(body) {
-      Some(value) => Some(value.target.target)
-      None => None
-    }
-    let mut name_end = body.length()
-    name_end = earlier(name_end, @core.find_unquoted_literal(body, " <<"))
-    name_end = earlier(name_end, @core.find_unquoted_literal(body, " [["))
-    name_end = earlier(name_end, @core.find_unquoted_literal(body, " $"))
-    body = body[0:name_end].trim().to_owned()
-    let (display, code) = name_and_code(body)
-    guard code.length() > 0 else { return None }
-    return Some({
-      kind: Interface,
-      code,
-      display,
-      visibility,
-      is_static: false,
-      generic: None,
-      stereotype,
-      extends: [],
-      implements: [],
-      url,
-      color,
-      line_color,
-      line_style,
-      tags,
-    })
-  }
-  let mut parts = words(line)
-  guard parts.length() > 1 else { return None }
-  let mut is_static = false
-  let kind = if parts[0].to_lower().has_prefix("mix_") && parts.length() > 1 {
-    let symbol = parts[0][4:].to_owned()
-    parts[0] = symbol
-    guard declaration_kind(parts[0]) is Some(kind) else { return None }
-    kind
-  } else if parts[0].to_lower() == "static" && parts.length() > 2 {
-    is_static = true
-    parts = parts[1:].to_owned()
-    guard parts[0].equal_ignore_ascii_case("class") else { return None }
-    Class
-  } else if parts[0].to_lower() == "abstract" && parts.length() > 1 {
-    if parts.length() > 2 {
-      guard parts[1].equal_ignore_ascii_case("class") else { return None }
-      parts = parts[1:].to_owned()
-    }
-    AbstractClass
-  } else {
-    guard declaration_kind(parts[0]) is Some(kind) else { return None }
-    kind
-  }
-  let mut body = parts[1:].join(" ").trim().to_owned()
-  if body.has_suffix("{}") {
-    body = body[0:body.length() - 2].trim().to_owned()
-  } else if body.has_suffix("{") {
-    body = body[0:body.length() - 1].trim().to_owned()
-  }
-  let extends = tail_targets(body, "extends ", Some(" implements "))
-  let implements = tail_targets(body, "implements ", None)
-  let color = declaration_color(body)
-  let (line_style, line_color) = declaration_line(body)
-  let tags = declaration_tags(body)
-  for keyword in [" extends ", " implements ", " #", " ##"] {
-    if @core.find_unquoted_literal(body, keyword) is Some(index) {
-      body = body[0:index].trim().to_owned()
-    }
-  }
-  let (_, stereotype) = extract_stereotype(body)
-  let url = match @core.extract_url(body) {
-    Some(value) => Some(value.target.target)
-    None => None
-  }
-  let mut name_end = body.length()
-  name_end = earlier(name_end, @core.find_unquoted_literal(body, " <<"))
-  name_end = earlier(name_end, @core.find_unquoted_literal(body, " [["))
-  name_end = earlier(name_end, @core.find_unquoted_literal(body, " $"))
-  let (display, code, generic) = declaration_name_code_generic(
-    body[0:name_end].trim().to_owned(),
-  )
-  // PlantUML allows the visual symbol to be encoded directly in the name,
-  // for example `usecase (Login)`, `actor :User:`, and `component [API]`.
-  // The encoded delimiters are presentation syntax, not part of the id.
-  let (kind, display, code) = shaped_declaration(kind, display, code)
-  guard code.length() > 0 else { return None }
-  Some({
-    kind,
-    code,
-    display,
-    visibility,
-    is_static,
-    generic,
-    stereotype,
-    extends,
-    implements,
-    url,
-    color,
-    line_color,
-    line_style,
-    tags,
-  })
+  parse_declaration_line(line)
 }
 
 ///|
@@ -911,36 +681,6 @@ fn find_substring(haystack : String, needle : String) -> Int? {
 }
 
 ///|
-fn relation_arrow(line : String) -> (String, Int, Int)? {
-  let chars = line.to_array()
-  guard parse_relation_scan(line) is Some(tokens) else { return None }
-  let mut start = 0
-  for token in tokens {
-    match token {
-      RelationText(text) => start += text.length()
-      RelationCandidate(candidate) => {
-        let body_start = start + candidate.left_length
-        let stroke_end = body_start + candidate.first_length
-        let separated_single = candidate.first_length == 1 &&
-          body_start > 0 &&
-          stroke_end < chars.length() &&
-          chars[body_start - 1].is_whitespace() &&
-          chars[stroke_end].is_whitespace()
-        if candidate.first_length >= 2 ||
-          candidate.has_direction ||
-          candidate.has_left_decor ||
-          candidate.has_right_decor ||
-          separated_single {
-          return Some((candidate.text, start, start + candidate.text.length()))
-        }
-        start += candidate.text.length()
-      }
-    }
-  }
-  None
-}
-
-///|
 fn left_relation_end(arrow : String) -> RelationEnd {
   if arrow.has_prefix("<|:") {
     DefinedBy
@@ -1113,79 +853,6 @@ fn earlier(current : Int, candidate : Int?) -> Int {
 }
 
 ///|
-fn relation_suffix(raw : String) -> (String, String?, String?, String?) {
-  let color_start = if raw.has_prefix("#") {
-    Some(0)
-  } else {
-    find_substring(raw, " #")
-  }
-  let url_start = if raw.has_prefix("[[") {
-    Some(0)
-  } else {
-    find_substring(raw, " [[")
-  }
-  let stereotype_start = if raw.has_prefix("<<") {
-    Some(0)
-  } else {
-    find_substring(raw, " <<")
-  }
-  let mut target_end = raw.length()
-  target_end = earlier(target_end, color_start)
-  target_end = earlier(target_end, url_start)
-  target_end = earlier(target_end, stereotype_start)
-  let target = raw[0:target_end].trim().to_owned()
-  let color = match color_start {
-    Some(start) => {
-      let offset = if start == 0 { 1 } else { start + 2 }
-      let suffix = raw[offset:].trim().to_owned()
-      let value = match find_substring(suffix, " ") {
-        Some(end) => suffix[0:end].to_owned()
-        None => suffix
-      }
-      Some(value)
-    }
-    None => None
-  }
-  let url = match url_start {
-    Some(start) => {
-      let offset = if start == 0 { 0 } else { start + 1 }
-      match @core.extract_url(raw[offset:].to_owned()) {
-        Some(value) => Some(value.target.target)
-        None => None
-      }
-    }
-    None => None
-  }
-  let stereotype = match stereotype_start {
-    Some(start) => {
-      let offset = if start == 0 { 0 } else { start + 1 }
-      let (_, stereotype) = extract_stereotype(raw[offset:].to_owned())
-      stereotype
-    }
-    None => None
-  }
-  (target, color, url, stereotype)
-}
-
-///|
-fn relation_label_separator(raw : String) -> Int? {
-  parse_relation_label_prefix(raw)
-}
-
-///|
-fn parse_relation_couple(raw : String) -> (String, String)? {
-  let value = raw.trim()
-  guard value.has_prefix("(") && value.has_suffix(")") else { return None }
-  let content = value[1:value.length() - 1].trim().to_owned()
-  let parts = @core.split_unquoted(content, ',')
-  guard parts.length() == 2 else { return None }
-  let left = normalize_name(parts[0])
-  let right = normalize_name(parts[1])
-  guard left.length() > 0 && right.length() > 0 else { return None }
-  Some((left, right))
-}
-
-///|
 fn note_position(word : String) -> NotePosition? {
   match word.to_lower() {
     "left" => Some(Left)
@@ -1194,99 +861,6 @@ fn note_position(word : String) -> NotePosition? {
     "bottom" => Some(Bottom)
     _ => None
   }
-}
-
-///|
-fn parse_single_line_note(line : String) -> Note? {
-  let tokens = words(line)
-  guard tokens.length() >= 3 && tokens[0].to_lower() == "note" else {
-    return None
-  }
-  guard note_position(tokens[1]) is Some(position) else { return None }
-  let (target_prefix, rest) = if tokens[2].to_lower() == "of" {
-    guard tokens.length() >= 4 else { return None }
-    (true, tokens[3:].join(" "))
-  } else {
-    (false, tokens[2:].join(" "))
-  }
-  guard find_substring(rest, ":") is Some(separator) else { return None }
-  let (metadata, color, url, stereotype, tags, _) = note_header_metadata(
-    rest[0:separator].trim().to_owned(),
-  )
-  let target = if target_prefix { normalize_name(metadata) } else { "" }
-  let text = rest[separator + 1:].trim().to_owned()
-  guard !target_prefix || target.length() > 0 else { return None }
-  Some({
-    target,
-    position,
-    text,
-    target_kind: EntityNote,
-    relation_index: None,
-    member_name: None,
-    code: None,
-    color,
-    url,
-    stereotype,
-    tags,
-  })
-}
-
-///|
-fn parse_multiline_note_header(line : String) -> (String, NotePosition)? {
-  let tokens = words(line)
-  guard tokens.length() >= 2 && tokens[0].to_lower() == "note" else {
-    return None
-  }
-  guard note_position(tokens[1]) is Some(position) else { return None }
-  if tokens.length() == 2 {
-    Some(("", position))
-  } else if tokens.length() == 4 && tokens[2].to_lower() == "of" {
-    let target = normalize_name(tokens[3])
-    if target.length() == 0 {
-      None
-    } else {
-      Some((target, position))
-    }
-  } else {
-    None
-  }
-}
-
-///|
-fn Parser::consume_multiline_note(
-  self : Parser,
-  target : String,
-  position : NotePosition,
-) -> Unit raise ParseError {
-  let text = StringBuilder()
-  let mut first = true
-  self.index += 1
-  while self.index < self.lines.length() {
-    let line = self.lines[self.index]
-    if strip_comment(line).to_lower() == "end note" {
-      self.notes.push({
-        target,
-        position,
-        text: text.to_string(),
-        target_kind: EntityNote,
-        relation_index: None,
-        member_name: None,
-        code: None,
-        color: None,
-        url: None,
-        stereotype: None,
-        tags: [],
-      })
-      return
-    }
-    if !first {
-      text.write_char('\n')
-    }
-    text.write_string(line)
-    first = false
-    self.index += 1
-  }
-  self.raise_parse_error("unclosed note")
 }
 
 ///|
@@ -1413,145 +987,88 @@ fn Parser::consume_common_block(
 }
 
 ///|
-fn endpoint(raw : String, cardinality_before : Bool) -> (String, String?) {
-  match parse_endpoint_parts(raw, cardinality_before) {
-    Some((code, cardinality)) => (normalize_name(code), cardinality)
-    None => (normalize_name(raw), None)
-  }
-}
-
-///|
-fn split_role(raw : String, role_after_entity : Bool) -> (String, String?) {
-  let parser = if role_after_entity {
-    left_role_parser()
-  } else {
-    right_role_parser()
-  }
-  match parser.parse(@talcparsec.Input::new(raw)) {
-    Ok((entity, role)) if entity.length() > 0 && role.length() > 0 =>
-      (entity, Some(normalize_name(role)))
-    _ => (raw, None)
-  }
-}
-
-///|
-fn split_qualifier(
-  raw : String,
-  qualifier_after_entity : Bool,
+fn Parser::resolve_relation_name(
+  self : Parser,
+  syntax : RelationNameSyntax,
 ) -> (String, String?) {
-  match
-    qualifier_parser(qualifier_after_entity).parse(@talcparsec.Input::new(raw)) {
-    Ok((entity, qualifier)) if entity.length() > 0 && qualifier.length() > 0 =>
-      (entity, Some(qualifier))
-    _ => (raw, None)
+  let full = normalize_name(syntax.name)
+  guard syntax.port_base is Some(base) && syntax.port_value is Some(port) else {
+    return (full, None)
   }
-}
-
-///|
-fn Parser::split_port(self : Parser, raw : String) -> (String, String?) {
-  guard port_parser().parse(@talcparsec.Input::new(raw)) is Ok((base, port)) &&
-    base.length() > 0 &&
-    port.length() > 0 else {
-    return (raw, None)
-  }
-  // `A::B` is a qualified entity name when it already exists. Otherwise,
-  // PlantUML treats the suffix as a port/member id on entity `A`.
-  let full = normalize_name(raw)
+  let base = normalize_name(base)
   let base_code = self.resolve(base)
   if self.entities.any(entity => entity.qualified_code == full) {
-    (raw, None)
+    (full, None)
   } else if self.entities.any(entity => entity.qualified_code == base_code) {
     (base, Some(port))
   } else {
-    (raw, None)
+    (full, None)
   }
 }
 
 ///|
-fn Parser::parse_relation(self : Parser, line : String) -> Bool {
-  guard relation_arrow(line) is Some((arrow, start, end)) else { false }
-  let mut left_raw = line[0:start].trim().to_owned()
-  let weight = if left_raw.has_prefix("@") &&
-    find_substring(left_raw, " ") is Some(separator) {
-    let value = left_raw[1:separator].to_owned()
-    left_raw = left_raw[separator + 1:].trim().to_owned()
-    Some(value)
-  } else {
-    None
-  }
-  let right_raw = line[end:].trim()
-  guard left_raw.length() > 0 && right_raw.length() > 0 else { false }
-  let label_index = relation_label_separator(right_raw.to_owned())
-  let label = if label_index is Some(index) {
-    Some(right_raw[index + 1:].trim().to_owned())
-  } else {
-    None
-  }
-  let right_target = match label_index {
-    Some(index) => right_raw[0:index].trim().to_owned()
-    None => right_raw.to_owned()
-  }
-  let (right_target, color, url, stereotype) = relation_suffix(right_target)
-  let (left_raw, left_role) = split_role(left_raw, true)
-  let (right_raw, right_role) = split_role(right_target, false)
-  let (left_raw, left_qualifier) = split_qualifier(left_raw, true)
-  let (right_raw, right_qualifier) = split_qualifier(right_raw, false)
-  let (left_raw, left_port) = self.split_port(left_raw)
-  let (right_raw, right_port) = self.split_port(right_raw)
-  let left_couple_raw = parse_relation_couple(left_raw)
-  let right_couple_raw = parse_relation_couple(right_raw)
-  let (left, left_cardinality) = endpoint(left_raw, true)
-  let (right, right_cardinality) = endpoint(right_raw, false)
-  guard left.length() > 0 && right.length() > 0 else { false }
+fn Parser::apply_relation_syntax(
+  self : Parser,
+  syntax : RelationLineSyntax,
+) -> Unit {
+  let arrow = syntax.arrow
   let left_end = left_relation_end(arrow)
   let right_end = right_relation_end(arrow)
-  let left = if left_couple_raw is Some((couple_left, _)) {
+  let (left_name, left_port) = self.resolve_relation_name(syntax.left.name)
+  let (right_name, right_port) = self.resolve_relation_name(syntax.right.name)
+  let left = if syntax.left.couple is Some((couple_left, _)) {
     self.ensure_entity(couple_left)
   } else if left_end is Parenthesis {
-    self.ensure_entity_as(left, Interface)
+    self.ensure_entity_as(left_name, Interface)
   } else {
-    self.ensure_entity(left)
+    self.ensure_entity(left_name)
   }
-  let right = if right_couple_raw is Some((_, couple_right)) {
+  let right = if syntax.right.couple is Some((_, couple_right)) {
     self.ensure_entity(couple_right)
   } else if right_end is Parenthesis {
-    self.ensure_entity_as(right, Interface)
+    self.ensure_entity_as(right_name, Interface)
   } else {
-    self.ensure_entity(right)
+    self.ensure_entity(right_name)
   }
   self.relations.push({
     left,
     right,
     kind: relation_kind(left_end, right_end, arrow),
-    left_cardinality,
-    right_cardinality,
-    left_role,
-    right_role,
-    left_qualifier,
-    right_qualifier,
-    label,
+    left_cardinality: syntax.left.cardinality,
+    right_cardinality: syntax.right.cardinality,
+    left_role: syntax.left.role,
+    right_role: syntax.right.role,
+    left_qualifier: syntax.left.qualifier,
+    right_qualifier: syntax.right.qualifier,
+    label: syntax.label,
     dotted: arrow.contains(".."),
     raw_arrow: arrow,
     left_end,
     right_end,
     direction: relation_direction(arrow),
     line_style: relation_style(arrow),
-    color,
-    url,
-    stereotype,
-    weight,
+    color: syntax.color,
+    url: syntax.url,
+    stereotype: syntax.stereotype,
+    weight: syntax.weight,
     inside: relation_inside(arrow),
     left_port,
     right_port,
-    left_couple: match left_couple_raw {
+    left_couple: match syntax.left.couple {
       Some((first, second)) => Some((self.resolve(first), self.resolve(second)))
       None => None
     },
-    right_couple: match right_couple_raw {
+    right_couple: match syntax.right.couple {
       Some((first, second)) => Some((self.resolve(first), self.resolve(second)))
       None => None
     },
   })
+}
+
+///|
+fn Parser::parse_relation(self : Parser, line : String) -> Bool {
+  guard parse_relation_line(line) is Some(syntax) else { false }
+  self.apply_relation_syntax(syntax)
   true
 }
 
@@ -1616,63 +1133,9 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
     let _ = self.package_stack.pop()
     return
   }
-  match parse_link_note_header(line) {
-    Some((header, Some(text))) => {
-      self.push_special_note(header, text)
-      return
-    }
-    Some((header, None)) => {
-      self.consume_special_note(header)
-      return
-    }
-    None => ()
-  }
-  match parse_member_tip_header(line) {
-    Some(header) => {
-      self.consume_special_note(header)
-      return
-    }
-    None => ()
-  }
-  match parse_entity_note_header(line) {
-    Some(header) => {
-      self.consume_special_note(header)
-      return
-    }
-    None => ()
-  }
-  match parse_named_note(line) {
-    Some((header, Some(text))) => {
-      self.push_special_note(header, text)
-      return
-    }
-    Some((header, None)) => {
-      self.consume_special_note(header)
-      return
-    }
-    None => ()
-  }
-  match parse_link_constraint(line, self.relations.length()) {
-    Some(constraint) => {
-      self.constraints.push(constraint)
-      return
-    }
-    None => ()
-  }
-  match parse_single_line_note(line) {
-    Some(note) => {
-      let target = if note.target.length() == 0 {
-        match self.last_entity {
-          Some(target) => target
-          None => {
-            self.raise_parse_error("nothing to note to")
-            ""
-          }
-        }
-      } else {
-        self.ensure_entity(note.target)
-      }
-      self.notes.push({ ..note, target, })
+  match parse_class_annotation_line(line) {
+    Some(syntax) => {
+      self.apply_annotation_syntax(syntax)
       return
     }
     None => ()
@@ -1705,24 +1168,6 @@ fn Parser::parse_line(self : Parser, line : String) -> Unit raise ParseError {
       guard self.set_entity_url(code, url) else {
         self.raise_parse_error("unknown entity \{code}")
       }
-      return
-    }
-    None => ()
-  }
-  match parse_multiline_note_header(line) {
-    Some((target, position)) => {
-      let target = if target.length() == 0 {
-        match self.last_entity {
-          Some(target) => target
-          None => {
-            self.raise_parse_error("nothing to note to")
-            ""
-          }
-        }
-      } else {
-        self.ensure_entity(target)
-      }
-      self.consume_multiline_note(target, position)
       return
     }
     None => ()
