@@ -828,5 +828,3 @@ test "parses shared arrow color style" {
   @test.assert_eq(diagram.style.line_color, Some("#ff0000"))
   @test.assert_eq(diagram.render_svg().contains("stroke:#ff0000"), true)
 }
-
-
