@@ -63,7 +63,10 @@ priv struct TetrisLayout {
 ///|
 
 ///|
-let outer_padding = 12
+let outer_padding_x = 10
+
+///|
+let outer_padding_y = 20
 
 ///|
 fn Tee::full_thickness(self : Tee) -> Int {
@@ -125,8 +128,16 @@ fn MindmapDiagram::node_text_metrics(
 ) -> @metrics.TextMetrics {
   let idea = self.ideas[index]
   let node_style = self.node_style(index)
-  let font_size = node_style.font_size.unwrap_or(0)
-  @metrics.measure_text_with(idea.label, self.style.font_metrics(font_size~))
+  let font_size = node_style.font_size.unwrap_or(
+    match self.style.font_size {
+      Some(_) => @core.font_size_value(self.style)
+      None => 14
+    },
+  )
+  @metrics.measure_text_with(
+    mindmap_visible_text(idea.label),
+    self.style.font_metrics(font_size~),
+  )
 }
 
 ///|
@@ -144,10 +155,7 @@ fn MindmapDiagram::node_base_size(
       let width = (metrics.width + padding_x * 2).max(
         node_style.minimum_width.unwrap_or(0),
       )
-      let height = metrics.height +
-        padding_y * 2 +
-        node_style.margin_top.unwrap_or(10) +
-        node_style.margin_bottom.unwrap_or(10)
+      let height = metrics.height + padding_y * 2
       (width, height)
     }
     None =>
@@ -173,6 +181,14 @@ fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
     shared_width = shared_width.max(candidate_width)
   }
   (shared_width, height)
+}
+
+///|
+/// The node margins participate in packing, but are outside the rectangle.
+fn MindmapDiagram::node_thickness(self : MindmapDiagram, index : Int) -> Int {
+  let (_, height) = self.node_size(index)
+  let style = self.node_style(index)
+  height + style.margin_top.unwrap_or(10) + style.margin_bottom.unwrap_or(10)
 }
 
 ///|
@@ -289,17 +305,18 @@ fn MindmapDiagram::finger_tee(
   index : Int,
   direction : Direction,
 ) -> Tee {
-  let (width, height) = self.node_size(index)
+  let (width, _) = self.node_size(index)
+  let thickness = self.node_thickness(index)
   let node_style = self.node_style(index)
   let child_tees = self
     .children_of(index, direction)
     .map(child => self.finger_tee(child, direction))
   let packed = pack_tees(child_tees)
   if packed.positions.is_empty() {
-    { thickness1: height, elongation1: width, thickness2: 0, elongation2: 0 }
+    { thickness1: thickness, elongation1: width, thickness2: 0, elongation2: 0 }
   } else {
     {
-      thickness1: height,
+      thickness1: thickness,
       elongation1: width + node_style.margin_left.unwrap_or(10),
       thickness2: packed.height,
       elongation2: node_style.margin_right.unwrap_or(10) + 30 + packed.width,
@@ -392,8 +409,8 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
     {
       nodes: [],
       edges: [],
-      width: outer_padding * 2,
-      height: outer_padding * 2,
+      width: outer_padding_x * 2,
+      height: outer_padding_y * 2,
     }
   }
   let nodes = []
@@ -407,7 +424,7 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
     let root_y = next_y + root_height / 2
     append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
     append_finger(self, root_index, Left, 0, root_y, false, nodes, edges)
-    next_y += root_height + outer_padding * 2
+    next_y += root_height + outer_padding_y * 2
   }
   let mut min_x = nodes[0].x
   let mut min_y = nodes[0].y
@@ -422,7 +439,7 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
   {
     nodes,
     edges,
-    width: max_x - min_x + outer_padding * 2,
-    height: max_y - min_y + outer_padding * 2,
-  }.translated(outer_padding - min_x, outer_padding - min_y)
+    width: max_x - min_x + outer_padding_x * 2,
+    height: max_y - min_y + outer_padding_y * 2,
+  }.translated(outer_padding_x - min_x, outer_padding_y - min_y)
 }

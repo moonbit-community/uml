@@ -64,14 +64,15 @@ fn MindmapNodeStyle::empty() -> MindmapNodeStyle {
 fn MindmapNodeStyle::defaults() -> MindmapNodeStyle {
   {
     ..MindmapNodeStyle::empty(),
-    padding_x: Some(10),
+    padding_x: Some(12),
     padding_y: Some(10),
     margin_left: Some(10),
     margin_right: Some(10),
     margin_top: Some(10),
     margin_bottom: Some(10),
-    line_thickness: Some(2),
-    round_corner: Some(25),
+    font_size: None,
+    line_thickness: None,
+    round_corner: None,
     alignment: Some(Center),
   }
 }

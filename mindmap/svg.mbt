@@ -15,8 +15,16 @@ fn append_mindmap_text(
   .split("\n")
   .eachi((index, line) => {
     let dy = if index == 0 { 0 } else { line_height }
-    output <+
-      "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@core.xml_escape(line.to_owned())}</tspan>"
+    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">"
+    parse_mindmap_text_line(line.to_owned()).each(span => {
+      let decoration = if span.strike {
+        " text-decoration=\"line-through\""
+      } else {
+        ""
+      }
+      output <+ "<tspan\{decoration}>\{@core.xml_escape(span.text)}</tspan>"
+    })
+    output.write_string("</tspan>\n")
   })
   output.write_string("</text>\n")
 }
@@ -41,19 +49,22 @@ fn append_mindmap_node(
   let idea = diagram.ideas[node.idea_index]
   let node_style = diagram.node_style(node.idea_index)
   let font_size = node_style.font_size.unwrap_or(
-    @core.font_size_value(diagram.style),
+    match diagram.style.font_size {
+      Some(_) => @core.font_size_value(diagram.style)
+      None => 14
+    },
   )
   let font_metrics = diagram.style.font_metrics(font_size~)
-  let text_metrics = diagram.node_text_metrics(node.idea_index)
-  let padding_x = node_style.padding_x.unwrap_or(10)
+  let padding_x = node_style.padding_x.unwrap_or(12)
+  let padding_y = node_style.padding_y.unwrap_or(10)
   let (text_x, anchor) = match node_style.alignment.unwrap_or(Center) {
     Left => (node.x + padding_x, "start")
     Right => (node.x + node.width - padding_x, "end")
     Center => (node.x + node.width / 2, "middle")
   }
-  let first_baseline = node.y +
-    (node.height - text_metrics.height) / 2 +
-    text_metrics.baseline
+  // SVG positions text by its baseline. PlantUML's box renderer starts a
+  // line after the top padding plus the font's baseline offset.
+  let first_baseline = node.y + padding_y + font_size
   let shape_class = match idea.shape {
     Box => "box"
     None => "boxless"
@@ -63,12 +74,18 @@ fn append_mindmap_node(
       Some(color) => Some(color)
       None => node_style.background_color
     },
-    "#FEFECE",
+    "#F1F1F1",
   )
   let line_color = @core.svg_color(node_style.line_color, "#181818")
   let font_color = @core.svg_color(node_style.font_color, "#181818")
-  let line_thickness = node_style.line_thickness.unwrap_or(2)
-  let round_corner = node_style.round_corner.unwrap_or(25)
+  let line_thickness = match node_style.line_thickness {
+    Some(value) => value.to_string()
+    None => "1.5"
+  }
+  let round_corner = match node_style.round_corner {
+    Some(value) => value.to_string()
+    None => "12.5"
+  }
   output <+
     "<g class=\"mindmap-node \{shape_class}\" data-idea-index=\"\{node.idea_index}\">\n"
   match idea.shape {

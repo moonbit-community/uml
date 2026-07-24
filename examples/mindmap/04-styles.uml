@@ -1,0 +1,34 @@
+@startmindmap
+skinparam BackgroundColor #f7f7f7
+skinparam DefaultFontName Helvetica
+<style>
+Node {
+  Padding 8
+  Margin 12
+  BackgroundColor #fff2cc
+  LineColor #7f6000
+  LineThickness 2
+  RoundCorner 12
+  FontSize 14
+}
+rootNode {
+  BackgroundColor #d5e8d4
+  FontColor #274e13
+}
+.Important {
+  BackgroundColor #dae8fc
+  FontColor #1155cc
+  HorizontalAlignment Right
+}
+arrow {
+  LineColor #999999
+  LineThickness 2
+}
+</style>
+* Styled release plan
+** Goals <<Important>>
+*** Compatibility
+*** Documentation
+** Delivery
+*** Automation
+@endmindmap

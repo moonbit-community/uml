@@ -22,3 +22,47 @@ test "class layout receives document font profile size and title weight" {
     true,
   )
 }
+
+///|
+test "graphviz layout emits semantic node and spline geometry" {
+  let diagram = parse(
+    "@startuml\nclass Parent\nclass Child\nParent <|-- Child : inherits\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let layout = diagram.graphviz_layout(metrics)
+  @test.assert_eq(layout.nodes.length(), 2)
+  @test.assert_eq(layout.edges.length(), 1)
+  @test.assert_eq(layout.edges[0].paths.length() > 0, true)
+  @test.assert_eq(layout.width > 0.0 && layout.height > 0.0, true)
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("<path d=\"M "), true)
+  @test.assert_eq(svg.contains(" C "), true)
+}
+
+///|
+test "graphviz layout includes package clusters and notes" {
+  let diagram = parse(
+    "@startuml\npackage Domain {\nclass User\nclass Account\nUser --> Account\nnote right of User : owner\nnote on link : association\n}\n@enduml",
+  )
+  let layout = diagram.graphviz_layout(ClassTextMetrics::new(diagram.style))
+  @test.assert_eq(layout.packages.length(), 1)
+  @test.assert_eq(layout.notes.length(), 2)
+  @test.assert_eq(layout.packages[0].width > 0.0, true)
+  @test.assert_eq(layout.notes[0].width > 0.0, true)
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"package\""), true)
+  @test.assert_eq(svg.contains("class=\"class-note\""), true)
+  @test.assert_eq(svg.contains(">owner</text>"), true)
+}
+
+///|
+test "routed relations preserve endpoint decorations and cardinalities" {
+  let diagram = parse(
+    "@startuml\nOrder \"1\" *-- \"many\" Item : contains\nClient --[dashed]--> Service\n@enduml",
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("url(#diamond)"), true)
+  @test.assert_eq(svg.contains(">1</text>"), true)
+  @test.assert_eq(svg.contains(">many</text>"), true)
+  @test.assert_eq(svg.contains("stroke-dasharray:6 4"), true)
+}

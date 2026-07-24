@@ -1,0 +1,10 @@
+@startmindmap
+* Project handbook
+**[#fff2cc] _ Boxless topic
+** Architecture <<section>>
+*** Components
+***: Runtime details
+with a second line;
+** Escaping & markup <topic>
+**[#e1d5e7] _ Plain label <<note>>
+@endmindmap

@@ -1,0 +1,13 @@
+@startmindmap
+* Product roadmap
+++[#d5e8d4] Discovery
++++ User interviews
++++_ Research notes
+++[#dae8fc] Delivery
++++ Prototype
++++ Release
+--[#f8cecc] Risks
+--- Dependencies
+--- Unknowns
+--_ Support
+@endmindmap

@@ -38,3 +38,12 @@ test "svg applies resolved node and arrow styles" {
   @test.assert_eq(svg.contains("text-anchor=\"end\" fill=\"#ff0000\""), true)
   @test.assert_eq(svg.contains("stroke=\"#00aa00\" stroke-width=\"4\""), true)
 }
+
+///|
+test "svg renders strikethrough spans without exposing markup" {
+  let svg = render_mindmap_svg("* <s>crossed & text</s> remains")
+  @test.assert_eq(svg.contains("text-decoration=\"line-through\""), true)
+  @test.assert_eq(svg.contains("crossed &amp; text"), true)
+  @test.assert_eq(svg.contains("&lt;s&gt;"), false)
+  @test.assert_eq(svg.contains("&lt;/s&gt;"), false)
+}

@@ -1,0 +1,10 @@
+@startmindmap
+0 Incident response
+++ Detect
++++ Alert
++++ Triage
+-- Recover
+--- Restore service
+--- Postmortem
+++ Follow-up
+@endmindmap
