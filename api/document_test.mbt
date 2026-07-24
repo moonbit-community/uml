@@ -66,6 +66,30 @@ test "document facade renders a JSON structure diagram" {
 }
 
 ///|
+test "document facade renders YAML and TOML structure diagrams" {
+  let yaml_source = "@startyaml\nservice:\n  port: 8080\n@endyaml"
+  let yaml_document = parse_yaml(yaml_source)
+  @test.assert_eq(yaml_document.kind() is Yaml, true)
+  @test.assert_eq(
+    yaml_document.render_svg().contains("aria-label=\"YAML diagram\""),
+    true,
+  )
+  @test.assert_eq(is_yaml_source("\n@STARTYAML\nkey: value\n@endyaml"), true)
+
+  let toml_source = "@starttoml\n[service]\nport = 8080\n@endtoml"
+  let toml_document = parse_toml(toml_source)
+  @test.assert_eq(toml_document.kind() is Toml, true)
+  @test.assert_eq(
+    toml_document.render_svg().contains("aria-label=\"TOML diagram\""),
+    true,
+  )
+  @test.assert_eq(
+    is_toml_source("\n@STARTTOML\nkey = \"value\"\n@endtoml"),
+    true,
+  )
+}
+
+///|
 test "detects object map and inline JSON class sources" {
   @test.assert_eq(is_class_source("@startuml\nobject User\n@enduml"), true)
   @test.assert_eq(

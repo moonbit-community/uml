@@ -16,4 +16,5 @@ pub(all) enum DiagramKind {
   Salt
   Json
   Yaml
+  Toml
 }

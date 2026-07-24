@@ -5,6 +5,8 @@ pub enum Diagram {
   Class(@class.ClassDiagram)
   Mindmap(@mindmap.MindmapDiagram)
   Json(@nonuml.JsonDiagram)
+  Yaml(@nonuml.JsonDiagram)
+  Toml(@nonuml.JsonDiagram)
 }
 
 ///|
@@ -19,6 +21,8 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
     Class(_) => Class
     Mindmap(_) => Mindmap
     Json(_) => Json
+    Yaml(_) => Yaml
+    Toml(_) => Toml
   }
 }
 
@@ -40,6 +44,16 @@ pub fn parse(input : String) -> Document raise @core.ParseError {
 ///|
 pub fn parse_json(input : String) -> Document raise @json.ParseError {
   { diagram: Json(@nonuml.parse_json(input)) }
+}
+
+///|
+pub fn parse_yaml(input : String) -> Document raise @yaml.YamlError {
+  { diagram: Yaml(@nonuml.parse_yaml(input)) }
+}
+
+///|
+pub fn parse_toml(input : String) -> Document raise {
+  { diagram: Toml(@nonuml.parse_toml(input)) }
 }
 
 ///|
@@ -226,6 +240,18 @@ pub fn is_class_source(input : String) -> Bool {
 /// Returns whether the source uses PlantUML's JSON diagram delimiters.
 pub fn is_json_source(input : String) -> Bool {
   input.trim().to_lower().has_prefix("@startjson")
+}
+
+///|
+/// Returns whether the source uses PlantUML's YAML diagram delimiters.
+pub fn is_yaml_source(input : String) -> Bool {
+  input.trim().to_lower().has_prefix("@startyaml")
+}
+
+///|
+/// Returns whether the source uses this project's TOML diagram delimiters.
+pub fn is_toml_source(input : String) -> Bool {
+  input.trim().to_lower().has_prefix("@starttoml")
 }
 
 ///|

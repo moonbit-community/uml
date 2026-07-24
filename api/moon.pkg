@@ -4,6 +4,7 @@ import {
   "kokic/uml/mindmap",
   "kokic/uml/nonuml",
   "kokic/uml/sequence",
+  "moonbit-community/yaml",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

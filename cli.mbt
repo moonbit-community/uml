@@ -26,6 +26,14 @@ fn main {
       @api.render_json_svg(source) catch {
         error => return println("error: \{error.to_string()}")
       }
+    _ if @api.is_yaml_source(source) =>
+      @api.render_yaml_svg(source) catch {
+        YamlError(info~, ..) => return println("error: \{info}")
+      }
+    _ if @api.is_toml_source(source) =>
+      @api.render_toml_svg(source) catch {
+        error => return println("error: \{error.to_string()}")
+      }
     _ if @api.is_mindmap_source(source) =>
       @api.render_mindmap_svg(source) catch {
         SyntaxError(line, message) =>

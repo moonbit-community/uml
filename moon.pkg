@@ -4,6 +4,7 @@ import {
   "moonbitlang/x/fs",
   "kokic/uml/api",
   "kokic/uml/core",
+  "moonbit-community/yaml",
 }
 
 pkgtype(kind: "executable")

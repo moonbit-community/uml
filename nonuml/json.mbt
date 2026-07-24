@@ -35,22 +35,7 @@ pub struct JsonDiagram {
 
 ///|
 fn source_between_json_markers(input : String) -> String {
-  let output = StringBuilder()
-  let mut inside_markers = false
-  let mut has_markers = false
-  for line in input.split("\n") {
-    let marker = line.trim().to_lower()
-    if marker == "@startjson" {
-      has_markers = true
-      inside_markers = true
-    } else if marker == "@endjson" && inside_markers {
-      inside_markers = false
-    } else if !has_markers || inside_markers {
-      output.write_string(line.to_owned())
-      output.write_char('\n')
-    }
-  }
-  output.to_string()
+  source_between_markers(input, "@startjson", "@endjson")
 }
 
 ///|

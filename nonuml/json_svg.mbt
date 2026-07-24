@@ -262,7 +262,10 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 }
 
 ///|
-pub fn JsonDiagram::render_svg(self : JsonDiagram) -> String {
+fn JsonDiagram::render_svg_with_label(
+  self : JsonDiagram,
+  label : String,
+) -> String {
   let (initial_root, _) = layout_node(self.root, 10, 10)
   let shifted_root = shift_node(
     initial_root,
@@ -275,7 +278,7 @@ pub fn JsonDiagram::render_svg(self : JsonDiagram) -> String {
   output.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\"\n")
   output <+
     "  width=\"\{width}\" height=\"\{height}\" viewBox=\"0 0 \{width} \{height}\"\n"
-  output.write_string("  role=\"img\" aria-label=\"JSON diagram\">\n")
+  output <+ "  role=\"img\" aria-label=\"\{label}\">\n"
   let font_size = json_font_size()
   let key_font_weight = json_key_font_weight()
   output.write_string("<style>\n")
@@ -305,6 +308,21 @@ pub fn JsonDiagram::render_svg(self : JsonDiagram) -> String {
 }
 
 ///|
+pub fn JsonDiagram::render_svg(self : JsonDiagram) -> String {
+  self.render_svg_with_label("JSON diagram")
+}
+
+///|
 pub fn render_json_svg(diagram : JsonDiagram) -> String {
   diagram.render_svg()
+}
+
+///|
+pub fn render_yaml_svg(diagram : JsonDiagram) -> String {
+  diagram.render_svg_with_label("YAML diagram")
+}
+
+///|
+pub fn render_toml_svg(diagram : JsonDiagram) -> String {
+  diagram.render_svg_with_label("TOML diagram")
 }
