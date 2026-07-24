@@ -34,12 +34,36 @@ test "layout separates sibling subtrees without fixed coordinates" {
     "* Root\n** First\n*** First leaf\n** Second\n*** Second leaf",
   )
   let layout = diagram.layout()
-  println(to_repr(layout))
-  let first = node_for(layout, 1)
-  let second = node_for(layout, 3)
-  @test.assert_eq(rectangles_overlap(first, second), false)
+  for left_index in 0..<layout.nodes.length() {
+    for right_index in (left_index + 1)..<layout.nodes.length() {
+      @test.assert_eq(
+        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
+        false,
+      )
+    }
+  }
   @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
   @test.assert_eq(layout.width > 0 && layout.height > 0, true)
+}
+
+///|
+test "layout keeps multiple roots and both branch directions disjoint" {
+  let diagram = parse(
+    "* First root\n++ Right branch\n-- Left branch\n* Second root\n** Child",
+  )
+  let layout = diagram.layout()
+  @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
+  for left_index in 0..<layout.nodes.length() {
+    for right_index in (left_index + 1)..<layout.nodes.length() {
+      @test.assert_eq(
+        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
+        false,
+      )
+    }
+  }
+  let first_root = node_for(layout, 0)
+  let second_root = node_for(layout, 3)
+  @test.assert_eq(first_root.y + first_root.height <= second_root.y, true)
 }
 
 ///|

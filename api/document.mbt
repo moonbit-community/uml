@@ -3,6 +3,7 @@
 pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
   Class(@class.ClassDiagram)
+  Mindmap(@mindmap.MindmapDiagram)
   Json(@nonuml.JsonDiagram)
 }
 
@@ -16,6 +17,7 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
     Class(_) => Class
+    Mindmap(_) => Mindmap
     Json(_) => Json
   }
 }
@@ -23,6 +25,11 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 ///|
 pub fn parse_class(input : String) -> Document raise @core.ParseError {
   { diagram: Class(@class.parse(input)) }
+}
+
+///|
+pub fn parse_mindmap(input : String) -> Document raise @core.ParseError {
+  { diagram: Mindmap(@mindmap.parse(input)) }
 }
 
 ///|
@@ -219,4 +226,12 @@ pub fn is_class_source(input : String) -> Bool {
 /// Returns whether the source uses PlantUML's JSON diagram delimiters.
 pub fn is_json_source(input : String) -> Bool {
   input.trim().to_lower().has_prefix("@startjson")
+}
+
+///|
+/// Returns whether the document explicitly selects PlantUML's mindmap factory.
+pub fn is_mindmap_source(input : String) -> Bool {
+  input
+  .split("\n")
+  .any(line => line.trim().equal_ignore_ascii_case("@startmindmap"))
 }

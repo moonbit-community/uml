@@ -84,7 +84,7 @@ fn Tee::full_elongation(self : Tee) -> Int {
 
 ///|
 fn PositionedTee::half_thickness(self : PositionedTee) -> Int {
-  self.tee.full_thickness() / 2
+  (self.tee.full_thickness() + 1) / 2
 }
 
 ///|
@@ -172,8 +172,8 @@ fn append_tee(
   tee : Tee,
   first : Bool,
 ) -> (Array[Stripe], PositionedTee) {
-  let half1 = tee.thickness1 / 2
-  let half2 = tee.thickness2 / 2
+  let half1 = (tee.thickness1 + 1) / 2
+  let half2 = (tee.thickness2 + 1) / 2
   let y = if first {
     0
   } else {

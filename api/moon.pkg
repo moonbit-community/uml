@@ -1,6 +1,7 @@
 import {
   "kokic/uml/class",
   "kokic/uml/core",
+  "kokic/uml/mindmap",
   "kokic/uml/nonuml",
   "kokic/uml/sequence",
   "moonbitlang/core/json",

@@ -41,6 +41,18 @@ test "document facade renders a class diagram" {
 }
 
 ///|
+test "document facade recognizes and renders mindmaps" {
+  let source = "@startmindmap\n* Root\n** Child\n@endmindmap"
+  @test.assert_eq(is_mindmap_source(source), true)
+  let document = parse_mindmap(source)
+  @test.assert_eq(document.kind() is Mindmap, true)
+  @test.assert_eq(
+    document.render_svg().contains("aria-label=\"Mindmap\""),
+    true,
+  )
+}
+
+///|
 test "document facade renders a JSON structure diagram" {
   let document = parse_json(
     "@startjson\n{\"service\":{\"port\":8080}}\n@endjson",
