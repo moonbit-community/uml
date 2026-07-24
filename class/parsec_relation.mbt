@@ -127,9 +127,7 @@ fn relation_arrow_candidate_parser() -> @talc.StringParser[
       relation_symbol("0"),
     ])
     .bind(value => {
-      @talc.many_chars1(@talc.one_of("-=.")).map(stroke => {
-        value + stroke
-      })
+      @talc.many_chars1(@talc.one_of("-=.")).map(stroke => value + stroke)
     })
     .attempt()
     .optional()

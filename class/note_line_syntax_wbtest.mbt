@@ -6,8 +6,7 @@ test "class note line grammar accepts complete annotation lines" {
     "note \"shared note\" as N1 $shared <<info>> #yellow", "note as N2 {", "constraint on links #pink : {xor}",
   ]
   for line in lines {
-    guard class_annotation_line_parser().parse(@talc.Input::new(line))
-      is Ok(_) else {
+    guard class_annotation_line_parser().parse(@talc.Input::new(line)) is Ok(_) else {
       @test.fail("expected annotation syntax: \{line}")
     }
   }
@@ -20,8 +19,7 @@ test "class note line grammar rejects trailing or incomplete syntax" {
     "note right of User unexpected metadata",
   ]
   for line in lines {
-    guard class_annotation_line_parser().parse(@talc.Input::new(line))
-      is Err(_) else {
+    guard class_annotation_line_parser().parse(@talc.Input::new(line)) is Err(_) else {
       @test.fail("unexpected annotation syntax: \{line}")
     }
   }

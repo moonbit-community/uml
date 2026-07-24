@@ -36,14 +36,13 @@ fn map_link_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
     let key = key.trim().to_owned()
     guard key.length() > 0 else { return @talc.fail("map link key") }
     @talc.many_chars1(@talc.satisfy("map link target", _ => true)).bind(target => {
-        let target = normalize_name(target.trim().to_owned())
-        if target.length() > 0 {
-          @talc.pure(ParsedMapLink(key~, arrow~, target~))
-        } else {
-          @talc.fail("map link target")
-        }
-      },
-    )
+      let target = normalize_name(target.trim().to_owned())
+      if target.length() > 0 {
+        @talc.pure(ParsedMapLink(key~, arrow~, target~))
+      } else {
+        @talc.fail("map link target")
+      }
+    })
   })
 }
 

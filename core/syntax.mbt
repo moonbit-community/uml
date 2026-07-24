@@ -42,8 +42,7 @@ pub fn find_literal(haystack : String, needle : String) -> Int? {
 /// Find a literal substring outside double-quoted text.
 pub fn find_unquoted_literal(haystack : String, needle : String) -> Int? {
   guard needle.length() > 0 else { return Some(0) }
-  match
-    unquoted_literal_prefix_parser(needle).run(@talc.Input::new(haystack)) {
+  match unquoted_literal_prefix_parser(needle).run(@talc.Input::new(haystack)) {
     Ok((prefix, _)) => Some(prefix.length())
     Err(_) => None
   }

@@ -166,9 +166,7 @@ fn relation_role_value_parser() -> @talc.StringParser[String] {
 }
 
 ///|
-fn relation_modifier_parser() -> @talc.StringParser[
-  RelationEndpointModifier,
-] {
+fn relation_modifier_parser() -> @talc.StringParser[RelationEndpointModifier] {
   let cardinality = quoted_value_parser().map(value => {
     RelationCardinality(value)
   })
@@ -202,9 +200,7 @@ fn relation_endpoint_from(
 }
 
 ///|
-fn left_relation_endpoint_parser() -> @talc.StringParser[
-  RelationEndpointSyntax,
-] {
+fn left_relation_endpoint_parser() -> @talc.StringParser[RelationEndpointSyntax] {
   relation_target_parser(true).bind(target => {
     let (name, couple) = target
     inline_space1()
@@ -266,16 +262,12 @@ fn relation_url_parser() -> @talc.StringParser[RelationMetadataSyntax] {
 }
 
 ///|
-fn relation_stereotype_parser() -> @talc.StringParser[
-  RelationMetadataSyntax,
-] {
+fn relation_stereotype_parser() -> @talc.StringParser[RelationMetadataSyntax] {
   stereotype_value_parser().map(value => RelationStereotype(value))
 }
 
 ///|
-fn relation_metadata_parser() -> @talc.StringParser[
-  RelationMetadataSyntax,
-] {
+fn relation_metadata_parser() -> @talc.StringParser[RelationMetadataSyntax] {
   inline_space1().then(
     @talc.choice([
       relation_color_parser().attempt(),
@@ -303,9 +295,7 @@ fn right_relation_syntax_parser() -> @talc.StringParser[
     .many()
     .bind(metadata => {
       relation_label_start_parser()
-      .then(
-        @talc.many_chars(@talc.satisfy("relation label", _ => true)),
-      )
+      .then(@talc.many_chars(@talc.satisfy("relation label", _ => true)))
       .optional()
       .map(label => {
         let label = label.map(value => value.trim().to_owned())

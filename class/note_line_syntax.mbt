@@ -101,9 +101,7 @@ fn note_member_name_parser() -> @talc.StringParser[String] {
 }
 
 ///|
-fn note_metadata_item_parser() -> @talc.StringParser[
-  NoteMetadataItemSyntax,
-] {
+fn note_metadata_item_parser() -> @talc.StringParser[NoteMetadataItemSyntax] {
   @talc.choice([
     url_value_parser().attempt().map(value => NoteUrl(value)),
     stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
@@ -301,9 +299,7 @@ fn link_constraint_line_parser() -> @talc.StringParser[
     inline_spaces()
     .then(@talc.char(':'))
     .then(inline_spaces())
-    .then(
-      @talc.many_chars(@talc.satisfy("constraint text", _ => true)),
-    )
+    .then(@talc.many_chars(@talc.satisfy("constraint text", _ => true)))
     .map(text => ParsedLinkConstraint({ text: text.trim().to_owned(), color }))
   })
   .skip(@talc.eof())

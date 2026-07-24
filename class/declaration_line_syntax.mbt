@@ -86,9 +86,7 @@ fn declaration_shaped_name_parser() -> @talc.StringParser[String] {
 }
 
 ///|
-fn declaration_name_atom_parser() -> @talc.StringParser[
-  DeclarationNameAtom,
-] {
+fn declaration_name_atom_parser() -> @talc.StringParser[DeclarationNameAtom] {
   let quoted = quoted_value_parser().map(value => (value, true))
   let shaped = declaration_shaped_name_parser().map(value => (value, false))
   let plain = @talc.many_chars1(
@@ -115,9 +113,7 @@ fn declaration_name_atom_parser() -> @talc.StringParser[
 }
 
 ///|
-fn declaration_name_syntax_parser() -> @talc.StringParser[
-  DeclarationNameSyntax,
-] {
+fn declaration_name_syntax_parser() -> @talc.StringParser[DeclarationNameSyntax] {
   declaration_name_atom_parser().bind(first => {
     inline_space1()
     .then(inline_keyword_parser("as"))
@@ -215,19 +211,16 @@ fn declaration_line_style_parser() -> @talc.StringParser[
     .optional(),
   )
   .bind(style => {
-    @talc.many_chars(
-      @talc.satisfy("line color", char => !char.is_whitespace()),
-    ).map(color => {
-      let color = if color.length() == 0 { None } else { Some(color) }
-      DeclarationLine(style~, color~)
-    })
+    @talc.many_chars(@talc.satisfy("line color", char => !char.is_whitespace())).map(color => {
+        let color = if color.length() == 0 { None } else { Some(color) }
+        DeclarationLine(style~, color~)
+      },
+    )
   })
 }
 
 ///|
-fn declaration_suffix_parser() -> @talc.StringParser[
-  DeclarationSuffixSyntax,
-] {
+fn declaration_suffix_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
   let extends = inline_keyword_parser("extends")
     .then(inline_space1())
     .then(declaration_target_list_parser())
@@ -319,9 +312,7 @@ fn declaration_body_parser() -> @talc.StringParser[
 }
 
 ///|
-fn declaration_kind_parser() -> @talc.StringParser[
-  (EntityKind, Bool, Bool),
-] {
+fn declaration_kind_parser() -> @talc.StringParser[(EntityKind, Bool, Bool)] {
   let static_class = inline_keyword_parser("static")
     .then(inline_space1())
     .then(inline_keyword_parser("class"))
@@ -416,9 +407,7 @@ fn symbol_declaration_parser(
       @talc.char('#')
       .then(
         @talc.many_chars1(
-          @talc.satisfy("ignored interface color", char => {
-            !char.is_whitespace()
-          }),
+          @talc.satisfy("ignored interface color", char => !char.is_whitespace()),
         ),
       )
       .skip(inline_space1())

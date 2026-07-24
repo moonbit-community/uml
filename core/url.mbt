@@ -32,9 +32,7 @@ fn url_target_prefix_parser() -> @talc.StringParser[UrlTarget] {
     .then(quoted_part.many().map(parts => parts.join("")))
     .skip(@talc.char('"'))
   let unquoted_target = @talc.many_chars1(
-    @talc.satisfy("URL target", char => {
-      !char.is_whitespace() && char != ']'
-    }),
+    @talc.satisfy("URL target", char => !char.is_whitespace() && char != ']'),
   )
   let target = quoted_target.attempt().or(unquoted_target)
   let terminator = @talc.string("]]")

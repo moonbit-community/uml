@@ -1,8 +1,6 @@
 ///|
 fn inline_spaces() -> @talc.StringParser[Unit] {
-  @talc.satisfy("inline whitespace", is_inline_whitespace)
-  .many()
-  .map(_ => ())
+  @talc.satisfy("inline whitespace", is_inline_whitespace).many().map(_ => ())
 }
 
 ///|
@@ -86,9 +84,7 @@ fn participant_list_prefix_parser() -> @talc.StringParser[Array[String]] {
 
 ///|
 fn participant_identifier() -> @talc.StringParser[String] {
-  @talc.many_chars1(
-    @talc.satisfy("participant identifier", is_ident_char),
-  )
+  @talc.many_chars1(@talc.satisfy("participant identifier", is_ident_char))
 }
 
 ///|
@@ -235,9 +231,7 @@ fn right_arrow_head() -> @talc.StringParser[(ArrowHead, ArrowPart)] {
     .optional()
     .map(next => (if next is Some(_) { Async } else { Normal }, TopPart))
   })
-  @talc.choice([right, bottom, top]).or(
-    @talc.pure((NoneHead, Full)),
-  )
+  @talc.choice([right, bottom, top]).or(@talc.pure((NoneHead, Full)))
 }
 
 ///|
@@ -346,18 +340,14 @@ fn multicast_parser() -> @talc.StringParser[Array[String]] {
 fn color_parser() -> @talc.StringParser[String] {
   @talc.char('#').then(
     @talc.many_chars1(
-      @talc.satisfy("color", char => {
-        !is_inline_whitespace(char) && char != '\n'
-      }),
+      @talc.satisfy("color", char => !is_inline_whitespace(char) && char != '\n'),
     ),
   )
 }
 
 ///|
 fn anchor_parser() -> @talc.StringParser[String] {
-  @talc.char('{')
-  .then(participant_identifier())
-  .skip(@talc.char('}'))
+  @talc.char('{').then(participant_identifier()).skip(@talc.char('}'))
 }
 
 ///|

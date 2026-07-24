@@ -743,7 +743,9 @@ fn Parser::consume_braced_block(
 }
 
 ///|
-fn Parser::consume_skinparam_block(self : Parser) -> Unit raise @core.ParseError {
+fn Parser::consume_skinparam_block(
+  self : Parser,
+) -> Unit raise @core.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
     let property = strip_comment(self.lines[self.index])
@@ -891,7 +893,10 @@ fn Parser::finish_entity(self : Parser) -> Unit {
 }
 
 ///|
-fn Parser::parse_line(self : Parser, line : String) -> Unit raise @core.ParseError {
+fn Parser::parse_line(
+  self : Parser,
+  line : String,
+) -> Unit raise @core.ParseError {
   let line = strip_comment(line)
   guard line.length() > 0 else { return }
   match @core.common_block_terminator(line) {

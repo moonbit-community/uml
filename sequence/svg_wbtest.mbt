@@ -70,10 +70,32 @@ test "activation messages reserve space for the target activation lane" {
   let activated = parse(
     "@startuml\nAlice -> Bob ++ : a message with a long label\n@enduml",
   ).layout()
-  let plain_gap = plain.participants[1].center_x - plain.participants[0].center_x
+  let plain_gap = plain.participants[1].center_x -
+    plain.participants[0].center_x
   let activated_gap = activated.participants[1].center_x -
     activated.participants[0].center_x
   @test.assert_eq(activated_gap > plain_gap, true)
+}
+
+///|
+test "standalone activate starts on the preceding message baseline" {
+  let layout = parse("@startuml\nAlice -> Bob\nactivate Bob\n@enduml").layout()
+  @test.assert_eq(layout.activations.length(), 1)
+  @test.assert_eq(
+    layout.activations[0].start_y == layout.placements[0].y + 18,
+    true,
+  )
+}
+
+///|
+test "reverse-message labels start after the target participant box" {
+  let layout = parse(
+    "@startuml\nAlice -> Bob\nBob -> Alice ** : create via arrow\n@enduml",
+  ).layout()
+  let alice = layout.participants[0]
+  let bob = layout.participants[1]
+  let label_x = message_label_x(bob, alice)
+  @test.assert_eq(label_x > alice.center_x + alice.width / 2, true)
 }
 
 ///|

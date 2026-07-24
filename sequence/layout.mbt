@@ -872,6 +872,8 @@ fn layout_events(
   let mut previous_top = current_y
   let mut parallel_bottom = current_y
   let mut last_visual_bottom = start_y
+  let mut last_message_to : String? = None
+  let mut last_message_arrow_y : Int? = None
   let mut autoactivate = diagram.autoactivate
   let mut ignore_newpage = false
   let auto_page_breaks = []
@@ -981,6 +983,8 @@ fn layout_events(
             None,
           )
         }
+        last_message_to = Some(message.to_code)
+        last_message_arrow_y = Some(y + 18)
       }
       MessageExo(message) => {
         messages_since_auto_newpage += 1
@@ -995,18 +999,27 @@ fn layout_events(
           active,
           destroys,
         )
+        last_message_to = Some(message.participant_code)
+        last_message_arrow_y = Some(y + 18)
       }
-      LifeEvent(life) =>
+      LifeEvent(life) => {
+        let life_y = if life.event_type is Activate &&
+          last_message_to == Some(life.participant_code) {
+          last_message_arrow_y.unwrap_or(y)
+        } else {
+          y
+        }
         apply_activation_spec(
           Some(life.event_type),
           life.participant_code,
           None,
-          y,
+          life_y,
           life.color,
           activations,
           active,
           destroys,
         )
+      }
       GroupingStart(group) => {
         groups.push({
           start_y: y,

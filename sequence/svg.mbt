@@ -569,6 +569,15 @@ fn append_partial_arrow_head(
 }
 
 ///|
+fn message_label_x(from : ParticipantLayout, to : ParticipantLayout) -> Int {
+  if from.center_x > to.center_x {
+    to.center_x + to.width / 2 + 7
+  } else {
+    from.center_x + 7
+  }
+}
+
+///|
 fn ArrowHead::marker(self : ArrowHead, start : Bool) -> String {
   match (self, start) {
     (Normal, true) => " marker-start=\"url(#arrow-start)\""
@@ -641,8 +650,7 @@ fn append_message(
       end_y,
       end_x >= start_x,
     )
-    // Sequence labels occupy the arrow corridor from its left endpoint.
-    let label_x = start_x.min(end_x) + 7
+    let label_x = message_label_x(from, to)
     append_text(
       output,
       label_x,

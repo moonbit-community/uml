@@ -79,17 +79,13 @@ fn url_value_parser() -> @talc.StringParser[String] {
 ///|
 fn color_value_parser(label : String) -> @talc.StringParser[String] {
   @talc.char('#').then(
-    @talc.many_chars1(
-      @talc.satisfy(label, char => !char.is_whitespace()),
-    ),
+    @talc.many_chars1(@talc.satisfy(label, char => !char.is_whitespace())),
   )
 }
 
 ///|
 fn tag_value_parser(label : String) -> @talc.StringParser[String] {
   @talc.char('$').then(
-    @talc.many_chars1(
-      @talc.satisfy(label, char => !char.is_whitespace()),
-    ),
+    @talc.many_chars1(@talc.satisfy(label, char => !char.is_whitespace())),
   )
 }

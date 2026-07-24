@@ -16,8 +16,7 @@ test "relation line grammar accepts supported syntax" {
 ///|
 test "relation line grammar parses each typed phase" {
   let line = "U <|.. Auth : implements"
-  guard relation_line_parser().parse(@talc.Input::new(line))
-    is Ok(relation) else {
+  guard relation_line_parser().parse(@talc.Input::new(line)) is Ok(relation) else {
     @test.fail("complete relation grammar failed")
   }
   @test.assert_eq(relation.left.name.name, "U")

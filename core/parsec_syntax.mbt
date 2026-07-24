@@ -19,9 +19,9 @@ fn alias_identifier_parser() -> @talc.StringParser[(String, String)] {
   name
   .skip(separator)
   .bind(left => {
-    @talc.many_chars(
-      @talc.satisfy("identifier character", _ => true),
-    ).map(right => (left, right))
+    @talc.many_chars(@talc.satisfy("identifier character", _ => true)).map(right => {
+      (left, right)
+    })
   })
   .skip(@talc.eof())
 }
@@ -51,9 +51,7 @@ fn syntax_words_parser() -> @talc.StringParser[Array[String]] {
     !char.is_whitespace() && char != '"'
   }).string_map(char => char.to_string())
   let word = quoted.attempt().or(unquoted).some().map(parts => parts.join(""))
-  @talc.spaces()
-  .then(word.skip(@talc.spaces()).many())
-  .skip(@talc.eof())
+  @talc.spaces().then(word.skip(@talc.spaces()).many()).skip(@talc.eof())
 }
 
 ///|
@@ -63,9 +61,7 @@ priv enum UnquotedSplitToken {
 }
 
 ///|
-fn split_unquoted_parser(
-  delimiter : Char,
-) -> @talc.StringParser[Array[String]] {
+fn split_unquoted_parser(delimiter : Char) -> @talc.StringParser[Array[String]] {
   let quoted_part = @talc.char('\\')
     .then(@talc.satisfy("escaped character", _ => true))
     .map(char => "\\" + char.to_string())
@@ -195,9 +191,10 @@ fn url_syntax_text_parser() -> @talc.StringParser[String] {
 
 ///|
 fn line_without_comment_parser() -> @talc.StringParser[String] {
-  let plain = @talc.satisfy("line content", char => {
-    char != '\'' && char != '"'
-  }).string_map(char => char.to_string())
+  let plain = @talc.satisfy("line content", char => char != '\'' && char != '"').string_map(char => {
+      char.to_string()
+    },
+  )
   url_syntax_text_parser()
   .attempt()
   .or(quoted_syntax_text_parser().attempt())

@@ -10,9 +10,7 @@ fn declaration_metadata_tail_parser() -> @talc.StringParser[
 }
 
 ///|
-fn json_single_declaration_parser() -> @talc.StringParser[
-  JsonSingleDeclaration,
-] {
+fn json_single_declaration_parser() -> @talc.StringParser[JsonSingleDeclaration] {
   declaration_visibility_parser()
   .bind(visibility => {
     inline_keyword_parser("json")
@@ -21,9 +19,7 @@ fn json_single_declaration_parser() -> @talc.StringParser[
     .bind(name => {
       declaration_metadata_tail_parser().bind(metadata => {
         inline_space1()
-        .then(
-          @talc.many_chars1(@talc.satisfy("JSON data", _ => true)),
-        )
+        .then(@talc.many_chars1(@talc.satisfy("JSON data", _ => true)))
         .bind(data => {
           let data = data.trim().to_owned()
           if valid_json(data) {
@@ -72,9 +68,7 @@ fn multiline_element_header_parser() -> @talc.StringParser[
           .or(bracket_marker)
           .bind(terminator => {
             @talc.many_chars(
-              @talc.satisfy("multiline description", char => {
-                char != terminator
-              }),
+              @talc.satisfy("multiline description", char => char != terminator),
             ).map(first_line => {
               declaration: declaration_from_syntax(
                 kind, visibility, is_static, name, metadata,
@@ -107,9 +101,7 @@ fn external_member_line_parser() -> @talc.StringParser[(String, Member)] {
   .map(parts => parts.join("").trim().to_owned())
   .skip(separator)
   .bind(target => {
-    @talc.many_chars1(
-      @talc.satisfy("external member body", _ => true),
-    ).bind(body => {
+    @talc.many_chars1(@talc.satisfy("external member body", _ => true)).bind(body => {
       let target = normalize_name(target)
       let body = body.trim().to_owned()
       let invalid_target = target.length() == 0 ||
@@ -155,9 +147,5 @@ fn text_block_header_parser() -> @talc.StringParser[String] {
       _ => @talc.fail("text block keyword")
     }
   })
-  legend
-  .attempt()
-  .or(aligned_header.attempt())
-  .or(simple)
-  .skip(@talc.eof())
+  legend.attempt().or(aligned_header.attempt()).or(simple).skip(@talc.eof())
 }

@@ -103,9 +103,7 @@ fn url_assignment_target_parser() -> @talc.StringParser[String] {
 }
 
 ///|
-fn url_assignment_line_parser() -> @talc.StringParser[
-  ClassCommandLineSyntax,
-] {
+fn url_assignment_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
   inline_keyword_parser("url")
   .then(inline_space1())
   .then(
@@ -131,9 +129,7 @@ fn url_assignment_line_parser() -> @talc.StringParser[
 }
 
 ///|
-fn class_command_line_parser() -> @talc.StringParser[
-  ClassCommandLineSyntax,
-] {
+fn class_command_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
   package_line_parser()
   .attempt()
   .or(url_assignment_line_parser().attempt())
