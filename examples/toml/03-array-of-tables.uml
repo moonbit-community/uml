@@ -1,0 +1,16 @@
+@starttoml
+[[workers]]
+name = "ingest"
+replicas = 2
+queues = ["events", "audit"]
+
+[[workers]]
+name = "export"
+replicas = 1
+queues = ["reports"]
+
+[[workers]]
+name = "cleanup"
+replicas = 1
+queues = []
+@endtoml

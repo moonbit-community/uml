@@ -1,0 +1,11 @@
+@starttoml
+empty_array = []
+empty_string = ""
+inline = { host = "db.example.test", port = 5432, tls = true }
+colors = ["red", "green", "blue"]
+multiline = """line one
+line two"""
+
+[database]
+credentials = { user = "app", password = "secret" }
+@endtoml

@@ -1,0 +1,11 @@
+@startyaml
+name: service-catalog
+version: 3
+enabled: true
+deprecated: false
+description: null
+max_int: 9223372036854775807
+ratio: 0.875
+date: 2026-07-24
+quoted: "value: with # punctuation"
+@endyaml
