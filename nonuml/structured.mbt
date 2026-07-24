@@ -21,8 +21,9 @@ pub(all) enum JsonNodeKind {
 } derive(Eq, Debug)
 
 ///|
-/// A PlantUML JSON record node. Objects have key/value rows; arrays have
-/// single value rows. Compound rows point to another record node.
+/// A structured-data record node shared by JSON, YAML, and TOML renderers.
+/// Objects have key/value rows; arrays have single value rows. Compound rows
+/// point to another record node.
 pub struct JsonNode {
   kind : JsonNodeKind
   rows : Array[JsonRow]

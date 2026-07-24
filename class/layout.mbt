@@ -46,13 +46,6 @@ pub struct GraphvizLayout {
 } derive(Eq, Debug)
 
 ///|
-fn graphviz_quote(value : String) -> String {
-  "\"" +
-  value.replace(old="\\", new="\\\\").replace(old="\"", new="\\\"") +
-  "\""
-}
-
-///|
 fn graphviz_rankdir(style : @core.DocumentStyle) -> @rankdir.RankDir {
   match style.layout_direction {
     Some(@core.LeftToRight) => @rankdir.LR
@@ -171,7 +164,7 @@ fn ClassDiagram::graphviz_layout(
     }
     let cluster_name = graphviz_cluster_name(package_index)
     let cluster = parent.subgraph(name=cluster_name)
-    cluster.set_attr("label", graphviz_quote(group.display))
+    cluster.set_attr("label", group.display)
     cluster.set_attr("style", "rounded")
     cluster.set_attr("color", @core.svg_color(group.color, "#181818"))
     package_graphs[group.qualified_name] = cluster
@@ -186,7 +179,7 @@ fn ClassDiagram::graphviz_layout(
       Some(cluster) => cluster.node(name)
       None => graph.node(name)
     }
-    node.set_attr("label", graphviz_quote(entity.display))
+    node.set_attr("label", "")
     node.set_attr("shape", "box")
     node.set_attr("width", "\{(entity.width(text_metrics).to_double() / 72.0)}")
     node.set_attr(
@@ -207,7 +200,10 @@ fn ClassDiagram::graphviz_layout(
       name="e\{relation_index}",
     )
     relation_names[edge.id()] = "\{relation_index}"
-    edge.set_attr("label", graphviz_quote(relation.label.unwrap_or("")))
+    match relation.label {
+      Some(label) => edge.set_attr("label", label)
+      None => ()
+    }
     edge.set_attr("dir", "none")
     if relation.dotted {
       edge.set_attr("style", "dotted")
@@ -219,7 +215,7 @@ fn ClassDiagram::graphviz_layout(
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = note_size(note, text_metrics)
-    node.set_attr("label", graphviz_quote(note.text))
+    node.set_attr("label", "")
     node.set_attr("shape", "note")
     node.set_attr("width", "\{width.to_double() / 72.0}")
     node.set_attr("height", "\{height.to_double() / 72.0}")

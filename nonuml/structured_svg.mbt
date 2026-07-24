@@ -3,6 +3,7 @@ priv struct NodeMetrics {
   key_width : Int
   width : Int
   height : Int
+  row_heights : Array[Int]
 }
 
 ///|
@@ -47,6 +48,48 @@ fn display_svg(value : JsonValueDisplay) -> String {
 }
 
 ///|
+fn row_offset(metrics : NodeMetrics, index : Int) -> Int {
+  let mut offset = 0
+  for row_index in 0..<index {
+    offset += metrics.row_heights[row_index]
+  }
+  offset
+}
+
+///|
+fn append_multiline_text(
+  output : StringBuilder,
+  x : Int,
+  y : Int,
+  text : String,
+  class? : String,
+) -> Unit {
+  match class {
+    Some(class) => output <+ "<text class=\"\{class}\" x=\"\{x}\" y=\"\{y}\">"
+    None => output <+ "<text x=\"\{x}\" y=\"\{y}\">"
+  }
+  for index, line in text.split("\n") {
+    let dy = if index == 0 { 0 } else { 21 }
+    output <+
+      "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@core.xml_escape(line.to_owned())}</tspan>"
+  }
+  output.write_string("</text>\n")
+}
+
+///|
+fn append_value_text(
+  output : StringBuilder,
+  x : Int,
+  y : Int,
+  value : JsonValueDisplay,
+) -> Unit {
+  match value {
+    Text(text) => append_multiline_text(output, x, y, text)
+    _ => output <+ "<text x=\"\{x}\" y=\"\{y}\">\{display_svg(value)}</text>\n"
+  }
+}
+
+///|
 fn is_blank_node(node : JsonNode) -> Bool {
   match node.rows {
     [{ key: None, value: Text(text), child: None }] => text.is_empty()
@@ -67,33 +110,37 @@ fn node_metrics(node : JsonNode) -> NodeMetrics {
   )
   let mut key_width = 0
   let mut value_width = 0
+  let row_heights = []
   for row in node.rows {
-    match row.key {
-      Some(key) =>
-        key_width = key_width.max(
-          @metrics.measure_text_with(key, key_metrics).width + 10,
-        )
-      None => ()
+    let key_height = match row.key {
+      Some(key) => {
+        let key_measurement = @metrics.measure_text_with(key, key_metrics)
+        key_width = key_width.max(key_measurement.width + 10)
+        key_measurement.height
+      }
+      None => 0
     }
-    value_width = value_width.max(
-      @metrics.measure_text_with(display_text(row.value), regular_metrics).width +
-      10,
+    let value_metrics = @metrics.measure_text_with(
+      display_text(row.value),
+      regular_metrics,
     )
+    value_width = value_width.max(value_metrics.width + 10)
+    row_heights.push(key_height.max(value_metrics.height).max(21))
   }
   let height = if is_blank_node(node) {
     15
   } else {
-    node.rows.length().max(1) * 21
+    row_heights.fold(init=0, (total, row_height) => total + row_height)
   }
   match node.kind {
     Object => {
       key_width = key_width.max(30)
       value_width = value_width.max(30)
-      { key_width, width: key_width + value_width, height }
+      { key_width, width: key_width + value_width, height, row_heights }
     }
     Array => {
       value_width = value_width.max(30)
-      { key_width: 0, width: value_width, height }
+      { key_width: 0, width: value_width, height, row_heights }
     }
   }
 }
@@ -188,7 +235,9 @@ fn align_empty_records(node : PlacedNode) -> PlacedNode {
     let (row, original_child) = pair
     let child = align_empty_records(original_child)
     let child = if is_empty_record(child) {
-      let port_y = node.y + row * 21 + 10
+      let port_y = node.y +
+        row_offset(node.metrics, row) +
+        node.metrics.row_heights[row] / 2
       shift_node(child, port_y - (child.y + child.metrics.height / 2))
     } else {
       child
@@ -203,7 +252,9 @@ fn append_edges(output : StringBuilder, node : PlacedNode) -> Unit {
   for pair in node.children {
     let (row_index, child) = pair
     let x1 = node.x + node.metrics.width - 12
-    let y1 = node.y + row_index * 21 + 10
+    let y1 = node.y +
+      row_offset(node.metrics, row_index) +
+      node.metrics.row_heights[row_index] / 2
     let x2 = child.x
     let y2 = child.y + child.metrics.height / 2
     let arrow_base = x2 - 8
@@ -233,7 +284,8 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
     return
   }
   for index, row in node.node.rows {
-    let row_y = node.y + index * 21
+    let row_y = node.y + row_offset(node.metrics, index)
+    let row_height = node.metrics.row_heights[index]
     if index > 0 {
       output.write_string("<line\n")
       output <+ "  x1=\"\{node.x}\" y1=\"\{row_y}\"\n"
@@ -242,16 +294,18 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
     match row.key {
       Some(key) => {
         let divider = node.x + node.metrics.key_width
+        append_multiline_text(
+          output,
+          node.x + 5,
+          row_y + 16,
+          key,
+          class="json-key",
+        )
         output <+
-          "<text class=\"json-key\" x=\"\{node.x + 5}\" y=\"\{row_y + 16}\">\{@core.xml_escape(key)}</text>\n"
-        output <+
-          "<line x1=\"\{divider}\" y1=\"\{row_y}\" x2=\"\{divider}\" y2=\"\{row_y + 21}\"/>\n"
-        output <+
-          "<text x=\"\{divider + 5}\" y=\"\{row_y + 16}\">\{display_svg(row.value)}</text>\n"
+          "<line x1=\"\{divider}\" y1=\"\{row_y}\" x2=\"\{divider}\" y2=\"\{row_y + row_height}\"/>\n"
+        append_value_text(output, divider + 5, row_y + 16, row.value)
       }
-      None =>
-        output <+
-          "<text x=\"\{node.x + 5}\" y=\"\{row_y + 16}\">\{display_svg(row.value)}</text>\n"
+      None => append_value_text(output, node.x + 5, row_y + 16, row.value)
     }
   }
   output.write_string("</g>\n")

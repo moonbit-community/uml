@@ -637,10 +637,28 @@ test "parses multiple extends and implements targets" {
     "@startuml\nclass Child extends BaseA, BaseB implements APIA, APIB\n@enduml",
   )
   @test.assert_eq(diagram.relations.length(), 4)
-  @test.assert_eq(diagram.relations[0].right, "BaseA")
-  @test.assert_eq(diagram.relations[1].right, "BaseB")
-  @test.assert_eq(diagram.relations[2].right, "APIA")
-  @test.assert_eq(diagram.relations[3].right, "APIB")
+  @test.assert_eq(diagram.relations[0].left, "BaseA")
+  @test.assert_eq(diagram.relations[1].left, "BaseB")
+  @test.assert_eq(diagram.relations[2].left, "APIA")
+  @test.assert_eq(diagram.relations[3].left, "APIB")
+  for relation in diagram.relations {
+    @test.assert_eq(relation.right, "Child")
+    @test.assert_eq(relation.left_end, Extension)
+    @test.assert_eq(relation.right_end, Plain)
+  }
+}
+
+///|
+test "keeps explicit inheritance orientation separate from declaration links" {
+  let diagram = parse(
+    "@startuml\nclass Customer extends Account\nCustomer ..|> Auditable\n@enduml",
+  )
+  @test.assert_eq(diagram.relations[0].left, "Account")
+  @test.assert_eq(diagram.relations[0].right, "Customer")
+  @test.assert_eq(diagram.relations[0].left_end, Extension)
+  @test.assert_eq(diagram.relations[1].left, "Customer")
+  @test.assert_eq(diagram.relations[1].right, "Auditable")
+  @test.assert_eq(diagram.relations[1].right_end, Extension)
 }
 
 ///|

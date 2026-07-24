@@ -33,6 +33,7 @@ test "graphviz layout emits semantic node and spline geometry" {
   @test.assert_eq(layout.nodes.length(), 2)
   @test.assert_eq(layout.edges.length(), 1)
   @test.assert_eq(layout.edges[0].paths.length() > 0, true)
+  @test.assert_eq(layout.edges[0].label is Some(_), true)
   @test.assert_eq(layout.width > 0.0 && layout.height > 0.0, true)
   let svg = diagram.render_svg()
   @test.assert_eq(svg.contains("<path d=\"M "), true)
@@ -53,6 +54,39 @@ test "graphviz layout includes package clusters and notes" {
   @test.assert_eq(svg.contains("class=\"package\""), true)
   @test.assert_eq(svg.contains("class=\"class-note\""), true)
   @test.assert_eq(svg.contains(">owner</text>"), true)
+}
+
+///|
+test "graphviz layout follows PlantUML inheritance ordering without fake labels" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|package domain {
+      #|  abstract class "Account Holder" as Account
+      #|  interface Auditable
+      #|  class Customer extends Account
+      #|  Customer ..|> Auditable
+      #|}
+      #|@enduml
+    ),
+  )
+  let layout = diagram.graphviz_layout(ClassTextMetrics::new(diagram.style))
+  let nodes : Map[String, GraphvizNodeLayout] = Map([])
+  for node in layout.nodes {
+    nodes[node.code] = node
+  }
+  let account = nodes.get("domain.Account").unwrap()
+  let customer = nodes.get("domain.Customer").unwrap()
+  let auditable = nodes.get("domain.Auditable").unwrap()
+  @test.assert_eq(
+    account.y + account.height / 2.0 < customer.y - customer.height / 2.0 &&
+    customer.y + customer.height / 2.0 < auditable.y - auditable.height / 2.0,
+    true,
+  )
+  @test.assert_eq(layout.edges.length(), diagram.relations.length())
+  for edge in layout.edges {
+    @test.assert_eq(edge.label, None)
+  }
 }
 
 ///|

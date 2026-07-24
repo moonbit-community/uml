@@ -159,8 +159,8 @@ fn Parser::apply_declaration_syntax(
     }
     let parent = self.ensure_entity_as(parent, parent_kind)
     self.relations.push({
-      left: child,
-      right: parent,
+      left: parent,
+      right: child,
       kind: Extension,
       left_cardinality: None,
       right_cardinality: None,
@@ -170,9 +170,9 @@ fn Parser::apply_declaration_syntax(
       right_qualifier: None,
       label: None,
       dotted: false,
-      raw_arrow: "--|>",
-      left_end: Plain,
-      right_end: Extension,
+      raw_arrow: "<|--",
+      left_end: Extension,
+      right_end: Plain,
       direction: Automatic,
       line_style: None,
       color: None,
@@ -190,8 +190,8 @@ fn Parser::apply_declaration_syntax(
     let child = self.resolve(declaration.code)
     let interface = self.ensure_entity_as(interface, Interface)
     self.relations.push({
-      left: child,
-      right: interface,
+      left: interface,
+      right: child,
       kind: Realization,
       left_cardinality: None,
       right_cardinality: None,
@@ -201,9 +201,9 @@ fn Parser::apply_declaration_syntax(
       right_qualifier: None,
       label: None,
       dotted: true,
-      raw_arrow: "..|>",
-      left_end: Plain,
-      right_end: Extension,
+      raw_arrow: "<|..",
+      left_end: Extension,
+      right_end: Plain,
       direction: Automatic,
       line_style: None,
       color: None,
