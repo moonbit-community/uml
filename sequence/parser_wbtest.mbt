@@ -289,6 +289,36 @@ test "parse async arrow" {
 }
 
 ///|
+test "partial arrows preserve PlantUML direction and part semantics" {
+  let result = parse(
+    "@startuml\nAlice \\-> Bob : bottom\nAlice \\--> Bob : dotted bottom\nAlice /-> Bob : top\nAlice /--> Bob : dotted top\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 4)
+  for event in result.events {
+    match event {
+      Message(message) => {
+        @test.assert_eq(message.from_code, "Alice")
+        @test.assert_eq(message.to_code, "Bob")
+      }
+      _ => fail("expected message")
+    }
+  }
+  match (result.events[0], result.events[2]) {
+    (Message(bottom), Message(top)) => {
+      match bottom.arrow_config.part {
+        BottomPart => ()
+        _ => fail("expected bottom arrow part")
+      }
+      match top.arrow_config.part {
+        TopPart => ()
+        _ => fail("expected top arrow part")
+      }
+    }
+    _ => fail("expected partial-arrow messages")
+  }
+}
+
+///|
 test "parsec message grammar preserves decorated arrows and aliases" {
   let result = parse(
     "@startuml\nparticipant \"Alice Agent\" as alice\nalice o<<-->>ox Bob ++ : dispatch\n@enduml",
@@ -370,6 +400,18 @@ test "keywords are case insensitive" {
 test "create is followed by a message to the new participant" {
   let result = parse("@startuml\ncreate Bob\nAlice -> Bob\n@enduml")
   @test.assert_eq(result.participants.contains("Bob"), true)
+  @test.assert_eq(result.events.length(), 2)
+}
+
+///|
+test "create with an unquoted code and quoted display uses the code in messages" {
+  let result = parse(
+    "@startuml\ncreate Bob as \"Bobby Tables\"\nAlice -> Bob\n@enduml",
+  )
+  guard result.participants.contains("Bob") else {
+    fail("missing created participant")
+  }
+  @test.assert_eq(result.participants["Bob"].display, "Bobby Tables")
   @test.assert_eq(result.events.length(), 2)
 }
 

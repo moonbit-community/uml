@@ -172,7 +172,9 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
 }
 
 ///|
-fn ParseCtx::ensure_no_pending_create(self : ParseCtx) -> Unit raise @core.ParseError {
+fn ParseCtx::ensure_no_pending_create(
+  self : ParseCtx,
+) -> Unit raise @core.ParseError {
   guard self.pending_create is Some(code) else { () }
   self.source.raise_parse_error("after create, send a message to \{code}")
 }

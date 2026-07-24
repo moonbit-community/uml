@@ -11,11 +11,7 @@ fn message_tail_parser() -> @talc.StringParser[
       inline_spaces()
       .then(
         @talc.char(':')
-        .then(
-          @talc.many_chars(
-            @talc.satisfy("message label", _ => true),
-          ),
-        )
+        .then(@talc.many_chars(@talc.satisfy("message label", _ => true)))
         .map(@core.normalize_label)
         .optional(),
       )

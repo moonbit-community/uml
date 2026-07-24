@@ -165,16 +165,20 @@ fn participant_decl_ref_parser() -> @talc.StringParser[PartRef] {
       }
     })
   })
-  let unquoted = participant_identifier().bind(display => {
-    participant_alias_display()
+  let unquoted = participant_identifier().bind(name => {
+    let quoted_display = inline_spaces()
+      .then(as_keyword())
+      .then(inline_spaces())
+      .then(quoted_participant())
+      .map(display => { code: name, display })
+    let alias_code = participant_alias_code()
+      .attempt()
+      .map(participant_code => { code: participant_code, display: name })
+    quoted_display
     .attempt()
+    .or(alias_code)
     .optional()
-    .map(reference_code => {
-      match reference_code {
-        Some(code) => { code, display }
-        None => { code: display, display }
-      }
-    })
+    .map(reference => reference.unwrap_or({ code: name, display: name }))
   })
   quoted.attempt().or(unquoted)
 }

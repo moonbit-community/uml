@@ -9,8 +9,7 @@ test "command line grammar parses complete single-line commands" {
     "return response", "ignore newpage", "autonewpage 10", "{left} <-> {right} : link",
   ]
   for line in lines {
-    guard simple_event_line_parser().parse(@talc.Input::new(line))
-      is Ok(_) else {
+    guard simple_event_line_parser().parse(@talc.Input::new(line)) is Ok(_) else {
       @test.fail("command grammar rejected: " + line)
     }
   }
@@ -23,9 +22,7 @@ test "participant declaration grammar parses complete declarations" {
     "participant Alice [[https://example.com]] #lightblue", "create Bob",
   ]
   for line in lines {
-    guard participant_declaration_line_parser().parse(
-        @talc.Input::new(line),
-      )
+    guard participant_declaration_line_parser().parse(@talc.Input::new(line))
       is Ok(_) else {
       @test.fail("participant grammar rejected: " + line)
     }

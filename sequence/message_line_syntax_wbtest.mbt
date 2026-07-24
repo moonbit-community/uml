@@ -5,8 +5,7 @@ test "message line grammar parses complete messages" {
     "[-> Alice : incoming", "Alice ->] : outgoing",
   ]
   for line in lines {
-    guard complete_message_line_parser().parse(@talc.Input::new(line))
-      is Ok(_) else {
+    guard complete_message_line_parser().parse(@talc.Input::new(line)) is Ok(_) else {
       @test.fail("message grammar rejected: " + line)
     }
   }

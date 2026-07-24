@@ -1,5 +1,7 @@
 ///|
-fn ParseCtx::consume_style_directive(self : ParseCtx) -> Bool raise @core.ParseError {
+fn ParseCtx::consume_style_directive(
+  self : ParseCtx,
+) -> Bool raise @core.ParseError {
   let line = @core.strip_line_comment(self.source.current_line())
   let lower = line.trim().to_lower()
   guard lower != "newpage" && !lower.has_prefix("newpage ") else {

@@ -109,6 +109,17 @@ fn has_message_arrow(line : String) -> Bool {
 }
 
 ///|
+/// These arrow forms are sequence-message syntax, never class relations.
+fn has_sequence_only_message_arrow(line : String) -> Bool {
+  for arrow in ["->>", "<<-", "\\->", "\\-->", "/->", "/-->"] {
+    if @core.find_unquoted_literal(line, arrow) is Some(_) {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn is_class_declaration(line : String) -> Bool {
   let words = @core.syntax_words(line)
   guard words.length() > 0 else { return false }
@@ -171,6 +182,7 @@ fn is_class_declaration(line : String) -> Bool {
 pub fn is_sequence_source(input : String) -> Bool {
   let lines = meaningful_source_lines(input)
   lines.any(is_sequence_command) ||
+  lines.any(has_sequence_only_message_arrow) ||
   (
     lines.any(is_ambiguous_participant_declaration) &&
     lines.any(has_message_arrow)

@@ -1,8 +1,6 @@
 ///|
 fn inline_space1() -> @talc.StringParser[Unit] {
-  @talc.satisfy("inline whitespace", is_inline_whitespace)
-  .some()
-  .map(_ => ())
+  @talc.satisfy("inline whitespace", is_inline_whitespace).some().map(_ => ())
 }
 
 ///|
@@ -47,9 +45,7 @@ fn url_value_parser() -> @talc.StringParser[String] {
 }
 
 ///|
-fn participant_declaration_line_parser() -> @talc.StringParser[
-  ParticipantDecl,
-] {
+fn participant_declaration_line_parser() -> @talc.StringParser[ParticipantDecl] {
   keyword_parser("create")
   .attempt()
   .optional()
@@ -354,9 +350,7 @@ fn autonumber_line_parser() -> @talc.StringParser[Event] {
     .skip(inline_spaces())
     .map(value => AutonumberIncrement(value))
   let start_value = @talc.many_chars1(
-      @talc.satisfy("autonumber start", char => {
-        !is_inline_whitespace(char)
-      }),
+      @talc.satisfy("autonumber start", char => !is_inline_whitespace(char)),
     )
     .attempt()
     .optional()

@@ -332,7 +332,13 @@ fn Message::gap_requirement(
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   // The participant gap already includes both half-widths and the group margin.
-  TextSize::of_with(self.rendered_label(number), text_metrics.body).width + 38
+  let activation_lane = match self.activation_spec {
+    Some(Activate) | Some(Create) => 10
+    _ => 0
+  }
+  TextSize::of_with(self.rendered_label(number), text_metrics.body).width +
+  38 +
+  activation_lane
 }
 
 ///|
@@ -707,7 +713,7 @@ fn layout_participants(
   for participant_index in 0..<(layouts.length() - 1) {
     let left = layouts[participant_index]
     let right = layouts[participant_index + 1]
-    gaps.push(left.width / 2 + right.width / 2 + 32)
+    gaps.push(left.width / 2 + right.width / 2 + 21)
   }
   let mut autonumber = false
   let mut next_number = "1"

@@ -63,6 +63,20 @@ test "participant layout follows explicit PlantUML order" {
 }
 
 ///|
+test "activation messages reserve space for the target activation lane" {
+  let plain = parse(
+    "@startuml\nAlice -> Bob : a message with a long label\n@enduml",
+  ).layout()
+  let activated = parse(
+    "@startuml\nAlice -> Bob ++ : a message with a long label\n@enduml",
+  ).layout()
+  let plain_gap = plain.participants[1].center_x - plain.participants[0].center_x
+  let activated_gap = activated.participants[1].center_x -
+    activated.participants[0].center_x
+  @test.assert_eq(activated_gap > plain_gap, true)
+}
+
+///|
 test "render groups notes and activation as distinct layers" {
   let diagram = parse(
     "@startuml\nAlice -> Bob ++ : start\nnote right of Bob #yellow : cached\nalt #palegreen accepted\nBob --> Alice -- : reply\nelse rejected\nBob -> Alice : error\nend\ndestroy Bob\n@enduml",
