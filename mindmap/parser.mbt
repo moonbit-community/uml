@@ -205,6 +205,53 @@ fn parent_for(
 }
 
 ///|
+fn parse_mindmap_style_block(
+  lines : Array[String],
+  start : Int,
+  style : MindmapStyle,
+) -> Int raise @core.ParseError {
+  let mut index = start + 1
+  let mut selector : String? = None
+  while index < lines.length() {
+    let line = @core.strip_line_comment(lines[index]).trim().to_owned()
+    if line.equal_ignore_ascii_case("</style>") {
+      return index + 1
+    }
+    if line.length() == 0 {
+      index += 1
+      continue
+    }
+    if line.has_suffix("{") {
+      selector = Some(line[:line.length() - 1].trim().to_owned())
+      index += 1
+      continue
+    }
+    if line == "}" {
+      selector = None
+      index += 1
+      continue
+    }
+    match selector {
+      Some(current) => {
+        let words = @core.syntax_words(line)
+        if words.length() >= 2 {
+          let key = words[0]
+          let value = words[1:].to_owned().join(" ")
+          if current.trim().equal_ignore_ascii_case("arrow") {
+            style.apply_arrow_property(key, value)
+          } else {
+            style.apply_node_property(current, key, value)
+          }
+        }
+      }
+      None => ()
+    }
+    index += 1
+  }
+  raise SyntaxError(start + 1, "unclosed mindmap style block")
+}
+
+///|
 /// Parse a PlantUML mindmap source. Both org-mode (`*`/`#`) and plus/minus
 /// syntax are accepted, including colors, boxless items, stereotypes, and
 /// org-mode multiline labels.
@@ -215,10 +262,11 @@ pub fn parse(input : String) -> MindmapDiagram raise @core.ParseError {
     .to_array()
   let ideas = []
   let style = @core.DocumentStyle::empty()
+  let mindmap_style = MindmapStyle::default()
   let mut index = 0
   let mut multiplier : Int? = None
   let mut org_first : String? = None
-  let mut default_direction = Right
+  let mut default_direction : Direction = Right
   while index < lines.length() {
     let line = @core.strip_line_comment(lines[index])
     let trimmed = line.trim().to_owned()
@@ -231,9 +279,14 @@ pub fn parse(input : String) -> MindmapDiagram raise @core.ParseError {
       index += 1
       continue
     }
+    if trimmed.equal_ignore_ascii_case("<style>") {
+      index = parse_mindmap_style_block(lines, index, mindmap_style)
+      continue
+    }
     match @core.parse_style_directive(trimmed) {
       Some(directive) => {
         style.apply(directive)
+        mindmap_style.apply_skinparam(directive)
         index += 1
         continue
       }
@@ -300,5 +353,5 @@ pub fn parse(input : String) -> MindmapDiagram raise @core.ParseError {
     })
     index = last + 1
   }
-  { ideas, style }
+  { ideas, style, mindmap_style }
 }

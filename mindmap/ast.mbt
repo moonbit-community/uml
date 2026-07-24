@@ -30,4 +30,5 @@ pub struct Idea {
 pub struct MindmapDiagram {
   ideas : Array[Idea]
   style : @core.DocumentStyle
+  mindmap_style : MindmapStyle
 } derive(Eq, Debug)

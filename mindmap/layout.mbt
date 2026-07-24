@@ -61,13 +61,6 @@ priv struct TetrisLayout {
 }
 
 ///|
-let node_padding_x = 10
-
-///|
-let node_padding_y = 6
-
-///|
-let branch_gap = 35
 
 ///|
 let outer_padding = 12
@@ -113,17 +106,81 @@ fn MindmapDiagram::children_of(
 }
 
 ///|
-fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
+fn MindmapDiagram::has_children(self : MindmapDiagram, index : Int) -> Bool {
+  self.ideas.any(idea => idea.parent == Some(index))
+}
+
+///|
+pub fn MindmapDiagram::node_style(
+  self : MindmapDiagram,
+  index : Int,
+) -> MindmapNodeStyle {
+  self.mindmap_style.node_style(self.ideas[index], self.has_children(index))
+}
+
+///|
+fn MindmapDiagram::node_text_metrics(
+  self : MindmapDiagram,
+  index : Int,
+) -> @metrics.TextMetrics {
   let idea = self.ideas[index]
-  let metrics = @metrics.measure_text_with(
-    idea.label,
-    self.style.font_metrics(),
-  )
+  let node_style = self.node_style(index)
+  let font_size = node_style.font_size.unwrap_or(0)
+  @metrics.measure_text_with(idea.label, self.style.font_metrics(font_size~))
+}
+
+///|
+fn MindmapDiagram::node_base_size(
+  self : MindmapDiagram,
+  index : Int,
+) -> (Int, Int) {
+  let idea = self.ideas[index]
+  let metrics = self.node_text_metrics(index)
+  let node_style = self.node_style(index)
   match idea.shape {
-    Box =>
-      (metrics.width + node_padding_x * 2, metrics.height + node_padding_y * 2)
-    None => (metrics.width + 3, metrics.height + 2)
+    Box => {
+      let padding_x = node_style.padding_x.unwrap_or(10)
+      let padding_y = node_style.padding_y.unwrap_or(10)
+      let width = (metrics.width + padding_x * 2).max(
+        node_style.minimum_width.unwrap_or(0),
+      )
+      let height = metrics.height +
+        padding_y * 2 +
+        node_style.margin_top.unwrap_or(10) +
+        node_style.margin_bottom.unwrap_or(10)
+      (width, height)
+    }
+    None =>
+      (
+        (metrics.width + 3).max(node_style.minimum_width.unwrap_or(0)),
+        metrics.height + 2,
+      )
   }
+}
+
+///|
+fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
+  let (width, height) = self.node_base_size(index)
+  guard self.node_style(index).same_class_width.unwrap_or(false) else {
+    (width, height)
+  }
+  let mut shared_width = width
+  for candidate in 0..<self.ideas.length() {
+    guard self.node_style(candidate).same_class_width.unwrap_or(false) else {
+      continue
+    }
+    let (candidate_width, _) = self.node_base_size(candidate)
+    shared_width = shared_width.max(candidate_width)
+  }
+  (shared_width, height)
+}
+
+///|
+fn MindmapDiagram::branch_gap(self : MindmapDiagram, index : Int) -> Int {
+  let node_style = self.node_style(index)
+  node_style.margin_left.unwrap_or(10) +
+  node_style.margin_right.unwrap_or(10) +
+  30
 }
 
 ///|
@@ -233,6 +290,7 @@ fn MindmapDiagram::finger_tee(
   direction : Direction,
 ) -> Tee {
   let (width, height) = self.node_size(index)
+  let node_style = self.node_style(index)
   let child_tees = self
     .children_of(index, direction)
     .map(child => self.finger_tee(child, direction))
@@ -242,9 +300,9 @@ fn MindmapDiagram::finger_tee(
   } else {
     {
       thickness1: height,
-      elongation1: width,
+      elongation1: width + node_style.margin_left.unwrap_or(10),
       thickness2: packed.height,
-      elongation2: branch_gap + packed.width,
+      elongation2: node_style.margin_right.unwrap_or(10) + 30 + packed.width,
     }
   }
 }
@@ -261,6 +319,7 @@ fn append_finger(
   edges : Array[EdgeLayout],
 ) -> Unit {
   let (width, height) = diagram.node_size(index)
+  let branch_gap = diagram.branch_gap(index)
   let sign = match direction {
     Right => 1
     Left => -1
