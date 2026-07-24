@@ -237,7 +237,11 @@ fn ClassDiagram::graphviz_layout(
       Some(target) =>
         match node_names.get(target) {
           Some(target_name) => {
-            let edge = graph.edge(node, graph.node(target_name), name="note_edge\{note_index}")
+            let edge = graph.edge(
+              node,
+              graph.node(target_name),
+              name="note_edge\{note_index}",
+            )
             edge.set_attr("dir", "none")
             edge.set_attr("style", "invis")
           }

@@ -178,7 +178,9 @@ fn relation_label_position(
     Some(graphviz) =>
       for edge in graphviz.edges {
         if edge.relation_index == relation_index {
-          return edge.label.unwrap_or((fallback.0.to_double(), fallback.1.to_double()))
+          return edge.label.unwrap_or(
+            (fallback.0.to_double(), fallback.1.to_double()),
+          )
         }
       }
     None => ()
@@ -297,7 +299,10 @@ fn append_relation(
     Some("bold") => "stroke-width:2.5"
     _ => ""
   }
-  let relation_color = @core.svg_color(relation.color, @core.svg_color(diagram.style.line_color, "#181818"))
+  let relation_color = @core.svg_color(
+    relation.color,
+    @core.svg_color(diagram.style.line_color, "#181818"),
+  )
   let style = " style=\"stroke:\{relation_color};\{relation_style}\""
   let marker_start = match relation_marker(relation.left_end) {
     Some(marker) => " marker-start=\"url(#\{marker})\""
