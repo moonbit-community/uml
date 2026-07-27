@@ -4,19 +4,131 @@ fn xml_escape(value : String) -> String {
 }
 
 ///|
+fn Entity::spot(self : Entity) -> (String, String) {
+  match self.kind {
+    AbstractClass => ("A", "#A9DCDF")
+    Interface => ("I", "#B4A7E5")
+    Enum => ("E", "#EB937F")
+    Annotation => ("@", "#B4A7E5")
+    _ => ("C", "#ADD1B2")
+  }
+}
+
+///|
+fn Member::display_without_visibility(self : Member) -> String {
+  match self.visibility {
+    Unknown => self.raw
+    _ => self.raw[1:].trim_start().to_owned()
+  }
+}
+
+///|
+fn Member::visibility_icon(self : Member, x : Int, baseline_y : Int) -> String {
+  if self.visibility is Unknown {
+    return ""
+  }
+  let fill = if self.is_method { "#84BE84" } else { "none" }
+  let color = match self.visibility {
+    Public => "#038048"
+    Private => "#B20000"
+    Protected => "#A9A900"
+    Package => "#A06000"
+    Unknown => "#181818"
+  }
+  let center_y = baseline_y - 4
+  match self.visibility {
+    Public =>
+      "<circle cx=\"\{x + 5}\" cy=\"\{center_y}\" r=\"3\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
+    Private =>
+      "<rect x=\"\{x + 2}\" y=\"\{center_y - 3}\" width=\"6\" height=\"6\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
+    Protected =>
+      "<path d=\"M \{x + 5} \{center_y - 4} L \{x + 9} \{center_y} L \{x + 5} \{center_y + 4} L \{x + 1} \{center_y} Z\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
+    Package =>
+      "<path d=\"M \{x + 5} \{center_y - 3} L \{x + 9} \{center_y + 3} L \{x + 1} \{center_y + 3} Z\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
+    Unknown => ""
+  }
+}
+
+///|
 fn ClassTextMetrics::header_height(self : ClassTextMetrics) -> Int {
-  (self.bold.line_height + 23).max(38)
+  (self.regular.line_height + 16).max(32)
 }
 
 ///|
 fn ClassTextMetrics::row_height(self : ClassTextMetrics) -> Int {
-  (self.regular.line_height + 3).max(18)
+  self.regular.line_height.max(17)
+}
+
+///|
+priv struct ClassHeaderLayout {
+  width : Int
+  height : Int
+}
+
+///|
+priv struct ClassBodyLayout {
+  fields : Array[Member]
+  methods : Array[Member]
+  fields_height : Int
+  methods_height : Int
+}
+
+///|
+fn body_section_height(
+  entries : Array[Member],
+  text_metrics : ClassTextMetrics,
+) -> Int {
+  if entries.is_empty() {
+    8
+  } else {
+    7 + entries.length() * text_metrics.row_height()
+  }
+}
+
+///|
+fn Entity::header_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> ClassHeaderLayout {
+  // PlantUML places a 22px circled type icon beside every class title.
+  let title_metrics = match self.kind {
+    AbstractClass | Interface => text_metrics.italic
+    _ => text_metrics.regular
+  }
+  let width = @metrics.measure_text_with(self.display, title_metrics).width + 32
+  { width, height: text_metrics.header_height() }
+}
+
+///|
+fn Entity::body_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> ClassBodyLayout {
+  let fields : Array[Member] = []
+  let methods : Array[Member] = []
+  for entry in self.members {
+    guard self.entry_visible(entry) && !entry.is_separator else { continue }
+    if entry.is_method {
+      methods.push(entry)
+    } else {
+      fields.push(entry)
+    }
+  }
+  // MethodsOrFieldsArea always contributes its separator and vertical margins,
+  // even when that portion has no visible members.
+  {
+    fields,
+    methods,
+    fields_height: body_section_height(fields, text_metrics),
+    methods_height: body_section_height(methods, text_metrics),
+  }
 }
 
 ///|
 fn Entity::height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
-  text_metrics.header_height() +
-  self.visible_member_count() * text_metrics.row_height()
+  let header = self.header_layout(text_metrics)
+  let body = self.body_layout(text_metrics)
+  header.height + body.fields_height + body.methods_height
 }
 
 ///|
@@ -27,38 +139,39 @@ fn Entity::entry_visible(self : Entity, entry : Member) -> Bool {
 }
 
 ///|
-fn Entity::visible_member_count(self : Entity) -> Int {
-  let mut count = 0
-  for entry in self.members {
-    if self.entry_visible(entry) {
-      count += 1
-    }
-  }
-  count
-}
-
-///|
 priv struct ClassTextMetrics {
   regular : @metrics.FontMetrics
-  bold : @metrics.FontMetrics
+  italic : @metrics.FontMetrics
 }
 
 ///|
 fn ClassTextMetrics::new(style : @core.DocumentStyle) -> ClassTextMetrics {
-  { regular: style.font_metrics(), bold: style.font_metrics(font_weight=700) }
+  let font_size = if style.font_size is None {
+    14
+  } else {
+    @core.font_size_value(style)
+  }
+  {
+    regular: style.font_metrics(font_size~),
+    italic: style.font_metrics(font_size~, font_style=Italic),
+  }
 }
 
 ///|
 fn Entity::width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
-  let mut width = @metrics.measure_text_with(self.display, text_metrics.bold).width +
-    28
-  for entry in self.members {
-    guard self.entry_visible(entry) else { continue }
+  let mut width = self.header_layout(text_metrics).width
+  let body = self.body_layout(text_metrics)
+  for entry in body.fields {
     width = width.max(
       @metrics.measure_text_with(entry.raw, text_metrics.regular).width + 28,
     )
   }
-  width.max(140)
+  for entry in body.methods {
+    width = width.max(
+      @metrics.measure_text_with(entry.raw, text_metrics.regular).width + 28,
+    )
+  }
+  width
 }
 
 ///|
@@ -213,6 +326,7 @@ fn append_spline_path(
 fn append_packages(
   output : StringBuilder,
   diagram : ClassDiagram,
+  text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
   match layout.graphviz {
@@ -222,9 +336,21 @@ fn append_packages(
           continue
         }
         let group = diagram.packages[package_layout.package_index]
-        let fill = @core.svg_color(group.color, "#F8F8F8")
+        let fill = @core.svg_color(
+          group.color,
+          diagram.style.package_background_color(),
+        )
+        let tab_width = @metrics.measure_text_with(
+            group.display,
+            text_metrics.regular,
+          ).width.to_double() +
+          18.0
+        let x = package_layout.x
+        let y = package_layout.y
+        let right = x + package_layout.width
+        let bottom = y + package_layout.height
         output <+
-          "<g class=\"package\"><rect x=\"\{package_layout.x}\" y=\"\{package_layout.y}\" width=\"\{package_layout.width}\" height=\"\{package_layout.height}\" fill=\"\{fill}\"/><text x=\"\{package_layout.x + 10.0}\" y=\"\{package_layout.y + 18.0}\" class=\"package-title\">\{xml_escape(group.display)}</text></g>\n"
+          "<g class=\"package\" style=\"stroke:\{diagram.style.package_border_color()}\"><path d=\"M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}\" fill=\"\{fill}\"/><line x1=\"\{x}\" y1=\"\{y + 22.0}\" x2=\"\{x + tab_width + 1.5}\" y2=\"\{y + 22.0}\"/><text x=\"\{x + 4.0}\" y=\"\{y + 16.0}\" class=\"package-title\">\{xml_escape(group.display)}</text></g>\n"
       }
     None => ()
   }
@@ -244,9 +370,12 @@ fn append_notes(
         let note = diagram.notes[note_layout.note_index]
         let x = note_layout.x - note_layout.width / 2.0
         let y = note_layout.y - note_layout.height / 2.0
-        let fill = @core.svg_color(note.color, "#FEFFDD")
+        let fill = @core.svg_color(
+          note.color,
+          diagram.style.note_background_color(),
+        )
         output <+
-          "<g class=\"class-note\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{note_layout.width}\" height=\"\{note_layout.height}\" fill=\"\{fill}\"/><path d=\"M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z\"/></g>\n"
+          "<g class=\"class-note\" style=\"stroke:\{diagram.style.note_border_color()}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{note_layout.width}\" height=\"\{note_layout.height}\" fill=\"\{fill}\"/><path d=\"M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z\"/></g>\n"
         for line_index, line in note.text.split("\n") {
           output <+
             "<text x=\"\{x + 10.0}\" y=\"\{y + 17.0 + line_index.to_double() * text_metrics.row_height().to_double()}\" class=\"note-text\">\{xml_escape(line.to_owned())}</text>\n"
@@ -301,7 +430,7 @@ fn append_relation(
   }
   let relation_color = @core.svg_color(
     relation.color,
-    @core.svg_color(diagram.style.line_color, "#181818"),
+    diagram.style.diagram_line_color(),
   )
   let style = " style=\"stroke:\{relation_color};\{relation_style}\""
   let marker_start = match relation_marker(relation.left_end) {
@@ -383,10 +512,17 @@ fn append_entity(
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
-  let header_height = text_metrics.header_height()
+  let header = entity.header_layout(text_metrics)
+  let body = entity.body_layout(text_metrics)
   let row_height = text_metrics.row_height()
-  let fill = @core.svg_color(entity.color, "#FEFECE")
-  let stroke = @core.svg_color(entity.line_color, "#181818")
+  let fill = @core.svg_color(
+    entity.color,
+    diagram.style.class_background_color(),
+  )
+  let stroke = @core.svg_color(
+    entity.line_color,
+    diagram.style.class_border_color(),
+  )
   let stroke_style = match entity.line_style {
     Some("dashed") => "stroke-dasharray:6 4"
     Some("dotted") => "stroke-dasharray:2 3"
@@ -394,20 +530,28 @@ fn append_entity(
     _ => "stroke-width:1.2"
   }
   let line_attributes = " style=\"stroke:\{stroke};\{stroke_style}\""
+  let title_style = match entity.kind {
+    AbstractClass | Interface => " font-style=\"italic\""
+    _ => ""
+  }
+  let (spot_text, spot_fill) = entity.spot()
   output <+
-    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.qualified_code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"\{line_attributes}/><line x1=\"\{x}\" y1=\"\{y + header_height}\" x2=\"\{x + width}\" y2=\"\{y + header_height}\"\{line_attributes}/><text x=\"\{x + width / 2}\" y=\"\{y + header_height - 14}\" class=\"class-title\">\{xml_escape(entity.display)}</text>\n"
-  let mut visible_index = 0
-  for entry in entity.members {
-    guard entity.entry_visible(entry) else { continue }
-    let member_y = y + header_height + (visible_index + 1) * row_height
-    if entry.is_separator {
-      output <+
-        "<line x1=\"\{x}\" y1=\"\{member_y - row_height / 2}\" x2=\"\{x + width}\" y2=\"\{member_y - row_height / 2}\"\{line_attributes}/>\n"
+    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.qualified_code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"\{line_attributes}/><circle cx=\"\{x + 15}\" cy=\"\{y + 16}\" r=\"11\" fill=\"\{spot_fill}\" stroke=\"#181818\" stroke-width=\"1\"/><text x=\"\{x + 15}\" y=\"\{y + 20}\" class=\"class-spot\">\{spot_text}</text><text x=\"\{x + 29}\" y=\"\{y + header.height - 11}\" class=\"class-title\"\{title_style}>\{xml_escape(entity.display)}</text>\n"
+  let mut section_y = y + header.height
+  for section_index, section in [body.fields, body.methods] {
+    let section_height = if section_index == 0 {
+      body.fields_height
     } else {
-      output <+
-        "<text x=\"\{x + 12}\" y=\"\{member_y}\" class=\"member\">\{xml_escape(entry.raw)}</text>\n"
+      body.methods_height
     }
-    visible_index += 1
+    output <+
+      "<line x1=\"\{x}\" y1=\"\{section_y}\" x2=\"\{x + width}\" y2=\"\{section_y}\"\{line_attributes}/>\n"
+    for member_index, entry in section {
+      let member_y = section_y + (member_index + 1) * row_height + 1
+      output <+
+        "<g class=\"member-icon\">\{entry.visibility_icon(x + 5, member_y)}</g><text x=\"\{x + 20}\" y=\"\{member_y}\" class=\"member\">\{xml_escape(entry.display_without_visibility())}</text>\n"
+    }
+    section_y += section_height
   }
   output.write_string("</g>\n")
 }
@@ -419,10 +563,14 @@ fn append_entity(
 /// an external process. The graph-layout adapter will replace these coordinates
 /// with Graphviz positions while retaining this entity and relation painter.
 pub fn ClassDiagram::render_svg(self : ClassDiagram) -> String {
-  let background = @core.svg_color(self.style.background_color, "#fff")
+  let background = self.style.canvas_color()
   let font_family = @core.font_family(self.style)
-  let font_size = @core.font_size(self.style)
-  let line_color = @core.svg_color(self.style.line_color, "#181818")
+  let font_size = if self.style.font_size is None {
+    "14px"
+  } else {
+    @core.font_size(self.style)
+  }
+  let line_color = self.style.diagram_line_color()
   let text_metrics = ClassTextMetrics::new(self.style)
   let fallback_layout = self.layout(text_metrics)
   let graphviz = Some(self.graphviz_layout(text_metrics)) catch { _ => None }
@@ -444,15 +592,18 @@ pub fn ClassDiagram::render_svg(self : ClassDiagram) -> String {
   output <+
     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{output_width}\" height=\"\{output_height}\" viewBox=\"0 0 \{output_width} \{output_height}\" role=\"img\" aria-label=\"Class diagram\">\n"
   output.write_string(
-    "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\"/></marker><marker id=\"triangle\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"9\" markerHeight=\"9\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"white\"/></marker><marker id=\"diamond\" viewBox=\"0 0 12 10\" refX=\"1\" refY=\"5\" markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 0 5 L 6 0 L 12 5 L 6 10 z\"/></marker><marker id=\"diamond-open\" viewBox=\"0 0 12 10\" refX=\"1\" refY=\"5\" markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 0 5 L 6 0 L 12 5 L 6 10 z\" fill=\"white\"/></marker></defs>\n<style>svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.class-node rect,.class-node line{stroke:#181818;stroke-width:1.2}.relation{stroke:\{line_color};stroke-width:1.2}.class-node line,.relation{fill:none}.class-title{text-anchor:middle;font-weight:bold;fill:#181818}.member,.relation-label{fill:#181818}.relation-label{text-anchor:middle;font-size:12px}</style>\n",
+    "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\"/></marker><marker id=\"triangle\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"9\" markerHeight=\"9\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"white\"/></marker><marker id=\"diamond\" viewBox=\"0 0 12 10\" refX=\"1\" refY=\"5\" markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 0 5 L 6 0 L 12 5 L 6 10 z\"/></marker><marker id=\"diamond-open\" viewBox=\"0 0 12 10\" refX=\"1\" refY=\"5\" markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 0 5 L 6 0 L 12 5 L 6 10 z\" fill=\"white\"/></marker></defs>\n<style>svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.class-node rect,.class-node line{stroke:#181818;stroke-width:1.2}.relation{stroke:\{line_color};stroke-width:1.2}.class-node line,.relation{fill:none}.class-title{fill:#181818}.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#181818}.member,.relation-label{fill:#181818}.relation-label{text-anchor:middle;font-size:12px}</style>\n",
   )
   output.write_string(
-    "<style>.package rect{stroke:#181818;stroke-width:1.2}.package-title{font-weight:bold;fill:#181818}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#181818}</style>\n",
+    "<style>marker path,marker circle,marker rect{stroke:#181818;stroke-width:1}</style>\n",
+  )
+  output.write_string(
+    "<style>.package path,.package line{stroke:#181818;stroke-width:1.2}.package-title{fill:#181818}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#181818}</style>\n",
   )
   output.write_string(
     "<defs><marker id=\"bar\" viewBox=\"0 0 8 10\" refX=\"4\" refY=\"5\" markerWidth=\"6\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 4 0 L 4 10\"/></marker><marker id=\"circle\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"white\"/></marker><marker id=\"circle-filled\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></marker><marker id=\"square\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\" fill=\"white\"/></marker><marker id=\"plus\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M 5 1 L 5 9 M 1 5 L 9 5\"/></marker><marker id=\"crowfoot\" viewBox=\"0 0 12 12\" refX=\"2\" refY=\"6\" markerWidth=\"9\" markerHeight=\"9\" orient=\"auto-start-reverse\"><path d=\"M 2 6 L 11 1 M 2 6 L 11 6 M 2 6 L 11 11\"/></marker></defs>\n",
   )
-  append_packages(output, self, layout)
+  append_packages(output, self, text_metrics, layout)
   for relation_index, relation in self.relations {
     append_relation(
       output, self, relation_index, relation, text_metrics, layout,

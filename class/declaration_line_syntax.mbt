@@ -73,11 +73,27 @@ fn declaration_shaped_name_parser() -> @talc.StringParser[String] {
   let parentheses = @talc.char('(')
     .then(@talc.many_chars1(@talc.none_of(")")))
     .skip(@talc.char(')'))
-    .map(value => "(" + value + ")")
+    .bind(name => {
+      @talc.char('/')
+      .attempt()
+      .optional()
+      .map(business => {
+        let suffix = if business is Some(_) { "/" } else { "" }
+        "(" + name + ")" + suffix
+      })
+    })
   let actor = @talc.char(':')
     .then(@talc.many_chars1(@talc.none_of(":")))
     .skip(@talc.char(':'))
-    .map(value => ":" + value + ":")
+    .bind(name => {
+      @talc.char('/')
+      .attempt()
+      .optional()
+      .map(business => {
+        let suffix = if business is Some(_) { "/" } else { "" }
+        ":" + name + ":" + suffix
+      })
+    })
   let component = @talc.char('[')
     .then(@talc.many_chars1(@talc.none_of("]")))
     .skip(@talc.char(']'))
@@ -430,7 +446,30 @@ fn symbol_declaration_parser(
         symbol: true,
       }
     })
-  diamond.attempt().or(interface)
+  let shaped = declaration_body_parser().bind(body => {
+    let (name, metadata, opens_body) = body
+    let (kind, _, _) = shaped_declaration(Class, name.display, name.code)
+    guard kind is Usecase ||
+      kind is BusinessUsecase ||
+      kind is Actor ||
+      kind is BusinessActor ||
+      kind is Component else {
+      return @talc.fail("shaped declaration")
+    }
+    @talc.pure({
+      declaration: declaration_from_syntax(
+        Class,
+        visibility,
+        false,
+        name,
+        metadata,
+      ),
+      opens_body,
+      mix_prefixed: false,
+      symbol: true,
+    })
+  })
+  diamond.attempt().or(interface.attempt()).or(shaped)
 }
 
 ///|

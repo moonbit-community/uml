@@ -176,7 +176,10 @@ fn ClassDiagram::graphviz_layout(
     let cluster = parent.subgraph(name=cluster_name)
     cluster.set_attr("label", group.display)
     cluster.set_attr("style", "rounded")
-    cluster.set_attr("color", @core.svg_color(group.color, "#181818"))
+    cluster.set_attr(
+      "color",
+      @core.svg_color(group.color, self.style.package_border_color()),
+    )
     package_graphs[group.qualified_name] = cluster
     package_indices[cluster_name] = package_index
   }

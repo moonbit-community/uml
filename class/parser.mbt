@@ -19,7 +19,7 @@ priv struct Parser {
 }
 
 ///|
-fn Parser::new(input : String) -> Parser {
+fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
   {
     lines: @core.preprocess(input)
     .split("\n")
@@ -38,7 +38,7 @@ fn Parser::new(input : String) -> Parser {
     current_entity: None,
     last_entity: None,
     namespace_separator: Some("."),
-    allow_mixing: false,
+    allow_mixing,
     body_depth: 0,
   }
 }
@@ -165,22 +165,70 @@ fn shaped_declaration(
   code : String,
 ) -> (EntityKind, String, String) {
   let value = display.trim()
-  let encoded = if value.length() >= 2 &&
+  let encoded = if value.length() >= 3 &&
+    value.has_prefix("(") &&
+    value.has_suffix(")/") {
+    Some((BusinessUsecase, value[1:value.length() - 2].trim().to_owned()))
+  } else if value.length() >= 2 &&
     value.has_prefix("(") &&
     value.has_suffix(")") {
-    Some((Usecase, value[1:value.length() - 1].trim().to_owned()))
+    Some(
+      (
+        if kind is BusinessUsecase {
+          BusinessUsecase
+        } else {
+          Usecase
+        },
+        value[1:value.length() - 1].trim().to_owned(),
+      ),
+    )
+  } else if value.length() >= 3 &&
+    value.has_prefix(":") &&
+    value.has_suffix(":/") {
+    Some((BusinessActor, value[1:value.length() - 2].trim().to_owned()))
   } else if value.length() >= 2 &&
     value.has_prefix(":") &&
     value.has_suffix(":") {
-    Some((Actor, value[1:value.length() - 1].trim().to_owned()))
+    Some(
+      (
+        if kind is BusinessActor {
+          BusinessActor
+        } else {
+          Actor
+        },
+        value[1:value.length() - 1].trim().to_owned(),
+      ),
+    )
   } else if value.length() >= 2 &&
     value.has_prefix("[") &&
     value.has_suffix("]") {
     Some((Component, value[1:value.length() - 1].trim().to_owned()))
+  } else if code.length() >= 3 && code.has_prefix("(") && code.has_suffix(")/") {
+    Some((BusinessUsecase, code[1:code.length() - 2].trim().to_owned()))
   } else if code.length() >= 2 && code.has_prefix("(") && code.has_suffix(")") {
-    Some((Usecase, code[1:code.length() - 1].trim().to_owned()))
+    Some(
+      (
+        if kind is BusinessUsecase {
+          BusinessUsecase
+        } else {
+          Usecase
+        },
+        code[1:code.length() - 1].trim().to_owned(),
+      ),
+    )
+  } else if code.length() >= 3 && code.has_prefix(":") && code.has_suffix(":/") {
+    Some((BusinessActor, code[1:code.length() - 2].trim().to_owned()))
   } else if code.length() >= 2 && code.has_prefix(":") && code.has_suffix(":") {
-    Some((Actor, code[1:code.length() - 1].trim().to_owned()))
+    Some(
+      (
+        if kind is BusinessActor {
+          BusinessActor
+        } else {
+          Actor
+        },
+        code[1:code.length() - 1].trim().to_owned(),
+      ),
+    )
   } else if code.length() >= 2 && code.has_prefix("[") && code.has_suffix("]") {
     Some((Component, code[1:code.length() - 1].trim().to_owned()))
   } else {
@@ -197,16 +245,44 @@ fn shaped_declaration(
     None => ()
   }
   let value = code.trim()
+  if value.length() >= 3 && value.has_prefix("(") && value.has_suffix(")/") {
+    let inner = normalize_name(value[1:value.length() - 2].trim().to_owned())
+    if inner.length() > 0 {
+      return (BusinessUsecase, inner, inner)
+    }
+  }
   if value.length() >= 2 && value.has_prefix("(") && value.has_suffix(")") {
     let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
     if inner.length() > 0 {
-      return (Usecase, inner, inner)
+      return (
+        if kind is BusinessUsecase {
+          BusinessUsecase
+        } else {
+          Usecase
+        },
+        inner,
+        inner,
+      )
+    }
+  }
+  if value.length() >= 3 && value.has_prefix(":") && value.has_suffix(":/") {
+    let inner = normalize_name(value[1:value.length() - 2].trim().to_owned())
+    if inner.length() > 0 {
+      return (BusinessActor, inner, inner)
     }
   }
   if value.length() >= 2 && value.has_prefix(":") && value.has_suffix(":") {
     let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
     if inner.length() > 0 {
-      return (Actor, inner, inner)
+      return (
+        if kind is BusinessActor {
+          BusinessActor
+        } else {
+          Actor
+        },
+        inner,
+        inner,
+      )
     }
   }
   if value.length() >= 2 && value.has_prefix("[") && value.has_suffix("]") {
@@ -801,10 +877,18 @@ fn relation_shape(raw : String) -> (String, EntityKind)? {
   let value = raw.trim()
   if value.has_prefix("()") {
     Some((value[2:].trim().to_owned(), Interface))
+  } else if value.length() >= 3 &&
+    value.has_prefix("(") &&
+    value.has_suffix(")/") {
+    Some((value[1:value.length() - 2].trim().to_owned(), BusinessUsecase))
   } else if value.length() >= 2 &&
     value.has_prefix("(") &&
     value.has_suffix(")") {
     Some((value[1:value.length() - 1].trim().to_owned(), Usecase))
+  } else if value.length() >= 3 &&
+    value.has_prefix(":") &&
+    value.has_suffix(":/") {
+    Some((value[1:value.length() - 2].trim().to_owned(), BusinessActor))
   } else if value.length() >= 2 &&
     value.has_prefix(":") &&
     value.has_suffix(":") {
@@ -897,7 +981,7 @@ fn Parser::parse_line(
   self : Parser,
   line : String,
 ) -> Unit raise @core.ParseError {
-  let line = strip_comment(line)
+  let line = strip_comment(line).trim().to_owned()
   guard line.length() > 0 else { return }
   match @core.common_block_terminator(line) {
     Some(terminator) => {
@@ -938,16 +1022,19 @@ fn Parser::parse_line(
 }
 
 ///|
-/// Parse a PlantUML class diagram source.
-pub fn parse(input : String) -> ClassDiagram raise @core.ParseError {
-  let parser = Parser::new(input)
+fn parse_with_mode(
+  input : String,
+  allow_mixing~ : Bool,
+  unclosed_body_message~ : String,
+) -> ClassDiagram raise @core.ParseError {
+  let parser = Parser::new(input, allow_mixing~)
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]
     parser.parse_line(line)
     parser.index += 1
   }
   guard parser.current_entity is None else {
-    raise SyntaxError(parser.line_number(), "unclosed class body")
+    raise SyntaxError(parser.line_number(), unclosed_body_message)
   }
   guard parser.package_stack.is_empty() else {
     raise SyntaxError(parser.line_number(), "unclosed package")
@@ -961,4 +1048,27 @@ pub fn parse(input : String) -> ClassDiagram raise @core.ParseError {
     constraints: parser.constraints,
     style: parser.style,
   }
+}
+
+///|
+/// Parse a PlantUML class diagram source.
+pub fn parse(input : String) -> ClassDiagram raise @core.ParseError {
+  parse_with_mode(
+    input,
+    allow_mixing=false,
+    unclosed_body_message="unclosed class body",
+  )
+}
+
+///|
+/// Parse a PlantUML component (description) diagram.
+///
+/// Description diagrams accept component-family symbols without the class
+/// diagram's `allowmixing` directive, matching PlantUML's DescriptionDiagram.
+pub fn parse_component(input : String) -> ClassDiagram raise @core.ParseError {
+  parse_with_mode(
+    input,
+    allow_mixing=true,
+    unclosed_body_message="unclosed component body",
+  )
 }

@@ -62,11 +62,27 @@ fn relation_name_parser(
   let usecase = @talc.char('(')
     .then(@talc.many_chars1(@talc.none_of(")")))
     .skip(@talc.char(')'))
-    .map(name => { name: "(" + name + ")", port_base: None, port_value: None })
+    .bind(name => {
+      @talc.char('/')
+      .attempt()
+      .optional()
+      .map(business => {
+        let suffix = if business is Some(_) { "/" } else { "" }
+        { name: "(" + name + ")" + suffix, port_base: None, port_value: None }
+      })
+    })
   let actor = @talc.char(':')
     .then(@talc.many_chars1(@talc.none_of(":")))
     .skip(@talc.char(':'))
-    .map(name => { name: ":" + name + ":", port_base: None, port_value: None })
+    .bind(name => {
+      @talc.char('/')
+      .attempt()
+      .optional()
+      .map(business => {
+        let suffix = if business is Some(_) { "/" } else { "" }
+        { name: ":" + name + ":" + suffix, port_base: None, port_value: None }
+      })
+    })
   let component = @talc.char('[')
     .then(@talc.many_chars1(@talc.none_of("]")))
     .skip(@talc.char(']'))
@@ -215,16 +231,26 @@ fn left_relation_endpoint_parser() -> @talc.StringParser[RelationEndpointSyntax]
 fn right_relation_endpoint_parser() -> @talc.StringParser[
   RelationEndpointSyntax,
 ] {
-  relation_modifier_parser()
-  .skip(inline_space1())
+  let with_modifiers = relation_modifier_parser()
+    .skip(inline_space1())
+    .attempt()
+    .many()
+    .bind(modifiers => {
+      relation_target_parser(false).map(target => {
+        let (name, couple) = target
+        relation_endpoint_from(name, couple, modifiers)
+      })
+    })
+  // A bracket may be either a qualifier or a component name. Backtrack the
+  // whole modifier prefix when it is not followed by an endpoint.
+  with_modifiers
   .attempt()
-  .many()
-  .bind(modifiers => {
+  .or(
     relation_target_parser(false).map(target => {
       let (name, couple) = target
-      relation_endpoint_from(name, couple, modifiers)
-    })
-  })
+      relation_endpoint_from(name, couple, [])
+    }),
+  )
 }
 
 ///|

@@ -108,7 +108,12 @@ fn Parser::apply_declaration_syntax(
   syntax : DeclarationLineSyntax,
 ) -> Unit raise @core.ParseError {
   let declaration = syntax.declaration
+  let is_usecase_element = declaration.kind is Usecase ||
+    declaration.kind is BusinessUsecase ||
+    declaration.kind is Actor ||
+    declaration.kind is BusinessActor
   guard native_class_kind(declaration.kind) ||
+    is_usecase_element ||
     self.allow_mixing ||
     syntax.mix_prefixed else {
     self.raise_parse_error(

@@ -380,6 +380,29 @@ test "accepts the allowmixing directive" {
 }
 
 ///|
+test "component parser accepts description symbols without allowmixing" {
+  let diagram = parse_component(
+    "@startuml\npackage platform {\ncomponent \"Public gateway\" as Gateway\ncomponent \"Identity service\" as Identity\n}\nGateway --> Identity : validates\n@enduml",
+  )
+  let gateway = diagram.entity("Gateway").unwrap()
+  @test.assert_eq(gateway.kind, Component)
+  @test.assert_eq(gateway.display, "Public gateway")
+  @test.assert_eq(diagram.entity("Identity").unwrap().kind, Component)
+  @test.assert_eq(diagram.relations.length(), 1)
+  @test.assert_eq(diagram.packages.length(), 1)
+}
+
+///|
+test "component parser preserves bracket shorthand names with spaces" {
+  let diagram = parse_component(
+    "@startuml\n[Web client] --> [Gateway API] : HTTPS\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("Web client").unwrap().kind, Component)
+  @test.assert_eq(diagram.entity("Gateway API").unwrap().kind, Component)
+  @test.assert_eq(diagram.relations[0].label, Some("HTTPS"))
+}
+
+///|
 test "requires allowmixing for non-class element keywords" {
   try parse("@startuml\ncomponent Adapter\n@enduml") catch {
     SyntaxError(_, message) =>
@@ -745,6 +768,32 @@ test "parses shaped relation endpoints" {
   @test.assert_eq(diagram.entity("Admin").unwrap().kind, Actor)
   @test.assert_eq(diagram.entity("Gateway").unwrap().kind, Component)
   @test.assert_eq(diagram.entity("API").unwrap().kind, Interface)
+}
+
+///|
+test "parses standalone use case and actor symbols" {
+  let diagram = parse("@startuml\n:Customer:\n(Place order)\n@enduml")
+  @test.assert_eq(diagram.entity("Customer").unwrap().kind, Actor)
+  @test.assert_eq(diagram.entity("Place order").unwrap().kind, Usecase)
+}
+
+///|
+test "preserves business use case and actor syntax" {
+  let diagram = parse(
+    "@startuml\nusecase/ (Place order)\nactor/ :Sales representative:\n:Partner:/ --> (Approve order)/\n@enduml",
+  )
+  @test.assert_eq(diagram.entity("Place order").unwrap().kind, BusinessUsecase)
+  @test.assert_eq(
+    diagram.entity("Sales representative").unwrap().kind,
+    BusinessActor,
+  )
+  @test.assert_eq(diagram.entity("Partner").unwrap().kind, BusinessActor)
+  @test.assert_eq(
+    diagram.entity("Approve order").unwrap().kind,
+    BusinessUsecase,
+  )
+  @test.assert_eq(diagram.relations[0].left, "Partner")
+  @test.assert_eq(diagram.relations[0].right, "Approve order")
 }
 
 ///|
