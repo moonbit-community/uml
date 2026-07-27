@@ -307,17 +307,19 @@ fn append_spline_path(
   output : StringBuilder,
   points : Array[(Double, Double)],
 ) -> Unit {
-  output <+ "M \{points[0].0} \{points[0].1}"
+  output <+
+    $|M \{points[0].0} \{points[0].1}
   if (points.length() - 1) % 3 == 0 {
     let mut index = 1
     while index < points.length() {
       output <+
-        " C \{points[index].0} \{points[index].1} \{points[index + 1].0} \{points[index + 1].1} \{points[index + 2].0} \{points[index + 2].1}"
+        $| C \{points[index].0} \{points[index].1} \{points[index + 1].0} \{points[index + 1].1} \{points[index + 2].0} \{points[index + 2].1}
       index += 3
     }
   } else {
     for index in 1..<points.length() {
-      output <+ " L \{points[index].0} \{points[index].1}"
+      output <+
+        $| L \{points[index].0} \{points[index].1}
     }
   }
 }
@@ -349,8 +351,12 @@ fn append_packages(
         let y = package_layout.y
         let right = x + package_layout.width
         let bottom = y + package_layout.height
+        let border_color = diagram.style.package_border_color()
         output <+
-          "<g class=\"package\" style=\"stroke:\{diagram.style.package_border_color()}\"><path d=\"M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}\" fill=\"\{fill}\"/><line x1=\"\{x}\" y1=\"\{y + 22.0}\" x2=\"\{x + tab_width + 1.5}\" y2=\"\{y + 22.0}\"/><text x=\"\{x + 4.0}\" y=\"\{y + 16.0}\" class=\"package-title\">\{xml_escape(group.display)}</text></g>\n"
+          $|<g class="package">
+          $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
+          $|<line x1="\{x}" y1="\{y + 22.0}" x2="\{x + tab_width + 1.5}" y2="\{y + 22.0}" style="stroke:\{border_color}"/>
+          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{xml_escape(group.display)}</text></g>
       }
     None => ()
   }
@@ -375,10 +381,10 @@ fn append_notes(
           diagram.style.note_background_color(),
         )
         output <+
-          "<g class=\"class-note\" style=\"stroke:\{diagram.style.note_border_color()}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{note_layout.width}\" height=\"\{note_layout.height}\" fill=\"\{fill}\"/><path d=\"M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z\"/></g>\n"
+          $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><rect x="\{x}" y="\{y}" width="\{note_layout.width}" height="\{note_layout.height}" fill="\{fill}"/><path d="M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z"/></g>
         for line_index, line in note.text.split("\n") {
           output <+
-            "<text x=\"\{x + 10.0}\" y=\"\{y + 17.0 + line_index.to_double() * text_metrics.row_height().to_double()}\" class=\"note-text\">\{xml_escape(line.to_owned())}</text>\n"
+            $|<text x="\{x + 10.0}" y="\{y + 17.0 + line_index.to_double() * text_metrics.row_height().to_double()}" class="note-text">\{xml_escape(line.to_owned())}</text>
         }
       }
     None => ()
@@ -432,7 +438,8 @@ fn append_relation(
     relation.color,
     diagram.style.diagram_line_color(),
   )
-  let style = " style=\"stroke:\{relation_color};\{relation_style}\""
+  let style =
+    $| style="stroke:\{relation_color};\{relation_style}"
   let marker_start = match relation_marker(relation.left_end) {
     Some(marker) => " marker-start=\"url(#\{marker})\""
     None => ""
@@ -449,10 +456,11 @@ fn append_relation(
           for path in edge.paths {
             guard path.length() > 1 else { continue }
             drew_spline = true
-            output <+ "<path d=\""
+            output <+
+              $|<path d="
             append_spline_path(output, path)
             output <+
-              "\" class=\"relation\"\{style}\{dash}\{marker_start}\{marker_end}/>\n"
+              $|" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
           }
         }
       }
@@ -462,41 +470,41 @@ fn append_relation(
     match relation.label {
       Some(label) =>
         output <+
-          "<text x=\"\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).0}\" y=\"\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).1 - 5.0}\" class=\"relation-label\">\{xml_escape(label)}</text>\n"
+          $|<text x="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).0}" y="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).1 - 5.0}" class="relation-label">\{xml_escape(label)}</text>
       None => ()
     }
   } else {
     output <+
-      "<line x1=\"\{x1}\" y1=\"\{y1}\" x2=\"\{x2}\" y2=\"\{y2}\" class=\"relation\"\{style}\{dash}\{marker_start}\{marker_end}/>\n"
+      $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
     match relation.label {
       Some(label) =>
         output <+
-          "<text x=\{(x1 + x2) / 2} y=\{(y1 + y2) / 2 - 5} class=\"relation-label\">\{xml_escape(label)}</text>\n"
+          $|<text x="\{(x1 + x2) / 2}" y="\{(y1 + y2) / 2 - 5}" class="relation-label">\{xml_escape(label)}</text>
       None => ()
     }
   }
   match relation.left_cardinality {
     Some(text) =>
       output <+
-        "<text x=\"\{x1 - 8}\" y=\"\{y1 - 6}\" class=\"relation-end-label\">\{xml_escape(text)}</text>\n"
+        $|<text x="\{x1 - 8}" y="\{y1 - 6}" class="relation-end-label">\{xml_escape(text)}</text>
     None => ()
   }
   match relation.right_cardinality {
     Some(text) =>
       output <+
-        "<text x=\"\{x2 + 8}\" y=\"\{y2 - 6}\" class=\"relation-end-label\">\{xml_escape(text)}</text>\n"
+        $|<text x="\{x2 + 8}" y="\{y2 - 6}" class="relation-end-label">\{xml_escape(text)}</text>
     None => ()
   }
   match relation.left_role {
     Some(text) =>
       output <+
-        "<text x=\"\{x1 - 8}\" y=\"\{y1 + 13}\" class=\"relation-end-label\">\{xml_escape(text)}</text>\n"
+        $|<text x="\{x1 - 8}" y="\{y1 + 13}" class="relation-end-label">\{xml_escape(text)}</text>
     None => ()
   }
   match relation.right_role {
     Some(text) =>
       output <+
-        "<text x=\"\{x2 + 8}\" y=\"\{y2 + 13}\" class=\"relation-end-label\">\{xml_escape(text)}</text>\n"
+        $|<text x="\{x2 + 8}" y="\{y2 + 13}" class="relation-end-label">\{xml_escape(text)}</text>
     None => ()
   }
 }
@@ -529,14 +537,15 @@ fn append_entity(
     Some("bold") => "stroke-width:2.5"
     _ => "stroke-width:1.2"
   }
-  let line_attributes = " style=\"stroke:\{stroke};\{stroke_style}\""
+  let line_attributes =
+    $| style="stroke:\{stroke};\{stroke_style}"
   let title_style = match entity.kind {
     AbstractClass | Interface => " font-style=\"italic\""
     _ => ""
   }
   let (spot_text, spot_fill) = entity.spot()
   output <+
-    "<g class=\"class-node\" data-code=\"\{xml_escape(entity.qualified_code)}\"><rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\" fill=\"\{fill}\"\{line_attributes}/><circle cx=\"\{x + 15}\" cy=\"\{y + 16}\" r=\"11\" fill=\"\{spot_fill}\" stroke=\"#181818\" stroke-width=\"1\"/><text x=\"\{x + 15}\" y=\"\{y + 20}\" class=\"class-spot\">\{spot_text}</text><text x=\"\{x + 29}\" y=\"\{y + header.height - 11}\" class=\"class-title\"\{title_style}>\{xml_escape(entity.display)}</text>\n"
+    $|<g class="class-node" data-code="\{xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + 15}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="#181818" stroke-width="1"/><text x="\{x + 15}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + 29}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{xml_escape(entity.display)}</text>
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {
@@ -545,11 +554,11 @@ fn append_entity(
       body.methods_height
     }
     output <+
-      "<line x1=\"\{x}\" y1=\"\{section_y}\" x2=\"\{x + width}\" y2=\"\{section_y}\"\{line_attributes}/>\n"
+      $|<line x1="\{x}" y1="\{section_y}" x2="\{x + width}" y2="\{section_y}"\{line_attributes}/>
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        "<g class=\"member-icon\">\{entry.visibility_icon(x + 5, member_y)}</g><text x=\"\{x + 20}\" y=\"\{member_y}\" class=\"member\">\{xml_escape(entry.display_without_visibility())}</text>\n"
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + 20}" y="\{member_y}" class="member">\{xml_escape(entry.display_without_visibility())}</text>
     }
     section_y += section_height
   }
@@ -590,19 +599,43 @@ pub fn ClassDiagram::render_svg(self : ClassDiagram) -> String {
   let output_height = layout.output_height()
   let output = StringBuilder()
   output <+
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{output_width}\" height=\"\{output_height}\" viewBox=\"0 0 \{output_width} \{output_height}\" role=\"img\" aria-label=\"Class diagram\">\n"
-  output.write_string(
-    "<defs><marker id=\"arrow\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\"/></marker><marker id=\"triangle\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"9\" markerHeight=\"9\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"white\"/></marker><marker id=\"diamond\" viewBox=\"0 0 12 10\" refX=\"1\" refY=\"5\" markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 0 5 L 6 0 L 12 5 L 6 10 z\"/></marker><marker id=\"diamond-open\" viewBox=\"0 0 12 10\" refX=\"1\" refY=\"5\" markerWidth=\"10\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 0 5 L 6 0 L 12 5 L 6 10 z\" fill=\"white\"/></marker></defs>\n<style>svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.class-node rect,.class-node line{stroke:#181818;stroke-width:1.2}.relation{stroke:\{line_color};stroke-width:1.2}.class-node line,.relation{fill:none}.class-title{fill:#181818}.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#181818}.member,.relation-label{fill:#181818}.relation-label{text-anchor:middle;font-size:12px}</style>\n",
-  )
-  output.write_string(
-    "<style>marker path,marker circle,marker rect{stroke:#181818;stroke-width:1}</style>\n",
-  )
-  output.write_string(
-    "<style>.package path,.package line{stroke:#181818;stroke-width:1.2}.package-title{fill:#181818}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#181818}</style>\n",
-  )
-  output.write_string(
-    "<defs><marker id=\"bar\" viewBox=\"0 0 8 10\" refX=\"4\" refY=\"5\" markerWidth=\"6\" markerHeight=\"8\" orient=\"auto-start-reverse\"><path d=\"M 4 0 L 4 10\"/></marker><marker id=\"circle\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"white\"/></marker><marker id=\"circle-filled\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></marker><marker id=\"square\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\" fill=\"white\"/></marker><marker id=\"plus\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M 5 1 L 5 9 M 1 5 L 9 5\"/></marker><marker id=\"crowfoot\" viewBox=\"0 0 12 12\" refX=\"2\" refY=\"6\" markerWidth=\"9\" markerHeight=\"9\" orient=\"auto-start-reverse\"><path d=\"M 2 6 L 11 1 M 2 6 L 11 6 M 2 6 L 11 11\"/></marker></defs>\n",
-  )
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="0 0 \{output_width} \{output_height}" role="img" aria-label="Class diagram">
+  let defs_relations =
+    #|<defs>
+    #|<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker>
+    #|<marker id="triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="white"/></marker>
+    #|<marker id="diamond" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z"/></marker>
+    #|<marker id="diamond-open" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z" fill="white"/></marker>
+    #|</defs>
+  output.write_string(defs_relations)
+  let relations_style =
+    $|<style>
+    $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
+    $|.class-node rect,.class-node line{stroke:#181818;stroke-width:1.2}
+    $|.relation{stroke:\{line_color};stroke-width:1.2}
+    $|.class-node line,.relation{fill:none}
+    $|.class-title{fill:#181818}
+    $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#181818}
+    $|.member,.relation-label{fill:#181818}
+    $|.relation-label{text-anchor:middle;font-size:12px}
+    $|</style>
+  output.write_string(relations_style)
+  let style_markers =
+    #|<style>marker path,marker circle,marker rect{stroke:#181818;stroke-width:1}</style>
+  output.write_string(style_markers)
+  let style_note =
+    #|<style>.package path,.package line{stroke:#181818;stroke-width:1.2}.package-title{fill:#181818}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#181818}</style>
+  output.write_string(style_note)
+  let defs_marks =
+    #|<defs>
+    #|<marker id="bar" viewBox="0 0 8 10" refX="4" refY="5" markerWidth="6" markerHeight="8" orient="auto-start-reverse"><path d="M 4 0 L 4 10"/></marker>
+    #|<marker id="circle" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><circle cx="5" cy="5" r="4" fill="white"/></marker>
+    #|<marker id="circle-filled" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><circle cx="5" cy="5" r="4"/></marker>
+    #|<marker id="square" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><rect x="1" y="1" width="8" height="8" fill="white"/></marker>
+    #|<marker id="plus" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 5 1 L 5 9 M 1 5 L 9 5"/></marker>
+    #|<marker id="crowfoot" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 2 6 L 11 1 M 2 6 L 11 6 M 2 6 L 11 11"/></marker>
+    #|</defs>
+  output.write_string(defs_marks)
   append_packages(output, self, text_metrics, layout)
   for relation_index, relation in self.relations {
     append_relation(

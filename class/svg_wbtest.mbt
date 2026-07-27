@@ -75,7 +75,10 @@ test "class SVG uses PlantUML spots, visibility icons, and package tabs" {
   @test.assert_eq(svg.contains("class=\"member-icon\""), true)
   @test.assert_eq(svg.contains("fill=\"#84BE84\""), true)
   @test.assert_eq(svg.contains("<g class=\"package\""), true)
+  @test.assert_eq(svg.contains("<g class=\"package\" style="), false)
+  @test.assert_eq(svg.contains("class=\"package-title\">domain</text>"), true)
   @test.assert_eq(svg.contains("<path d=\"M "), true)
+  @test.assert_eq(svg.contains("style=\"stroke:#181818\""), true)
   @test.assert_eq(svg.contains("<g class=\"package\"><rect"), false)
 }
 

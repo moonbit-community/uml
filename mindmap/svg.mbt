@@ -10,19 +10,19 @@ fn append_mindmap_text(
   font_size : Int,
 ) -> Unit {
   output <+
-    "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" fill=\"\{fill}\" font-size=\"\{font_size}px\" class=\"mindmap-label\">"
+    $|<text x="\{x}" y="\{y}" text-anchor="\{anchor}" fill="\{fill}" font-size="\{font_size}px" class="mindmap-label">
   label
   .split("\n")
   .eachi((index, line) => {
     let dy = if index == 0 { 0 } else { line_height }
-    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">"
+    output <+ $|<tspan x="\{x}" dy="\{dy}">
     parse_mindmap_text_line(line.to_owned()).each(span => {
       let decoration = if span.strike {
         " text-decoration=\"line-through\""
       } else {
         ""
       }
-      output <+ "<tspan\{decoration}>\{@core.xml_escape(span.text)}</tspan>"
+      output <+ $|<tspan\{decoration}>\{@core.xml_escape(span.text)}</tspan>
     })
     output.write_string("</tspan>\n")
   })
@@ -37,7 +37,7 @@ fn append_mindmap_edge(
   line_thickness : Int,
 ) -> Unit {
   output <+
-    "<path d=\"M\{edge.x1} \{edge.y1} C\{edge.control1_x} \{edge.control1_y} \{edge.control2_x} \{edge.control2_y} \{edge.x2} \{edge.y2}\" class=\"mindmap-link\" stroke=\"\{line_color}\" stroke-width=\"\{line_thickness}\"/>\n"
+    $|<path d="M\{edge.x1} \{edge.y1} C\{edge.control1_x} \{edge.control1_y} \{edge.control2_x} \{edge.control2_y} \{edge.x2} \{edge.y2}" class="mindmap-link" stroke="\{line_color}" stroke-width="\{line_thickness}"/>
 }
 
 ///|
@@ -93,11 +93,11 @@ fn append_mindmap_node(
     None => "12.5"
   }
   output <+
-    "<g class=\"mindmap-node \{shape_class}\" data-idea-index=\"\{node.idea_index}\">\n"
+    $|<g class="mindmap-node \{shape_class}" data-idea-index="\{node.idea_index}">
   match idea.shape {
     Box =>
       output <+
-        "<rect x=\"\{node.x}\" y=\"\{node.y}\" width=\"\{node.width}\" height=\"\{node.height}\" rx=\"\{round_corner}\" fill=\"\{fill}\" stroke=\"\{line_color}\" stroke-width=\"\{line_thickness}\"/>\n"
+        $|<rect x="\{node.x}" y="\{node.y}" width="\{node.width}" height="\{node.height}" rx="\{round_corner}" fill="\{fill}" stroke="\{line_color}" stroke-width="\{line_thickness}"/>
     None => ()
   }
   append_mindmap_text(
@@ -130,11 +130,11 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
   )
   let arrow_thickness = self.mindmap_style.arrow.line_thickness.unwrap_or(1)
   output <+
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{layout.width}\" height=\"\{layout.height}\" viewBox=\"0 0 \{layout.width} \{layout.height}\" role=\"img\" aria-label=\"Mindmap\">\n"
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Mindmap">
   output <+
-    "<style>svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}</style>\n"
+    $|<style>svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}</style>
   output <+
-    "<rect x=\"0\" y=\"0\" width=\"\{layout.width}\" height=\"\{layout.height}\" fill=\"\{background}\"/>\n"
+    $|<rect x="0" y="0" width="\{layout.width}" height="\{layout.height}" fill="\{background}"/>
   layout.edges.each(edge => {
     append_mindmap_edge(output, edge, arrow_color, arrow_thickness)
   })

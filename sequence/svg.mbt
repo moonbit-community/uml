@@ -26,7 +26,7 @@ fn append_line(
   class_name : String,
 ) -> Unit {
   output <+
-    "<line x1=\"\{x1}\" y1=\"\{y1}\" x2=\"\{x2}\" y2=\"\{y2}\" class=\"\{class_name}\"/>\n"
+    $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" class="\{class_name}"/>
 }
 
 ///|
@@ -41,11 +41,11 @@ fn append_text(
 ) -> Unit {
   let lines = text.split("\n").to_array()
   output <+
-    "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{anchor}\" fill=\"#181818\" class=\"\{class_name}\">"
+    $|<text x="\{x}" y="\{y}" text-anchor="\{anchor}" fill="#181818" class="\{class_name}">
   lines.eachi((index, line) => {
     let dy = if index == 0 { 0 } else { line_height }
     output <+
-      "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line.to_owned())}</tspan>"
+      $|<tspan x="\{x}" dy="\{dy}">\{xml_escape(line.to_owned())}</tspan>
   })
   output.write_string("</text>\n")
 }
@@ -103,7 +103,7 @@ fn append_participant(
     None => ()
   }
   output <+
-    "<g class=\"participant \{layout.participant.typ.css_class()}\" data-code=\"\{xml_escape(layout.participant.code)}\">\n"
+    $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{xml_escape(layout.participant.code)}">
   match layout.participant.typ {
     Actor | Boundary | Control | Entity | Database =>
       append_vertical_participant(output, layout, y, is_tail)
@@ -111,7 +111,7 @@ fn append_participant(
     Collections => append_collections_participant(output, layout, y, fill)
     Participant => {
       output <+
-        "<rect x=\"\{left}\" y=\"\{y}\" width=\"\{layout.width}\" height=\"36\" rx=\"2\" fill=\"\{fill}\"/>\n"
+        $|<rect x="\{left}" y="\{y}" width="\{layout.width}" height="36" rx="2" fill="\{fill}"/>
       append_text(
         output,
         layout.center_x,
@@ -164,7 +164,7 @@ fn append_queue_participant(
   let right = left + layout.width
   let middle = y + 13
   output <+
-    "<path d=\"M\{left + 5} \{y}H\{right - 5}C\{right} \{y} \{right} \{middle} \{right} \{middle}C\{right} \{middle} \{right} \{y + 26} \{right - 5} \{y + 26}H\{left + 5}C\{left} \{y + 26} \{left} \{middle} \{left} \{middle}C\{left} \{middle} \{left} \{y} \{left + 5} \{y}Z\" class=\"participant-icon\"/>\n"
+    $|<path d="M\{left + 5} \{y}H\{right - 5}C\{right} \{y} \{right} \{middle} \{right} \{middle}C\{right} \{middle} \{right} \{y + 26} \{right - 5} \{y + 26}H\{left + 5}C\{left} \{y + 26} \{left} \{middle} \{left} \{middle}C\{left} \{middle} \{left} \{y} \{left + 5} \{y}Z" class="participant-icon"/>
   append_text(
     output,
     layout.center_x,
@@ -184,9 +184,9 @@ fn append_collections_participant(
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
   output <+
-    "<rect x=\"\{left + 4}\" y=\"\{y}\" width=\"\{layout.width - 4}\" height=\"36\" rx=\"2\" fill=\"\{fill}\"/>\n"
+    $|<rect x="\{left + 4}" y="\{y}" width="\{layout.width - 4}" height="36" rx="2" fill="\{fill}"/>
   output <+
-    "<rect x=\"\{left}\" y=\"\{y + 4}\" width=\"\{layout.width - 4}\" height=\"36\" rx=\"2\" fill=\"\{fill}\"/>\n"
+    $|<rect x="\{left}" y="\{y + 4}" width="\{layout.width - 4}" height="36" rx="2" fill="\{fill}"/>
   append_text(
     output,
     layout.center_x,
@@ -207,7 +207,7 @@ fn append_participant_symbol(
   match typ {
     Actor => {
       output <+
-        "<circle cx=\"\{x}\" cy=\"\{y + 9}\" r=\"8\" class=\"participant-icon\"/>\n"
+        $|<circle cx="\{x}" cy="\{y + 9}" r="8" class="participant-icon"/>
       append_line(output, x, y + 17, x, y + 44, "participant-icon")
       append_line(output, x - 13, y + 25, x + 13, y + 25, "participant-icon")
       append_line(output, x, y + 44, x - 13, y + 59, "participant-icon")
@@ -215,28 +215,28 @@ fn append_participant_symbol(
     }
     Boundary => {
       output <+
-        "<circle cx=\"\{x + 9}\" cy=\"\{y + 16}\" r=\"12\" class=\"participant-icon\"/>\n"
+        $|<circle cx="\{x + 9}" cy="\{y + 16}" r="12" class="participant-icon"/>
       append_line(output, x - 20, y + 4, x - 20, y + 28, "participant-icon")
       append_line(output, x - 20, y + 16, x - 3, y + 16, "participant-icon")
     }
     Control => {
       output <+
-        "<circle cx=\"\{x}\" cy=\"\{y + 16}\" r=\"12\" class=\"participant-icon\"/>\n"
+        $|<circle cx="\{x}" cy="\{y + 16}" r="12" class="participant-icon"/>
       output <+
-        "<path d=\"M\{x + 8} \{y + 4}l6 -5 -2 5 2 5z\" class=\"participant-icon\"/>\n"
+        $|<path d="M\{x + 8} \{y + 4}l6 -5 -2 5 2 5z" class="participant-icon"/>
     }
     Entity => {
       output <+
-        "<ellipse cx=\"\{x}\" cy=\"\{y + 16}\" rx=\"12\" ry=\"12\" class=\"participant-icon\"/>\n"
+        $|<ellipse cx="\{x}" cy="\{y + 16}" rx="12" ry="12" class="participant-icon"/>
       append_line(output, x - 12, y + 30, x + 12, y + 30, "participant-icon")
     }
     Database => {
       output <+
-        "<ellipse cx=\"\{x}\" cy=\"\{y + 10}\" rx=\"18\" ry=\"10\" class=\"participant-icon\"/>\n"
+        $|<ellipse cx="\{x}" cy="\{y + 10}" rx="18" ry="10" class="participant-icon"/>
       output <+
-        "<path d=\"M\{x - 18} \{y + 10}v31c0 7 36 7 36 0V\{y + 10}\" class=\"participant-icon\"/>\n"
+        $|<path d="M\{x - 18} \{y + 10}v31c0 7 36 7 36 0V\{y + 10}" class="participant-icon"/>
       output <+
-        "<path d=\"M\{x - 18} \{y + 10}c0 13 36 13 36 0\" class=\"participant-icon\"/>\n"
+        $|<path d="M\{x - 18} \{y + 10}c0 13 36 13 36 0" class="participant-icon"/>
     }
     Participant | Queue | Collections => ()
   }
@@ -280,7 +280,7 @@ fn append_participant_box(
   let y = 4 + depth * (first.text_metrics.small_bold.line_height + 5)
   let height = (diagram_layout.height - y - 5).max(22)
   output <+
-    "<rect x=\"\{left}\" y=\"\{y}\" width=\"\{right - left}\" height=\"\{height}\" class=\"participant-box-group\" fill=\"\{svg_color(box.color)}\"/>\n"
+    $|<rect x="\{left}" y="\{y}" width="\{right - left}" height="\{height}" class="participant-box-group" fill="\{svg_color(box.color)}"/>
   match box.label {
     Some(label) =>
       append_text(
@@ -383,17 +383,17 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       Some(_) => "group-body group-body-colored"
       None => "group-body"
     }
-    output <+ "<g class=\"group\" data-keyword=\"\{group.keyword.label()}\">\n"
+    output <+ $|<g class="group" data-keyword="\{group.keyword.label()}">
     if !group.parallel {
       output <+
-        "<rect x=\"\{x}\" y=\"\{group.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"\{body_class}\" fill=\"\{svg_color(group.color)}\"/>\n"
+        $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="\{body_class}" fill="\{svg_color(group.color)}"/>
     }
     for branch_index, branch in group.branches {
       match branch.color {
         Some(color) => {
           let branch_height = (branch.end_y - branch.start_y).max(1)
           output <+
-            "<rect x=\"\{x}\" y=\"\{branch.start_y}\" width=\"\{width}\" height=\"\{branch_height}\" class=\"group-branch\" fill=\"\{svg_color(Some(color))}\"/>\n"
+            $|<rect x="\{x}" y="\{branch.start_y}" width="\{width}" height="\{branch_height}" class="group-branch" fill="\{svg_color(Some(color))}"/>
         }
         None => ()
       }
@@ -431,7 +431,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       ).width +
       38).max(54)
       output <+
-        "<path d=\"M\{x} \{group.start_y}h\{header_width}v22h-8l-5 5-5-5h-\{header_width - 18}z\" class=\"group-header\" fill=\"\{svg_color(group.header_color)}\"/>\n"
+        $|<path d="M\{x} \{group.start_y}h\{header_width}v22h-8l-5 5-5-5h-\{header_width - 18}z" class="group-header" fill="\{svg_color(group.header_color)}"/>
       append_text(
         output,
         x + 8,
@@ -511,7 +511,7 @@ fn append_activations(output : StringBuilder, layout : DiagramLayout) -> Unit {
     let x = participant.center_x - width / 2 + activation.depth * 8
     let height = (activation.end_y - activation.start_y).max(12)
     output <+
-      "<rect x=\"\{x}\" y=\"\{activation.start_y}\" width=\"\{width}\" height=\"\{height}\" class=\"activation\" fill=\"\{svg_color(activation.color)}\"/>\n"
+      $|<rect x="\{x}" y="\{activation.start_y}" width="\{width}" height="\{height}" class="activation" fill="\{svg_color(activation.color)}"/>
   }
 }
 
@@ -550,7 +550,7 @@ fn append_partial_arrow_head(
       }
       if part is TopPart || part is BottomPart {
         output <+
-          "<path d=\"\{path}\" class=\"partial-arrow\" fill=\"#181818\"/>\n"
+          $|<path d="\{path}" class="partial-arrow" fill="#181818"/>
       }
     }
     Async => {
@@ -608,7 +608,7 @@ fn append_message(
   let end_y = y
   match message.anchor {
     Some(anchor) =>
-      output <+ "<g id=\"\{xml_escape(anchor)}\" class=\"message-anchor\">\n"
+      output <+ $|<g id="\{xml_escape(anchor)}" class="message-anchor">
     None => ()
   }
   if from.participant.code == to.participant.code {
@@ -618,7 +618,7 @@ fn append_message(
       TopPart | BottomPart => ""
     }
     output <+
-      "<path d=\"M\{from.center_x} \{start_y}h34v22h-34\" class=\"\{line_class}\"\{end_marker}/>\n"
+      $|<path d="M\{from.center_x} \{start_y}h34v22h-34" class="\{line_class}"\{end_marker}/>
     append_partial_arrow_head(
       output,
       message.arrow_config.head2,
@@ -644,7 +644,7 @@ fn append_message(
       TopPart | BottomPart => ""
     }
     output <+
-      "<line x1=\"\{start_x}\" y1=\"\{start_y}\" x2=\"\{end_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{message.arrow_config.head1.marker(true)}\{end_marker}/>\n"
+      $|<line x1="\{start_x}" y1="\{start_y}" x2="\{end_x}" y2="\{end_y}" class="\{line_class}"\{message.arrow_config.head1.marker(true)}\{end_marker}/>
     append_partial_arrow_head(
       output,
       message.arrow_config.head2,
@@ -666,11 +666,11 @@ fn append_message(
   }
   if message.arrow_config.circle_start {
     output <+
-      "<circle cx=\"\{from.center_x}\" cy=\"\{start_y}\" r=\"4\" class=\"endpoint\"/>\n"
+      $|<circle cx="\{from.center_x}" cy="\{start_y}" r="4" class="endpoint"/>
   }
   if message.arrow_config.circle_end {
     output <+
-      "<circle cx=\"\{to.center_x}\" cy=\"\{end_y}\" r=\"4\" class=\"endpoint\"/>\n"
+      $|<circle cx="\{to.center_x}" cy="\{end_y}" r="4" class="endpoint"/>
   }
   append_arrow_head(output, message.arrow_config.head1, from.center_x, start_y)
   if message.arrow_config.part is Full {
@@ -683,7 +683,7 @@ fn append_message(
       TopPart | BottomPart => ""
     }
     output <+
-      "<line x1=\"\{from.center_x}\" y1=\"\{start_y}\" x2=\"\{target.center_x}\" y2=\"\{end_y}\" class=\"\{line_class}\"\{target_marker}/>\n"
+      $|<line x1="\{from.center_x}" y1="\{start_y}" x2="\{target.center_x}" y2="\{end_y}" class="\{line_class}"\{target_marker}/>
     append_partial_arrow_head(
       output,
       message.arrow_config.head2,
@@ -735,7 +735,7 @@ fn append_exo_message(
   }
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
   output <+
-    "<line x1=\"\{start_x}\" y1=\"\{y}\" x2=\"\{end_x}\" y2=\"\{y}\" class=\"message\{dotted}\"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>\n"
+    $|<line x1="\{start_x}" y1="\{y}" x2="\{end_x}" y2="\{y}" class="message\{dotted}"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>
   let raw_label = message.label.unwrap_or("")
   let label = placement.number
     .map(number => "\{number} \{raw_label}")
@@ -774,16 +774,16 @@ fn append_note(
       let fold_x = x + component.width - component.fold
       let fold_y = y + component.fold
       output <+
-        "<path d=\"M\{x},\{y} L\{x},\{y + component.height} L\{x + component.width},\{y + component.height} L\{x + component.width},\{fold_y} L\{fold_x},\{y} Z\" class=\"\{class_name}\" fill=\"\{fill}\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+        $|<path d="M\{x},\{y} L\{x},\{y + component.height} L\{x + component.width},\{y + component.height} L\{x + component.width},\{fold_y} L\{fold_x},\{y} Z" class="\{class_name}" fill="\{fill}" stroke="#181818" stroke-width=".5"/>
       output <+
-        "<path d=\"M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}\" class=\"note-fold\" fill=\"none\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+        $|<path d="M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}" class="note-fold" fill="none" stroke="#181818" stroke-width=".5"/>
     }
     Hexagonal =>
       output <+
-        "<polygon points=\"\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}\" class=\"\{class_name}\" fill=\"\{fill}\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+        $|<polygon points="\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}" class="\{class_name}" fill="\{fill}" stroke="#181818" stroke-width=".5"/>
     Box =>
       output <+
-        "<rect x=\"\{x}\" y=\"\{y}\" width=\"\{component.width}\" height=\"\{component.height}\" class=\"\{class_name}\" fill=\"\{fill}\" stroke=\"#181818\" stroke-width=\".5\"/>\n"
+        $|<rect x="\{x}" y="\{y}" width="\{component.width}" height="\{component.height}" class="\{class_name}" fill="\{fill}" stroke="#181818" stroke-width=".5"/>
   }
   append_text(
     output,
@@ -808,7 +808,7 @@ fn append_divider(
   let width = TextSize::of_with(divider.title, layout.text_metrics.body_bold).width +
     22
   output <+
-    "<rect x=\"\{(layout.width - width) / 2}\" y=\"\{y - 12}\" width=\"\{width}\" height=\"24\" class=\"divider-title\"/>\n"
+    $|<rect x="\{(layout.width - width) / 2}" y="\{y - 12}" width="\{width}" height="24" class="divider-title"/>
   append_text(
     output,
     layout.width / 2,
@@ -859,9 +859,9 @@ fn append_reference(
   let tab_width = TextSize::of_with("ref", layout.text_metrics.body_bold).width +
     34
   output <+
-    "<rect x=\"\{x}\" y=\"\{placement.y}\" width=\"\{width}\" height=\"\{placement.height}\" class=\"reference\"/>\n"
+    $|<rect x="\{x}" y="\{placement.y}" width="\{width}" height="\{placement.height}" class="reference"/>
   output <+
-    "<path d=\"M\{x},\{placement.y}h\{tab_width}v7l-10,10h\{-tab_width + 10}z\" class=\"reference-tab\"/>\n"
+    $|<path d="M\{x},\{placement.y}h\{tab_width}v7l-10,10h\{-tab_width + 10}z" class="reference-tab"/>
   append_text(
     output,
     x + 12,
@@ -933,7 +933,7 @@ fn append_return(
     None => return_value
   }
   output <+
-    "<line x1=\"\{from.center_x}\" y1=\"\{y}\" x2=\"\{to.center_x}\" y2=\"\{y}\" class=\"message dotted\" marker-end=\"url(#arrow)\"/>\n"
+    $|<line x1="\{from.center_x}" y1="\{y}" x2="\{to.center_x}" y2="\{y}" class="message dotted" marker-end="url(#arrow)"/>
   append_text(
     output,
     (from.center_x + to.center_x) / 2,
@@ -992,7 +992,7 @@ fn append_event(
       match size {
         Some(height) =>
           output <+
-            "<metadata class=\"auto-newpage\" data-height=\"\{height}\"/>\n"
+            $|<metadata class="auto-newpage" data-height="\{height}"/>
         None => output.write_string("<metadata class=\"auto-newpage\"/>\n")
       }
     _ => ()
@@ -1045,7 +1045,7 @@ fn append_svg_preamble(
   let small_font_size = (base_font_size - 2).max(1)
   let line_color = style.diagram_line_color()
   output <+
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{layout.width}\" height=\"\{layout.height}\" viewBox=\"0 0 \{layout.width} \{layout.height}\" role=\"img\" aria-label=\"Sequence diagram\">\n"
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Sequence diagram">
   let defs =
     #|<defs>
     #|<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/></marker>
@@ -1108,7 +1108,7 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
   append_svg_preamble(output, layout, self.style)
   let background = self.style.canvas_color()
   output <+
-    "<rect x=\"0\" y=\"0\" width=\"\{layout.width}\" height=\"\{layout.height}\" fill=\"\{background}\"/>\n"
+    $|<rect x="0" y="0" width="\{layout.width}" height="\{layout.height}" fill="\{background}"/>
   append_groups(output, layout)
   append_participant_boxes(output, layout)
   for participant in layout.participants {

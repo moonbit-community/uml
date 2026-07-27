@@ -30,8 +30,8 @@ test "actors have a separate icon and label without a participant rectangle" {
   let svg = render_sequence_svg(
     "@startuml\nactor \"Bob Jones\" as bob\n@enduml",
   )
-  @test.assert_eq(svg.contains("data-code=\"bob\">\n<circle"), true)
-  @test.assert_eq(svg.contains("data-code=\"bob\">\n<rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"bob\"><circle"), true)
+  @test.assert_eq(svg.contains("data-code=\"bob\"><rect"), false)
 }
 
 ///|
@@ -39,16 +39,16 @@ test "specialized participants use their PlantUML shapes" {
   let svg = render_sequence_svg(
     "@startuml\nboundary B\ncontrol C\nentity E\ndatabase D\nqueue Q\ncollections S\n@enduml",
   )
-  @test.assert_eq(svg.contains("data-code=\"B\">\n<circle"), true)
-  @test.assert_eq(svg.contains("data-code=\"B\">\n<rect"), false)
-  @test.assert_eq(svg.contains("data-code=\"C\">\n<circle"), true)
-  @test.assert_eq(svg.contains("data-code=\"C\">\n<rect"), false)
-  @test.assert_eq(svg.contains("data-code=\"E\">\n<ellipse"), true)
-  @test.assert_eq(svg.contains("data-code=\"E\">\n<rect"), false)
-  @test.assert_eq(svg.contains("data-code=\"D\">\n<ellipse"), true)
-  @test.assert_eq(svg.contains("data-code=\"D\">\n<rect"), false)
-  @test.assert_eq(svg.contains("data-code=\"Q\">\n<path"), true)
-  @test.assert_eq(svg.contains("data-code=\"S\">\n<rect"), true)
+  @test.assert_eq(svg.contains("data-code=\"B\"><circle"), true)
+  @test.assert_eq(svg.contains("data-code=\"B\"><rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"C\"><circle"), true)
+  @test.assert_eq(svg.contains("data-code=\"C\"><rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"E\"><ellipse"), true)
+  @test.assert_eq(svg.contains("data-code=\"E\"><rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"D\"><ellipse"), true)
+  @test.assert_eq(svg.contains("data-code=\"D\"><rect"), false)
+  @test.assert_eq(svg.contains("data-code=\"Q\"><path"), true)
+  @test.assert_eq(svg.contains("data-code=\"S\"><rect"), true)
 }
 
 ///|
