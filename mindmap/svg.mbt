@@ -74,10 +74,16 @@ fn append_mindmap_node(
       Some(color) => Some(color)
       None => node_style.background_color
     },
-    "#F1F1F1",
+    @core.render_defaults().node_background,
   )
-  let line_color = @core.svg_color(node_style.line_color, "#181818")
-  let font_color = @core.svg_color(node_style.font_color, "#181818")
+  let line_color = @core.svg_color(
+    node_style.line_color,
+    @core.render_defaults().diagram_line,
+  )
+  let font_color = @core.svg_color(
+    node_style.font_color,
+    @core.render_defaults().diagram_text,
+  )
   let line_thickness = match node_style.line_thickness {
     Some(value) => value.to_string()
     None => "1.5"
@@ -112,7 +118,7 @@ fn append_mindmap_node(
 pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
   let layout = self.layout()
   let output = StringBuilder()
-  let background = @core.svg_color(self.style.background_color, "#fff")
+  let background = self.style.canvas_color()
   let font_family = @core.font_family(self.style)
   let font_size = @core.font_size(self.style)
   let arrow_color = @core.svg_color(
@@ -120,7 +126,7 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
       Some(color) => Some(color)
       None => self.style.line_color
     },
-    "#181818",
+    @core.render_defaults().diagram_line,
   )
   let arrow_thickness = self.mindmap_style.arrow.line_thickness.unwrap_or(1)
   output <+

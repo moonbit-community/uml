@@ -41,6 +41,26 @@ test "document facade renders a class diagram" {
 }
 
 ///|
+test "document facade dispatches a component diagram" {
+  let source = "@startuml\ncomponent \"Gateway API\" as Gateway\n[Client] --> Gateway\n@enduml"
+  @test.assert_eq(is_component_source(source), true)
+  @test.assert_eq(is_sequence_source(source), false)
+  let document = parse_component(source)
+  match document.kind() {
+    Component => ()
+    _ => @test.fail("expected component diagram")
+  }
+  @test.assert_eq(document.render_svg().contains("Gateway API"), true)
+}
+
+///|
+test "component declarations take precedence over sequence participants" {
+  let source = "@startuml\ncomponent Gateway\nGateway --> Backend\n@enduml"
+  @test.assert_eq(is_component_source(source), true)
+  @test.assert_eq(is_sequence_source(source), false)
+}
+
+///|
 test "document facade recognizes and renders mindmaps" {
   let source = "@startmindmap\n* Root\n** Child\n@endmindmap"
   @test.assert_eq(is_mindmap_source(source), true)

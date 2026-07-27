@@ -3,6 +3,7 @@
 pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
   Class(@class.ClassDiagram)
+  Component(@class.ClassDiagram)
   Mindmap(@mindmap.MindmapDiagram)
   Json(@nonuml.StructuredDiagram)
   Yaml(@nonuml.StructuredDiagram)
@@ -19,6 +20,7 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
     Class(_) => Class
+    Component(_) => Component
     Mindmap(_) => Mindmap
     Json(_) => Json
     Yaml(_) => Yaml
@@ -29,6 +31,11 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 ///|
 pub fn parse_class(input : String) -> Document raise @core.ParseError {
   { diagram: Class(@class.parse(input)) }
+}
+
+///|
+pub fn parse_component(input : String) -> Document raise @core.ParseError {
+  { diagram: Component(@class.parse_component(input)) }
 }
 
 ///|
@@ -130,6 +137,22 @@ fn has_message_arrow(line : String) -> Bool {
 }
 
 ///|
+fn has_component_declaration(line : String) -> Bool {
+  let words = @core.syntax_words(line)
+  guard words.length() > 0 else { return false }
+  match words[0].to_lower() {
+    "component"
+    | "boundary"
+    | "control"
+    | "port"
+    | "portin"
+    | "portout"
+    | "collections" => true
+    _ => false
+  }
+}
+
+///|
 /// These arrow forms are sequence-message syntax, never class relations.
 fn has_sequence_only_message_arrow(line : String) -> Bool {
   for arrow in ["->>", "<<-", "\\->", "\\-->", "/->", "/-->"] {
@@ -202,12 +225,37 @@ fn is_class_declaration(line : String) -> Bool {
 /// relation to the class-diagram heuristic.
 pub fn is_sequence_source(input : String) -> Bool {
   let lines = meaningful_source_lines(input)
-  lines.any(is_sequence_command) ||
-  lines.any(has_sequence_only_message_arrow) ||
+  !lines.any(has_component_declaration) &&
   (
-    lines.any(is_ambiguous_participant_declaration) &&
-    lines.any(has_message_arrow)
+    lines.any(is_sequence_command) ||
+    lines.any(has_sequence_only_message_arrow) ||
+    (
+      lines.any(is_ambiguous_participant_declaration) &&
+      lines.any(has_message_arrow)
+    )
   )
+}
+
+///|
+/// Returns whether the source contains an unambiguous component-diagram
+/// construct. Component diagrams share PlantUML's description grammar with
+/// several other families, so sequence-only syntax is checked first.
+pub fn is_component_source(input : String) -> Bool {
+  guard !is_sequence_source(input) else { return false }
+  for line in meaningful_source_lines(input) {
+    if has_component_declaration(line) {
+      return true
+    }
+    let trimmed = line.trim().to_owned()
+    if trimmed.has_prefix("[") &&
+      (
+        has_message_arrow(trimmed) ||
+        @core.find_unquoted_literal(trimmed, "--") is Some(_)
+      ) {
+      return true
+    }
+  }
+  false
 }
 
 ///|

@@ -21,6 +21,23 @@ test "document font settings select metrics profile and size" {
 }
 
 ///|
+test "document color resolution uses shared render defaults and skinparams" {
+  let style = DocumentStyle::empty()
+  let defaults = render_defaults()
+  @test.assert_eq(style.canvas_color(), defaults.canvas_background)
+  @test.assert_eq(style.diagram_line_color(), defaults.diagram_line)
+  @test.assert_eq(style.class_background_color(), defaults.node_background)
+  @test.assert_eq(style.note_background_color(), defaults.note_background)
+
+  style.apply(Property("ClassBackgroundColor", "#123456"))
+  style.apply(Property("ClassBorderColor", "#654321"))
+  style.apply(Property("PackageBackgroundColor", "#abcdef"))
+  @test.assert_eq(style.class_background_color(), "#123456")
+  @test.assert_eq(style.class_border_color(), "#654321")
+  @test.assert_eq(style.package_background_color(), "#abcdef")
+}
+
+///|
 test "distinguishes legend alignment headers from single-line legends" {
   @test.assert_eq(parse_style_directive("legend top left"), None)
   @test.assert_eq(

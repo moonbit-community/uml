@@ -1,6 +1,4 @@
 ///|
-
-///|
 fn svg_height(svg : String) -> Int {
   let parts = svg.split("height=\"").to_array()
   guard parts.length() >= 2 else { return 0 }
@@ -89,4 +87,28 @@ test "YAML block scalars render as multiline record cells" {
   @test.assert_eq(svg.contains("first line</tspan>"), true)
   @test.assert_eq(svg.contains("second line</tspan>"), true)
   @test.assert_eq(svg.contains("first line\nsecond line"), false)
+}
+
+///|
+test "TOML multiline basic strings render as multiline record cells" {
+  let diagram = parse_toml(
+    (
+      #|@starttoml
+      #|multiline = """line one
+      #|line two"""
+      #|next = "value"
+      #|@endtoml
+    ),
+  )
+  @test.assert_eq(diagram.root.rows[0].value, Text("line one\nline two"))
+  let svg = render_toml_svg(diagram)
+  let single_line_svg = render_toml_svg(
+    parse_toml(
+      "@starttoml\nmultiline = \"line one\"\nnext = \"value\"\n@endtoml",
+    ),
+  )
+  @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
+  @test.assert_eq(svg.contains("line one</tspan>"), true)
+  @test.assert_eq(svg.contains("line two</tspan>"), true)
+  @test.assert_eq(svg.contains("line one\nline two"), false)
 }

@@ -5,12 +5,15 @@ fn xml_escape(value : String) -> String {
 
 ///|
 fn svg_color(color : String?) -> String {
-  @core.svg_color(color, "#FEFECE")
+  @core.svg_color(
+    color,
+    @core.render_defaults().sequence_participant_background,
+  )
 }
 
 ///|
 fn note_color(color : String?) -> String {
-  color.map_or("#FEFFDD", value => svg_color(Some(value)))
+  @core.svg_color(color, @core.render_defaults().note_background)
 }
 
 ///|
@@ -1034,13 +1037,13 @@ fn append_svg_preamble(
   layout : DiagramLayout,
   style : @core.DocumentStyle,
 ) -> Unit {
-  let background = @core.svg_color(style.background_color, "#fff")
+  let background = style.canvas_color()
   let font_family = @core.font_family(style)
   let font_size = @core.font_size(style)
   let base_font_size = @core.font_size_value(style)
   let body_font_size = (base_font_size - 1).max(1)
   let small_font_size = (base_font_size - 2).max(1)
-  let line_color = @core.svg_color(style.line_color, "#181818")
+  let line_color = style.diagram_line_color()
   output <+
     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\{layout.width}\" height=\"\{layout.height}\" viewBox=\"0 0 \{layout.width} \{layout.height}\" role=\"img\" aria-label=\"Sequence diagram\">\n"
   let defs =
@@ -1103,7 +1106,7 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
   let layout = self.layout()
   let output = StringBuilder()
   append_svg_preamble(output, layout, self.style)
-  let background = @core.svg_color(self.style.background_color, "#fff")
+  let background = self.style.canvas_color()
   output <+
     "<rect x=\"0\" y=\"0\" width=\"\{layout.width}\" height=\"\{layout.height}\" fill=\"\{background}\"/>\n"
   append_groups(output, layout)

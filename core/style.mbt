@@ -17,6 +17,31 @@ pub struct DocumentStyle {
 } derive(Eq, Debug)
 
 ///|
+/// Shared PlantUML-like paint defaults used by every SVG renderer.
+pub struct RenderDefaults {
+  canvas_background : String
+  diagram_line : String
+  diagram_text : String
+  node_background : String
+  sequence_participant_background : String
+  note_background : String
+  transparent : String
+} derive(Eq, Debug)
+
+///|
+pub fn render_defaults() -> RenderDefaults {
+  {
+    canvas_background: "#FFFFFF",
+    diagram_line: "#181818",
+    diagram_text: "#181818",
+    node_background: "#F1F1F1",
+    sequence_participant_background: "#FEFECE",
+    note_background: "#FEFFDD",
+    transparent: "none",
+  }
+}
+
+///|
 pub(all) enum Direction {
   TopToBottom
   LeftToRight
@@ -80,6 +105,61 @@ pub fn DocumentStyle::apply(
     Title(t) => self.title = Some(t)
     Property(key, value) => self.properties[key] = value
   }
+}
+
+///|
+/// Returns the value of a preserved skinparam-style property.
+pub fn DocumentStyle::property(self : DocumentStyle, key : String) -> String? {
+  self.properties.get(key)
+}
+
+///|
+pub fn DocumentStyle::canvas_color(self : DocumentStyle) -> String {
+  svg_color(self.background_color, render_defaults().canvas_background)
+}
+
+///|
+pub fn DocumentStyle::diagram_line_color(self : DocumentStyle) -> String {
+  svg_color(self.line_color, render_defaults().diagram_line)
+}
+
+///|
+pub fn DocumentStyle::class_background_color(self : DocumentStyle) -> String {
+  svg_color(
+    self.property("ClassBackgroundColor"),
+    render_defaults().node_background,
+  )
+}
+
+///|
+pub fn DocumentStyle::class_border_color(self : DocumentStyle) -> String {
+  svg_color(self.property("ClassBorderColor"), self.diagram_line_color())
+}
+
+///|
+pub fn DocumentStyle::package_background_color(self : DocumentStyle) -> String {
+  svg_color(
+    self.property("PackageBackgroundColor"),
+    render_defaults().transparent,
+  )
+}
+
+///|
+pub fn DocumentStyle::package_border_color(self : DocumentStyle) -> String {
+  svg_color(self.property("PackageBorderColor"), self.class_border_color())
+}
+
+///|
+pub fn DocumentStyle::note_background_color(self : DocumentStyle) -> String {
+  svg_color(
+    self.property("NoteBackgroundColor"),
+    render_defaults().note_background,
+  )
+}
+
+///|
+pub fn DocumentStyle::note_border_color(self : DocumentStyle) -> String {
+  svg_color(self.property("NoteBorderColor"), self.class_border_color())
 }
 
 ///|
