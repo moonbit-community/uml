@@ -28,7 +28,7 @@ test "YAML preserves scalar kinds and nested mapping structure" {
   @test.assert_eq(diagram.root.rows[1].value, False)
   @test.assert_eq(diagram.root.rows[2].value, Compound)
   @test.assert_eq(diagram.root.rows[2].child is Some(_), true)
-  let svg = render_yaml_svg(diagram)
+  let svg = diagram.render_yaml_svg()
   @test.assert_eq(svg.contains("aria-label=\"YAML diagram\""), true)
   @test.assert_eq(svg.contains("structured-edge"), true)
 }
@@ -61,7 +61,7 @@ test "TOML tables arrays and datetimes use the shared structure renderer" {
     }),
     true,
   )
-  let svg = render_toml_svg(diagram)
+  let svg = diagram.render_toml_svg()
   @test.assert_eq(svg.contains("aria-label=\"TOML diagram\""), true)
   @test.assert_eq(svg.contains("structured-edge"), true)
 }
@@ -78,10 +78,15 @@ test "YAML block scalars render as multiline record cells" {
       #|@endyaml
     ),
   )
-  let svg = render_yaml_svg(diagram)
-  let single_line_svg = render_yaml_svg(
-    parse_yaml("@startyaml\nnotes: first line\nnext: value\n@endyaml"),
-  )
+  let svg = diagram.render_yaml_svg()
+  let single_line_svg = parse_yaml(
+    (
+      #|@startyaml
+      #|notes: first line
+      #|next: value
+      #|@endyaml
+    ),
+  ).render_yaml_svg()
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
   @test.assert_eq(svg.contains("<tspan"), true)
   @test.assert_eq(svg.contains("first line</tspan>"), true)
@@ -101,12 +106,15 @@ test "TOML multiline basic strings render as multiline record cells" {
     ),
   )
   @test.assert_eq(diagram.root.rows[0].value, Text("line one\nline two"))
-  let svg = render_toml_svg(diagram)
-  let single_line_svg = render_toml_svg(
-    parse_toml(
-      "@starttoml\nmultiline = \"line one\"\nnext = \"value\"\n@endtoml",
+  let svg = diagram.render_toml_svg()
+  let single_line_svg = parse_toml(
+    (
+      #|@starttoml
+      #|multiline = "line one"
+      #|next = "value"
+      #|@endtoml
     ),
-  )
+  ).render_toml_svg()
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
   @test.assert_eq(svg.contains("line one</tspan>"), true)
   @test.assert_eq(svg.contains("line two</tspan>"), true)

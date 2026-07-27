@@ -801,10 +801,19 @@ test "preserves business use case and actor syntax" {
 }
 
 ///|
-test "map links create implicit target entities" {
-  let diagram = parse("@startuml\nmap Values {\nkey *--> Missing\n}\n@enduml")
-  @test.assert_eq(diagram.has_entity("Missing"), true)
+test "map links require declared targets" {
+  let diagram = parse(
+    "@startuml\nobject Customer\nmap Values {\ncustomer *--> Customer\n}\n@enduml",
+  )
+  @test.assert_eq(diagram.has_entity("Customer"), true)
   @test.assert_eq(diagram.relations.length(), 1)
+
+  try parse("@startuml\nmap Values {\nkey *--> Missing\n}\n@enduml") catch {
+    SyntaxError(_, message) =>
+      @test.assert_eq(message, "No such entity Missing")
+  } noraise {
+    _ => @test.fail("expected missing map-link target error")
+  }
 }
 
 ///|

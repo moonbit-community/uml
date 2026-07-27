@@ -3,6 +3,7 @@
 pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
   Class(@entity.EntityDiagram)
+  Object(@entity.EntityDiagram)
   Component(@entity.EntityDiagram)
   UseCase(@entity.EntityDiagram)
   Mindmap(@mindmap.MindmapDiagram)
@@ -21,6 +22,7 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
     Class(_) => Class
+    Object(_) => Object
     Component(_) => Component
     UseCase(_) => UseCase
     Mindmap(_) => Mindmap
@@ -33,6 +35,11 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 ///|
 pub fn parse_class(input : String) -> Document raise @core.ParseError {
   { diagram: Class(@entity_class.parse(input)) }
+}
+
+///|
+pub fn parse_object(input : String) -> Document raise @core.ParseError {
+  { diagram: Object(@entity_class.parse(input)) }
 }
 
 ///|
@@ -239,6 +246,24 @@ fn is_class_declaration(line : String) -> Bool {
 }
 
 ///|
+fn is_object_declaration(line : String) -> Bool {
+  let words = @core.syntax_words(line)
+  guard words.length() > 0 else { return false }
+  match words[0].to_lower() {
+    "object" | "map" | "json" => true
+    _ => false
+  }
+}
+
+///|
+fn is_non_object_entity_declaration(line : String) -> Bool {
+  is_class_declaration(line) &&
+  !is_object_declaration(line) &&
+  !line.to_lower().has_prefix("package ") &&
+  !line.to_lower().has_prefix("namespace ")
+}
+
+///|
 /// Returns whether the source contains a sequence-diagram-specific command.
 ///
 /// This deliberately covers commands that cannot be inferred from an arrow
@@ -284,6 +309,24 @@ pub fn is_component_source(input : String) -> Bool {
 pub fn is_usecase_source(input : String) -> Bool {
   guard !is_sequence_source(input) else { return false }
   meaningful_source_lines(input).any(has_usecase_declaration)
+}
+
+///|
+/// Returns whether the first entity declaration selects the object facade.
+///
+/// Object commands are parsed by PlantUML's class-diagram factory, but this
+/// project retains an object facade so its SVG behavior can evolve separately.
+pub fn is_object_source(input : String) -> Bool {
+  guard !is_sequence_source(input) else { return false }
+  for line in meaningful_source_lines(input) {
+    if is_object_declaration(line) {
+      return true
+    }
+    if is_non_object_entity_declaration(line) {
+      return false
+    }
+  }
+  false
 }
 
 ///|

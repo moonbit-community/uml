@@ -129,6 +129,22 @@ test "detects object map and inline JSON class sources" {
 }
 
 ///|
+test "dispatches object declarations through the object facade" {
+  let source = "@startuml\npackage domain {\nobject Customer\n}\n@enduml"
+  let document = parse_object(source)
+  @test.assert_eq(is_object_source(source), true)
+  @test.assert_eq(document.kind() is Object, true)
+  @test.assert_eq(
+    document.render_svg().contains("data-code=\"domain.Customer\""),
+    true,
+  )
+  @test.assert_eq(
+    is_object_source("@startuml\nclass Model\nobject Value\n@enduml"),
+    false,
+  )
+}
+
+///|
 test "detects the remaining class-only declarations and dotted arrows" {
   for
     source in ["annotation A", "record R", "exception E", "folder F", "A .> B"] {

@@ -168,9 +168,12 @@ fn Parser::add_map_link(
   source : Entity,
   entry : MapEntry,
   arrow : String,
-) -> Unit {
+) -> Unit raise @core.ParseError {
   guard entry.link_target is Some(target) else { return }
-  let resolved = self.ensure_entity(target)
+  let resolved = self.resolve(target)
+  guard self.has_entity(resolved) else {
+    self.raise_parse_error("No such entity " + target)
+  }
   self.relations.push({
     left: source.qualified_code,
     right: resolved,

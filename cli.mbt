@@ -54,6 +54,11 @@ fn main {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
+    _ if @api.is_object_source(source) =>
+      @api.render_object_svg(source) catch {
+        SyntaxError(line, message) =>
+          return println("error: line \{line}: \{message}")
+      }
     _ if @api.is_class_source(source) =>
       @api.render_class_svg(source) catch {
         SyntaxError(line, message) =>

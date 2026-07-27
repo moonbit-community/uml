@@ -366,21 +366,25 @@ fn StructuredDiagram::render_svg_with_label(
 }
 
 ///|
-pub fn StructuredDiagram::render_svg(self : StructuredDiagram) -> String {
-  self.render_svg_with_label("JSON diagram")
+pub const ARIA_LABEL_JSON = "JSON diagram"
+
+///|
+pub const ARIA_LABEL_YAML = "YAML diagram"
+
+///|
+pub const ARIA_LABEL_TOML = "TOML diagram"
+
+///|
+pub fn StructuredDiagram::render_json_svg(diagram : StructuredDiagram) -> String {
+  diagram.render_svg_with_label(ARIA_LABEL_JSON)
 }
 
 ///|
-pub fn render_json_svg(diagram : StructuredDiagram) -> String {
-  diagram.render_svg()
+pub fn StructuredDiagram::render_yaml_svg(diagram : StructuredDiagram) -> String {
+  diagram.render_svg_with_label(ARIA_LABEL_YAML)
 }
 
 ///|
-pub fn render_yaml_svg(diagram : StructuredDiagram) -> String {
-  diagram.render_svg_with_label("YAML diagram")
-}
-
-///|
-pub fn render_toml_svg(diagram : StructuredDiagram) -> String {
-  diagram.render_svg_with_label("TOML diagram")
+pub fn StructuredDiagram::render_toml_svg(diagram : StructuredDiagram) -> String {
+  diagram.render_svg_with_label(ARIA_LABEL_TOML)
 }
