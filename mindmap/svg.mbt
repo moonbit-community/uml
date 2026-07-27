@@ -1,6 +1,6 @@
 ///|
 fn append_mindmap_text(
-  output : StringBuilder,
+  output : @core.XmlWriter,
   x : Int,
   y : Int,
   label : String,
@@ -9,40 +9,55 @@ fn append_mindmap_text(
   fill : String,
   font_size : Int,
 ) -> Unit {
-  output <+
-    $|<text x="\{x}" y="\{y}" text-anchor="\{anchor}" fill="\{fill}" font-size="\{font_size}px" class="mindmap-label">
+  output.open("text", attributes=[
+    ("x", x.to_string()),
+    ("y", y.to_string()),
+    ("text-anchor", anchor),
+    ("fill", fill),
+    ("font-size", font_size.to_string() + "px"),
+    ("class", "mindmap-label"),
+  ])
   label
   .split("\n")
   .eachi((index, line) => {
     let dy = if index == 0 { 0 } else { line_height }
-    output <+ $|<tspan x="\{x}" dy="\{dy}">
+    output.open("tspan", attributes=[
+      ("x", x.to_string()),
+      ("dy", dy.to_string()),
+    ])
     parse_mindmap_text_line(line.to_owned()).each(span => {
-      let decoration = if span.strike {
-        " text-decoration=\"line-through\""
-      } else {
-        ""
-      }
-      output <+ $|<tspan\{decoration}>\{@core.xml_escape(span.text)}</tspan>
+      let attributes = [
+        ..if span.strike {
+          [("text-decoration", "line-through")]
+        },
+      ]
+      output.text("tspan", span.text, attributes~)
     })
-    output.write_string("</tspan>\n")
+    output.close()
   })
-  output.write_string("</text>\n")
+  output.close()
 }
 
 ///|
 fn append_mindmap_edge(
-  output : StringBuilder,
+  output : @core.XmlWriter,
   edge : EdgeLayout,
   line_color : String,
   line_thickness : Int,
 ) -> Unit {
-  output <+
-    $|<path d="M\{edge.x1} \{edge.y1} C\{edge.control1_x} \{edge.control1_y} \{edge.control2_x} \{edge.control2_y} \{edge.x2} \{edge.y2}" class="mindmap-link" stroke="\{line_color}" stroke-width="\{line_thickness}"/>
+  let path =
+    $|M\{edge.x1} \{edge.y1} C\{edge.control1_x} \{edge.control1_y} \{edge.control2_x} \{edge.control2_y} \{edge.x2} \{edge.y2}
+  output.empty("path", attributes=[
+    ("d", path),
+    ("class", "mindmap-link"),
+    ("stroke", line_color),
+    ("stroke-width", line_thickness.to_string()),
+  ])
 }
 
 ///|
 fn append_mindmap_node(
-  output : StringBuilder,
+  output : @core.XmlWriter,
   diagram : MindmapDiagram,
   node : NodeLayout,
 ) -> Unit {
@@ -92,12 +107,22 @@ fn append_mindmap_node(
     Some(value) => value.to_string()
     None => "12.5"
   }
-  output <+
-    $|<g class="mindmap-node \{shape_class}" data-idea-index="\{node.idea_index}">
+  output.open("g", attributes=[
+    ("class", "mindmap-node " + shape_class),
+    ("data-idea-index", node.idea_index.to_string()),
+  ])
   match idea.shape {
     Box =>
-      output <+
-        $|<rect x="\{node.x}" y="\{node.y}" width="\{node.width}" height="\{node.height}" rx="\{round_corner}" fill="\{fill}" stroke="\{line_color}" stroke-width="\{line_thickness}"/>
+      output.empty("rect", attributes=[
+        ("x", node.x.to_string()),
+        ("y", node.y.to_string()),
+        ("width", node.width.to_string()),
+        ("height", node.height.to_string()),
+        ("rx", round_corner),
+        ("fill", fill),
+        ("stroke", line_color),
+        ("stroke-width", line_thickness),
+      ])
     None => ()
   }
   append_mindmap_text(
@@ -110,14 +135,14 @@ fn append_mindmap_node(
     font_color,
     font_size,
   )
-  output.write_string("</g>\n")
+  output.close()
 }
 
 ///|
 /// Render a parsed mindmap as an SVG document.
 pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
   let layout = self.layout()
-  let output = StringBuilder()
+  let output = @core.XmlWriter::new()
   let background = self.style.canvas_color()
   let font_family = @core.font_family(self.style)
   let font_size = @core.font_size(self.style)
@@ -129,17 +154,31 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
     @core.render_defaults().diagram_line,
   )
   let arrow_thickness = self.mindmap_style.arrow.line_thickness.unwrap_or(1)
-  output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Mindmap">
-  output <+
-    $|<style>svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}</style>
-  output <+
-    $|<rect x="0" y="0" width="\{layout.width}" height="\{layout.height}" fill="\{background}"/>
+  output.open("svg", attributes=[
+    ("xmlns", "http://www.w3.org/2000/svg"),
+    ("width", layout.width.to_string()),
+    ("height", layout.height.to_string()),
+    ("viewBox", "0 0 \{layout.width} \{layout.height}"),
+    ("role", "img"),
+    ("aria-label", "Mindmap"),
+  ])
+  output.open("style")
+  output.raw(
+    "svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}.mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}",
+  )
+  output.close()
+  output.empty("rect", attributes=[
+    ("x", "0"),
+    ("y", "0"),
+    ("width", layout.width.to_string()),
+    ("height", layout.height.to_string()),
+    ("fill", background),
+  ])
   layout.edges.each(edge => {
     append_mindmap_edge(output, edge, arrow_color, arrow_thickness)
   })
   layout.nodes.each(node => append_mindmap_node(output, self, node))
-  output.write_string("</svg>\n")
+  output.close()
   output.to_string()
 }
 

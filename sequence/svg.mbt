@@ -383,7 +383,8 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       Some(_) => "group-body group-body-colored"
       None => "group-body"
     }
-    output <+ $|<g class="group" data-keyword="\{group.keyword.label()}">
+    output <+
+      $|<g class="group" data-keyword="\{group.keyword.label()}">
     if !group.parallel {
       output <+
         $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="\{body_class}" fill="\{svg_color(group.color)}"/>
@@ -608,7 +609,8 @@ fn append_message(
   let end_y = y
   match message.anchor {
     Some(anchor) =>
-      output <+ $|<g id="\{xml_escape(anchor)}" class="message-anchor">
+      output <+
+        $|<g id="\{xml_escape(anchor)}" class="message-anchor">
     None => ()
   }
   if from.participant.code == to.participant.code {
