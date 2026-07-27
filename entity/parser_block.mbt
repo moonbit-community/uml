@@ -54,10 +54,7 @@ fn Parser::consume_braced_block(
     }
     let reference = normalize_name(line)
     let existing_reference = @core.syntax_words(line).length() == 1 &&
-      self.entities.any(entity => {
-        entity.qualified_code == self.resolve(reference) ||
-        entity.code == reference
-      })
+      (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
       self.parse_line(self.lines[self.index])
     }

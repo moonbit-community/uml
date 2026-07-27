@@ -90,7 +90,7 @@ fn native_class_kind(kind : EntityKind) -> Bool {
 }
 
 ///|
-fn shaped_declaration(
+fn decode_shaped_entity(
   kind : EntityKind,
   display : String,
   code : String,

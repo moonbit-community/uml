@@ -53,6 +53,29 @@ fn Parser::ensure_implicit_namespaces(self : Parser, code : String) -> Unit {
 }
 
 ///|
+fn Parser::entity_index(self : Parser, qualified_code : String) -> Int? {
+  self.entity_indices.get(qualified_code)
+}
+
+///|
+fn Parser::has_entity(self : Parser, qualified_code : String) -> Bool {
+  self.entity_index(qualified_code) is Some(_)
+}
+
+///|
+fn Parser::append_entity(self : Parser, entity : Entity) -> Int {
+  let index = self.entities.length()
+  self.entities.push(entity)
+  self.entity_indices[entity.qualified_code] = index
+  if self.entity_code_indices.contains(entity.code) {
+    self.ambiguous_entity_codes[entity.code] = ()
+  } else {
+    self.entity_code_indices[entity.code] = index
+  }
+  index
+}
+
+///|
 fn Parser::add_entity(
   self : Parser,
   declaration : Declaration,
@@ -61,8 +84,9 @@ fn Parser::add_entity(
   self.ensure_implicit_namespaces(declaration.code)
   let qualified_code = self.qualify(declaration.code)
   let scope = self.implicit_namespace_scope(declaration.code)
-  for index, entity in self.entities {
-    if entity.qualified_code == qualified_code {
+  match self.entity_index(qualified_code) {
+    Some(index) => {
+      let entity = self.entities[index]
       self.entities[index] = {
         ..entity,
         display: declaration.display,
@@ -83,39 +107,40 @@ fn Parser::add_entity(
         self.body_depth = 1
       }
       self.last_entity = Some(qualified_code)
-      return
+    }
+    None => {
+      let index = self.append_entity({
+        code: declaration.code,
+        qualified_code,
+        display: declaration.display,
+        kind: declaration.kind,
+        scope,
+        visibility: declaration.visibility,
+        is_static: declaration.is_static,
+        generic: declaration.generic,
+        stereotype: declaration.stereotype,
+        is_hidden: false,
+        is_removed: false,
+        fields_hidden: false,
+        methods_hidden: false,
+        stereotype_hidden: false,
+        circle_hidden: false,
+        url: declaration.url,
+        color: declaration.color,
+        line_color: declaration.line_color,
+        line_style: declaration.line_style,
+        tags: declaration.tags,
+        members: [],
+        map_entries: [],
+        json_data: None,
+      })
+      if open {
+        self.current_entity = Some(index)
+        self.body_depth = 1
+      }
+      self.last_entity = Some(qualified_code)
     }
   }
-  self.entities.push({
-    code: declaration.code,
-    qualified_code,
-    display: declaration.display,
-    kind: declaration.kind,
-    scope,
-    visibility: declaration.visibility,
-    is_static: declaration.is_static,
-    generic: declaration.generic,
-    stereotype: declaration.stereotype,
-    is_hidden: false,
-    is_removed: false,
-    fields_hidden: false,
-    methods_hidden: false,
-    stereotype_hidden: false,
-    circle_hidden: false,
-    url: declaration.url,
-    color: declaration.color,
-    line_color: declaration.line_color,
-    line_style: declaration.line_style,
-    tags: declaration.tags,
-    members: [],
-    map_entries: [],
-    json_data: None,
-  })
-  if open {
-    self.current_entity = Some(self.entities.length() - 1)
-    self.body_depth = 1
-  }
-  self.last_entity = Some(qualified_code)
 }
 
 ///|
@@ -131,64 +156,57 @@ fn Parser::qualify(self : Parser, code : String) -> String {
 
 ///|
 fn Parser::resolve(self : Parser, code : String) -> String {
-  for entity in self.entities {
-    if entity.qualified_code == code {
-      return entity.qualified_code
-    }
+  if self.has_entity(code) {
+    return code
   }
   let qualified = self.qualify(code)
-  for entity in self.entities {
-    if entity.qualified_code == qualified {
-      return entity.qualified_code
-    }
+  if self.has_entity(qualified) {
+    return qualified
   }
   if self.current_package().length() > 0 {
     return qualified
   }
-  let mut found = None
-  for entity in self.entities {
-    if entity.code == code {
-      if found is Some(_) {
-        return qualified
-      }
-      found = Some(entity.qualified_code)
-    }
+  if self.ambiguous_entity_codes.contains(code) {
+    return qualified
   }
-  found.unwrap_or(qualified)
+  match self.entity_code_indices.get(code) {
+    Some(index) => self.entities[index].qualified_code
+    None => qualified
+  }
 }
 
 ///|
 fn Parser::ensure_entity(self : Parser, code : String) -> String {
   self.ensure_implicit_namespaces(code)
   let qualified_code = self.resolve(code)
-  guard !self.entities.any(entity => entity.qualified_code == qualified_code) else {
-    return qualified_code
-  }
-  self.entities.push({
-    code,
-    qualified_code,
-    display: code,
-    kind: Class,
-    scope: self.implicit_namespace_scope(code),
-    visibility: Unknown,
-    is_static: false,
-    generic: None,
-    stereotype: None,
-    is_hidden: false,
-    is_removed: false,
-    fields_hidden: false,
-    methods_hidden: false,
-    stereotype_hidden: false,
-    circle_hidden: false,
-    url: None,
-    color: None,
-    line_color: None,
-    line_style: None,
-    tags: [],
-    members: [],
-    map_entries: [],
-    json_data: None,
-  })
+  guard !self.has_entity(qualified_code) else { return qualified_code }
+  ignore(
+    self.append_entity({
+      code,
+      qualified_code,
+      display: code,
+      kind: Class,
+      scope: self.implicit_namespace_scope(code),
+      visibility: Unknown,
+      is_static: false,
+      generic: None,
+      stereotype: None,
+      is_hidden: false,
+      is_removed: false,
+      fields_hidden: false,
+      methods_hidden: false,
+      stereotype_hidden: false,
+      circle_hidden: false,
+      url: None,
+      color: None,
+      line_color: None,
+      line_style: None,
+      tags: [],
+      members: [],
+      map_entries: [],
+      json_data: None,
+    }),
+  )
   qualified_code
 }
 
@@ -199,17 +217,10 @@ fn Parser::ensure_entity_as(
   kind : EntityKind,
 ) -> String {
   let qualified_code = self.resolve(code)
-  let existed = self.entities.any(entity => {
-    entity.qualified_code == qualified_code
-  })
+  let existed = self.has_entity(qualified_code)
   let qualified_code = self.ensure_entity(code)
-  if !existed {
-    for index, entity in self.entities {
-      if entity.qualified_code == qualified_code {
-        self.entities[index] = { ..entity, kind, }
-        break
-      }
-    }
+  if !existed && self.entity_index(qualified_code) is Some(index) {
+    self.entities[index] = { ..self.entities[index], kind, }
   }
   qualified_code
 }
@@ -217,13 +228,13 @@ fn Parser::ensure_entity_as(
 ///|
 fn Parser::set_entity_url(self : Parser, code : String, url : String) -> Bool {
   let qualified_code = self.resolve(code)
-  for index, entity in self.entities {
-    if entity.qualified_code == qualified_code {
-      self.entities[index] = { ..entity, url: Some(url) }
-      return true
+  match self.entity_index(qualified_code) {
+    Some(index) => {
+      self.entities[index] = { ..self.entities[index], url: Some(url) }
+      true
     }
+    None => false
   }
-  false
 }
 
 ///|
@@ -233,23 +244,23 @@ fn Parser::set_entity_stereotype(
   stereotype : String,
 ) -> Bool {
   let qualified_code = self.resolve(code)
-  for index, entity in self.entities {
-    if entity.qualified_code == qualified_code {
-      self.entities[index] = { ..entity, stereotype: Some(stereotype) }
-      return true
+  match self.entity_index(qualified_code) {
+    Some(index) => {
+      self.entities[index] = {
+        ..self.entities[index],
+        stereotype: Some(stereotype),
+      }
+      true
     }
+    None => false
   }
-  false
 }
 
 ///|
 fn Parser::add_member_to(self : Parser, code : String, entry : Member) -> Unit {
   let qualified_code = self.ensure_entity(code)
-  for index, entity in self.entities {
-    if entity.qualified_code == qualified_code {
-      self.entities[index].members.push(entry)
-      return
-    }
+  if self.entity_index(qualified_code) is Some(index) {
+    self.entities[index].members.push(entry)
   }
 }
 

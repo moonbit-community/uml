@@ -19,7 +19,7 @@ fn Parser::push_note_syntax(
     }
     NoteMemberTarget(entity~, entry~) => {
       target = self.resolve(entity)
-      guard self.entities.any(item => item.qualified_code == target) else {
+      guard self.has_entity(target) else {
         self.raise_parse_error("nothing to note to")
       }
       target_kind = MemberTip
@@ -39,7 +39,7 @@ fn Parser::push_note_syntax(
       }
     NoteFloatingTarget(note_code) => {
       let existing = self.resolve(note_code)
-      guard !self.entities.any(item => item.qualified_code == existing) else {
+      guard !self.has_entity(existing) else {
         self.raise_parse_error("note already created: \{note_code}")
       }
       target = self.ensure_entity_as(note_code, NamedNote)

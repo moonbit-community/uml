@@ -4,6 +4,9 @@ priv struct Parser {
   mut index : Int
   package_stack : Array[String]
   entities : Array[Entity]
+  entity_indices : Map[String, Int]
+  entity_code_indices : Map[String, Int]
+  ambiguous_entity_codes : Map[String, Unit]
   relations : Array[Relation]
   packages : Array[Package]
   notes : Array[Note]
@@ -28,6 +31,9 @@ fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
     index: 0,
     package_stack: [],
     entities: [],
+    entity_indices: Map([]),
+    entity_code_indices: Map([]),
+    ambiguous_entity_codes: Map([]),
     relations: [],
     packages: [],
     notes: [],

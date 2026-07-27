@@ -150,14 +150,14 @@ fn Parser::add_single_line_json(
   value : JsonSingleDeclaration,
 ) -> Unit raise @core.ParseError {
   let qualified_code = self.qualify(value.declaration.code)
-  guard !self.entities.any(entity => entity.qualified_code == qualified_code) else {
+  guard !self.has_entity(qualified_code) else {
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
   }
   self.add_entity(value.declaration, false)
-  for index, entity in self.entities {
-    if entity.qualified_code == qualified_code {
-      self.entities[index] = { ..entity, json_data: Some(value.data) }
-      return
+  if self.entity_index(qualified_code) is Some(index) {
+    self.entities[index] = {
+      ..self.entities[index],
+      json_data: Some(value.data),
     }
   }
 }

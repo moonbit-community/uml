@@ -121,9 +121,7 @@ fn Parser::apply_declaration_syntax(
     )
   }
   let qualified_code = self.qualify(declaration.code)
-  let exists = self.entities.any(entity => {
-    entity.qualified_code == qualified_code
-  })
+  let exists = self.has_entity(qualified_code)
   if exists &&
     (
       declaration.kind is Map ||
@@ -143,12 +141,9 @@ fn Parser::apply_declaration_syntax(
     self.raise_parse_error("\{kind} already exists: \{declaration.code}")
   }
   let declaration = if exists && declaration.kind is Object && syntax.opens_body {
-    let mut existing_kind = Object
-    for entity in self.entities {
-      if entity.qualified_code == qualified_code {
-        existing_kind = entity.kind
-        break
-      }
+    let existing_kind = match self.entity_index(qualified_code) {
+      Some(index) => self.entities[index].kind
+      None => Object
     }
     { ..declaration, kind: existing_kind }
   } else {

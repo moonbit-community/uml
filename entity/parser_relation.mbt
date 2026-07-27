@@ -9,9 +9,9 @@ fn Parser::resolve_relation_name(
   }
   let base = normalize_name(base)
   let base_code = self.resolve(base)
-  if self.entities.any(entity => entity.qualified_code == full) {
+  if self.has_entity(full) {
     (full, None)
-  } else if self.entities.any(entity => entity.qualified_code == base_code) {
+  } else if self.has_entity(base_code) {
     (base, Some(port))
   } else {
     (full, None)
@@ -23,28 +23,11 @@ fn relation_shape(raw : String) -> (String, EntityKind)? {
   let value = raw.trim()
   if value.has_prefix("()") {
     Some((value[2:].trim().to_owned(), Interface))
-  } else if value.length() >= 3 &&
-    value.has_prefix("(") &&
-    value.has_suffix(")/") {
-    Some((value[1:value.length() - 2].trim().to_owned(), BusinessUsecase))
-  } else if value.length() >= 2 &&
-    value.has_prefix("(") &&
-    value.has_suffix(")") {
-    Some((value[1:value.length() - 1].trim().to_owned(), Usecase))
-  } else if value.length() >= 3 &&
-    value.has_prefix(":") &&
-    value.has_suffix(":/") {
-    Some((value[1:value.length() - 2].trim().to_owned(), BusinessActor))
-  } else if value.length() >= 2 &&
-    value.has_prefix(":") &&
-    value.has_suffix(":") {
-    Some((value[1:value.length() - 1].trim().to_owned(), Actor))
-  } else if value.length() >= 2 &&
-    value.has_prefix("[") &&
-    value.has_suffix("]") {
-    Some((value[1:value.length() - 1].trim().to_owned(), Component))
   } else {
-    None
+    match decode_shaped_entity(Class, raw, raw) {
+      (Class, _, _) => None
+      (kind, _, code) => Some((code, kind))
+    }
   }
 }
 

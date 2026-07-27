@@ -357,7 +357,11 @@ fn declaration_from_syntax(
   name : DeclarationNameSyntax,
   metadata : DeclarationMetadataSyntax,
 ) -> Declaration {
-  let (kind, display, code) = shaped_declaration(kind, name.display, name.code)
+  let (kind, display, code) = decode_shaped_entity(
+    kind,
+    name.display,
+    name.code,
+  )
   {
     kind,
     code,
@@ -448,7 +452,7 @@ fn symbol_declaration_parser(
     })
   let shaped = declaration_body_parser().bind(body => {
     let (name, metadata, opens_body) = body
-    let (kind, _, _) = shaped_declaration(Class, name.display, name.code)
+    let (kind, _, _) = decode_shaped_entity(Class, name.display, name.code)
     guard kind is Usecase ||
       kind is BusinessUsecase ||
       kind is Actor ||
