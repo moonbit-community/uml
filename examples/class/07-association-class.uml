@@ -1,0 +1,10 @@
+@startuml
+class Student
+class Course
+class Enrollment {
+  + enrolledAt : Date
+  + grade : Grade
+}
+
+(Student, Course) -- Enrollment : enrollment
+@enduml
