@@ -278,5 +278,3 @@ test "entity index keeps bare names ambiguous across packages" {
   @test.assert_eq(parser.has_entity("second.User"), true)
   @test.assert_eq(parser.resolve("User"), "User")
 }
-
-///|

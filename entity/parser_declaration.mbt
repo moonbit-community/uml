@@ -268,5 +268,3 @@ test "shaped entity decoder normalizes encoded declarations" {
   @test.assert_eq(display, "Place order")
   @test.assert_eq(code, "Place order")
 }
-
-///|

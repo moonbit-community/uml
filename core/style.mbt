@@ -348,8 +348,6 @@ pub fn is_preprocessor_directive(line : String) -> Bool {
 }
 
 ///|
-
-///|
 pub fn xml_escape(value : String) -> String {
   let output = StringBuilder()
   for char in value {

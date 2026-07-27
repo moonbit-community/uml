@@ -61,8 +61,6 @@ priv struct TetrisLayout {
 }
 
 ///|
-
-///|
 let outer_padding_x = 10
 
 ///|
