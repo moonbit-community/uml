@@ -185,8 +185,8 @@ priv struct ClassLayout {
 }
 
 ///|
-fn ClassDiagram::layout(
-  self : ClassDiagram,
+fn EntityDiagram::layout(
+  self : EntityDiagram,
   text_metrics : ClassTextMetrics,
 ) -> ClassLayout {
   let columns = self.entities.length().min(3).max(1)
@@ -210,7 +210,7 @@ fn ClassDiagram::layout(
 ///|
 fn ClassLayout::entity_rect(
   self : ClassLayout,
-  diagram : ClassDiagram,
+  diagram : EntityDiagram,
   index : Int,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, Int, Int) {
@@ -255,7 +255,7 @@ fn ClassLayout::output_height(self : ClassLayout) -> Int {
 }
 
 ///|
-fn entity_index(diagram : ClassDiagram, code : String) -> Int? {
+fn entity_index(diagram : EntityDiagram, code : String) -> Int? {
   for index, entity in diagram.entities {
     if entity.qualified_code == code {
       return Some(index)
@@ -327,7 +327,7 @@ fn append_spline_path(
 ///|
 fn append_packages(
   output : StringBuilder,
-  diagram : ClassDiagram,
+  diagram : EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
@@ -365,7 +365,7 @@ fn append_packages(
 ///|
 fn append_notes(
   output : StringBuilder,
-  diagram : ClassDiagram,
+  diagram : EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
@@ -404,7 +404,7 @@ fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
 ///|
 fn append_relation(
   output : StringBuilder,
-  diagram : ClassDiagram,
+  diagram : EntityDiagram,
   relation_index : Int,
   relation : Relation,
   text_metrics : ClassTextMetrics,
@@ -512,7 +512,7 @@ fn append_relation(
 ///|
 fn append_entity(
   output : StringBuilder,
-  diagram : ClassDiagram,
+  diagram : EntityDiagram,
   entity : Entity,
   index : Int,
   text_metrics : ClassTextMetrics,
@@ -571,7 +571,7 @@ fn append_entity(
 /// Node placement is deterministic so parsing and rendering can be used without
 /// an external process. The graph-layout adapter will replace these coordinates
 /// with Graphviz positions while retaining this entity and relation painter.
-pub fn ClassDiagram::render_svg(self : ClassDiagram) -> String {
+pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
   let background = self.style.canvas_color()
   let font_family = @core.font_family(self.style)
   let font_size = if self.style.font_size is None {
@@ -651,6 +651,6 @@ pub fn ClassDiagram::render_svg(self : ClassDiagram) -> String {
 }
 
 ///|
-pub fn render_svg(diagram : ClassDiagram) -> String {
+pub fn render_svg(diagram : EntityDiagram) -> String {
   diagram.render_svg()
 }

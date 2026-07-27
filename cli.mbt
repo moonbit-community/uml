@@ -44,6 +44,11 @@ fn main {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
+    _ if @api.is_usecase_source(source) =>
+      @api.render_usecase_svg(source) catch {
+        SyntaxError(line, message) =>
+          return println("error: line \{line}: \{message}")
+      }
     _ if @api.is_component_source(source) =>
       @api.render_component_svg(source) catch {
         SyntaxError(line, message) =>

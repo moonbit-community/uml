@@ -79,7 +79,7 @@ fn graphviz_cluster_name(index : Int) -> String {
 }
 
 ///|
-fn graphviz_entity_index(diagram : ClassDiagram, node_name : String) -> Int? {
+fn graphviz_entity_index(diagram : EntityDiagram, node_name : String) -> Int? {
   for index, entity in diagram.entities {
     if !entity.is_hidden &&
       !entity.is_removed &&
@@ -150,8 +150,8 @@ fn note_size(note : Note, text_metrics : ClassTextMetrics) -> (Int, Int) {
 
 ///|
 /// Build and execute the in-process Graphviz DOT layout.
-fn ClassDiagram::graphviz_layout(
-  self : ClassDiagram,
+fn EntityDiagram::graphviz_layout(
+  self : EntityDiagram,
   text_metrics : ClassTextMetrics,
 ) -> GraphvizLayout raise @dot_layout.DotLayoutError {
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="class", strict=false)

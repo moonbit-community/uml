@@ -3,8 +3,9 @@
 pub fn Document::render_svg(self : Document) -> String {
   match self.diagram {
     Sequence(diagram) => @sequence.render_svg(diagram)
-    Class(diagram) => @class.render_svg(diagram)
-    Component(diagram) => @class.render_svg(diagram)
+    Class(diagram) => @entity.render_svg(diagram)
+    Component(diagram) => @entity.render_svg(diagram)
+    UseCase(diagram) => @entity.render_svg(diagram)
     Mindmap(diagram) => @mindmap.render_svg(diagram)
     Json(diagram) => @nonuml.render_json_svg(diagram)
     Yaml(diagram) => @nonuml.render_yaml_svg(diagram)
@@ -20,6 +21,11 @@ pub fn render_class_svg(input : String) -> String raise @core.ParseError {
 ///|
 pub fn render_component_svg(input : String) -> String raise @core.ParseError {
   parse_component(input).render_svg()
+}
+
+///|
+pub fn render_usecase_svg(input : String) -> String raise @core.ParseError {
+  parse_usecase(input).render_svg()
 }
 
 ///|

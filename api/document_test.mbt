@@ -61,6 +61,15 @@ test "component declarations take precedence over sequence participants" {
 }
 
 ///|
+test "document facade dispatches a use-case diagram" {
+  let source = "@startuml\n:Customer: --> (Place order)\n@enduml"
+  @test.assert_eq(is_usecase_source(source), true)
+  let document = parse_usecase(source)
+  @test.assert_eq(document.kind() is UseCase, true)
+  @test.assert_eq(document.render_svg().contains("Place order"), true)
+}
+
+///|
 test "document facade recognizes and renders mindmaps" {
   let source = "@startmindmap\n* Root\n** Child\n@endmindmap"
   @test.assert_eq(is_mindmap_source(source), true)

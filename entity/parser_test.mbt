@@ -381,8 +381,10 @@ test "accepts the allowmixing directive" {
 
 ///|
 test "component parser accepts description symbols without allowmixing" {
-  let diagram = parse_component(
+  let diagram = parse_entity_diagram(
     "@startuml\npackage platform {\ncomponent \"Public gateway\" as Gateway\ncomponent \"Identity service\" as Identity\n}\nGateway --> Identity : validates\n@enduml",
+    allow_mixing=true,
+    unclosed_body_message="unclosed component body",
   )
   let gateway = diagram.entity("Gateway").unwrap()
   @test.assert_eq(gateway.kind, Component)
@@ -394,8 +396,10 @@ test "component parser accepts description symbols without allowmixing" {
 
 ///|
 test "component parser preserves bracket shorthand names with spaces" {
-  let diagram = parse_component(
+  let diagram = parse_entity_diagram(
     "@startuml\n[Web client] --> [Gateway API] : HTTPS\n@enduml",
+    allow_mixing=true,
+    unclosed_body_message="unclosed component body",
   )
   @test.assert_eq(diagram.entity("Web client").unwrap().kind, Component)
   @test.assert_eq(diagram.entity("Gateway API").unwrap().kind, Component)

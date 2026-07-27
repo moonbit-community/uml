@@ -233,7 +233,7 @@ pub struct LinkConstraint {
 } derive(Eq, Debug)
 
 ///|
-pub struct ClassDiagram {
+pub struct EntityDiagram {
   entities : Array[Entity]
   relations : Array[Relation]
   packages : Array[Package]
@@ -315,7 +315,7 @@ priv struct EntityRule {
 }
 
 ///|
-pub fn ClassDiagram::entity(self : ClassDiagram, code : String) -> Entity? {
+pub fn EntityDiagram::entity(self : EntityDiagram, code : String) -> Entity? {
   for entity in self.entities {
     if entity.qualified_code == code {
       return Some(entity)
@@ -330,6 +330,6 @@ pub fn ClassDiagram::entity(self : ClassDiagram, code : String) -> Entity? {
 }
 
 ///|
-pub fn ClassDiagram::has_entity(self : ClassDiagram, code : String) -> Bool {
+pub fn EntityDiagram::has_entity(self : EntityDiagram, code : String) -> Bool {
   self.entity(code) is Some(_)
 }

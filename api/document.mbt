@@ -2,8 +2,9 @@
 /// The parsed PlantUML document. Diagram-specific state stays in its own package.
 pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
-  Class(@class.ClassDiagram)
-  Component(@class.ClassDiagram)
+  Class(@entity.EntityDiagram)
+  Component(@entity.EntityDiagram)
+  UseCase(@entity.EntityDiagram)
   Mindmap(@mindmap.MindmapDiagram)
   Json(@nonuml.StructuredDiagram)
   Yaml(@nonuml.StructuredDiagram)
@@ -21,6 +22,7 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
     Sequence(_) => Sequence
     Class(_) => Class
     Component(_) => Component
+    UseCase(_) => UseCase
     Mindmap(_) => Mindmap
     Json(_) => Json
     Yaml(_) => Yaml
@@ -30,12 +32,17 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 
 ///|
 pub fn parse_class(input : String) -> Document raise @core.ParseError {
-  { diagram: Class(@class.parse(input)) }
+  { diagram: Class(@entity_class.parse(input)) }
 }
 
 ///|
 pub fn parse_component(input : String) -> Document raise @core.ParseError {
-  { diagram: Component(@class.parse_component(input)) }
+  { diagram: Component(@entity_component.parse(input)) }
+}
+
+///|
+pub fn parse_usecase(input : String) -> Document raise @core.ParseError {
+  { diagram: UseCase(@entity_usecase.parse(input)) }
 }
 
 ///|
@@ -153,6 +160,20 @@ fn has_component_declaration(line : String) -> Bool {
 }
 
 ///|
+fn has_usecase_declaration(line : String) -> Bool {
+  let words = @core.syntax_words(line)
+  if words.length() > 0 {
+    match words[0].to_lower() {
+      "usecase" | "usecase/" => return true
+      _ => ()
+    }
+  }
+  let trimmed = line.trim().to_owned()
+  (trimmed.has_prefix("(") && !trimmed.has_prefix("()")) ||
+  (trimmed.contains("(") && has_message_arrow(trimmed))
+}
+
+///|
 /// These arrow forms are sequence-message syntax, never class relations.
 fn has_sequence_only_message_arrow(line : String) -> Bool {
   for arrow in ["->>", "<<-", "\\->", "\\-->", "/->", "/-->"] {
@@ -256,6 +277,13 @@ pub fn is_component_source(input : String) -> Bool {
     }
   }
   false
+}
+
+///|
+/// Returns whether the source contains a use-case-specific declaration.
+pub fn is_usecase_source(input : String) -> Bool {
+  guard !is_sequence_source(input) else { return false }
+  meaningful_source_lines(input).any(has_usecase_declaration)
 }
 
 ///|
