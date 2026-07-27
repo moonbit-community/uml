@@ -4,9 +4,9 @@ pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
   Class(@class.ClassDiagram)
   Mindmap(@mindmap.MindmapDiagram)
-  Json(@nonuml.JsonDiagram)
-  Yaml(@nonuml.JsonDiagram)
-  Toml(@nonuml.JsonDiagram)
+  Json(@nonuml.StructuredDiagram)
+  Yaml(@nonuml.StructuredDiagram)
+  Toml(@nonuml.StructuredDiagram)
 }
 
 ///|

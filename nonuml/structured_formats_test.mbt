@@ -32,7 +32,7 @@ test "YAML preserves scalar kinds and nested mapping structure" {
   @test.assert_eq(diagram.root.rows[2].child is Some(_), true)
   let svg = render_yaml_svg(diagram)
   @test.assert_eq(svg.contains("aria-label=\"YAML diagram\""), true)
-  @test.assert_eq(svg.contains("json-edge"), true)
+  @test.assert_eq(svg.contains("structured-edge"), true)
 }
 
 ///|
@@ -65,7 +65,7 @@ test "TOML tables arrays and datetimes use the shared structure renderer" {
   )
   let svg = render_toml_svg(diagram)
   @test.assert_eq(svg.contains("aria-label=\"TOML diagram\""), true)
-  @test.assert_eq(svg.contains("json-edge"), true)
+  @test.assert_eq(svg.contains("structured-edge"), true)
 }
 
 ///|

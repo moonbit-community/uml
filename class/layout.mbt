@@ -54,6 +54,16 @@ fn graphviz_rankdir(style : @core.DocumentStyle) -> @rankdir.RankDir {
 }
 
 ///|
+fn plantuml_min_nodesep_in() -> Double {
+  35.0 / 72.0
+}
+
+///|
+fn plantuml_min_ranksep_in() -> Double {
+  60.0 / 72.0
+}
+
+///|
 fn graphviz_node_name(index : Int) -> String {
   "n\{index}"
 }
@@ -248,8 +258,8 @@ fn ClassDiagram::graphviz_layout(
   }
   let laid_out = @dot_layout.layout_dot(graph, options={
     rankdir: Some(graphviz_rankdir(self.style)),
-    nodesep: Some(0.35),
-    ranksep: Some(0.6),
+    nodesep: Some(plantuml_min_nodesep_in()),
+    ranksep: Some(plantuml_min_ranksep_in()),
     splines: Some(@dot_layout.SplinesMode::Spline),
   })
   let bbox = laid_out.bbox

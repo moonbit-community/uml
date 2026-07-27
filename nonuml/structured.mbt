@@ -1,5 +1,5 @@
 ///|
-pub(all) enum JsonValueDisplay {
+pub(all) enum StructuredValueDisplay {
   Text(String)
   True
   False
@@ -8,14 +8,14 @@ pub(all) enum JsonValueDisplay {
 } derive(Eq, Debug)
 
 ///|
-pub struct JsonRow {
+pub struct StructuredRow {
   key : String?
-  value : JsonValueDisplay
-  child : JsonNode?
+  value : StructuredValueDisplay
+  child : StructuredNode?
 } derive(Eq, Debug)
 
 ///|
-pub(all) enum JsonNodeKind {
+pub(all) enum StructuredNodeKind {
   Object
   Array
 } derive(Eq, Debug)
@@ -24,90 +24,41 @@ pub(all) enum JsonNodeKind {
 /// A structured-data record node shared by JSON, YAML, and TOML renderers.
 /// Objects have key/value rows; arrays have single value rows. Compound rows
 /// point to another record node.
-pub struct JsonNode {
-  kind : JsonNodeKind
-  rows : Array[JsonRow]
+pub struct StructuredNode {
+  kind : StructuredNodeKind
+  rows : Array[StructuredRow]
 } derive(Eq, Debug)
 
 ///|
-pub struct JsonDiagram {
-  root : JsonNode
+pub struct StructuredDiagram {
+  root : StructuredNode
 } derive(Eq, Debug)
 
 ///|
-fn source_between_json_markers(input : String) -> String {
-  source_between_markers(input, "@startjson", "@endjson")
-}
-
-///|
-fn scalar_display(value : Json) -> JsonValueDisplay {
-  match value {
-    String(text) => Text(text)
-    Number(_, repr~) => Text(repr.unwrap_or(value.stringify()))
-    True => True
-    False => False
-    Null => Null
-    Array(_) | Object(_) => Compound
+fn source_between_markers(
+  input : String,
+  start_marker : String,
+  end_marker : String,
+) -> String {
+  let output = StringBuilder()
+  let mut inside_markers = false
+  let mut has_markers = false
+  for line in input.split("\n") {
+    let marker = line.trim().to_lower()
+    if marker == start_marker {
+      has_markers = true
+      inside_markers = true
+    } else if marker == end_marker && inside_markers {
+      inside_markers = false
+    } else if !has_markers || inside_markers {
+      output.write_string(line.to_owned())
+      output.write_char('\n')
+    }
   }
+  output.to_string()
 }
 
 ///|
-fn blank_node() -> JsonNode {
+fn blank_node() -> StructuredNode {
   { kind: Array, rows: [{ key: None, value: Text(""), child: None }] }
-}
-
-///|
-fn node_from_value(value : Json) -> JsonNode {
-  match value {
-    Object(object) if object.is_empty() => blank_node()
-    Array(array) if array.is_empty() => blank_node()
-    Object(object) => {
-      let rows = []
-      for key, child_value in object {
-        let child = match child_value {
-          Object(_) | Array(_) => Some(node_from_value(child_value))
-          _ => None
-        }
-        rows.push({ key: Some(key), value: scalar_display(child_value), child })
-      }
-      { kind: Object, rows }
-    }
-    Array(array) => {
-      let rows = []
-      for child_value in array {
-        let child = match child_value {
-          Object(_) | Array(_) => Some(node_from_value(child_value))
-          _ => None
-        }
-        rows.push({ key: None, value: scalar_display(child_value), child })
-      }
-      { kind: Array, rows }
-    }
-    _ =>
-      {
-        kind: Array,
-        rows: [{ key: None, value: scalar_display(value), child: None }],
-      }
-  }
-}
-
-///|
-fn normalized_root(value : Json) -> JsonNode {
-  match value {
-    Object(object) if object.is_empty() => blank_node()
-    Array(array) if array.is_empty() => blank_node()
-    Object(_) | Array(_) => node_from_value(value)
-    _ =>
-      {
-        kind: Array,
-        rows: [{ key: None, value: scalar_display(value), child: None }],
-      }
-  }
-}
-
-///|
-pub fn parse_json(input : String) -> JsonDiagram raise @json.ParseError {
-  let source = source_between_json_markers(input)
-  let value = @json.parse(source)
-  { root: normalized_root(value) }
 }

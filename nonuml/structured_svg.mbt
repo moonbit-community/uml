@@ -8,7 +8,7 @@ priv struct NodeMetrics {
 
 ///|
 priv struct PlacedNode {
-  node : JsonNode
+  node : StructuredNode
   metrics : NodeMetrics
   x : Int
   y : Int
@@ -16,17 +16,17 @@ priv struct PlacedNode {
 }
 
 ///|
-fn json_font_size() -> Int {
+fn structured_font_size() -> Int {
   14
 }
 
 ///|
-fn json_key_font_weight() -> Int {
+fn structured_key_font_weight() -> Int {
   700
 }
 
 ///|
-fn display_text(value : JsonValueDisplay) -> String {
+fn display_text(value : StructuredValueDisplay) -> String {
   match value {
     Text(text) => text
     True => "[x] true"
@@ -37,7 +37,7 @@ fn display_text(value : JsonValueDisplay) -> String {
 }
 
 ///|
-fn display_svg(value : JsonValueDisplay) -> String {
+fn display_svg(value : StructuredValueDisplay) -> String {
   match value {
     Text(text) => @core.xml_escape(text)
     True => "&#9745; true"
@@ -81,7 +81,7 @@ fn append_value_text(
   output : StringBuilder,
   x : Int,
   y : Int,
-  value : JsonValueDisplay,
+  value : StructuredValueDisplay,
 ) -> Unit {
   match value {
     Text(text) => append_multiline_text(output, x, y, text)
@@ -90,7 +90,7 @@ fn append_value_text(
 }
 
 ///|
-fn is_blank_node(node : JsonNode) -> Bool {
+fn is_blank_node(node : StructuredNode) -> Bool {
   match node.rows {
     [{ key: None, value: Text(text), child: None }] => text.is_empty()
     _ => false
@@ -98,14 +98,14 @@ fn is_blank_node(node : JsonNode) -> Bool {
 }
 
 ///|
-fn node_metrics(node : JsonNode) -> NodeMetrics {
+fn node_metrics(node : StructuredNode) -> NodeMetrics {
   let regular_metrics = @metrics.FontMetrics::from_defaults(
-    font_size=json_font_size(),
+    font_size=structured_font_size(),
     line_height=21,
   )
   let key_metrics = @metrics.FontMetrics::from_defaults(
-    font_size=json_font_size(),
-    font_weight=json_key_font_weight(),
+    font_size=structured_font_size(),
+    font_weight=structured_key_font_weight(),
     line_height=21,
   )
   let mut key_width = 0
@@ -146,7 +146,11 @@ fn node_metrics(node : JsonNode) -> NodeMetrics {
 }
 
 ///|
-fn layout_node(node : JsonNode, x : Int, next_y : Int) -> (PlacedNode, Int) {
+fn layout_node(
+  node : StructuredNode,
+  x : Int,
+  next_y : Int,
+) -> (PlacedNode, Int) {
   let metrics = node_metrics(node)
   let children = []
   let mut child_y = next_y
@@ -261,21 +265,21 @@ fn append_edges(output : StringBuilder, node : PlacedNode) -> Unit {
     let control_right = arrow_base - 13
     let arrow_half_height = 3
     let arrow_notch = 2
-    output.write_string("<path class=\"json-edge\"\n")
+    output.write_string("<path class=\"structured-edge\"\n")
     output <+
       "  d=\"M \{x1} \{y1} C \{x1 + 13} \{y1}, \{control_right} \{y2}, \{arrow_base} \{y2}\"/>\n"
-    output.write_string("<path class=\"json-arrow\"\n")
+    output.write_string("<path class=\"structured-arrow\"\n")
     output <+
       "  d=\"M \{arrow_base} \{y2 + arrow_half_height} L \{arrow_base + arrow_notch} \{y2} L \{arrow_base} \{y2 - arrow_half_height} L \{x2} \{y2} z\"/>\n"
     output <+
-      "<circle class=\"json-spot\" cx=\"\{x1}\" cy=\"\{y1}\" r=\"3\"/>\n"
+      "<circle class=\"structured-spot\" cx=\"\{x1}\" cy=\"\{y1}\" r=\"3\"/>\n"
     append_edges(output, child)
   }
 }
 
 ///|
 fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
-  output.write_string("<g class=\"json-node\">\n<rect\n")
+  output.write_string("<g class=\"structured-node\">\n<rect\n")
   output <+
     "  x=\"\{node.x}\" y=\"\{node.y}\" width=\"\{node.metrics.width}\"\n"
   output <+ "  height=\"\{node.metrics.height}\" rx=\"5\" ry=\"5\"/>\n"
@@ -299,7 +303,7 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
           node.x + 5,
           row_y + 16,
           key,
-          class="json-key",
+          class="structured-key",
         )
         output <+
           "<line x1=\"\{divider}\" y1=\"\{row_y}\" x2=\"\{divider}\" y2=\"\{row_y + row_height}\"/>\n"
@@ -316,8 +320,8 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 }
 
 ///|
-fn JsonDiagram::render_svg_with_label(
-  self : JsonDiagram,
+fn StructuredDiagram::render_svg_with_label(
+  self : StructuredDiagram,
   label : String,
 ) -> String {
   let (initial_root, _) = layout_node(self.root, 10, 10)
@@ -333,24 +337,24 @@ fn JsonDiagram::render_svg_with_label(
   output <+
     "  width=\"\{width}\" height=\"\{height}\" viewBox=\"0 0 \{width} \{height}\"\n"
   output <+ "  role=\"img\" aria-label=\"\{label}\">\n"
-  let font_size = json_font_size()
-  let key_font_weight = json_key_font_weight()
+  let font_size = structured_font_size()
+  let key_font_weight = structured_key_font_weight()
   output.write_string("<style>\n")
   output <+
     "svg { font-family: sans-serif; font-size: \{font_size}px; background: #fff }\n"
   output.write_string(
     (
-      #|.json-node rect { fill: #F1F1F1; stroke: #000; stroke-width: 1.5 }
-      #|.json-node line { stroke: #000; stroke-width: 1 }
-      #|.json-node text { fill: #000 }
+      #|.structured-node rect { fill: #F1F1F1; stroke: #000; stroke-width: 1.5 }
+      #|.structured-node line { stroke: #000; stroke-width: 1 }
+      #|.structured-node text { fill: #000 }
     ),
   )
   output.write_char('\n')
-  output <+ ".json-key { font-weight: \{key_font_weight} }\n"
+  output <+ ".structured-key { font-weight: \{key_font_weight} }\n"
   output.write_string(
     (
-      #|.json-edge { fill: none; stroke: #000; stroke-width: 1; stroke-dasharray: 3,3 }
-      #|.json-arrow, .json-spot { fill: #000; stroke: #000; stroke-width: 1 }
+      #|.structured-edge { fill: none; stroke: #000; stroke-width: 1; stroke-dasharray: 3,3 }
+      #|.structured-arrow, .structured-spot { fill: #000; stroke: #000; stroke-width: 1 }
       #|</style>
     ),
   )
@@ -362,21 +366,21 @@ fn JsonDiagram::render_svg_with_label(
 }
 
 ///|
-pub fn JsonDiagram::render_svg(self : JsonDiagram) -> String {
+pub fn StructuredDiagram::render_svg(self : StructuredDiagram) -> String {
   self.render_svg_with_label("JSON diagram")
 }
 
 ///|
-pub fn render_json_svg(diagram : JsonDiagram) -> String {
+pub fn render_json_svg(diagram : StructuredDiagram) -> String {
   diagram.render_svg()
 }
 
 ///|
-pub fn render_yaml_svg(diagram : JsonDiagram) -> String {
+pub fn render_yaml_svg(diagram : StructuredDiagram) -> String {
   diagram.render_svg_with_label("YAML diagram")
 }
 
 ///|
-pub fn render_toml_svg(diagram : JsonDiagram) -> String {
+pub fn render_toml_svg(diagram : StructuredDiagram) -> String {
   diagram.render_svg_with_label("TOML diagram")
 }
