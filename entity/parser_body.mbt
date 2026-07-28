@@ -36,7 +36,7 @@ fn map_link_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
     let key = key.trim().to_owned()
     guard key.length() > 0 else { return @talc.fail("map link key") }
     @talc.many_chars1(@talc.satisfy("map link target", _ => true)).bind(target => {
-      let target = normalize_name(target.trim().to_owned())
+      let target = @core.unquote_identifier(target.trim().to_owned())
       if target.length() > 0 {
         @talc.pure(ParsedMapLink(key~, arrow~, target~))
       } else {
@@ -72,11 +72,6 @@ fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
 }
 
 ///|
-fn brace_delta(line : String) -> Int {
-  parse_brace_delta(line)
-}
-
-///|
 priv struct MultilineElementHeader {
   declaration : Declaration
   first_line : String
@@ -94,7 +89,7 @@ fn Parser::consume_multiline_element(
   }
   self.index += 1
   while self.index < self.lines.length() {
-    let line = strip_comment(self.lines[self.index])
+    let line = @core.strip_line_comment(self.lines[self.index])
     let chars = line.to_array()
     let mut closing = None
     for index in 0..<chars.length() {
@@ -209,7 +204,7 @@ fn Parser::consume_json_body_line(
   entity_index : Int,
   line : String,
 ) -> Unit raise @core.ParseError {
-  let delta = brace_delta(line)
+  let delta = parse_brace_delta(line)
   if self.body_depth + delta <= 0 {
     let body = self.entities[entity_index].json_data.unwrap_or("")
     let wrapped = "{" + body + "}"

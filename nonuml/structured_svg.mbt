@@ -341,10 +341,7 @@ pub fn StructuredDiagram::render_toml_svg(
 }
 
 ///|
-pub fn render_labelled_svg(
-  diagram : StructuredDiagram,
-  label : String,
-) -> String {
+fn render_labelled_svg(diagram : StructuredDiagram, label : String) -> String {
   let (initial_root, _) = layout_node(diagram.root, 10, 10)
   let shifted_root = shift_node(
     initial_root,

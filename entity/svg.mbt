@@ -1,9 +1,4 @@
 ///|
-fn xml_escape(value : String) -> String {
-  @core.xml_escape(value)
-}
-
-///|
 fn Entity::spot(self : Entity) -> (String, String) {
   match self.kind {
     AbstractClass => ("A", "#A9DCDF")
@@ -356,7 +351,7 @@ fn append_packages(
           $|<g class="package">
           $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
           $|<line x1="\{x}" y1="\{y + 22.0}" x2="\{x + tab_width + 1.5}" y2="\{y + 22.0}" style="stroke:\{border_color}"/>
-          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{xml_escape(group.display)}</text></g>
+          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@core.xml_escape(group.display)}</text></g>
       }
     None => ()
   }
@@ -384,7 +379,7 @@ fn append_notes(
           $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><rect x="\{x}" y="\{y}" width="\{note_layout.width}" height="\{note_layout.height}" fill="\{fill}"/><path d="M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z"/></g>
         for line_index, line in note.text.split("\n") {
           output <+
-            $|<text x="\{x + 10.0}" y="\{y + 17.0 + line_index.to_double() * text_metrics.row_height().to_double()}" class="note-text">\{xml_escape(line.to_owned())}</text>
+            $|<text x="\{x + 10.0}" y="\{y + 17.0 + line_index.to_double() * text_metrics.row_height().to_double()}" class="note-text">\{@core.xml_escape(line.to_owned())}</text>
         }
       }
     None => ()
@@ -470,7 +465,7 @@ fn append_relation(
     match relation.label {
       Some(label) =>
         output <+
-          $|<text x="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).0}" y="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).1 - 5.0}" class="relation-label">\{xml_escape(label)}</text>
+          $|<text x="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).0}" y="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).1 - 5.0}" class="relation-label">\{@core.xml_escape(label)}</text>
       None => ()
     }
   } else {
@@ -479,32 +474,32 @@ fn append_relation(
     match relation.label {
       Some(label) =>
         output <+
-          $|<text x="\{(x1 + x2) / 2}" y="\{(y1 + y2) / 2 - 5}" class="relation-label">\{xml_escape(label)}</text>
+          $|<text x="\{(x1 + x2) / 2}" y="\{(y1 + y2) / 2 - 5}" class="relation-label">\{@core.xml_escape(label)}</text>
       None => ()
     }
   }
   match relation.left_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{x1 - 8}" y="\{y1 - 6}" class="relation-end-label">\{xml_escape(text)}</text>
+        $|<text x="\{x1 - 8}" y="\{y1 - 6}" class="relation-end-label">\{@core.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{x2 + 8}" y="\{y2 - 6}" class="relation-end-label">\{xml_escape(text)}</text>
+        $|<text x="\{x2 + 8}" y="\{y2 - 6}" class="relation-end-label">\{@core.xml_escape(text)}</text>
     None => ()
   }
   match relation.left_role {
     Some(text) =>
       output <+
-        $|<text x="\{x1 - 8}" y="\{y1 + 13}" class="relation-end-label">\{xml_escape(text)}</text>
+        $|<text x="\{x1 - 8}" y="\{y1 + 13}" class="relation-end-label">\{@core.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_role {
     Some(text) =>
       output <+
-        $|<text x="\{x2 + 8}" y="\{y2 + 13}" class="relation-end-label">\{xml_escape(text)}</text>
+        $|<text x="\{x2 + 8}" y="\{y2 + 13}" class="relation-end-label">\{@core.xml_escape(text)}</text>
     None => ()
   }
 }
@@ -545,7 +540,7 @@ fn append_entity(
   }
   let (spot_text, spot_fill) = entity.spot()
   output <+
-    $|<g class="class-node" data-code="\{xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + 15}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="#181818" stroke-width="1"/><text x="\{x + 15}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + 29}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{xml_escape(entity.display)}</text>
+    $|<g class="class-node" data-code="\{@core.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + 15}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="#181818" stroke-width="1"/><text x="\{x + 15}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + 29}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{@core.xml_escape(entity.display)}</text>
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {
@@ -558,7 +553,7 @@ fn append_entity(
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + 20}" y="\{member_y}" class="member">\{xml_escape(entry.display_without_visibility())}</text>
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + 20}" y="\{member_y}" class="member">\{@core.xml_escape(entry.display_without_visibility())}</text>
     }
     section_y += section_height
   }
@@ -648,11 +643,6 @@ pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
   append_notes(output, self, text_metrics, layout)
   output.write_string("</svg>\n")
   output.to_string()
-}
-
-///|
-pub fn render_svg(diagram : EntityDiagram) -> String {
-  diagram.render_svg()
 }
 
 ///|

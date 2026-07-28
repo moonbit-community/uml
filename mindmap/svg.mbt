@@ -183,11 +183,6 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
 }
 
 ///|
-pub fn render_svg(diagram : MindmapDiagram) -> String {
-  diagram.render_svg()
-}
-
-///|
 pub fn render_mindmap_svg(input : String) -> String raise @core.ParseError {
   parse(input).render_svg()
 }

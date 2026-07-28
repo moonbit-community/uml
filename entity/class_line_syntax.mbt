@@ -275,7 +275,7 @@ fn Parser::consume_text_block(
   let text = StringBuilder()
   let mut first = true
   while self.index < self.lines.length() {
-    if text_block_end(strip_comment(self.lines[self.index]), keyword) {
+    if text_block_end(@core.strip_line_comment(self.lines[self.index]), keyword) {
       self.style.apply(TextBlock(keyword, text.to_string()))
       return
     }
@@ -297,11 +297,11 @@ fn Parser::consume_braced_block(
   let package_depth = self.package_stack.length()
   self.index += 1
   while self.index < self.lines.length() {
-    let line = strip_comment(self.lines[self.index])
+    let line = @core.strip_line_comment(self.lines[self.index])
     if line == "}" && self.package_stack.length() == package_depth {
       return
     }
-    let reference = normalize_name(line)
+    let reference = @core.unquote_identifier(line)
     let existing_reference = @core.syntax_words(line).length() == 1 &&
       (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
@@ -318,7 +318,7 @@ fn Parser::consume_skinparam_block(
 ) -> Unit raise @core.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
-    let property = strip_comment(self.lines[self.index])
+    let property = @core.strip_line_comment(self.lines[self.index])
     if property == "}" {
       return
     }
@@ -338,7 +338,7 @@ fn Parser::consume_common_block(
 ) -> Unit raise @core.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
-    if strip_comment(self.lines[self.index]).to_lower() == terminator {
+    if @core.strip_line_comment(self.lines[self.index]).to_lower() == terminator {
       return
     }
     self.index += 1

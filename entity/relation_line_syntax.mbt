@@ -148,8 +148,8 @@ fn relation_couple_parser() -> @talc.StringParser[
       inline_spaces()
       .then(@talc.char(')'))
       .map(_ => {
-        let left = normalize_name(first.name)
-        let right = normalize_name(second.name)
+        let left = @core.unquote_identifier(first.name)
+        let right = @core.unquote_identifier(second.name)
         ({ name: left, port_base: None, port_value: None }, (left, right))
       })
     })
@@ -178,7 +178,7 @@ fn relation_role_value_parser() -> @talc.StringParser[String] {
       @talc.satisfy("relation role", char => !char.is_whitespace()),
     ),
   )
-  .map(normalize_name)
+  .map(@core.unquote_identifier)
 }
 
 ///|

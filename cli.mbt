@@ -23,19 +23,19 @@ fn main {
   guard read_input(input_path) is Some(source) else { return }
   let svg = match () {
     _ if @api.is_json_source(source) =>
-      @api.render_json_svg(source) catch {
+      @api.parse_json(source).render_svg() catch {
         error => return println("error: \{error.to_string()}")
       }
     _ if @api.is_yaml_source(source) =>
-      @api.render_yaml_svg(source) catch {
+      @api.parse_yaml(source).render_svg() catch {
         YamlError(info~, ..) => return println("error: \{info}")
       }
     _ if @api.is_toml_source(source) =>
-      @api.render_toml_svg(source) catch {
+      @api.parse_toml(source).render_svg() catch {
         error => return println("error: \{error.to_string()}")
       }
     _ if @api.is_mindmap_source(source) =>
-      @api.render_mindmap_svg(source) catch {
+      @api.parse_mindmap(source).render_svg() catch {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
@@ -45,22 +45,22 @@ fn main {
           return println("error: line \{line}: \{message}")
       }
     _ if @api.is_usecase_source(source) =>
-      @api.render_usecase_svg(source) catch {
+      @api.parse_usecase(source).render_svg() catch {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
     _ if @api.is_component_source(source) =>
-      @api.render_component_svg(source) catch {
+      @api.parse_component(source).render_svg() catch {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
     _ if @api.is_object_source(source) =>
-      @api.render_object_svg(source) catch {
+      @api.parse_object(source).render_svg() catch {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
     _ if @api.is_class_source(source) =>
-      @api.render_class_svg(source) catch {
+      @api.parse_class(source).render_svg() catch {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }

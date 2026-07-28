@@ -78,7 +78,7 @@ fn stereotype_assignment_line_parser() -> @talc.StringParser[
         }),
       ),
     )
-    .map(normalize_name)
+    .map(@core.unquote_identifier)
   code
   .bind(code => {
     inline_space1()
@@ -99,7 +99,7 @@ fn url_assignment_target_parser() -> @talc.StringParser[String] {
       }),
     ),
   )
-  .map(normalize_name)
+  .map(@core.unquote_identifier)
 }
 
 ///|

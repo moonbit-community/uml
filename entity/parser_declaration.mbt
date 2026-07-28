@@ -1,14 +1,4 @@
 ///|
-fn strip_comment(line : String) -> String {
-  @core.strip_line_comment(line)
-}
-
-///|
-fn normalize_name(raw : String) -> String {
-  @core.unquote_identifier(raw)
-}
-
-///|
 fn declaration_kind(word : String) -> EntityKind? {
   match word.to_lower() {
     "class" => Some(Class)
@@ -167,7 +157,7 @@ fn decode_shaped_entity(
   }
   match encoded {
     Some((shape, raw_inner)) => {
-      let inner = normalize_name(raw_inner)
+      let inner = @core.unquote_identifier(raw_inner)
       if inner.length() > 0 {
         let actual_code = if display == code { inner } else { code }
         return (shape, inner, actual_code)
@@ -177,13 +167,17 @@ fn decode_shaped_entity(
   }
   let value = code.trim()
   if value.length() >= 3 && value.has_prefix("(") && value.has_suffix(")/") {
-    let inner = normalize_name(value[1:value.length() - 2].trim().to_owned())
+    let inner = @core.unquote_identifier(
+      value[1:value.length() - 2].trim().to_owned(),
+    )
     if inner.length() > 0 {
       return (BusinessUsecase, inner, inner)
     }
   }
   if value.length() >= 2 && value.has_prefix("(") && value.has_suffix(")") {
-    let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
+    let inner = @core.unquote_identifier(
+      value[1:value.length() - 1].trim().to_owned(),
+    )
     if inner.length() > 0 {
       return (
         if kind is BusinessUsecase {
@@ -197,13 +191,17 @@ fn decode_shaped_entity(
     }
   }
   if value.length() >= 3 && value.has_prefix(":") && value.has_suffix(":/") {
-    let inner = normalize_name(value[1:value.length() - 2].trim().to_owned())
+    let inner = @core.unquote_identifier(
+      value[1:value.length() - 2].trim().to_owned(),
+    )
     if inner.length() > 0 {
       return (BusinessActor, inner, inner)
     }
   }
   if value.length() >= 2 && value.has_prefix(":") && value.has_suffix(":") {
-    let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
+    let inner = @core.unquote_identifier(
+      value[1:value.length() - 1].trim().to_owned(),
+    )
     if inner.length() > 0 {
       return (
         if kind is BusinessActor {
@@ -217,7 +215,9 @@ fn decode_shaped_entity(
     }
   }
   if value.length() >= 2 && value.has_prefix("[") && value.has_suffix("]") {
-    let inner = normalize_name(value[1:value.length() - 1].trim().to_owned())
+    let inner = @core.unquote_identifier(
+      value[1:value.length() - 1].trim().to_owned(),
+    )
     if inner.length() > 0 {
       return (Component, inner, inner)
     }

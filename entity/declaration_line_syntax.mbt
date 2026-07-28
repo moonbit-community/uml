@@ -124,7 +124,7 @@ fn declaration_name_atom_parser() -> @talc.StringParser[DeclarationNameAtom] {
     declaration_generic_parser()
     .attempt()
     .optional()
-    .map(generic => { value: normalize_name(value), generic, quoted })
+    .map(generic => { value: @core.unquote_identifier(value), generic, quoted })
   })
 }
 
@@ -168,7 +168,7 @@ fn declaration_target_parser() -> @talc.StringParser[String] {
       }),
     ),
   )
-  .map(normalize_name)
+  .map(@core.unquote_identifier)
 }
 
 ///|

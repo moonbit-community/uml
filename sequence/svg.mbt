@@ -1,9 +1,4 @@
 ///|
-fn xml_escape(value : String) -> String {
-  @core.xml_escape(value)
-}
-
-///|
 fn svg_color(color : String?) -> String {
   @core.svg_color(
     color,
@@ -45,7 +40,7 @@ fn append_text(
   lines.eachi((index, line) => {
     let dy = if index == 0 { 0 } else { line_height }
     output <+
-      $|<tspan x="\{x}" dy="\{dy}">\{xml_escape(line.to_owned())}</tspan>
+      $|<tspan x="\{x}" dy="\{dy}">\{@core.xml_escape(line.to_owned())}</tspan>
   })
   output.write_string("</text>\n")
 }
@@ -99,11 +94,12 @@ fn append_participant(
   let left = layout.center_x - layout.width / 2
   let fill = svg_color(layout.participant.color)
   match layout.participant.url {
-    Some(url) => output <+ "<a href=\"\{xml_escape(url)}\" target=\"_top\">\n"
+    Some(url) =>
+      output <+ "<a href=\"\{@core.xml_escape(url)}\" target=\"_top\">\n"
     None => ()
   }
   output <+
-    $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{xml_escape(layout.participant.code)}">
+    $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{@core.xml_escape(layout.participant.code)}">
   match layout.participant.typ {
     Actor | Boundary | Control | Entity | Database =>
       append_vertical_participant(output, layout, y, is_tail)
@@ -610,7 +606,7 @@ fn append_message(
   match message.anchor {
     Some(anchor) =>
       output <+
-        $|<g id="\{xml_escape(anchor)}" class="message-anchor">
+        $|<g id="\{@core.xml_escape(anchor)}" class="message-anchor">
     None => ()
   }
   if from.participant.code == to.participant.code {
@@ -1140,11 +1136,6 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
   }
   output.write_string("</svg>\n")
   output.to_string()
-}
-
-///|
-pub fn render_svg(diagram : SequenceDiagram) -> String {
-  diagram.render_svg()
 }
 
 ///|

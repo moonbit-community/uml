@@ -9,7 +9,7 @@ fn Parser::parse_line(
   self : Parser,
   line : String,
 ) -> Unit raise @core.ParseError {
-  let line = strip_comment(line).trim().to_owned()
+  let line = @core.strip_line_comment(line).trim().to_owned()
   guard line.length() > 0 else { return }
   match @core.common_block_terminator(line) {
     Some(terminator) => {

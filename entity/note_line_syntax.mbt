@@ -72,7 +72,7 @@ fn note_name_parser(label : String) -> @talc.StringParser[String] {
       char != '{'
     }),
   )
-  quoted_value_parser().attempt().or(plain).map(normalize_name)
+  quoted_value_parser().attempt().or(plain).map(@core.unquote_identifier)
 }
 
 ///|
@@ -97,7 +97,7 @@ fn note_member_name_parser() -> @talc.StringParser[String] {
       char != '[' &&
       char != '{'
     }),
-  ).map(normalize_name)
+  ).map(@core.unquote_identifier)
 }
 
 ///|
@@ -416,7 +416,7 @@ fn Parser::consume_note_syntax(
       self.index += 1
       while self.index < self.lines.length() {
         let line = self.lines[self.index]
-        let terminator = strip_comment(line).to_lower()
+        let terminator = @core.strip_line_comment(line).to_lower()
         if terminator == "end note" ||
           terminator == "endnote" ||
           (syntax.metadata.braced && terminator == "}") {

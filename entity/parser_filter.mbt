@@ -44,7 +44,7 @@ fn selector_for_tokens(tokens : Array[String]) -> EntitySelector {
   }
   match declaration_kind(raw) {
     Some(kind) => KindEntities(kind)
-    None => NamedEntity(normalize_name(raw))
+    None => NamedEntity(@core.unquote_identifier(raw))
   }
 }
 

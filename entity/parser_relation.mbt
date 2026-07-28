@@ -1,9 +1,4 @@
 ///|
-fn find_substring(haystack : String, needle : String) -> Int? {
-  @core.find_literal(haystack, needle)
-}
-
-///|
 fn left_relation_end(arrow : String) -> RelationEnd {
   if arrow.has_prefix("<|:") {
     DefinedBy
@@ -150,8 +145,8 @@ fn relation_direction(arrow : String) -> RelationDirection {
 
 ///|
 fn relation_style(arrow : String) -> String? {
-  guard find_substring(arrow, "[") is Some(start) else { return None }
-  guard find_substring(arrow[start + 1:].to_owned(), "]") is Some(length) else {
+  guard @core.find_literal(arrow, "[") is Some(start) else { return None }
+  guard @core.find_literal(arrow[start + 1:].to_owned(), "]") is Some(length) else {
     return None
   }
   Some(arrow[start + 1:start + 1 + length].to_owned())
@@ -172,11 +167,11 @@ fn Parser::resolve_relation_name(
   self : Parser,
   syntax : RelationNameSyntax,
 ) -> (String, String?) {
-  let full = normalize_name(syntax.name)
+  let full = @core.unquote_identifier(syntax.name)
   guard syntax.port_base is Some(base) && syntax.port_value is Some(port) else {
     return (full, None)
   }
-  let base = normalize_name(base)
+  let base = @core.unquote_identifier(base)
   let base_code = self.resolve(base)
   if self.has_entity(full) {
     (full, None)
@@ -207,7 +202,8 @@ fn Parser::ensure_relation_entity(
   endpoint : RelationEnd,
 ) -> String {
   match relation_shape(raw) {
-    Some((code, kind)) => self.ensure_entity_as(normalize_name(code), kind)
+    Some((code, kind)) =>
+      self.ensure_entity_as(@core.unquote_identifier(code), kind)
     None if endpoint is Parenthesis => self.ensure_entity_as(raw, Interface)
     None => self.ensure_entity(raw)
   }
