@@ -2,7 +2,6 @@ import {
   "kokic/uml/entity",
   "kokic/uml/entity/class" @entity_class,
   "kokic/uml/entity/component" @entity_component,
-  "kokic/uml/entity/object" @entity_object,
   "kokic/uml/entity/usecase" @entity_usecase,
   "kokic/uml/core",
   "kokic/uml/mindmap",

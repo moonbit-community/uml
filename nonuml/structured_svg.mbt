@@ -320,11 +320,32 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 }
 
 ///|
-fn StructuredDiagram::render_svg_with_label(
-  self : StructuredDiagram,
+pub fn StructuredDiagram::render_json_svg(
+  diagram : StructuredDiagram,
+) -> String {
+  render_labelled_svg(diagram, "JSON diagram")
+}
+
+///|
+pub fn StructuredDiagram::render_yaml_svg(
+  diagram : StructuredDiagram,
+) -> String {
+  render_labelled_svg(diagram, "YAML diagram")
+}
+
+///|
+pub fn StructuredDiagram::render_toml_svg(
+  diagram : StructuredDiagram,
+) -> String {
+  render_labelled_svg(diagram, "TOML diagram")
+}
+
+///|
+pub fn render_labelled_svg(
+  diagram : StructuredDiagram,
   label : String,
 ) -> String {
-  let (initial_root, _) = layout_node(self.root, 10, 10)
+  let (initial_root, _) = layout_node(diagram.root, 10, 10)
   let shifted_root = shift_node(
     initial_root,
     (10 - min_top(initial_root)).max(0),
@@ -363,28 +384,4 @@ fn StructuredDiagram::render_svg_with_label(
   append_node(output, root)
   output.write_string("</svg>\n")
   output.to_string()
-}
-
-///|
-pub const ARIA_LABEL_JSON = "JSON diagram"
-
-///|
-pub const ARIA_LABEL_YAML = "YAML diagram"
-
-///|
-pub const ARIA_LABEL_TOML = "TOML diagram"
-
-///|
-pub fn StructuredDiagram::render_json_svg(diagram : StructuredDiagram) -> String {
-  diagram.render_svg_with_label(ARIA_LABEL_JSON)
-}
-
-///|
-pub fn StructuredDiagram::render_yaml_svg(diagram : StructuredDiagram) -> String {
-  diagram.render_svg_with_label(ARIA_LABEL_YAML)
-}
-
-///|
-pub fn StructuredDiagram::render_toml_svg(diagram : StructuredDiagram) -> String {
-  diagram.render_svg_with_label(ARIA_LABEL_TOML)
 }
