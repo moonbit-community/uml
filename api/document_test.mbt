@@ -85,11 +85,24 @@ test "document facade recognizes and renders mindmaps" {
 test "activity parser recognizes and preserves structured commands" {
   let source = "@startuml\nstart\nif (ready?) then (yes)\n:Run;\nendif\nstop\n@enduml"
   @test.assert_eq(is_activity_source(source), true)
-  @test.assert_eq(parse_activity(source).nodes.is_empty(), false)
+  @test.assert_eq(parse_activity(source).kind() is Activity, true)
+  @test.assert_eq(
+    parse_activity(source).render_svg().contains("Activity diagram"),
+    true,
+  )
   @test.assert_eq(
     is_activity_source("@startuml\nclass Service\n@enduml"),
     false,
   )
+}
+
+///|
+test "document facade dispatches state diagrams before class diagrams" {
+  let source = "@startuml\n[*] --> Idle\nstate Idle\n@enduml"
+  @test.assert_eq(is_state_source(source), true)
+  let document = parse_state(source)
+  @test.assert_eq(document.kind() is State, true)
+  @test.assert_eq(document.render_svg().contains("State diagram"), true)
 }
 
 ///|

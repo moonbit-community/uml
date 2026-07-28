@@ -39,8 +39,18 @@ fn main {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }
+    _ if @api.is_activity_source(source) =>
+      @api.parse_activity(source).render_svg() catch {
+        SyntaxError(line, message) =>
+          return println("error: line \{line}: \{message}")
+      }
     _ if @api.is_sequence_source(source) =>
       @api.render_svg(source) catch {
+        SyntaxError(line, message) =>
+          return println("error: line \{line}: \{message}")
+      }
+    _ if @api.is_state_source(source) =>
+      @api.parse_state(source).render_svg() catch {
         SyntaxError(line, message) =>
           return println("error: line \{line}: \{message}")
       }

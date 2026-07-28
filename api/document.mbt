@@ -2,10 +2,12 @@
 /// The parsed PlantUML document. Diagram-specific state stays in its own package.
 pub enum Diagram {
   Sequence(@sequence.SequenceDiagram)
+  Activity(@activity.ActivityDiagram)
   Class(@entity.EntityDiagram)
   Object(@entity.EntityDiagram)
   Component(@entity.EntityDiagram)
   UseCase(@entity.EntityDiagram)
+  State(@state.StateDiagram)
   Mindmap(@mindmap.MindmapDiagram)
   Json(@nonuml.StructuredDiagram)
   Yaml(@nonuml.StructuredDiagram)
@@ -21,10 +23,12 @@ pub struct Document {
 pub fn Document::kind(self : Document) -> @core.DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
+    Activity(_) => Activity
     Class(_) => Class
     Object(_) => Object
     Component(_) => Component
     UseCase(_) => UseCase
+    State(_) => State
     Mindmap(_) => Mindmap
     Json(_) => Json
     Yaml(_) => Yaml
@@ -53,24 +57,28 @@ pub fn parse_usecase(input : String) -> Document raise @core.ParseError {
 }
 
 ///|
+pub fn parse_state(input : String) -> Document raise @core.ParseError {
+  { diagram: State(@state.parse(input)) }
+}
+
+///|
 pub fn parse_mindmap(input : String) -> Document raise @core.ParseError {
   { diagram: Mindmap(@mindmap.parse(input)) }
 }
 
 ///|
 /// Parse PlantUML's modern activity-diagram command language.
-///
-/// Activity layout is intentionally separate from the document renderer while
-/// the parser surface is being completed.
-pub fn parse_activity(
-  input : String,
-) -> @activity.ActivityDiagram raise @core.ParseError {
-  @activity.parse(input)
+pub fn parse_activity(input : String) -> Document raise @core.ParseError {
+  { diagram: Activity(@activity.parse(input)) }
 }
 
 ///|
 pub fn parse(input : String) -> Document raise @core.ParseError {
-  { diagram: Sequence(@sequence.parse(input)) }
+  if is_activity_source(input) {
+    parse_activity(input)
+  } else {
+    { diagram: Sequence(@sequence.parse(input)) }
+  }
 }
 
 ///|
@@ -254,6 +262,24 @@ fn is_class_declaration(line : String) -> Bool {
     | "collections" => true
     _ => false
   }
+}
+
+///|
+/// Returns whether the source selects PlantUML's state-diagram factory.
+pub fn is_state_source(input : String) -> Bool {
+  for line in meaningful_source_lines(input) {
+    let lower = line.to_lower()
+    if lower.has_prefix("state ") ||
+      lower.has_prefix("frame ") ||
+      line == "[*]" ||
+      line.has_prefix("[*] ") ||
+      line.has_suffix(" [*]") ||
+      line == "[H]" ||
+      line == "[H*]" {
+      return true
+    }
+  }
+  false
 }
 
 ///|
