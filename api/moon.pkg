@@ -1,4 +1,5 @@
 import {
+  "kokic/uml/activity",
   "kokic/uml/entity",
   "kokic/uml/entity/class" @entity_class,
   "kokic/uml/entity/component" @entity_component,

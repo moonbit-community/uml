@@ -58,6 +58,17 @@ pub fn parse_mindmap(input : String) -> Document raise @core.ParseError {
 }
 
 ///|
+/// Parse PlantUML's modern activity-diagram command language.
+///
+/// Activity layout is intentionally separate from the document renderer while
+/// the parser surface is being completed.
+pub fn parse_activity(
+  input : String,
+) -> @activity.ActivityDiagram raise @core.ParseError {
+  @activity.parse(input)
+}
+
+///|
 pub fn parse(input : String) -> Document raise @core.ParseError {
   { diagram: Sequence(@sequence.parse(input)) }
 }
@@ -379,4 +390,37 @@ pub fn is_mindmap_source(input : String) -> Bool {
   input
   .split("\n")
   .any(line => line.trim().equal_ignore_ascii_case("@startmindmap"))
+}
+
+///|
+/// Returns whether the source selects PlantUML's activity-diagram parser.
+pub fn is_activity_source(input : String) -> Bool {
+  let lines = meaningful_source_lines(input)
+  input
+  .split("\n")
+  .any(line => line.trim().equal_ignore_ascii_case("@startactivity")) ||
+  lines.any(line => {
+    let lower = line.to_lower()
+    lower == "start" ||
+    lower == "stop" ||
+    lower == "endif" ||
+    lower == "endwhile" ||
+    lower == "repeat" ||
+    lower.has_prefix("repeat while ") ||
+    lower == "fork" ||
+    lower == "fork again" ||
+    lower == "end fork" ||
+    lower == "endfork" ||
+    lower == "endswitch" ||
+    lower.has_prefix("if ") ||
+    lower.has_prefix("elseif ") ||
+    lower == "else" ||
+    lower.has_prefix("else ") ||
+    lower.has_prefix("while ") ||
+    lower.has_prefix("switch ") ||
+    lower.has_prefix("case ") ||
+    lower.has_prefix("goto ") ||
+    lower.has_prefix("label ") ||
+    (line.has_prefix(":") && line.has_suffix(";"))
+  })
 }

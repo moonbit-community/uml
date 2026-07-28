@@ -82,6 +82,17 @@ test "document facade recognizes and renders mindmaps" {
 }
 
 ///|
+test "activity parser recognizes and preserves structured commands" {
+  let source = "@startuml\nstart\nif (ready?) then (yes)\n:Run;\nendif\nstop\n@enduml"
+  @test.assert_eq(is_activity_source(source), true)
+  @test.assert_eq(parse_activity(source).nodes.is_empty(), false)
+  @test.assert_eq(
+    is_activity_source("@startuml\nclass Service\n@enduml"),
+    false,
+  )
+}
+
+///|
 test "document facade renders a JSON structure diagram" {
   let document = parse_json(
     "@startjson\n{\"service\":{\"port\":8080}}\n@endjson",

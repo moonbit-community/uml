@@ -1,0 +1,15 @@
+@startuml
+start
+:Open batch;
+
+while (More records?) is (yes)
+  :Read record;
+  :Process record;
+endwhile (no)
+
+repeat
+  :Attempt delivery;
+repeat while (Delivery failed?) is (retry) not (done)
+
+stop
+@enduml
