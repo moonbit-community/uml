@@ -49,10 +49,34 @@ fn append_edge(
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return }
   let x = from.x + from.width / 2
   let y1 = from.y + from.height
+  let target_x = to.x + to.width / 2
   let y2 = to.y
+  let path = match edge.route {
+    Forward => {
+      let middle_y = (y1 + y2) / 2
+      "M \{x} \{y1} V \{middle_y} H \{target_x} V \{y2}"
+    }
+    BackwardLeft => {
+      let route_x = from.x.min(to.x) - LOOP_ROUTE_MARGIN
+      "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
+    }
+    BackwardRight => {
+      let route_x = (from.x + from.width).max(to.x + to.width) +
+        LOOP_ROUTE_MARGIN
+      "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
+    }
+  }
   output.empty("path", attributes=[
-    ("d", "M \{x} \{y1} L \{x} \{y2}"),
+    ("d", path),
     ("class", "activity-edge"),
+    (
+      "data-route",
+      match edge.route {
+        Forward => "forward"
+        BackwardLeft => "backward-left"
+        BackwardRight => "backward-right"
+      },
+    ),
     ("marker-end", "url(#activity-arrow)"),
   ])
 }
@@ -186,6 +210,13 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   ])
   output.close()
   output.close()
+  output.empty("rect", attributes=[
+    ("x", "0"),
+    ("y", "0"),
+    ("width", layout.width.to_string()),
+    ("height", layout.height.to_string()),
+    ("fill", "#FFFFFF"),
+  ])
   layout.edges.each(edge => append_edge(output, layout, edge))
   layout.nodes.each(node => append_node(output, self, node, font_metrics))
   output.close()

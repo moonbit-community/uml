@@ -137,22 +137,22 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
     } else if line.has_prefix(":") && line.has_suffix(";") {
       nodes.push(Action(line[1:line.length() - 1].trim().to_owned()))
     } else if lower.has_prefix("if ") {
-      stack.push(Conditional)
+      stack.push(BlockKind::Conditional)
       nodes.push(If(command_text(line, "if")))
     } else if lower.has_prefix("elseif ") {
-      require_block(stack, Conditional, line_number, "elseif")
+      require_block(stack, BlockKind::Conditional, line_number, "elseif")
       nodes.push(ElseIf(command_text(line, "elseif")))
     } else if lower == "else" || lower.has_prefix("else ") {
-      require_block(stack, Conditional, line_number, "else")
+      require_block(stack, BlockKind::Conditional, line_number, "else")
       nodes.push(Else(command_text(line, "else")))
     } else if lower == "endif" {
-      pop_block(stack, Conditional, line_number, "endif")
+      pop_block(stack, BlockKind::Conditional, line_number, "endif")
       nodes.push(EndIf)
     } else if lower.has_prefix("while ") {
-      stack.push(WhileLoop)
+      stack.push(BlockKind::WhileLoop)
       nodes.push(While(command_text(line, "while")))
     } else if lower == "endwhile" || lower.has_prefix("endwhile ") {
-      pop_block(stack, WhileLoop, line_number, "endwhile")
+      pop_block(stack, BlockKind::WhileLoop, line_number, "endwhile")
       nodes.push(EndWhile(command_text(line, "endwhile")))
     } else if lower == "repeat" {
       stack.push(RepeatLoop)
