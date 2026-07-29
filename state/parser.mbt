@@ -36,97 +36,6 @@ fn Parser::parent(self : Parser) -> String? {
 }
 
 ///|
-fn trim_quotes(value : String) -> String {
-  let value = value.trim().to_owned()
-  if value.length() >= 2 && value.has_prefix("\"") && value.has_suffix("\"") {
-    value[1:value.length() - 1].to_owned()
-  } else {
-    value
-  }
-}
-
-///|
-fn split_description(line : String) -> (String, String?) {
-  match @core.find_unquoted_literal(line, " : ") {
-    Some(index) =>
-      (line[:index].trim().to_owned(), Some(line[index + 3:].trim().to_owned()))
-    None => (line, None)
-  }
-}
-
-///|
-fn take_stereotype(value : String) -> (String, String?) {
-  match @core.find_unquoted_literal(value, "<<") {
-    Some(start) =>
-      match @core.find_unquoted_literal(value[start + 2:].to_owned(), ">>") {
-        Some(end) =>
-          (
-            (value[:start] + value[start + end + 4:]).trim().to_owned(),
-            Some(value[start:start + end + 4].to_owned()),
-          )
-        None => (value, None)
-      }
-    None => (value, None)
-  }
-}
-
-///|
-fn take_color(value : String) -> (String, String?) {
-  let words = value.split(" ").filter(word => word.length() > 0).to_array()
-  let retained = []
-  let mut color = None
-  for word in words {
-    if word.has_prefix("#") {
-      color = Some(word[1:].to_owned())
-    } else {
-      retained.push(word.to_owned())
-    }
-  }
-  (retained.join(" "), color)
-}
-
-///|
-fn parse_state_declaration(
-  line : String,
-) -> (String, String, StateKind, String?, String?, String?, Bool) raise @core.ParseError {
-  let (without_description, description) = split_description(
-    line[5:].trim().to_owned(),
-  )
-  let opens_group = without_description.has_suffix("{") ||
-    without_description.to_lower().has_suffix(" begin")
-  let declaration = if without_description.has_suffix("{") {
-    without_description[:without_description.length() - 1].trim().to_owned()
-  } else if without_description.to_lower().has_suffix(" begin") {
-    without_description[:without_description.length() - 6].trim().to_owned()
-  } else {
-    without_description
-  }
-  let (without_stereotype, stereotype) = take_stereotype(declaration)
-  let (identity, color) = take_color(without_stereotype)
-  let as_parts = identity.split(" as ").map(StringView::to_owned).to_array()
-  let (code, display) = if as_parts.length() == 2 {
-    let left = trim_quotes(as_parts[0])
-    let right = trim_quotes(as_parts[1])
-    if identity.trim().has_prefix("\"") {
-      (right, left)
-    } else {
-      (left, right)
-    }
-  } else {
-    let value = trim_quotes(identity)
-    (value, value)
-  }
-  guard code.length() > 0 else {
-    raise SyntaxError(0, "state declaration needs a name")
-  }
-  let kind = match stereotype {
-    Some(value) if value.equal_ignore_ascii_case("<<choice>>") => Choice
-    _ => Normal
-  }
-  (code, display, kind, description, stereotype, color, opens_group)
-}
-
-///|
 fn endpoint_kind(value : String, source : Bool) -> StateKind {
   match value {
     "[*]" => if source { Initial } else { Final }
@@ -170,6 +79,7 @@ fn Parser::ensure_endpoint(
       parent: self.parent(),
       description: None,
       stereotype: None,
+      url: None,
       color: None,
     })
   }
@@ -188,94 +98,10 @@ fn Parser::upsert_state(self : Parser, state : StateNode) -> Unit {
 }
 
 ///|
-fn direction_of(arrow : String) -> TransitionDirection {
-  let lower = arrow.to_lower()
-  if lower.contains("left") || lower.contains("le") {
-    Leftward
-  } else if lower.contains("right") || lower.contains("ri") {
-    Rightward
-  } else if lower.contains("up") {
-    Upward
-  } else if lower.contains("down") || lower.contains("do") {
-    Downward
-  } else {
-    Automatic
-  }
-}
-
-///|
-fn line_style_of(arrow : String) -> String? {
-  match @core.find_unquoted_literal(arrow, "[") {
-    Some(start) =>
-      match @core.find_unquoted_literal(arrow[start + 1:].to_owned(), "]") {
-        Some(end) => Some(arrow[start + 1:start + end + 1].to_owned())
-        None => None
-      }
-    None => None
-  }
-}
-
-///|
-fn Parser::parse_transition(self : Parser, line : String) -> Bool {
-  let (without_label, label) = split_description(line)
-  let parts = without_label
-    .split(" ")
-    .filter(word => word.length() > 0)
-    .to_array()
-  guard parts.length() == 3 else { return false }
-  let arrow = parts[1].to_owned()
-  guard arrow.contains("->") || arrow.contains("<-") else { return false }
-  let reverse = arrow.contains("<-")
-  let source_raw = if reverse {
-    parts[2].to_owned()
-  } else {
-    parts[0].to_owned()
-  }
-  let target_raw = if reverse {
-    parts[0].to_owned()
-  } else {
-    parts[2].to_owned()
-  }
-  let source = self.ensure_endpoint(source_raw, true)
-  let target = self.ensure_endpoint(target_raw, false)
-  self.transitions.push({
-    source,
-    target,
-    label,
-    direction: direction_of(arrow),
-    line_style: line_style_of(arrow),
-    has_cross_start: arrow.has_prefix("x"),
-  })
-  true
-}
-
-///|
-fn Parser::parse_note(
+fn Parser::consume_entity_note(
   self : Parser,
-  line : String,
-) -> Bool raise @core.ParseError {
-  let lower = line.to_lower()
-  guard lower.has_prefix("note ") else { return false }
-  if lower.has_prefix("note on link") {
-    let text = match @core.find_unquoted_literal(line, " : ") {
-      Some(index) => line[index + 3:].trim().to_owned()
-      None => raise SyntaxError(self.line_number(), "link note needs text")
-    }
-    guard self.transitions.length() > 0 else {
-      raise SyntaxError(self.line_number(), "link note without transition")
-    }
-    self.notes.push({
-      target: TransitionNote(self.transitions.length() - 1),
-      text,
-    })
-    return true
-  }
-  guard lower.contains(" of ") else { return false }
-  let target = match @core.find_unquoted_literal(line, " of ") {
-    Some(index) =>
-      line[index + 4:].trim().to_owned().split(" ").to_array()[0].to_owned()
-    None => ""
-  }
+  target : String,
+) -> Unit raise @core.ParseError {
   guard target.length() > 0 else {
     raise SyntaxError(self.line_number(), "state note needs a target")
   }
@@ -287,12 +113,69 @@ fn Parser::parse_note(
       .to_owned()
     if content.equal_ignore_ascii_case("end note") {
       self.notes.push({ target: StateNote(target), text: text.join("\n") })
-      return true
+      return
     }
     text.push(content)
     self.index += 1
   }
   raise SyntaxError(self.line_number(), "unclosed note")
+}
+
+///|
+fn Parser::apply_line_syntax(
+  self : Parser,
+  line : String,
+) -> Bool raise @core.ParseError {
+  match parse_line_syntax(line) {
+    Some(Declaration(syntax)) => {
+      self.upsert_state({
+        code: syntax.code,
+        display: syntax.display,
+        kind: syntax.kind,
+        parent: self.parent(),
+        description: syntax.description,
+        stereotype: syntax.stereotype,
+        url: syntax.url,
+        color: syntax.color,
+      })
+      if syntax.opens_group {
+        self.stack.push(syntax.code)
+      }
+      true
+    }
+    Some(Frame(code)) => {
+      self.stack.push(code)
+      true
+    }
+    Some(Transition(syntax)) => {
+      let source = self.ensure_endpoint(syntax.source, true)
+      let target = self.ensure_endpoint(syntax.target, false)
+      self.transitions.push({
+        source,
+        target,
+        label: syntax.label,
+        direction: syntax.direction,
+        line_style: syntax.line_style,
+        has_cross_start: syntax.has_cross_start,
+      })
+      true
+    }
+    Some(EntityNote(target)) => {
+      self.consume_entity_note(target)
+      true
+    }
+    Some(LinkNote(text)) => {
+      guard self.transitions.length() > 0 else {
+        raise SyntaxError(self.line_number(), "link note without transition")
+      }
+      self.notes.push({
+        target: TransitionNote(self.transitions.length() - 1),
+        text,
+      })
+      true
+    }
+    None => false
+  }
 }
 
 ///|
@@ -309,7 +192,7 @@ fn Parser::parse_line(
     lower.has_prefix("skinparam ") {
     return
   }
-  if self.parse_note(line) {
+  if self.apply_line_syntax(line) {
     return
   }
   if line == "}" || lower == "end state" {
@@ -328,37 +211,7 @@ fn Parser::parse_line(
     self.concurrent_regions.push(parent)
     return
   }
-  if lower.has_prefix("frame ") {
-    let (code, _, _, _, _, _, opens_group) = parse_state_declaration(
-      "state " + line[6:].trim().to_owned(),
-    )
-    guard opens_group else {
-      raise SyntaxError(self.line_number(), "frame needs an opening brace")
-    }
-    self.stack.push(code)
-    return
-  }
-  if lower.has_prefix("state ") {
-    let (code, display, kind, description, stereotype, color, opens_group) = parse_state_declaration(
-      line,
-    )
-    self.upsert_state({
-      code,
-      display,
-      kind,
-      parent: self.parent(),
-      description,
-      stereotype,
-      color,
-    })
-    if opens_group {
-      self.stack.push(code)
-    }
-    return
-  }
-  guard self.parse_transition(line) else {
-    raise SyntaxError(self.line_number(), "unsupported state command")
-  }
+  raise SyntaxError(self.line_number(), "unsupported state command")
 }
 
 ///|

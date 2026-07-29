@@ -65,3 +65,24 @@ test "preserves declaration stereotypes and frame aliases in scope" {
   )
   @test.assert_eq(diagram.state("Paid").unwrap().parent, Some("Flow"))
 }
+
+///|
+test "preserves URL metadata declared on a state" {
+  let diagram = parse(
+    "@startuml\nstate Review [[https://example.com/review]] #lightyellow\n@enduml",
+  )
+  @test.assert_eq(
+    diagram.state("Review").unwrap().url,
+    Some("https://example.com/review"),
+  )
+}
+
+///|
+test "parsec transition grammar preserves reverse endpoints and line styles" {
+  let diagram = parse("@startuml\nArchived <-[bold]- Closed : archive\n@enduml")
+  let transition = diagram.transitions[0]
+  @test.assert_eq(transition.source, "Closed")
+  @test.assert_eq(transition.target, "Archived")
+  @test.assert_eq(transition.line_style, Some("bold"))
+  @test.assert_eq(transition.label, Some("archive"))
+}

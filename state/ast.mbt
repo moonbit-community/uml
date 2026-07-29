@@ -26,6 +26,7 @@ pub struct StateNode {
   parent : String?
   description : String?
   stereotype : String?
+  url : String?
   color : String?
 } derive(Eq, Debug)
 
