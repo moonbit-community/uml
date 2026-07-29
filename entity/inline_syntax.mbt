@@ -38,54 +38,25 @@ fn inline_keyword_parser(keyword : String) -> @talc.StringParser[Unit] {
 
 ///|
 fn quoted_value_parser() -> @talc.StringParser[String] {
-  let part = @talc.char('\\')
-    .then(@talc.satisfy("escaped quoted character", _ => true))
-    .map(char => "\\" + char.to_string())
-    .or(@talc.none_of("\"").string_map(char => char.to_string()))
-  @talc.char('"')
-  .then(part.many().map(parts => parts.join("")))
-  .skip(@talc.char('"'))
+  @core.quoted_value_parser()
 }
 
 ///|
 fn stereotype_value_parser() -> @talc.StringParser[String] {
-  let terminator = @talc.string(">>")
-  let character = terminator
-    .not_followed_by("stereotype terminator")
-    .then(@talc.satisfy("stereotype character", _ => true))
-  @talc.string("<<")
-  .then(@talc.many_chars(character))
-  .skip(terminator)
-  .map(value => "<<" + value + ">>")
+  @core.stereotype_value_parser()
 }
 
 ///|
 fn url_value_parser() -> @talc.StringParser[String] {
-  let terminator = @talc.string("]]")
-  let character = terminator
-    .not_followed_by("URL terminator")
-    .then(@talc.satisfy("URL character", _ => true))
-  @talc.string("[[")
-  .then(@talc.many_chars(character))
-  .skip(terminator)
-  .bind(content => {
-    match @core.parse_url_target("[[" + content + "]]") {
-      Some(target) => @talc.pure(target.target)
-      None => @talc.fail("URL")
-    }
-  })
+  @core.url_value_parser()
 }
 
 ///|
 fn color_value_parser(label : String) -> @talc.StringParser[String] {
-  @talc.char('#').then(
-    @talc.many_chars1(@talc.satisfy(label, char => !char.is_whitespace())),
-  )
+  @core.color_value_parser(label)
 }
 
 ///|
 fn tag_value_parser(label : String) -> @talc.StringParser[String] {
-  @talc.char('$').then(
-    @talc.many_chars1(@talc.satisfy(label, char => !char.is_whitespace())),
-  )
+  @core.tag_value_parser(label)
 }

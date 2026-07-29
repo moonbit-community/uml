@@ -44,6 +44,7 @@ fn append_edge(
   output : @core.XmlWriter,
   layout : ActivityLayout,
   edge : ActivityEdgeLayout,
+  font_metrics : @metrics.FontMetrics,
 ) -> Unit {
   guard layout_for(layout, edge.from_node_index) is Some(from) else { return }
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return }
@@ -56,6 +57,9 @@ fn append_edge(
       let middle_y = (y1 + y2) / 2
       "M \{x} \{y1} V \{middle_y} H \{target_x} V \{y2}"
     }
+    Horizontal =>
+      "M \{from.x + from.width} \{from.y + from.height / 2} H \{to.x}"
+    Goto => "M \{from.x} \{from.y} H \{to.x} V \{to.y}"
     BackwardLeft => {
       let route_x = from.x.min(to.x) - LOOP_ROUTE_MARGIN
       "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
@@ -73,22 +77,68 @@ fn append_edge(
       "data-route",
       match edge.route {
         Forward => "forward"
+        Horizontal => "horizontal"
+        Goto => "goto"
         BackwardLeft => "backward-left"
         BackwardRight => "backward-right"
       },
     ),
     ("marker-end", "url(#activity-arrow)"),
   ])
+  match edge.label {
+    Some(label) => {
+      let (label_x, label_y) = match edge.route {
+        Forward => ((x + target_x) / 2, (y1 + y2) / 2 - 4)
+        Horizontal =>
+          ((from.x + from.width + to.x) / 2, from.y + from.height / 2 - 4)
+        Goto => ((from.x + to.x) / 2, (from.y + to.y) / 2)
+        BackwardLeft => (from.x.min(to.x) - LOOP_ROUTE_MARGIN, (y1 + y2) / 2)
+        BackwardRight =>
+          (
+            (from.x + from.width).max(to.x + to.width) + LOOP_ROUTE_MARGIN,
+            (y1 + y2) / 2,
+          )
+      }
+      append_label(output, label_x, label_y, label, font_metrics)
+    }
+    None => ()
+  }
+}
+
+///|
+fn append_region(
+  output : @core.XmlWriter,
+  region : ActivityRegionLayout,
+  font_metrics : @metrics.FontMetrics,
+) -> Unit {
+  let class = match region.kind {
+    ActivityRegionKind::Partition => "activity-partition"
+    ActivityRegionKind::Swimlane => "activity-swimlane"
+  }
+  output.empty("rect", attributes=[
+    ("x", region.x.to_string()),
+    ("y", region.y.to_string()),
+    ("width", region.width.to_string()),
+    ("height", region.height.to_string()),
+    ("class", class),
+  ])
+  append_label(
+    output,
+    region.x + region.width / 2,
+    region.y + REGION_HEADER_HEIGHT / 2 + 4,
+    region.label,
+    font_metrics,
+  )
 }
 
 ///|
 fn append_node(
   output : @core.XmlWriter,
-  diagram : ActivityDiagram,
+  layout : ActivityLayout,
   node_layout : ActivityNodeLayout,
   font_metrics : @metrics.FontMetrics,
 ) -> Unit {
-  let node = diagram.nodes[node_layout.node_index]
+  let node = layout.source_nodes[node_layout.node_index]
   let x = node_layout.x
   let y = node_layout.y
   let width = node_layout.width
@@ -164,6 +214,8 @@ fn append_node(
       ])
       append_label(output, center_x, center_y + 4, label, font_metrics)
     }
+    Arrow(_) | Label(_) | Goto(_) | Swimlane(_) | Partition(_) | EndPartition =>
+      ()
     _ =>
       output.empty("circle", attributes=[
         ("cx", center_x.to_string()),
@@ -191,7 +243,7 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   ])
   output.open("style")
   output.raw(
-    "svg{font-family:Arial,sans-serif;font-size:13px;background:#fff}.activity-edge{fill:none;stroke:#181818;stroke-width:1.5}.activity-label{fill:#181818}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:#181818}.activity-stop-outer,.activity-action,.activity-decision{fill:#FEFECE;stroke:#181818;stroke-width:1.5}.activity-note{fill:#FEFFDD;stroke:#181818;stroke-width:1.5}",
+    "svg{font-family:Arial,sans-serif;font-size:13px;background:#fff}.activity-edge{fill:none;stroke:#181818;stroke-width:1.5}.activity-label{fill:#181818}.activity-partition,.activity-swimlane{fill:#F7F7F7;stroke:#181818;stroke-width:1.5}.activity-swimlane{stroke-dasharray:4 3}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:#181818}.activity-stop-outer,.activity-action,.activity-decision{fill:#FEFECE;stroke:#181818;stroke-width:1.5}.activity-note{fill:#FEFFDD;stroke:#181818;stroke-width:1.5}",
   )
   output.close()
   output.open("defs")
@@ -217,8 +269,9 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
     ("height", layout.height.to_string()),
     ("fill", "#FFFFFF"),
   ])
-  layout.edges.each(edge => append_edge(output, layout, edge))
-  layout.nodes.each(node => append_node(output, self, node, font_metrics))
+  layout.regions.each(region => append_region(output, region, font_metrics))
+  layout.edges.each(edge => append_edge(output, layout, edge, font_metrics))
+  layout.nodes.each(node => append_node(output, layout, node, font_metrics))
   output.close()
   output.to_string()
 }

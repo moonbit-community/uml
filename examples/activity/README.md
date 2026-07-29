@@ -13,7 +13,7 @@ coordinate, so it remains useful while layout evolves.
 | `04-parallel-work.uml` | `fork`, `fork again`, `end fork` | Parallel branches split once, retain every branch, then merge before the next activity. |
 | `05-switch-cases.uml` | `switch`, `case`, `endswitch` | Every case belongs to the same decision and rejoins after the switch. |
 | `06-partitions-and-swimlanes.uml` | swimlane declarations, `partition`, block note | Lane ownership, partition nesting, and the attached note survive parsing. |
-| `07-flow-targets.uml` | `label`, `goto` | A named target resolves to its activity and produces a non-linear control-flow edge. |
+| `07-flow-targets.uml` | `label`, `goto` | A named target resolves to a zero-size label anchor and produces an orthogonal non-linear edge. |
 
 The syntax selection follows the commands registered by the upstream factory:
 `src/main/java/net/sourceforge/plantuml/activitydiagram3/ActivityDiagramFactory3.java`.

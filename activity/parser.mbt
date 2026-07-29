@@ -122,20 +122,22 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
     }
     if lower.has_prefix("note ") && !line.contains(":") {
       let (text, end) = parse_note(lines, index)
-      nodes.push(Note(text))
+      nodes.push(ActivityNode::Note(text))
       index = end + 1
       continue
     }
     if lower == "start" {
-      nodes.push(Start)
+      nodes.push(ActivityNode::Start)
     } else if lower == "stop" {
-      nodes.push(Stop)
+      nodes.push(ActivityNode::Stop)
     } else if lower == "end" {
-      nodes.push(End)
+      nodes.push(ActivityNode::End)
     } else if lower == "kill" {
-      nodes.push(Kill)
+      nodes.push(ActivityNode::Kill)
     } else if line.has_prefix(":") && line.has_suffix(";") {
-      nodes.push(Action(line[1:line.length() - 1].trim().to_owned()))
+      nodes.push(
+        ActivityNode::Action(line[1:line.length() - 1].trim().to_owned()),
+      )
     } else if lower.has_prefix("if ") {
       stack.push(BlockKind::Conditional)
       nodes.push(If(command_text(line, "if")))
@@ -206,5 +208,5 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
       "unclosed \{block_name(stack.last().unwrap())}",
     )
   }
-  { nodes, }
+  { nodes, instructions: reduce(nodes) }
 }

@@ -29,19 +29,7 @@ fn signed_integer_parser() -> @talc.StringParser[Int] {
 
 ///|
 fn url_value_parser() -> @talc.StringParser[String] {
-  let terminator = @talc.string("]]")
-  let character = terminator
-    .not_followed_by("URL terminator")
-    .then(@talc.satisfy("URL character", _ => true))
-  @talc.string("[[")
-  .then(@talc.many_chars(character))
-  .skip(terminator)
-  .bind(content => {
-    match @core.parse_url_target("[[" + content + "]]") {
-      Some(target) => @talc.pure(target.target)
-      None => @talc.fail("URL")
-    }
-  })
+  @core.url_value_parser()
 }
 
 ///|
