@@ -2,7 +2,7 @@
 fn state_fill(state : StateNode) -> String {
   match state.kind {
     Initial | Final | History | DeepHistory | Synchronization => "#181818"
-    _ => @core.svg_color(state.color, "#FEFECE")
+    _ => @core.svg_color(state.color, "#F1F1F1")
   }
 }
 
@@ -91,20 +91,74 @@ fn append_state_node(
     ("data-code", state.code),
   ])
   if composite {
+    let corner = 12.5
+    let header_bottom = y + STATE_HEADER_HEIGHT
+    output.empty("path", attributes=[
+      (
+        "d",
+        "M " +
+        (x + corner).to_string() +
+        " " +
+        y.to_string() +
+        " L " +
+        (x + width - corner).to_string() +
+        " " +
+        y.to_string() +
+        " A " +
+        corner.to_string() +
+        " " +
+        corner.to_string() +
+        " 0 0 1 " +
+        (x + width).to_string() +
+        " " +
+        (y + corner).to_string() +
+        " L " +
+        (x + width).to_string() +
+        " " +
+        header_bottom.to_string() +
+        " L " +
+        x.to_string() +
+        " " +
+        header_bottom.to_string() +
+        " L " +
+        x.to_string() +
+        " " +
+        (y + corner).to_string() +
+        " A " +
+        corner.to_string() +
+        " " +
+        corner.to_string() +
+        " 0 0 1 " +
+        (x + corner).to_string() +
+        " " +
+        y.to_string() +
+        " Z",
+      ),
+      ("fill", state_fill(state)),
+    ])
     output.empty("rect", attributes=[
       ("x", x.to_string()),
       ("y", y.to_string()),
       ("width", width.to_string()),
       ("height", height.to_string()),
-      ("rx", "8"),
-      ("fill", state_fill(state)),
+      ("rx", corner.to_string()),
+      ("fill", "none"),
       ("stroke", "#181818"),
+      ("stroke-width", "0.5"),
+    ])
+    output.empty("line", attributes=[
+      ("x1", x.to_string()),
+      ("y1", header_bottom.to_string()),
+      ("x2", (x + width).to_string()),
+      ("y2", header_bottom.to_string()),
+      ("stroke", "#181818"),
+      ("stroke-width", "0.5"),
     ])
     append_state_label(
       output,
       state.display,
       center_x,
-      y + STATE_HEADER_HEIGHT / 2.0 + 5.0,
+      y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
       "state-label",
     )
     output.close()
@@ -208,11 +262,26 @@ fn append_state_node(
         ("y", y.to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
-        ("rx", "8"),
+        ("rx", "12.5"),
         ("fill", state_fill(state)),
         ("stroke", "#181818"),
+        ("stroke-width", "0.5"),
       ])
-      append_state_label(output, text, center_x, center_y + 5.0, "state-label")
+      output.empty("line", attributes=[
+        ("x1", x.to_string()),
+        ("y1", (y + STATE_HEADER_HEIGHT).to_string()),
+        ("x2", (x + width).to_string()),
+        ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
+        ("stroke", "#181818"),
+        ("stroke-width", "0.5"),
+      ])
+      append_state_label(
+        output,
+        text,
+        center_x,
+        y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
+        "state-label",
+      )
     }
   }
   output.close()
@@ -341,7 +410,8 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
   output.close()
   output.open("style")
   output.raw(
-    ".state-transition{stroke:" + self.style.diagram_line_color() +
+    ".state-transition{stroke:" +
+    self.style.diagram_line_color() +
     ";stroke-width:1.5}.state-region-separator{stroke:" +
     self.style.diagram_line_color() +
     ";stroke-width:1.2}.state-label{font-family:" +

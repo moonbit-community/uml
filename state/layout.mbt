@@ -70,7 +70,7 @@ const STATE_CANVAS_PADDING : Double = 28.0
 const STATE_INTERNAL_PADDING : Double = 18.0
 
 ///|
-const STATE_HEADER_HEIGHT : Double = 34.0
+const STATE_HEADER_HEIGHT : Double = 26.0
 
 ///|
 const STATE_REGION_GAP : Double = 18.0
@@ -105,7 +105,7 @@ fn plantuml_state_nodesep_in() -> Double {
 
 ///|
 fn plantuml_state_ranksep_in() -> Double {
-  60.0 / STATE_DPI
+  35.0 / STATE_DPI
 }
 
 ///|

@@ -170,9 +170,7 @@ test "nested pseudo-states belong to their composite scope" {
 
 ///|
 test "layout direction is forwarded to the Graphviz state pass" {
-  let diagram = parse(
-    "@startuml\nleft to right direction\nA --> B\n@enduml",
-  )
+  let diagram = parse("@startuml\nleft to right direction\nA --> B\n@enduml")
   let layout = diagram.layout()
   let a = layout_node(layout, "A")
   let b = layout_node(layout, "B")
