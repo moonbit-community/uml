@@ -149,6 +149,14 @@ test "parses multiline entity notes" {
 }
 
 ///|
+test "normalizes block note indentation" {
+  let diagram = parse(
+    "@startuml\nclass User\nnote right of User\n  first\n  second\nend note\n@enduml",
+  )
+  @test.assert_eq(diagram.notes[0].text, "first\nsecond")
+}
+
+///|
 test "parses relationship roles" {
   let diagram = parse("@startuml\nUser /author -- /books Book\n@enduml")
   @test.assert_eq(diagram.relations[0].left, "User")

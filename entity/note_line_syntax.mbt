@@ -427,7 +427,7 @@ fn Parser::consume_note_syntax(
         if !first {
           text.write_char('\n')
         }
-        text.write_string(line)
+        text.write_string(line.trim().to_owned())
         first = false
         self.index += 1
       }

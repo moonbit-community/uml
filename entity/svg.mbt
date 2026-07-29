@@ -783,10 +783,26 @@ test "graphviz layout includes package clusters and notes" {
   @test.assert_eq(layout.notes.length(), 2)
   @test.assert_eq(layout.packages[0].width > 0.0, true)
   @test.assert_eq(layout.notes[0].width > 0.0, true)
+  @test.assert_eq(layout.notes[1].y > layout.edges[0].label.unwrap().1, true)
   let svg = diagram.render_svg()
   @test.assert_eq(svg.contains("class=\"package\""), true)
   @test.assert_eq(svg.contains("class=\"class-note\""), true)
   @test.assert_eq(svg.contains(">owner</text>"), true)
+}
+
+///|
+test "graphviz layout anchors an entity note beside its target" {
+  let diagram = parse(
+    "@startuml\nclass Identity\nclass Store\nIdentity --> Store\nnote right of Identity : validates\n@enduml",
+  )
+  let layout = diagram.graphviz_layout(ClassTextMetrics::new(diagram.style))
+  let mut identity_x = None
+  for node in layout.nodes {
+    if node.code == "Identity" {
+      identity_x = Some(node.x)
+    }
+  }
+  @test.assert_eq(layout.notes[0].x > identity_x.unwrap(), true)
 }
 
 ///|

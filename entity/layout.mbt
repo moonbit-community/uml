@@ -54,14 +54,10 @@ fn graphviz_rankdir(style : @core.DocumentStyle) -> @rankdir.RankDir {
 }
 
 ///|
-fn plantuml_min_nodesep_in() -> Double {
-  35.0 / 72.0
-}
+const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / 72.0
 
 ///|
-fn plantuml_min_ranksep_in() -> Double {
-  60.0 / 72.0
-}
+const PLANTUML_MIN_RANKSEP_IN : Double = 60.0 / 72.0
 
 ///|
 fn graphviz_node_name(index : Int) -> String {
@@ -72,6 +68,12 @@ fn graphviz_node_name(index : Int) -> String {
 fn graphviz_note_name(index : Int) -> String {
   "note\{index}"
 }
+
+///|
+const LINK_NOTE_GAP : Double = 12.0
+
+///|
+const ENTITY_NOTE_GAP : Double = 34.0
 
 ///|
 fn graphviz_cluster_name(index : Int) -> String {
@@ -213,9 +215,19 @@ fn EntityDiagram::graphviz_layout(
       name="e\{relation_index}",
     )
     relation_names[edge.id()] = "\{relation_index}"
-    match relation.label {
-      Some(label) => edge.set_attr("label", label)
-      None => ()
+    let mut label = relation.label.unwrap_or("")
+    for note in self.notes {
+      if note.target_kind is LinkNote &&
+        note.relation_index == Some(relation_index) {
+        label = if label.is_empty() {
+          note.text
+        } else {
+          "\{label}\n\{note.text}"
+        }
+      }
+    }
+    if !label.is_empty() {
+      edge.set_attr("label", label)
     }
     edge.set_attr("dir", "none")
     if relation.dotted {
@@ -224,6 +236,9 @@ fn EntityDiagram::graphviz_layout(
   }
   let note_names : Map[String, Int] = Map([])
   for note_index, note in self.notes {
+    if note.target_kind is LinkNote {
+      continue
+    }
     let name = graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
@@ -253,6 +268,7 @@ fn EntityDiagram::graphviz_layout(
             )
             edge.set_attr("dir", "none")
             edge.set_attr("style", "invis")
+            edge.set_attr("constraint", "false")
           }
           None => ()
         }
@@ -261,8 +277,8 @@ fn EntityDiagram::graphviz_layout(
   }
   let laid_out = @dot_layout.layout_dot(graph, options={
     rankdir: Some(graphviz_rankdir(self.style)),
-    nodesep: Some(plantuml_min_nodesep_in()),
-    ranksep: Some(plantuml_min_ranksep_in()),
+    nodesep: Some(PLANTUML_MIN_NODESEP_IN),
+    ranksep: Some(PLANTUML_MIN_RANKSEP_IN),
     splines: Some(@dot_layout.SplinesMode::Spline),
   })
   let bbox = laid_out.bbox
@@ -288,7 +304,47 @@ fn EntityDiagram::graphviz_layout(
     guard note_names.get(node_layout.node.name()) is Some(note_index) else {
       continue
     }
-    let (x, y) = graphviz_point_to_svg(node_layout.pos, bbox)
+    let (graphviz_x, graphviz_y) = graphviz_point_to_svg(node_layout.pos, bbox)
+    let mut x = graphviz_x
+    let mut y = graphviz_y
+    let note = self.notes[note_index]
+    let note_width = node_layout.width_in * 72.0
+    let note_height = node_layout.height_in * 72.0
+    if note.target_kind is EntityNote || note.target_kind is MemberTip {
+      for target in nodes {
+        guard target.code == note.target else { continue }
+        match note.position {
+          Right => {
+            x = target.x +
+              target.width / 2.0 +
+              ENTITY_NOTE_GAP +
+              note_width / 2.0
+            y = target.y
+          }
+          Left => {
+            x = target.x -
+              target.width / 2.0 -
+              ENTITY_NOTE_GAP -
+              note_width / 2.0
+            y = target.y
+          }
+          Top => {
+            x = target.x
+            y = target.y -
+              target.height / 2.0 -
+              ENTITY_NOTE_GAP -
+              note_height / 2.0
+          }
+          Bottom => {
+            x = target.x
+            y = target.y +
+              target.height / 2.0 +
+              ENTITY_NOTE_GAP +
+              note_height / 2.0
+          }
+        }
+      }
+    }
     notes.push({
       note_index,
       x,
@@ -310,6 +366,29 @@ fn EntityDiagram::graphviz_layout(
       graphviz_point_to_svg(point, bbox)
     })
     edges.push({ relation_index, paths, label })
+  }
+  for note_index, note in self.notes {
+    guard note.target_kind is LinkNote else { continue }
+    guard note.relation_index is Some(relation_index) else { continue }
+    let (width, height) = note_size(note, text_metrics)
+    for edge in edges {
+      guard edge.relation_index == relation_index else { continue }
+      guard edge.paths.length() > 0 && edge.paths[0].length() > 0 else {
+        continue
+      }
+      let anchor_x = edge.paths[0][0].0
+      let anchor_y = match edge.label {
+        Some((_, y)) => y
+        None => edge.paths[0][0].1
+      }
+      notes.push({
+        note_index,
+        x: anchor_x + LINK_NOTE_GAP + width.to_double() / 2.0,
+        y: anchor_y + LINK_NOTE_GAP + height.to_double() / 2.0,
+        width: width.to_double(),
+        height: height.to_double(),
+      })
+    }
   }
   {
     width: bbox.urx - bbox.llx,
