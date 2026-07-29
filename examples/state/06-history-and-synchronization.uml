@@ -9,6 +9,6 @@ state Playback {
 
 Playback --> [H] : interrupt
 [H] --> Playback : continue
-Playback --> =join=
-=join= --> [*]
+Playback --> ==join==
+==join== --> [*]
 @enduml
