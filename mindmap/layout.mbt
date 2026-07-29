@@ -67,6 +67,12 @@ let outer_padding_x = 10
 let outer_padding_y = 20
 
 ///|
+let boxless_horizontal_margin = 3
+
+///|
+let boxless_vertical_margin = 1
+
+///|
 fn Tee::full_thickness(self : Tee) -> Int {
   self.thickness1.max(self.thickness2)
 }
@@ -158,8 +164,10 @@ fn MindmapDiagram::node_base_size(
     }
     None =>
       (
-        (metrics.width + 3).max(node_style.minimum_width.unwrap_or(0)),
-        metrics.height + 2,
+        (metrics.width + boxless_horizontal_margin).max(
+          node_style.minimum_width.unwrap_or(0),
+        ),
+        metrics.height + boxless_vertical_margin * 2,
       )
   }
 }
@@ -323,6 +331,28 @@ fn MindmapDiagram::finger_tee(
 }
 
 ///|
+/// This matches PlantUML's reverse root when both branches are present: its
+/// phalanx is hidden, but its children still participate in packing.
+fn MindmapDiagram::hidden_finger_tee(
+  self : MindmapDiagram,
+  index : Int,
+  direction : Direction,
+) -> Tee {
+  let node_style = self.node_style(index)
+  let packed = pack_tees(
+    self
+    .children_of(index, direction)
+    .map(child => self.finger_tee(child, direction)),
+  )
+  {
+    thickness1: 0,
+    elongation1: node_style.margin_left.unwrap_or(10),
+    thickness2: packed.height,
+    elongation2: node_style.margin_right.unwrap_or(10) + 30 + packed.width,
+  }
+}
+
+///|
 fn append_finger(
   diagram : MindmapDiagram,
   index : Int,
@@ -334,6 +364,7 @@ fn append_finger(
   edges : Array[EdgeLayout],
 ) -> Unit {
   let (width, height) = diagram.node_size(index)
+  let phalanx_width = if draw_node { width } else { 0 }
   let branch_gap = diagram.branch_gap(index)
   let sign = match direction {
     Right => 1
@@ -358,13 +389,13 @@ fn append_finger(
   )
   for child_index, child in children {
     let child_y = origin_y + packed.positions[child_index].y
-    let child_x = origin_x + sign * (width + branch_gap)
+    let child_x = origin_x + sign * (phalanx_width + branch_gap)
     edges.push({
       parent_index: index,
       child_index: child,
-      x1: origin_x + sign * width,
+      x1: origin_x + sign * phalanx_width,
       y1: origin_y,
-      control1_x: origin_x + sign * (width + 25),
+      control1_x: origin_x + sign * (phalanx_width + 25),
       control1_y: origin_y,
       control2_x: child_x - sign * 25,
       control2_y: child_y,
@@ -416,12 +447,32 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
   let mut next_y = 0
   for root_index, root in self.ideas {
     guard root.parent is None else { continue }
-    let left = self.finger_tee(root_index, Left)
-    let right = self.finger_tee(root_index, Right)
+    let has_left_children = !self.children_of(root_index, Left).is_empty()
+    let has_right_children = !self.children_of(root_index, Right).is_empty()
+    let left = if has_left_children {
+      if has_right_children {
+        self.hidden_finger_tee(root_index, Left)
+      } else {
+        self.finger_tee(root_index, Left)
+      }
+    } else {
+      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
+    }
+    let right = if has_right_children || !has_left_children {
+      self.finger_tee(root_index, Right)
+    } else {
+      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
+    }
     let root_height = left.full_thickness().max(right.full_thickness())
     let root_y = next_y + root_height / 2
-    append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
-    append_finger(self, root_index, Left, 0, root_y, false, nodes, edges)
+    if has_left_children && has_right_children {
+      append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
+      append_finger(self, root_index, Left, 0, root_y, false, nodes, edges)
+    } else if has_left_children {
+      append_finger(self, root_index, Left, 0, root_y, true, nodes, edges)
+    } else {
+      append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
+    }
     next_y += root_height + outer_padding_y * 2
   }
   let mut min_x = nodes[0].x

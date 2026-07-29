@@ -42,6 +42,17 @@ test "parses item presentation without changing hierarchy" {
 }
 
 ///|
+test "treats a spaced boxless marker as label text" {
+  let diagram = parse(
+    "@startmindmap\n* Root\n**[#aabbcc] _ Boxless\n@endmindmap",
+  )
+  let idea = diagram.ideas[1]
+  @test.assert_eq(idea.background_color, Some("#aabbcc"))
+  @test.assert_eq(idea.shape, Box)
+  @test.assert_eq(idea.label, "_ Boxless")
+}
+
+///|
 test "parses org-mode multiline labels as one item" {
   let diagram = parse(
     "@startmindmap\n* Root\n**: first line\nsecond line; <<note>>\n@endmindmap",

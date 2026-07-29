@@ -77,9 +77,27 @@ fn append_mindmap_node(
     Right => (node.x + node.width - padding_x, "end")
     Center => (node.x + node.width / 2, "middle")
   }
-  // SVG positions text by its baseline. PlantUML's box renderer starts a
-  // line after the top padding plus the font's baseline offset.
-  let first_baseline = node.y + padding_y + font_size
+  let (text_x, anchor, first_baseline) = match idea.shape {
+    Box =>
+      // SVG positions text by its baseline. PlantUML's box renderer starts a
+      // line after the top padding plus the font's baseline offset.
+      (text_x, anchor, node.y + padding_y + font_size)
+    None => {
+      // Java adds the horizontal margin on the side away from the connector.
+      // The connector itself meets the opposite edge of this virtual box.
+      let text_x = match idea.direction {
+        Right => node.x + boxless_horizontal_margin
+        Left => node.x
+      }
+      (
+        text_x,
+        "start",
+        node.y +
+        boxless_vertical_margin +
+        diagram.node_text_metrics(node.idea_index).baseline,
+      )
+    }
+  }
   let shape_class = match idea.shape {
     Box => "box"
     None => "boxless"

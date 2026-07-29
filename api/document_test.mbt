@@ -64,9 +64,13 @@ test "component declarations take precedence over sequence participants" {
 test "document facade dispatches a use-case diagram" {
   let source = "@startuml\n:Customer: --> (Place order)\n@enduml"
   @test.assert_eq(is_usecase_source(source), true)
+  @test.assert_eq(is_class_source(source), false)
   let document = parse_usecase(source)
   @test.assert_eq(document.kind() is UseCase, true)
-  @test.assert_eq(document.render_svg().contains("Place order"), true)
+  let svg = document.render_svg()
+  @test.assert_eq(svg.contains("aria-label=\"Use case diagram\""), true)
+  @test.assert_eq(svg.contains("class=\"usecase-node\""), true)
+  @test.assert_eq(svg.contains("class=\"actor-node\""), true)
 }
 
 ///|

@@ -9,6 +9,16 @@ fn node_for(layout : MindmapLayout, idea_index : Int) -> NodeLayout {
 }
 
 ///|
+fn edge_for(layout : MindmapLayout, child_index : Int) -> EdgeLayout {
+  for edge in layout.edges {
+    if edge.child_index == child_index {
+      return edge
+    }
+  }
+  abort("missing mindmap edge")
+}
+
+///|
 fn rectangles_overlap(left : NodeLayout, right : NodeLayout) -> Bool {
   left.x < right.x + right.width &&
   right.x < left.x + left.width &&
@@ -26,6 +36,26 @@ test "layout keeps reverse and regular branches on opposite sides" {
   @test.assert_eq(right.x >= root.x + root.width, true)
   @test.assert_eq(left.x + left.width <= root.x, true)
   @test.assert_eq(layout.edges.length(), 2)
+}
+
+///|
+test "layout connects a shared root directly to its reverse branch" {
+  let diagram = parse("* Root\n++ Right\n-- Left")
+  let layout = diagram.layout()
+  let root = node_for(layout, 0)
+  let left = node_for(layout, 2)
+  let left_edge = edge_for(layout, 2)
+  @test.assert_eq(left_edge.x1, root.x)
+  @test.assert_eq(left_edge.x2, left.x + left.width)
+}
+
+///|
+test "layout puts a reverse-only root on the reverse branch" {
+  let diagram = parse("* Root\n-- Left")
+  let layout = diagram.layout()
+  let root = node_for(layout, 0)
+  let left_edge = edge_for(layout, 1)
+  @test.assert_eq(left_edge.x1, root.x)
 }
 
 ///|

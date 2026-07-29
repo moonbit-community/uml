@@ -40,6 +40,21 @@ test "svg applies resolved node and arrow styles" {
 }
 
 ///|
+test "svg draws a colored box when an underscore follows whitespace" {
+  let svg = render_mindmap_svg("* Root\n**[#aabbcc] _ Literal underscore")
+  @test.assert_eq(svg.contains("data-idea-index=\"1\"><rect"), true)
+  @test.assert_eq(svg.contains("fill=\"#aabbcc\""), true)
+  @test.assert_eq(svg.contains(">_ Literal underscore<"), true)
+}
+
+///|
+test "svg renders boxless labels from their directional text origin" {
+  let svg = render_mindmap_svg("* Root\n++_ Right\n--_ Left")
+  @test.assert_eq(svg.contains("mindmap-node boxless"), true)
+  @test.assert_eq(svg.contains("text-anchor=\"start\""), true)
+}
+
+///|
 test "svg renders strikethrough spans without exposing markup" {
   let svg = render_mindmap_svg("* <s>crossed & text</s> remains")
   @test.assert_eq(svg.contains("text-decoration=\"line-through\""), true)

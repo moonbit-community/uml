@@ -4,8 +4,9 @@ pub fn Document::render_svg(self : Document) -> String {
   match self.diagram {
     Sequence(diagram) => diagram.render_svg()
     Activity(diagram) => diagram.render_svg()
-    Class(diagram) | Object(diagram) | Component(diagram) | UseCase(diagram) =>
+    Class(diagram) | Object(diagram) | Component(diagram) =>
       diagram.render_svg()
+    UseCase(diagram) => diagram.render_usecase_svg()
     State(diagram) => diagram.render_svg()
     Mindmap(diagram) => diagram.render_svg()
     Json(diagram) => diagram.render_json_svg()

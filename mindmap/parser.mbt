@@ -49,27 +49,25 @@ fn marker_count(marker : String) -> Int {
 
 ///|
 fn parse_color_and_shape(rest : String) -> (String?, IdeaShape, String) {
-  let value = rest.trim().to_owned()
-  let (color, remainder) = if value.has_prefix("[") {
-    match value.find("]") {
+  let (color, remainder) = if rest.has_prefix("[") {
+    match rest.find("]") {
       Some(end) => {
-        let candidate = value[1:end].to_owned()
+        let candidate = rest[1:end].to_owned()
         if candidate.has_prefix("#") {
-          (Some(candidate), value[end + 1:].to_owned())
+          (Some(candidate), rest[end + 1:].to_owned())
         } else {
-          (None, value)
+          (None, rest)
         }
       }
-      None => (None, value)
+      None => (None, rest)
     }
   } else {
-    (None, value)
+    (None, rest)
   }
-  let remainder = remainder.trim().to_owned()
   if remainder.has_prefix("_") {
     (color, None, remainder[1:].trim_start().to_owned())
   } else {
-    (color, Box, remainder)
+    (color, Box, remainder.trim_start().to_owned())
   }
 }
 

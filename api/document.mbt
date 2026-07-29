@@ -374,6 +374,7 @@ pub fn is_object_source(input : String) -> Bool {
 /// sequence message such as `Alice -> Bob` remains a sequence diagram.
 pub fn is_class_source(input : String) -> Bool {
   guard !is_sequence_source(input) else { return false }
+  guard !is_usecase_source(input) else { return false }
   for line in meaningful_source_lines(input) {
     if is_class_declaration(line) ||
       @core.find_unquoted_literal(line, "--") is Some(_) ||

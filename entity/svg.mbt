@@ -561,12 +561,48 @@ fn append_entity(
 }
 
 ///|
-/// Render the parsed class graph to a standalone SVG.
-///
-/// Node placement is deterministic so parsing and rendering can be used without
-/// an external process. The graph-layout adapter will replace these coordinates
-/// with Graphviz positions while retaining this entity and relation painter.
-pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
+fn append_usecase_entity(
+  output : StringBuilder,
+  diagram : EntityDiagram,
+  entity : Entity,
+  index : Int,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+) -> Unit {
+  guard !entity.is_hidden && !entity.is_removed else { return }
+  let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+  let fill = @core.svg_color(
+    entity.color,
+    diagram.style.class_background_color(),
+  )
+  let stroke = @core.svg_color(
+    entity.line_color,
+    diagram.style.class_border_color(),
+  )
+  let line_attributes = match entity.line_style {
+    Some("dashed") => "stroke-dasharray:6 4"
+    Some("dotted") => "stroke-dasharray:2 3"
+    Some("bold") => "stroke-width:2.5"
+    _ => "stroke-width:1.2"
+  }
+  match entity.kind {
+    Usecase | BusinessUsecase =>
+      output <+
+        $|<g class="usecase-node" data-code="\{@core.xml_escape(entity.qualified_code)}"><ellipse cx="\{x + width / 2}" cy="\{y + height / 2}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + width / 2}" y="\{y + height / 2 + 5}" class="usecase-title">\{@core.xml_escape(entity.display)}</text></g>
+    Actor | BusinessActor => {
+      let center_x = x + 15
+      output <+
+        $|<g class="actor-node" data-code="\{@core.xml_escape(entity.qualified_code)}"><circle cx="\{center_x}" cy="\{y + 11}" r="7" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x} \{y + 18} L \{center_x} \{y + 34} M \{center_x - 9} \{y + 23} L \{center_x + 9} \{y + 23} M \{center_x} \{y + 34} L \{center_x - 8} \{y + 44} M \{center_x} \{y + 34} L \{center_x + 8} \{y + 44}" fill="none" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + 29}" y="\{y + height / 2 + 5}" class="usecase-title">\{@core.xml_escape(entity.display)}</text></g>
+    }
+    _ => append_entity(output, diagram, entity, index, text_metrics, layout)
+  }
+}
+
+///|
+fn EntityDiagram::render_svg_with_mode(
+  self : EntityDiagram,
+  usecase~ : Bool,
+) -> String {
   let background = self.style.canvas_color()
   let font_family = @core.font_family(self.style)
   let font_size = if self.style.font_size is None {
@@ -593,8 +629,9 @@ pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
   let output_width = layout.output_width()
   let output_height = layout.output_height()
   let output = StringBuilder()
+  let diagram_label = if usecase { "Use case diagram" } else { "Class diagram" }
   output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="0 0 \{output_width} \{output_height}" role="img" aria-label="Class diagram">
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="0 0 \{output_width} \{output_height}" role="img" aria-label="\{diagram_label}">
   let defs_relations =
     #|<defs>
     #|<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker>
@@ -611,6 +648,7 @@ pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
     $|.class-node line,.relation{fill:none}
     $|.class-title{fill:#181818}
     $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#181818}
+    $|.usecase-title{fill:#181818;text-anchor:middle}
     $|.member,.relation-label{fill:#181818}
     $|.relation-label{text-anchor:middle;font-size:12px}
     $|</style>
@@ -638,11 +676,31 @@ pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
     )
   }
   for index, entity in self.entities {
-    append_entity(output, self, entity, index, text_metrics, layout)
+    if usecase {
+      append_usecase_entity(output, self, entity, index, text_metrics, layout)
+    } else {
+      append_entity(output, self, entity, index, text_metrics, layout)
+    }
   }
   append_notes(output, self, text_metrics, layout)
   output.write_string("</svg>\n")
   output.to_string()
+}
+
+///|
+/// Render the parsed class graph to a standalone SVG.
+///
+/// Node placement is deterministic so parsing and rendering can be used without
+/// an external process. The graph-layout adapter will replace these coordinates
+/// with Graphviz positions while retaining this entity and relation painter.
+pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
+  self.render_svg_with_mode(usecase=false)
+}
+
+///|
+/// Render the parsed use-case graph with use-case and actor symbols.
+pub fn EntityDiagram::render_usecase_svg(self : EntityDiagram) -> String {
+  self.render_svg_with_mode(usecase=true)
 }
 
 ///|
