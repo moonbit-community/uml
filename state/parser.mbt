@@ -1,11 +1,19 @@
 ///|
+priv struct StateScope {
+  code : String
+  region_index : Int
+}
+
+///|
 priv struct Parser {
   lines : Array[String]
   states : Array[StateNode]
   transitions : Array[StateTransition]
   notes : Array[StateNote]
-  stack : Array[String]
+  stack : Array[StateScope]
   concurrent_regions : Array[String]
+  regions : Array[StateRegion]
+  style : @core.DocumentStyle
   mut index : Int
 }
 
@@ -21,6 +29,8 @@ fn Parser::new(input : String) -> Parser {
     notes: [],
     stack: [],
     concurrent_regions: [],
+    regions: [],
+    style: @core.DocumentStyle::empty(),
     index: 0,
   }
 }
@@ -32,7 +42,23 @@ fn Parser::line_number(self : Parser) -> Int {
 
 ///|
 fn Parser::parent(self : Parser) -> String? {
-  self.stack.last()
+  self.stack.last().map(scope => scope.code)
+}
+
+///|
+fn Parser::region_index(self : Parser) -> Int {
+  self.stack.last().map_or(-1, scope => scope.region_index)
+}
+
+///|
+fn Parser::open_region(
+  self : Parser,
+  parent : String,
+  separator : StateRegionSeparator?,
+) -> Int {
+  let index = self.regions.length()
+  self.regions.push({ parent, separator, index })
+  index
 }
 
 ///|
@@ -41,7 +67,7 @@ fn endpoint_kind(value : String, source : Bool) -> StateKind {
     "[*]" => if source { Initial } else { Final }
     "[H]" => History
     "[H*]" => DeepHistory
-    _ if value.has_prefix("=") && value.has_suffix("=") => Synchronization
+    _ if value.has_prefix("==") && value.has_suffix("==") => Synchronization
     _ => Normal
   }
 }
@@ -52,8 +78,8 @@ fn endpoint_code(value : String, source : Bool) -> String {
     "[*]" => if source { "__initial__" } else { "__final__" }
     "[H]" => "__history__"
     "[H*]" => "__deep_history__"
-    _ if value.has_prefix("=") && value.has_suffix("=") =>
-      "__synchronization_" + value[1:value.length() - 1].to_owned()
+    _ if value.has_prefix("==") && value.has_suffix("==") =>
+      "__synchronization_" + value[2:value.length() - 2].to_owned()
     _ => value
   }
 }
@@ -64,7 +90,14 @@ fn Parser::ensure_endpoint(
   raw : String,
   source : Bool,
 ) -> String {
-  let code = endpoint_code(raw, source)
+  let base_code = endpoint_code(raw, source)
+  let code = match self.parent() {
+    Some(parent) if raw == "[*]" ||
+      raw == "[H]" ||
+      raw == "[H*]" ||
+      (raw.has_prefix("==") && raw.has_suffix("==")) => base_code + parent
+    _ => base_code
+  }
   let mut exists = false
   for state in self.states {
     if state.code == code {
@@ -77,6 +110,7 @@ fn Parser::ensure_endpoint(
       display: raw,
       kind: endpoint_kind(raw, source),
       parent: self.parent(),
+      region_index: self.region_index(),
       description: None,
       stereotype: None,
       url: None,
@@ -133,18 +167,32 @@ fn Parser::apply_line_syntax(
         display: syntax.display,
         kind: syntax.kind,
         parent: self.parent(),
+        region_index: self.region_index(),
         description: syntax.description,
         stereotype: syntax.stereotype,
         url: syntax.url,
         color: syntax.color,
       })
       if syntax.opens_group {
-        self.stack.push(syntax.code)
+        let region_index = self.open_region(syntax.code, None)
+        self.stack.push({ code: syntax.code, region_index })
       }
       true
     }
-    Some(Frame(code)) => {
-      self.stack.push(code)
+    Some(Frame(syntax)) => {
+      self.upsert_state({
+        code: syntax.code,
+        display: syntax.display,
+        kind: syntax.kind,
+        parent: self.parent(),
+        region_index: self.region_index(),
+        description: syntax.description,
+        stereotype: syntax.stereotype,
+        url: syntax.url,
+        color: syntax.color,
+      })
+      let region_index = self.open_region(syntax.code, None)
+      self.stack.push({ code: syntax.code, region_index })
       true
     }
     Some(Transition(syntax)) => {
@@ -187,10 +235,15 @@ fn Parser::parse_line(
   if line.length() == 0 ||
     lower == "@startuml" ||
     lower == "@enduml" ||
-    @core.is_preprocessor_directive(line) ||
-    @core.parse_style_directive(line) is Some(_) ||
-    lower.has_prefix("skinparam ") {
+    @core.is_preprocessor_directive(line) {
     return
+  }
+  match @core.parse_style_directive(line) {
+    Some(directive) => {
+      self.style.apply(directive)
+      return
+    }
+    None => ()
   }
   if self.apply_line_syntax(line) {
     return
@@ -209,6 +262,15 @@ fn Parser::parse_line(
       )
     }
     self.concurrent_regions.push(parent)
+    let region_index = self.open_region(
+      parent,
+      Some(if line == "||" { Vertical } else { Horizontal }),
+    )
+    match self.stack.last() {
+      Some(scope) =>
+        self.stack[self.stack.length() - 1] = { ..scope, region_index, }
+      None => ()
+    }
     return
   }
   raise SyntaxError(self.line_number(), "unsupported state command")
@@ -234,5 +296,7 @@ pub fn parse(input : String) -> StateDiagram raise @core.ParseError {
     transitions: parser.transitions,
     notes: parser.notes,
     concurrent_regions: parser.concurrent_regions,
+    regions: parser.regions,
+    style: parser.style,
   }
 }

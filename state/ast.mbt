@@ -24,6 +24,7 @@ pub struct StateNode {
   display : String
   kind : StateKind
   parent : String?
+  region_index : Int
   description : String?
   stereotype : String?
   url : String?
@@ -38,6 +39,19 @@ pub struct StateTransition {
   direction : TransitionDirection
   line_style : String?
   has_cross_start : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) enum StateRegionSeparator {
+  Horizontal
+  Vertical
+} derive(Eq, Debug)
+
+///|
+pub struct StateRegion {
+  parent : String
+  separator : StateRegionSeparator?
+  index : Int
 } derive(Eq, Debug)
 
 ///|
@@ -58,6 +72,8 @@ pub struct StateDiagram {
   transitions : Array[StateTransition]
   notes : Array[StateNote]
   concurrent_regions : Array[String]
+  regions : Array[StateRegion]
+  style : @core.DocumentStyle
 } derive(Eq, Debug)
 
 ///|

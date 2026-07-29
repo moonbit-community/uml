@@ -40,7 +40,7 @@ priv struct TransitionArrowParts {
 ///|
 priv enum StateLineSyntax {
   Declaration(StateDeclarationSyntax)
-  Frame(String)
+  Frame(StateDeclarationSyntax)
   Transition(StateTransitionSyntax)
   EntityNote(String)
   LinkNote(String)
@@ -193,10 +193,14 @@ fn state_endpoint_parser() -> @talc.StringParser[String] {
     @talc.symbol("[*]").map(_ => "[*]"),
     @talc.symbol("[H*]").map(_ => "[H*]"),
     @talc.symbol("[H]").map(_ => "[H]"),
-    @talc.char('=')
-    .then(@talc.take_while("synchronization name", char => char != '='))
-    .skip(@talc.symbol("="))
-    .map(value => "=" + value + "="),
+    @talc.string("==")
+    .then(
+      @talc.many_chars1(
+        @talc.satisfy("synchronization name character", char => char != '='),
+      ),
+    )
+    .skip(@talc.symbol("=="))
+    .map(value => "==" + value + "=="),
     state_identifier_parser().lexeme().map(identifier => identifier.value),
   ])
 }
@@ -386,7 +390,7 @@ fn link_note_parser() -> @talc.StringParser[String] {
 fn state_line_parser() -> @talc.StringParser[StateLineSyntax] {
   @talc.choice([
     state_declaration_parser("state").map(value => Declaration(value)).attempt(),
-    state_declaration_parser("frame").map(value => Frame(value.code)).attempt(),
+    state_declaration_parser("frame").map(value => Frame(value)).attempt(),
     state_transition_parser().map(value => Transition(value)).attempt(),
     entity_note_parser().map(value => EntityNote(value)).attempt(),
     link_note_parser().map(value => LinkNote(value)),
