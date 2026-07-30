@@ -1,4 +1,4 @@
-name = "local/uml-live"
+name = "kokic/uml-live"
 
 version = "0.1.0"
 

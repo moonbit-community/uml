@@ -1,5 +1,4 @@
 members = [
-  "uml",
-  "uml-live",
+  "./live",
+  "./uml",
 ]
-
