@@ -19,3 +19,12 @@ pub fn normalize_stereotype(value : String) -> String? {
     None
   }
 }
+
+///|
+/// Render a parsed stereotype with PlantUML's default guillemets.
+pub fn display_stereotype(value : String) -> String {
+  if value.has_prefix("<<") && value.has_suffix(">>") && value.length() >= 4 {
+    return "«" + value[2:value.length() - 2].to_owned() + "»"
+  }
+  value
+}

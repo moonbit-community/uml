@@ -21,6 +21,18 @@ test "document font settings select metrics profile and size" {
 }
 
 ///|
+test "font name skinparams preserve families with spaces" {
+  @test.assert_eq(
+    parse_style_property("UsecaseFontName Times New Roman"),
+    Some(Property("UsecaseFontName", "Times New Roman")),
+  )
+  @test.assert_eq(
+    parse_style_property("ActorFontName Courier New"),
+    Some(Property("ActorFontName", "Courier New")),
+  )
+}
+
+///|
 test "document color resolution uses shared render defaults and skinparams" {
   let style = DocumentStyle::empty()
   let defaults = render_defaults()
@@ -32,9 +44,33 @@ test "document color resolution uses shared render defaults and skinparams" {
   style.apply(Property("ClassBackgroundColor", "#123456"))
   style.apply(Property("ClassBorderColor", "#654321"))
   style.apply(Property("PackageBackgroundColor", "#abcdef"))
+  style.apply(Property("UsecaseBackgroundColor", "#456789"))
+  style.apply(Property("ActorBorderColor", "#987654"))
+  style.apply(Property("actorStyle", "awesome"))
+  style.apply(Property("UsecaseFontColor", "#abc123"))
+  style.apply(Property("ActorFontColor", "#def456"))
+  style.apply(Property("UsecaseFontSize", "16"))
+  style.apply(Property("ActorFontSize", "12pt"))
+  style.apply(Property("UsecaseFontName", "Courier"))
+  style.apply(Property("ActorFontName", "Times New Roman"))
+  style.apply(Property("ArrowFontColor", "#abcd12"))
+  style.apply(Property("ArrowFontSize", "15"))
+  style.apply(Property("ArrowFontName", "Courier New"))
   @test.assert_eq(style.class_background_color(), "#123456")
   @test.assert_eq(style.class_border_color(), "#654321")
   @test.assert_eq(style.package_background_color(), "#abcdef")
+  @test.assert_eq(style.usecase_background_color(), "#456789")
+  @test.assert_eq(style.actor_border_color(), "#987654")
+  @test.assert_eq(style.actor_style(), "awesome")
+  @test.assert_eq(style.usecase_font_color(), "#abc123")
+  @test.assert_eq(style.actor_font_color(), "#def456")
+  @test.assert_eq(style.usecase_font_size(fallback=14), 16)
+  @test.assert_eq(style.actor_font_size(fallback=14), 16)
+  @test.assert_eq(style.usecase_font_family(), "Courier")
+  @test.assert_eq(style.actor_font_family(), "Times New Roman")
+  @test.assert_eq(style.arrow_font_color(), "#abcd12")
+  @test.assert_eq(style.arrow_font_size(fallback=13), 15)
+  @test.assert_eq(style.arrow_font_family(), "Courier New")
 }
 
 ///|

@@ -240,7 +240,7 @@ fn Parser::apply_relation_syntax(
     left_qualifier: syntax.left.qualifier,
     right_qualifier: syntax.right.qualifier,
     label: syntax.label,
-    dotted: arrow.contains(".."),
+    dotted: arrow.contains("."),
     raw_arrow: arrow,
     left_end,
     right_end,

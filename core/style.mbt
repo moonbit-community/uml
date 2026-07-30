@@ -137,6 +137,112 @@ pub fn DocumentStyle::class_border_color(self : DocumentStyle) -> String {
 }
 
 ///|
+pub fn DocumentStyle::usecase_background_color(self : DocumentStyle) -> String {
+  svg_color(
+    self.property("UsecaseBackgroundColor"),
+    self.class_background_color(),
+  )
+}
+
+///|
+pub fn DocumentStyle::usecase_border_color(self : DocumentStyle) -> String {
+  svg_color(self.property("UsecaseBorderColor"), self.class_border_color())
+}
+
+///|
+pub fn DocumentStyle::actor_background_color(self : DocumentStyle) -> String {
+  svg_color(
+    self.property("ActorBackgroundColor"),
+    self.class_background_color(),
+  )
+}
+
+///|
+pub fn DocumentStyle::actor_border_color(self : DocumentStyle) -> String {
+  svg_color(self.property("ActorBorderColor"), self.class_border_color())
+}
+
+///|
+pub fn DocumentStyle::actor_style(self : DocumentStyle) -> String {
+  self
+  .property("ActorStyle")
+  .unwrap_or(
+    self
+    .property("actorStyle")
+    .unwrap_or(self.property("actorstyle").unwrap_or("stickman")),
+  )
+  .to_lower()
+}
+
+///|
+pub fn DocumentStyle::diagram_text_color(self : DocumentStyle) -> String {
+  svg_color(self.property("FontColor"), render_defaults().diagram_text)
+}
+
+///|
+pub fn DocumentStyle::usecase_font_color(self : DocumentStyle) -> String {
+  svg_color(self.property("UsecaseFontColor"), self.diagram_text_color())
+}
+
+///|
+pub fn DocumentStyle::actor_font_color(self : DocumentStyle) -> String {
+  svg_color(self.property("ActorFontColor"), self.diagram_text_color())
+}
+
+///|
+pub fn DocumentStyle::usecase_font_size(
+  self : DocumentStyle,
+  fallback~ : Int,
+) -> Int {
+  match self.property("UsecaseFontSize") {
+    Some(value) => parse_font_size(value, fallback~)
+    None => fallback
+  }
+}
+
+///|
+pub fn DocumentStyle::actor_font_size(
+  self : DocumentStyle,
+  fallback~ : Int,
+) -> Int {
+  match self.property("ActorFontSize") {
+    Some(value) => parse_font_size(value, fallback~)
+    None => fallback
+  }
+}
+
+///|
+pub fn DocumentStyle::usecase_font_family(self : DocumentStyle) -> String {
+  self.property("UsecaseFontName").unwrap_or(font_family(self))
+}
+
+///|
+pub fn DocumentStyle::actor_font_family(self : DocumentStyle) -> String {
+  self.property("ActorFontName").unwrap_or(font_family(self))
+}
+
+///|
+pub fn DocumentStyle::arrow_font_color(self : DocumentStyle) -> String {
+  svg_color(self.property("ArrowFontColor"), self.diagram_text_color())
+}
+
+///|
+pub fn DocumentStyle::arrow_font_size(
+  self : DocumentStyle,
+  fallback~ : Int,
+) -> Int {
+  match self.property("ArrowFontSize") {
+    Some(value) => parse_font_size(value, fallback~)
+    None => fallback
+  }
+}
+
+///|
+pub fn DocumentStyle::arrow_font_family(self : DocumentStyle) -> String {
+  self.property("ArrowFontName").unwrap_or(font_family(self))
+}
+
+///|
 pub fn DocumentStyle::package_background_color(self : DocumentStyle) -> String {
   svg_color(
     self.property("PackageBackgroundColor"),
@@ -253,11 +359,19 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
     .map(part => part.trim().to_owned())
     .filter(part => part.length() > 0)
     .to_array()
+  if words.length() >= 2 && words[0].equal_ignore_ascii_case("DefaultFontName") {
+    return Some(FontFamily(words[1:].to_owned().join(" ")))
+  }
+  if words.length() >= 2 &&
+    (
+      words[0].equal_ignore_ascii_case("UsecaseFontName") ||
+      words[0].equal_ignore_ascii_case("ActorFontName")
+    ) {
+    return Some(Property(words[0], words[1:].to_owned().join(" ")))
+  }
   match words {
     [key, color, ..] if key.equal_ignore_ascii_case("BackgroundColor") =>
       Some(BackgroundColor(color))
-    [key, family, ..] if key.equal_ignore_ascii_case("DefaultFontName") =>
-      Some(FontFamily(family))
     [key, size, ..] if key.equal_ignore_ascii_case("DefaultFontSize") =>
       Some(FontSize(size))
     [key, color, ..] if key.equal_ignore_ascii_case("ArrowColor") =>
@@ -283,10 +397,14 @@ pub fn font_size(style : DocumentStyle) -> String {
 
 ///|
 pub fn font_size_value(style : DocumentStyle) -> Int {
-  let value = style.font_size.unwrap_or("13")
+  parse_font_size(style.font_size.unwrap_or("13"), fallback=13)
+}
+
+///|
+fn parse_font_size(value : String, fallback~ : Int) -> Int {
   let normalized = value.to_lower()
   let raw = normalized.trim_end(chars="pxt").trim()
-  let parsed = @string.parse_int(raw) catch { _ => 13 }
+  let parsed = @string.parse_int(raw) catch { _ => fallback }
   if normalized.has_suffix("pt") {
     (parsed * 4 + 2) / 3
   } else {
@@ -295,8 +413,8 @@ pub fn font_size_value(style : DocumentStyle) -> Int {
 }
 
 ///|
-pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
-  let family = style.font_family.unwrap_or("Arial, sans-serif").to_lower()
+pub fn font_profile_for(family : String) -> @metrics.FontProfile {
+  let family = family.to_lower()
   match () {
     _ if family.contains("mono") ||
       family.contains("courier") ||
@@ -313,9 +431,32 @@ pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
 }
 
 ///|
+pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
+  font_profile_for(font_family(style))
+}
+
+///|
 /// Builds metrics from the document font settings plus a concrete text role.
 pub fn DocumentStyle::font_metrics(
   self : DocumentStyle,
+  font_size? : Int = 0,
+  font_weight? : Int = 400,
+  font_style? : @metrics.FontStyle = Normal,
+  line_height? : Int = 0,
+) -> @metrics.FontMetrics {
+  self.font_metrics_for(
+    font_family(self),
+    font_size~,
+    font_weight~,
+    font_style~,
+    line_height~,
+  )
+}
+
+///|
+pub fn DocumentStyle::font_metrics_for(
+  self : DocumentStyle,
+  family : String,
   font_size? : Int = 0,
   font_weight? : Int = 400,
   font_style? : @metrics.FontStyle = Normal,
@@ -332,7 +473,7 @@ pub fn DocumentStyle::font_metrics(
     resolved_size + 2
   }
   @metrics.FontMetrics::from_defaults(
-    profile=font_profile(self),
+    profile=font_profile_for(family),
     style=font_style,
     font_size=resolved_size,
     font_weight~,

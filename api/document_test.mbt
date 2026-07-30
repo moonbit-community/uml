@@ -74,6 +74,36 @@ test "document facade dispatches a use-case diagram" {
 }
 
 ///|
+test "generic document parsing preserves explicit use-case semantics" {
+  let source = "@startuml\nactor Customer\nusecase \"Place order\" as PlaceOrder\nCustomer --> PlaceOrder\n@enduml"
+  @test.assert_eq(is_sequence_source(source), false)
+  @test.assert_eq(is_usecase_source(source), true)
+  let document = parse(source)
+  @test.assert_eq(document.kind() is UseCase, true)
+  @test.assert_eq(
+    document.render_svg().contains("aria-label=\"Use case diagram\""),
+    true,
+  )
+  @test.assert_eq(render_svg(source).contains("class=\"usecase-node\""), true)
+}
+
+///|
+test "use-case endpoint syntax takes precedence over actor message heuristics" {
+  let source = "@startuml\nactor Customer\nCustomer --> (Place order)\n@enduml"
+  @test.assert_eq(is_sequence_source(source), false)
+  @test.assert_eq(is_usecase_source(source), true)
+  @test.assert_eq(parse(source).kind() is UseCase, true)
+}
+
+///|
+test "sequence message labels with parentheses do not select use-case parsing" {
+  let source = "@startuml\nparticipant Client\nClient -> Server : validate(input)\n@enduml"
+  @test.assert_eq(is_sequence_source(source), true)
+  @test.assert_eq(is_usecase_source(source), false)
+  @test.assert_eq(parse(source).kind() is Sequence, true)
+}
+
+///|
 test "document facade recognizes and renders mindmaps" {
   let source = "@startmindmap\n* Root\n** Child\n@endmindmap"
   @test.assert_eq(is_mindmap_source(source), true)

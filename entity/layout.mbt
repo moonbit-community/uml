@@ -60,6 +60,9 @@ const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / 72.0
 const PLANTUML_MIN_RANKSEP_IN : Double = 60.0 / 72.0
 
 ///|
+const PLANTUML_RELATION_LABEL_FONT_SIZE : Int = 13
+
+///|
 fn graphviz_node_name(index : Int) -> String {
   "n\{index}"
 }
@@ -71,9 +74,6 @@ fn graphviz_note_name(index : Int) -> String {
 
 ///|
 const LINK_NOTE_GAP : Double = 12.0
-
-///|
-const ENTITY_NOTE_GAP : Double = 34.0
 
 ///|
 fn graphviz_cluster_name(index : Int) -> String {
@@ -140,21 +140,40 @@ fn append_package_layouts(
 ///|
 fn note_size(note : Note, text_metrics : ClassTextMetrics) -> (Int, Int) {
   let lines = note.text.split("\n").to_array()
-  let mut width = 80
+  let mut width = 0
   for line in lines {
     width = width.max(
-      @metrics.measure_text_with(line.to_owned(), text_metrics.regular).width +
-      24,
+      @metrics.measure_text_with(line.to_owned(), text_metrics.note).width +
+      NOTE_LEFT_PADDING +
+      NOTE_RIGHT_PADDING,
     )
   }
-  (width, (lines.length().max(1) * text_metrics.row_height() + 18).max(34))
+  (
+    width,
+    lines.length().max(1) * text_metrics.note.line_height +
+    2 * NOTE_VERTICAL_PADDING,
+  )
 }
+
+///|
+fn Relation::graphviz_minlen(self : Relation) -> Int {
+  let mut segments = 0
+  for char in self.raw_arrow {
+    if char == '-' || char == '.' {
+      segments += 1
+    }
+  }
+  (segments - 1).max(0)
+}
+
+///|
 
 ///|
 /// Build and execute the in-process Graphviz DOT layout.
 fn EntityDiagram::graphviz_layout(
   self : EntityDiagram,
   text_metrics : ClassTextMetrics,
+  usecase? : Bool = false,
 ) -> GraphvizLayout raise @dot_layout.DotLayoutError {
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="class", strict=false)
   graph.set_attr(
@@ -167,22 +186,33 @@ fn EntityDiagram::graphviz_layout(
     },
   )
   graph.set_attr("splines", "spline")
-  let package_graphs : Map[String, @cgraph.Graph] = Map([])
+  graph.set_attr("remincross", "true")
+  graph.set_attr("searchsize", "500")
+  let package_content_graphs : Map[String, @cgraph.Graph] = Map([])
   let package_indices : Map[String, Int] = Map([])
   for package_index, group in self.packages {
-    let parent = match package_graphs.get(group.parent) {
+    let parent = match package_content_graphs.get(group.parent) {
       Some(parent) => parent
       None => graph
     }
     let cluster_name = graphviz_cluster_name(package_index)
-    let cluster = parent.subgraph(name=cluster_name)
+    // Java ClusterDotString places normal package nodes in nested p0/p1
+    // protection clusters. These clusters affect sibling ordering in dot.
+    let protection_before = parent.subgraph(name="\{cluster_name}p0")
+    protection_before.set_attr("label", "")
+    let cluster = protection_before.subgraph(name=cluster_name)
     cluster.set_attr("label", group.display)
     cluster.set_attr("style", "rounded")
+    cluster.set_attr("fontname", "Arial Bold")
+    cluster.set_attr("fontsize", "14")
+    cluster.set_attr("penwidth", "1.5")
     cluster.set_attr(
       "color",
       @core.svg_color(group.color, self.style.package_border_color()),
     )
-    package_graphs[group.qualified_name] = cluster
+    let protection_after = cluster.subgraph(name="\{cluster_name}p1")
+    protection_after.set_attr("label", "")
+    package_content_graphs[group.qualified_name] = protection_after
     package_indices[cluster_name] = package_index
   }
   let node_names : Map[String, String] = Map([])
@@ -190,17 +220,21 @@ fn EntityDiagram::graphviz_layout(
     guard !entity.is_hidden && !entity.is_removed else { continue }
     let name = graphviz_node_name(index)
     node_names[entity.qualified_code] = name
-    let node = match package_graphs.get(entity.scope) {
+    let node = match package_content_graphs.get(entity.scope) {
       Some(cluster) => cluster.node(name)
       None => graph.node(name)
     }
+    let geometry = entity.node_geometry(text_metrics, usecase~)
     node.set_attr("label", "")
-    node.set_attr("shape", "box")
-    node.set_attr("width", "\{(entity.width(text_metrics).to_double() / 72.0)}")
     node.set_attr(
-      "height",
-      "\{(entity.height(text_metrics).to_double() / 72.0)}",
+      "shape",
+      match geometry.shape {
+        Box => "box"
+        Ellipse => "ellipse"
+      },
     )
+    node.set_attr("width", "\{(geometry.width.to_double() / 72.0)}")
+    node.set_attr("height", "\{(geometry.height.to_double() / 72.0)}")
     node.set_attr("fixedsize", "true")
   }
   let relation_names : Map[Int, String] = Map([])
@@ -209,12 +243,19 @@ fn EntityDiagram::graphviz_layout(
       node_names.contains(relation.right) else {
       continue
     }
+    if usecase && relation.dotted && relation.direction is Automatic {
+      let rank = graph.subgraph(name="rank_dependency_\{relation_index}")
+      rank.set_attr("rank", "same")
+      let _ = rank.node(node_names[relation.left])
+      let _ = rank.node(node_names[relation.right])
+    }
     let edge = graph.edge(
       graph.node(node_names[relation.left]),
       graph.node(node_names[relation.right]),
       name="e\{relation_index}",
     )
     relation_names[edge.id()] = "\{relation_index}"
+    edge.set_attr("minlen", "\{relation.graphviz_minlen()}")
     let mut label = relation.label.unwrap_or("")
     for note in self.notes {
       if note.target_kind is LinkNote &&
@@ -227,7 +268,17 @@ fn EntityDiagram::graphviz_layout(
       }
     }
     if !label.is_empty() {
+      if usecase {
+        label = @core.display_stereotype(label)
+      }
       edge.set_attr("label", label)
+      if usecase {
+        edge.set_attr(
+          "fontsize",
+          "\{self.style.arrow_font_size(fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)}",
+        )
+        edge.set_attr("fontname", self.style.arrow_font_family())
+      }
     }
     edge.set_attr("dir", "none")
     if relation.dotted {
@@ -261,14 +312,27 @@ fn EntityDiagram::graphviz_layout(
       Some(target) =>
         match node_names.get(target) {
           Some(target_name) => {
-            let edge = graph.edge(
-              node,
-              graph.node(target_name),
-              name="note_edge\{note_index}",
-            )
+            let left = match note.position {
+              Left | Top if usecase => node
+              _ => graph.node(target_name)
+            }
+            let right = match note.position {
+              Left | Top if usecase => graph.node(target_name)
+              _ => node
+            }
+            let edge = graph.edge(left, right, name="note_edge\{note_index}")
             edge.set_attr("dir", "none")
-            edge.set_attr("style", "invis")
-            edge.set_attr("constraint", "false")
+            edge.set_attr("style", if usecase { "dotted" } else { "invis" })
+            if !usecase {
+              edge.set_attr("constraint", "false")
+            }
+            if usecase {
+              let minlen = match note.position {
+                Top | Bottom => 1
+                Left | Right => 0
+              }
+              edge.set_attr("minlen", "\{minlen}")
+            }
           }
           None => ()
         }
@@ -305,50 +369,10 @@ fn EntityDiagram::graphviz_layout(
       continue
     }
     let (graphviz_x, graphviz_y) = graphviz_point_to_svg(node_layout.pos, bbox)
-    let mut x = graphviz_x
-    let mut y = graphviz_y
-    let note = self.notes[note_index]
-    let note_width = node_layout.width_in * 72.0
-    let note_height = node_layout.height_in * 72.0
-    if note.target_kind is EntityNote || note.target_kind is MemberTip {
-      for target in nodes {
-        guard target.code == note.target else { continue }
-        match note.position {
-          Right => {
-            x = target.x +
-              target.width / 2.0 +
-              ENTITY_NOTE_GAP +
-              note_width / 2.0
-            y = target.y
-          }
-          Left => {
-            x = target.x -
-              target.width / 2.0 -
-              ENTITY_NOTE_GAP -
-              note_width / 2.0
-            y = target.y
-          }
-          Top => {
-            x = target.x
-            y = target.y -
-              target.height / 2.0 -
-              ENTITY_NOTE_GAP -
-              note_height / 2.0
-          }
-          Bottom => {
-            x = target.x
-            y = target.y +
-              target.height / 2.0 +
-              ENTITY_NOTE_GAP +
-              note_height / 2.0
-          }
-        }
-      }
-    }
     notes.push({
       note_index,
-      x,
-      y,
+      x: graphviz_x,
+      y: graphviz_y,
       width: node_layout.width_in * 72.0,
       height: node_layout.height_in * 72.0,
     })

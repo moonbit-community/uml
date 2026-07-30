@@ -76,6 +76,18 @@ pub fn parse_activity(input : String) -> Document raise @core.ParseError {
 pub fn parse(input : String) -> Document raise @core.ParseError {
   if is_activity_source(input) {
     parse_activity(input)
+  } else if is_sequence_source(input) {
+    { diagram: Sequence(@sequence.parse(input)) }
+  } else if is_state_source(input) {
+    parse_state(input)
+  } else if is_usecase_source(input) {
+    parse_usecase(input)
+  } else if is_component_source(input) {
+    parse_component(input)
+  } else if is_object_source(input) {
+    parse_object(input)
+  } else if is_class_source(input) {
+    parse_class(input)
   } else {
     { diagram: Sequence(@sequence.parse(input)) }
   }
@@ -196,7 +208,8 @@ fn has_usecase_declaration(line : String) -> Bool {
   }
   let trimmed = line.trim().to_owned()
   (trimmed.has_prefix("(") && !trimmed.has_prefix("()")) ||
-  (trimmed.contains("(") && has_message_arrow(trimmed))
+  trimmed.contains(">(") ||
+  trimmed.contains("> (")
 }
 
 ///|
@@ -309,6 +322,7 @@ fn is_non_object_entity_declaration(line : String) -> Bool {
 pub fn is_sequence_source(input : String) -> Bool {
   let lines = meaningful_source_lines(input)
   !lines.any(has_component_declaration) &&
+  !lines.any(has_usecase_declaration) &&
   (
     lines.any(is_sequence_command) ||
     lines.any(has_sequence_only_message_arrow) ||

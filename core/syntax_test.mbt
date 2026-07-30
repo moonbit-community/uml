@@ -30,6 +30,12 @@ test "shared PlantUML syntax helpers respect quoted text" {
 }
 
 ///|
+test "stereotype display uses PlantUML guillemets" {
+  @test.assert_eq(display_stereotype("<<business>>"), "«business»")
+  @test.assert_eq(display_stereotype("plain label"), "plain label")
+}
+
+///|
 test "parses URL targets with quoted values and labels" {
   let labelled = parse_url_target("[[https://example.com profile page]]").unwrap()
   @test.assert_eq(labelled.target, "https://example.com")
