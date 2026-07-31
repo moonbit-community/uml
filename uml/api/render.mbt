@@ -15,7 +15,7 @@ pub fn Document::render_svg(self : Document) -> String {
   }
 }
 
-///|
-pub fn render_svg(input : String) -> String raise @core.ParseError {
-  parse(input).render_svg()
-}
+// ///|
+// pub fn render_svg(input : String) -> String raise @core.ParseError {
+//   parse(input).render_svg()
+// }

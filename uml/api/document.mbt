@@ -57,6 +57,11 @@ pub fn parse_usecase(input : String) -> Document raise @core.ParseError {
 }
 
 ///|
+pub fn parse_sequence(input : String) -> Document raise @core.ParseError {
+  { diagram: Sequence(@sequence.parse(input)) }
+}
+
+///|
 pub fn parse_state(input : String) -> Document raise @core.ParseError {
   { diagram: State(@state.parse(input)) }
 }
@@ -73,25 +78,25 @@ pub fn parse_activity(input : String) -> Document raise @core.ParseError {
 }
 
 ///|
-pub fn parse(input : String) -> Document raise @core.ParseError {
-  if is_activity_source(input) {
-    parse_activity(input)
-  } else if is_sequence_source(input) {
-    { diagram: Sequence(@sequence.parse(input)) }
-  } else if is_state_source(input) {
-    parse_state(input)
-  } else if is_usecase_source(input) {
-    parse_usecase(input)
-  } else if is_component_source(input) {
-    parse_component(input)
-  } else if is_object_source(input) {
-    parse_object(input)
-  } else if is_class_source(input) {
-    parse_class(input)
-  } else {
-    { diagram: Sequence(@sequence.parse(input)) }
-  }
-}
+// pub fn parse(input : String) -> Document raise @core.ParseError {
+//   if is_activity_source(input) {
+//     parse_activity(input)
+//   } else if is_sequence_source(input) {
+//     { diagram: Sequence(@sequence.parse(input)) }
+//   } else if is_state_source(input) {
+//     parse_state(input)
+//   } else if is_usecase_source(input) {
+//     parse_usecase(input)
+//   } else if is_component_source(input) {
+//     parse_component(input)
+//   } else if is_object_source(input) {
+//     parse_object(input)
+//   } else if is_class_source(input) {
+//     parse_class(input)
+//   } else {
+//     { diagram: Sequence(@sequence.parse(input)) }
+//   }
+// }
 
 ///|
 pub fn parse_json(input : String) -> Document raise @json.ParseError {

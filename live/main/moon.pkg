@@ -1,6 +1,7 @@
 import {
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
+  "kokic/uml/api",
 }
 
 supported_targets = "js"

@@ -1,5 +1,5 @@
 ///|
-using @html {div, h1, li, textarea, text, ul}
+using @html {div, h1, li, textarea, ul}
 
 ///|
 using @rabbita {type Html, type Val}
@@ -100,9 +100,15 @@ fn app() -> Val[Html] {
       ],
       div(class="preview-panel") <| [
         h1(class="panel-title", "Preview"),
-        div(class="preview") <| [
-          text(current_source(state)),
-        ],
+        div(class="preview") <| ({
+          let svg : String = ""
+          // @api.render_svg(
+          //   "@startuml\nAlice -> Bob: Request\nBob --> Alice: Response\n@enduml",
+          // ) catch {
+          //   e => "\{e}"
+          // }
+          [div(attrs=@html.Attrs::build().inner_html(svg), "")]
+        }),
       ],
     ]
   })
