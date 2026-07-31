@@ -232,7 +232,10 @@ fn append_node(
 pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   let layout = self.layout()
   let output = @core.XmlWriter::new()
-  let font_metrics = @metrics.FontMetrics::from_defaults()
+  let font_metrics = self.style.font_metrics()
+  let defaults = @core.render_defaults()
+  let line = self.style.diagram_line_color()
+  let text = self.style.diagram_text_color()
   output.open("svg", attributes=[
     ("xmlns", "http://www.w3.org/2000/svg"),
     ("width", layout.width.to_string()),
@@ -243,7 +246,31 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   ])
   output.open("style")
   output.raw(
-    "svg{font-family:Arial,sans-serif;font-size:13px;background:#fff}.activity-edge{fill:none;stroke:#181818;stroke-width:1.5}.activity-label{fill:#181818}.activity-partition,.activity-swimlane{fill:#F7F7F7;stroke:#181818;stroke-width:1.5}.activity-swimlane{stroke-dasharray:4 3}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:#181818}.activity-stop-outer,.activity-action,.activity-decision{fill:#FEFECE;stroke:#181818;stroke-width:1.5}.activity-note{fill:#FEFFDD;stroke:#181818;stroke-width:1.5}",
+    "svg{font-family:" +
+    @core.font_family(self.style) +
+    ";font-size:" +
+    @core.font_size(self.style) +
+    ";background:" +
+    self.style.canvas_color() +
+    "}.activity-edge{fill:none;stroke:" +
+    line +
+    ";stroke-width:1.5}.activity-label{fill:" +
+    text +
+    "}.activity-partition,.activity-swimlane{fill:" +
+    defaults.partition_background +
+    ";stroke:" +
+    line +
+    ";stroke-width:1.5}.activity-swimlane{stroke-dasharray:4 3}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
+    line +
+    "}.activity-stop-outer,.activity-action,.activity-decision{fill:" +
+    defaults.sequence_participant_background +
+    ";stroke:" +
+    line +
+    ";stroke-width:1.5}.activity-note{fill:" +
+    defaults.note_background +
+    ";stroke:" +
+    line +
+    ";stroke-width:1.5}",
   )
   output.close()
   output.open("defs")
@@ -258,7 +285,7 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   ])
   output.empty("path", attributes=[
     ("d", "M 0 0 L 6 3 L 0 6 Z"),
-    ("fill", "#181818"),
+    ("fill", line),
   ])
   output.close()
   output.close()
@@ -267,7 +294,7 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
     ("y", "0"),
     ("width", layout.width.to_string()),
     ("height", layout.height.to_string()),
-    ("fill", "#FFFFFF"),
+    ("fill", self.style.canvas_color()),
   ])
   layout.regions.each(region => append_region(output, region, font_metrics))
   layout.edges.each(edge => append_edge(output, layout, edge, font_metrics))

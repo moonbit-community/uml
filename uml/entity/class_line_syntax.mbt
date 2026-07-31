@@ -317,18 +317,18 @@ fn Parser::consume_skinparam_block(
   self : Parser,
 ) -> Unit raise @core.ParseError {
   self.index += 1
-  while self.index < self.lines.length() {
-    let property = @core.strip_line_comment(self.lines[self.index])
-    if property == "}" {
-      return
-    }
-    match @core.parse_style_property(property) {
-      Some(directive) => self.style.apply(directive)
-      None => ()
-    }
-    self.index += 1
-  }
-  self.raise_parse_error("unclosed skinparam")
+  let closed = @core.consume_skinparam_body(
+    fn() {
+      guard self.index < self.lines.length() else { return None }
+      let line = @core.strip_line_comment(self.lines[self.index])
+      if line.trim() != "}" {
+        self.index += 1
+      }
+      Some(line)
+    },
+    fn(directive) { self.style.apply(directive) },
+  )
+  guard closed else { self.raise_parse_error("unclosed skinparam") }
 }
 
 ///|

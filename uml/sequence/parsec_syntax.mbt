@@ -337,15 +337,6 @@ fn multicast_parser() -> @talc.StringParser[Array[String]] {
 }
 
 ///|
-fn color_parser() -> @talc.StringParser[String] {
-  @talc.char('#').then(
-    @talc.many_chars1(
-      @talc.satisfy("color", char => !is_inline_whitespace(char) && char != '\n'),
-    ),
-  )
-}
-
-///|
 fn anchor_parser() -> @talc.StringParser[String] {
   @talc.char('{').then(participant_identifier()).skip(@talc.char('}'))
 }

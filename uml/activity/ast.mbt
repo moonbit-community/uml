@@ -116,4 +116,5 @@ pub enum ActivityInstruction {
 pub struct ActivityDiagram {
   nodes : Array[ActivityNode]
   instructions : Array[ActivityInstruction]
+  style : @core.DocumentStyle
 } derive(Eq, Debug)

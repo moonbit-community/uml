@@ -277,6 +277,25 @@ pub fn parse(input : String) -> MindmapDiagram raise @core.ParseError {
       index += 1
       continue
     }
+    if trimmed.equal_ignore_ascii_case("skinparam {") {
+      index += 1
+      let closed = @core.consume_skinparam_body(
+        fn() {
+          guard index < lines.length() else { return None }
+          let line = lines[index]
+          index += 1
+          Some(line)
+        },
+        fn(directive) {
+          style.apply(directive)
+          mindmap_style.apply_skinparam(directive)
+        },
+      )
+      guard closed else {
+        raise SyntaxError(lines.length(), "unclosed skinparam")
+      }
+      continue
+    }
     if trimmed.equal_ignore_ascii_case("<style>") {
       index = parse_mindmap_style_block(lines, index, mindmap_style)
       continue

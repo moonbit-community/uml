@@ -91,14 +91,6 @@ const STATE_SYNC_HEIGHT : Double = 12.0
 const STATE_TERMINAL_SIZE : Double = 24.0
 
 ///|
-fn StateDiagram::graphviz_rankdir(self : StateDiagram) -> @rankdir.RankDir {
-  match self.style.layout_direction {
-    Some(@core.LeftToRight) => @rankdir.LR
-    _ => @rankdir.TB
-  }
-}
-
-///|
 fn plantuml_state_nodesep_in() -> Double {
   35.0 / STATE_DPI
 }
@@ -111,27 +103,6 @@ fn plantuml_state_ranksep_in() -> Double {
 ///|
 fn state_graphviz_node_name(index : Int) -> String {
   "s" + index.to_string()
-}
-
-///|
-fn state_graphviz_note_name(index : Int) -> String {
-  "note" + index.to_string()
-}
-
-///|
-fn state_graphviz_point_to_svg(
-  point : @geom.Point,
-  bbox : @geom.Rect,
-) -> (Double, Double) {
-  (point.x - bbox.llx, bbox.ury - point.y)
-}
-
-///|
-fn state_graphviz_path_to_svg(
-  spline : @geom.Spline,
-  bbox : @geom.Rect,
-) -> Array[(Double, Double)] {
-  spline.points.map(point => state_graphviz_point_to_svg(point, bbox))
 }
 
 ///|
@@ -488,12 +459,7 @@ fn StateDiagram::layout_scope(
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="state", strict=false)
   graph.set_attr(
     "rankdir",
-    match self.graphviz_rankdir() {
-      @rankdir.LR => "LR"
-      @rankdir.TB => "TB"
-      @rankdir.BT => "BT"
-      @rankdir.RL => "RL"
-    },
+    @core.graphviz_rankdir_attr(@core.graphviz_rankdir(self.style)),
   )
   graph.set_attr("splines", "spline")
   let node_names : Map[String, String] = Map([])
@@ -552,7 +518,7 @@ fn StateDiagram::layout_scope(
   for note_index, note in self.notes {
     guard self.note_scope(note) == scope else { continue }
     guard self.note_region_index(note, scope) == region_index else { continue }
-    let name = state_graphviz_note_name(note_index)
+    let name = @core.graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = state_note_size(note, metrics)
@@ -585,7 +551,7 @@ fn StateDiagram::layout_scope(
     }
   }
   let laid_out = @dot_layout.layout_dot(graph, options={
-    rankdir: Some(self.graphviz_rankdir()),
+    rankdir: Some(@core.graphviz_rankdir(self.style)),
     nodesep: Some(plantuml_state_nodesep_in()),
     ranksep: Some(plantuml_state_ranksep_in()),
     splines: Some(@dot_layout.SplinesMode::Spline),
@@ -603,7 +569,7 @@ fn StateDiagram::layout_scope(
     let node_name = node_layout.node.name()
     for index, visible in visible_nodes {
       guard state_graphviz_node_name(index) == node_name else { continue }
-      let (x, y) = state_graphviz_point_to_svg(node_layout.pos, bbox)
+      let (x, y) = @core.graphviz_point_to_svg(node_layout.pos, bbox)
       let node_x = x - node_layout.width_in * STATE_DPI / 2.0
       let node_y = y - node_layout.height_in * STATE_DPI / 2.0
       let width = node_layout.width_in * STATE_DPI
@@ -627,30 +593,20 @@ fn StateDiagram::layout_scope(
       }
     }
   }
-  for edge_layout in laid_out.edges {
-    guard transition_names.get(edge_layout.edge.id()) is Some(index_text) else {
-      continue
-    }
-    let transition_index = @string.parse_int(index_text) catch { _ => continue }
-    let paths = edge_layout.splines.map(spline => {
-      state_graphviz_path_to_svg(spline, bbox)
+  for edge in @core.graphviz_edges(laid_out, transition_names, bbox) {
+    output.edges.push({
+      transition_index: edge.index,
+      paths: edge.paths,
+      label: edge.label,
     })
-    let label = edge_layout.label_pos.map(point => {
-      state_graphviz_point_to_svg(point, bbox)
-    })
-    output.edges.push({ transition_index, paths, label })
   }
-  for node_layout in laid_out.nodes {
-    guard note_names.get(node_layout.node.name()) is Some(note_index) else {
-      continue
-    }
-    let (x, y) = state_graphviz_point_to_svg(node_layout.pos, bbox)
+  for note in @core.graphviz_notes(laid_out, note_names, bbox) {
     output.notes.push({
-      note_index,
-      x: x - node_layout.width_in * STATE_DPI / 2.0,
-      y: y - node_layout.height_in * STATE_DPI / 2.0,
-      width: node_layout.width_in * STATE_DPI,
-      height: node_layout.height_in * STATE_DPI,
+      note_index: note.note_index,
+      x: note.x,
+      y: note.y,
+      width: note.width,
+      height: note.height,
     })
   }
   output

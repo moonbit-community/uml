@@ -34,15 +34,21 @@ fn append_text(
   anchor? : String = "middle",
   line_height? : Int = 15,
 ) -> Unit {
-  let lines = text.split("\n").to_array()
-  output <+
-    $|<text x="\{x}" y="\{y}" text-anchor="\{anchor}" fill="#181818" class="\{class_name}">
-  lines.eachi((index, line) => {
-    let dy = if index == 0 { 0 } else { line_height }
-    output <+
-      $|<tspan x="\{x}" dy="\{dy}">\{@core.xml_escape(line.to_owned())}</tspan>
-  })
-  output.write_string("</text>\n")
+  output.write_string(
+    @core.multiline_text_markup(
+      x.to_double(),
+      y.to_double(),
+      text,
+      [
+        ("text-anchor", anchor),
+        ("fill", @core.render_defaults().diagram_text),
+        ("class", class_name),
+      ],
+      line_height=line_height.to_double(),
+      offset=false,
+    ),
+  )
+  output.write_string("\n")
 }
 
 ///|
@@ -547,7 +553,7 @@ fn append_partial_arrow_head(
       }
       if part is TopPart || part is BottomPart {
         output <+
-          $|<path d="\{path}" class="partial-arrow" fill="#181818"/>
+          $|<path d="\{path}" class="partial-arrow"/>
       }
     }
     Async => {
@@ -772,16 +778,16 @@ fn append_note(
       let fold_x = x + component.width - component.fold
       let fold_y = y + component.fold
       output <+
-        $|<path d="M\{x},\{y} L\{x},\{y + component.height} L\{x + component.width},\{y + component.height} L\{x + component.width},\{fold_y} L\{fold_x},\{y} Z" class="\{class_name}" fill="\{fill}" stroke="#181818" stroke-width=".5"/>
+        $|<path d="M\{x},\{y} L\{x},\{y + component.height} L\{x + component.width},\{y + component.height} L\{x + component.width},\{fold_y} L\{fold_x},\{y} Z" class="\{class_name}" fill="\{fill}" />
       output <+
-        $|<path d="M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}" class="note-fold" fill="none" stroke="#181818" stroke-width=".5"/>
+        $|<path d="M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}" class="note-fold" fill="none" />
     }
     Hexagonal =>
       output <+
-        $|<polygon points="\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}" class="\{class_name}" fill="\{fill}" stroke="#181818" stroke-width=".5"/>
+        $|<polygon points="\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}" class="\{class_name}" fill="\{fill}" />
     Box =>
       output <+
-        $|<rect x="\{x}" y="\{y}" width="\{component.width}" height="\{component.height}" class="\{class_name}" fill="\{fill}" stroke="#181818" stroke-width=".5"/>
+        $|<rect x="\{x}" y="\{y}" width="\{component.width}" height="\{component.height}" class="\{class_name}" fill="\{fill}" />
   }
   append_text(
     output,
@@ -1042,50 +1048,53 @@ fn append_svg_preamble(
   let body_font_size = (base_font_size - 1).max(1)
   let small_font_size = (base_font_size - 2).max(1)
   let line_color = style.diagram_line_color()
+  let text_color = style.diagram_text_color()
   output <+
     $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Sequence diagram">
   let defs =
-    #|<defs>
-    #|<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/></marker>
-    #|<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
-    #|<marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
-    #|<marker id="open-arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10" class="arrow-open"/></marker>
-    #|</defs>
+    $|<defs>
+    $|\{@core.arrow_marker_markup("arrow", marker_width=7.0, marker_height=7.0, path_class="arrow-fill")}
+    $|<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
+    $|<marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
+    $|<marker id="open-arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10" class="arrow-open"/></marker>
+    $|</defs>
   output.write_string(defs)
 
   let svg_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
-    $|.participant rect,.activation,.note,.divider-title{stroke:#181818;stroke-width:1.2}
-    $|.participant-label{font-size:\{base_font_size}px;font-weight:bold;fill:#181818}
-    $|.participant-icon{fill:none;stroke:#181818;stroke-width:1.1}
-    $|.participant-box-group{fill-opacity:.16;stroke:#181818;stroke-width:1.1}
-    $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:#181818}
+    $|.participant rect,.activation,.note,.divider-title{stroke:\{line_color};stroke-width:1.2}
+    $|.participant-label{font-size:\{base_font_size}px;font-weight:bold;fill:\{text_color}}
+    $|.participant-icon{fill:none;stroke:\{line_color};stroke-width:1.1}
+    $|.participant-box-group{fill-opacity:.16;stroke:\{line_color};stroke-width:1.1}
+    $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:\{text_color}}
     $|.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}
-    $|.activation{fill:#FEFECE}
+    $|.activation{fill:\{@core.render_defaults().sequence_participant_background}}
     $|.message,.cross,.destroy{fill:none;stroke:\{line_color};stroke-width:1.3}
     $|.message.dotted{stroke-dasharray:5 4}
     $|.arrow-fill{fill:\{line_color}}
     $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:1.5}
     $|.endpoint{fill:#fff;stroke:\{line_color};stroke-width:1.2}
-    $|.message-label,.reference-label,.delay-label{fill:#181818;font-size:\{body_font_size}px}
-    $|.note-label{fill:#181818;font-size:\{base_font_size}px}
-    $|.group-body{fill-opacity:.18;stroke:#181818;stroke-width:1.1}
+    $|.message-label,.reference-label,.delay-label{fill:\{text_color};font-size:\{body_font_size}px}
+    $|.note-label{fill:\{text_color};font-size:\{base_font_size}px}
+    $|.note,.note-fold{stroke:\{line_color};stroke-width:.5}
+    $|.partial-arrow{fill:\{line_color}}
+    $|.group-body{fill-opacity:.18;stroke:\{line_color};stroke-width:1.1}
     $|.group-body-colored,.group-branch{fill-opacity:1}
     $|.group-branch{stroke:none}
-    $|.group-header{stroke:#181818;stroke-width:1.1}
-    $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:#181818}
-    $|.note{fill:#FEFFDD}
+    $|.group-header{stroke:\{line_color};stroke-width:1.1}
+    $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:\{text_color}}
+    $|.note{fill:\{@core.render_defaults().note_background}}
     $|.hex-note{stroke-dasharray:2 1}
     $|.box-note{rx:0}
     $|.divider{stroke:#777;stroke-width:1}
     $|.divider-title{fill:#f6f6f6}
     $|.divider-label{font-size:\{body_font_size}px;font-weight:bold}
     $|.delay{stroke:#777;stroke-dasharray:3 3}
-    $|.reference{fill:#fff;stroke:#181818;stroke-width:1.2}
-    $|.reference-tab{fill:#eee;stroke:#181818;stroke-width:1.2}
-    $|.reference-tab-label{fill:#181818;font-size:\{body_font_size}px;font-weight:bold}
-    $|.group-separator{stroke:#181818;stroke-dasharray:4 3}
+    $|.reference{fill:#fff;stroke:\{line_color};stroke-width:1.2}
+    $|.reference-tab{fill:#eee;stroke:\{line_color};stroke-width:1.2}
+    $|.reference-tab-label{fill:\{text_color};font-size:\{body_font_size}px;font-weight:bold}
+    $|.group-separator{stroke:\{line_color};stroke-dasharray:4 3}
     $|.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{stroke-width:2}

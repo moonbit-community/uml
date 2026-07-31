@@ -558,19 +558,18 @@ fn layout_for_node(
 }
 
 ///|
-fn region_for_range(
+fn region_for(
   layouts : Array[ActivityNodeLayout],
-  start : Int,
-  end : Int,
   kind : ActivityRegionKind,
   label : String,
+  select : (ActivityNodeLayout) -> Bool,
 ) -> ActivityRegionLayout? {
   let mut min_x : Int? = None
   let mut min_y : Int? = None
   let mut max_x : Int? = None
   let mut max_y : Int? = None
   for layout in layouts {
-    guard layout.node_index > start && layout.node_index < end else { continue }
+    guard select(layout) else { continue }
     min_x = Some(min_x.map(value => value.min(layout.x)).unwrap_or(layout.x))
     min_y = Some(min_y.map(value => value.min(layout.y)).unwrap_or(layout.y))
     max_x = Some(
@@ -596,6 +595,22 @@ fn region_for_range(
       })
     _ => None
   }
+}
+
+///|
+fn region_for_range(
+  layouts : Array[ActivityNodeLayout],
+  start : Int,
+  end : Int,
+  kind : ActivityRegionKind,
+  label : String,
+) -> ActivityRegionLayout? {
+  region_for(
+    layouts,
+    kind,
+    label,
+    layout => layout.node_index > start && layout.node_index < end,
+  )
 }
 
 ///|
@@ -677,40 +692,13 @@ fn region_for_swimlane(
   layouts : Array[ActivityNodeLayout],
   label : String,
 ) -> ActivityRegionLayout? {
-  let mut min_y : Int? = None
-  let mut max_y : Int? = None
-  let mut min_x : Int? = None
-  let mut max_x : Int? = None
-  for layout in layouts {
-    guard swimlane_for_node(nodes, layout.node_index) is Some(name) &&
-      name == label else {
-      continue
-    }
-    min_x = Some(min_x.map(value => value.min(layout.x)).unwrap_or(layout.x))
-    min_y = Some(min_y.map(value => value.min(layout.y)).unwrap_or(layout.y))
-    max_x = Some(
-      max_x
-      .map(value => value.max(layout.x + layout.width))
-      .unwrap_or(layout.x + layout.width),
-    )
-    max_y = Some(
-      max_y
-      .map(value => value.max(layout.y + layout.height))
-      .unwrap_or(layout.y + layout.height),
-    )
-  }
-  match (min_x, min_y, max_x, max_y) {
-    (Some(min_x), Some(min_y), Some(max_x), Some(max_y)) =>
-      Some({
-        kind: ActivityRegionKind::Swimlane,
-        label,
-        x: min_x - REGION_PADDING,
-        y: min_y - REGION_HEADER_HEIGHT - REGION_PADDING,
-        width: max_x - min_x + REGION_PADDING * 2,
-        height: max_y - min_y + REGION_HEADER_HEIGHT + REGION_PADDING * 2,
-      })
-    _ => None
-  }
+  region_for(
+    layouts,
+    ActivityRegionKind::Swimlane,
+    label,
+    layout =>
+      swimlane_for_node(nodes, layout.node_index) is Some(name) && name == label,
+  )
 }
 
 ///|
@@ -1222,7 +1210,7 @@ fn place_tile(
 /// branches are horizontal siblings, their exits join, and loops own a back
 /// edge to the controlling decision.
 pub fn ActivityDiagram::layout(self : ActivityDiagram) -> ActivityLayout {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = self.style.font_metrics()
   let source_nodes = []
   let tiles = tiles_from_instructions(self.instructions, source_nodes)
   let content = measure_sequence(tiles, source_nodes, metrics)

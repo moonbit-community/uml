@@ -6,7 +6,7 @@ fn message_tail_parser() -> @talc.StringParser[
   .then(activation_spec_parser().attempt().optional())
   .bind(activation => {
     inline_spaces()
-    .then(color_parser().attempt().optional())
+    .then(@core.color_value_parser("color").attempt().optional())
     .bind(color => {
       inline_spaces()
       .then(

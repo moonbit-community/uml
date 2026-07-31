@@ -214,10 +214,13 @@ pub fn url_value_parser() -> @talc.StringParser[String] {
 }
 
 ///|
+pub fn color_token_parser(label : String) -> @talc.StringParser[String] {
+  @talc.many_chars1(@talc.satisfy(label, char => !char.is_whitespace()))
+}
+
+///|
 pub fn color_value_parser(label : String) -> @talc.StringParser[String] {
-  @talc.char('#').then(
-    @talc.many_chars1(@talc.satisfy(label, char => !char.is_whitespace())),
-  )
+  @talc.char('#').then(color_token_parser(label))
 }
 
 ///|

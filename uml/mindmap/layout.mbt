@@ -126,18 +126,22 @@ pub fn MindmapDiagram::node_style(
 }
 
 ///|
+fn MindmapDiagram::node_font_size(
+  self : MindmapDiagram,
+  index : Int,
+) -> Int {
+  self.node_style(index).font_size.unwrap_or(
+    @core.font_size_value(self.style, fallback=14),
+  )
+}
+
+///|
 fn MindmapDiagram::node_text_metrics(
   self : MindmapDiagram,
   index : Int,
 ) -> @metrics.TextMetrics {
   let idea = self.ideas[index]
-  let node_style = self.node_style(index)
-  let font_size = node_style.font_size.unwrap_or(
-    match self.style.font_size {
-      Some(_) => @core.font_size_value(self.style)
-      None => 14
-    },
-  )
+  let font_size = self.node_font_size(index)
   @metrics.measure_text_with(
     mindmap_visible_text(idea.label),
     self.style.font_metrics(font_size~),

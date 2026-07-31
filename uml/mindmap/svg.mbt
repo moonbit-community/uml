@@ -62,14 +62,9 @@ fn append_mindmap_node(
   node : NodeLayout,
 ) -> Unit {
   let idea = diagram.ideas[node.idea_index]
-  let node_style = diagram.node_style(node.idea_index)
-  let font_size = node_style.font_size.unwrap_or(
-    match diagram.style.font_size {
-      Some(_) => @core.font_size_value(diagram.style)
-      None => 14
-    },
-  )
+  let font_size = diagram.node_font_size(node.idea_index)
   let font_metrics = diagram.style.font_metrics(font_size~)
+  let node_style = diagram.node_style(node.idea_index)
   let padding_x = node_style.padding_x.unwrap_or(12)
   let padding_y = node_style.padding_y.unwrap_or(10)
   let (text_x, anchor) = match node_style.alignment.unwrap_or(Center) {

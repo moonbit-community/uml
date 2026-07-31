@@ -28,7 +28,7 @@ fn Member::visibility_icon(self : Member, x : Int, baseline_y : Int) -> String {
     Private => "#B20000"
     Protected => "#A9A900"
     Package => "#A06000"
-    Unknown => "#181818"
+    Unknown => @core.render_defaults().diagram_text
   }
   let center_y = baseline_y - 4
   match self.visibility {
@@ -790,29 +790,6 @@ fn relation_label_position(
 }
 
 ///|
-/// Graphviz spline points use the SVG-compatible 3n+1 cubic Bezier form.
-fn append_spline_path(
-  output : StringBuilder,
-  points : Array[(Double, Double)],
-) -> Unit {
-  output <+
-    $|M \{points[0].0} \{points[0].1}
-  if (points.length() - 1) % 3 == 0 {
-    let mut index = 1
-    while index < points.length() {
-      output <+
-        $| C \{points[index].0} \{points[index].1} \{points[index + 1].0} \{points[index + 1].1} \{points[index + 2].0} \{points[index + 2].1}
-      index += 3
-    }
-  } else {
-    for index in 1..<points.length() {
-      output <+
-        $| L \{points[index].0} \{points[index].1}
-    }
-  }
-}
-
-///|
 fn append_packages(
   output : StringBuilder,
   diagram : EntityDiagram,
@@ -979,12 +956,7 @@ fn append_relation(
     right_center
   }
   let dash = if relation.dotted { " stroke-dasharray=\"6 4\"" } else { "" }
-  let relation_style = match relation.line_style {
-    Some("dashed") => "stroke-dasharray:6 4"
-    Some("dotted") => "stroke-dasharray:2 3"
-    Some("bold") => "stroke-width:2.5"
-    _ => ""
-  }
+  let relation_style = @core.stroke_style(relation.line_style, default_width="")
   let relation_color = @core.svg_color(
     relation.color,
     diagram.style.diagram_line_color(),
@@ -1037,7 +1009,7 @@ fn append_relation(
             }
             output <+
               $|<path d="
-            append_spline_path(output, clipped)
+            output.write_string(@core.spline_path_data(clipped))
             output <+
               $|" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
           }
@@ -1116,12 +1088,7 @@ fn append_entity(
     entity.line_color,
     diagram.style.class_border_color(),
   )
-  let stroke_style = match entity.line_style {
-    Some("dashed") => "stroke-dasharray:6 4"
-    Some("dotted") => "stroke-dasharray:2 3"
-    Some("bold") => "stroke-width:2.5"
-    _ => "stroke-width:1.2"
-  }
+  let stroke_style = @core.stroke_style(entity.line_style)
   let line_attributes =
     $| style="stroke:\{stroke};\{stroke_style}"
   let title_style = match entity.kind {
@@ -1130,7 +1097,7 @@ fn append_entity(
   }
   let (spot_text, spot_fill) = entity.spot()
   output <+
-    $|<g class="class-node" data-code="\{@core.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + 15}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="#181818" stroke-width="1"/><text x="\{x + 15}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + 29}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{@core.xml_escape(entity.display)}</text>
+    $|<g class="class-node" data-code="\{@core.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + 15}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + 15}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + 29}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{@core.xml_escape(entity.display)}</text>
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {
@@ -1190,12 +1157,7 @@ fn append_usecase_entity(
     Actor | BusinessActor => diagram.style.actor_font_color()
     _ => diagram.style.diagram_text_color()
   }
-  let line_attributes = match entity.line_style {
-    Some("dashed") => "stroke-dasharray:6 4"
-    Some("dotted") => "stroke-dasharray:2 3"
-    Some("bold") => "stroke-width:2.5"
-    _ => "stroke-width:1.2"
-  }
+  let line_attributes = @core.stroke_style(entity.line_style)
   match entity.kind {
     Usecase | BusinessUsecase | Actor | BusinessActor | Component => ()
     _ => {
@@ -1352,12 +1314,9 @@ fn EntityDiagram::render_svg_with_mode(
 ) -> String {
   let background = self.style.canvas_color()
   let font_family = @core.font_family(self.style)
-  let font_size = if self.style.font_size is None {
-    "14px"
-  } else {
-    @core.font_size(self.style)
-  }
+  let font_size = @core.font_size(self.style)
   let line_color = self.style.diagram_line_color()
+  let text_color = self.style.diagram_text_color()
   let text_metrics = ClassTextMetrics::new(self.style)
   let fallback_layout = self.layout(text_metrics, usecase~)
   let graphviz = Some(self.graphviz_layout(text_metrics, usecase~)) catch {
@@ -1384,32 +1343,32 @@ fn EntityDiagram::render_svg_with_mode(
   output <+
     $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{-SVG_CANVAS_MARGIN} \{-SVG_CANVAS_MARGIN} \{output_width} \{output_height}" role="img" aria-label="\{diagram_label}">
   let defs_relations =
-    #|<defs>
-    #|<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"/></marker>
-    #|<marker id="triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="white"/></marker>
-    #|<marker id="diamond" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z"/></marker>
-    #|<marker id="diamond-open" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z" fill="white"/></marker>
-    #|</defs>
+    $|<defs>
+    $|\{@core.arrow_marker_markup("arrow", marker_width=7.0, marker_height=7.0)}
+    $|<marker id="triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="white"/></marker>
+    $|<marker id="diamond" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z"/></marker>
+    $|<marker id="diamond-open" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z" fill="white"/></marker>
+    $|</defs>
   output.write_string(defs_relations)
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
-    $|.class-node rect,.class-node line{stroke:#181818;stroke-width:1.2}
+    $|.class-node rect,.class-node line{stroke:\{line_color};stroke-width:1.2}
     $|.relation{stroke:\{line_color};stroke-width:1.2}
     $|.class-node line,.relation{fill:none}
-    $|.class-title{fill:#181818}
-    $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#181818}
-    $|.usecase-title{fill:#181818;text-anchor:middle}
-    $|.usecase-stereotype{fill:#181818;text-anchor:middle;font-style:italic}
-    $|.member,.relation-label{fill:#181818}
+    $|.class-title{fill:\{text_color}}
+    $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
+    $|.usecase-title{fill:\{text_color};text-anchor:middle}
+    $|.usecase-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}
+    $|.member,.relation-label{fill:\{text_color}}
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { 12 }}px}
     $|</style>
   output.write_string(relations_style)
   let style_markers =
-    #|<style>marker path,marker circle,marker rect{stroke:#181818;stroke-width:1}</style>
+    #|<style>marker path,marker circle,marker rect{stroke:\{line_color};stroke-width:1}</style>
   output.write_string(style_markers)
   let style_note =
-    $|<style>.package path,.package line{stroke:#181818;stroke-width:1.2}.package-title{fill:#181818;font-weight:bold}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#181818;font-size:\{NOTE_FONT_SIZE}px}</style>
+    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:1.2}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:1.2}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
   output.write_string(style_note)
   let defs_marks =
     #|<defs>

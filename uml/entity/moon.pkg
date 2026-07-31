@@ -5,7 +5,6 @@ import {
   "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/geom",
   "moonbit-community/graphviz/layout/dot" @dot_layout,
-  "moonbit-community/graphviz/layout/dot/rankdir",
   "moonbitlang/core/string",
   "moonbitlang/core/math",
   "moonbitlang/core/json",

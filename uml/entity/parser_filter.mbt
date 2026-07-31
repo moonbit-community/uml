@@ -143,9 +143,9 @@ priv enum FilterLineSyntax {
 
 ///|
 fn filter_token_parser() -> @talc.StringParser[String] {
-  stereotype_value_parser()
+  @core.stereotype_value_parser()
   .attempt()
-  .or(quoted_value_parser().attempt())
+  .or(@core.quoted_value_parser().attempt())
   .or(
     @talc.many_chars1(
       @talc.satisfy("filter token", char => !char.is_whitespace()),

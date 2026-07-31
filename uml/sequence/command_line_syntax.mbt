@@ -81,7 +81,7 @@ fn participant_declaration_tail_parser(
     .optional()
     .bind(url => {
       inline_space1()
-      .then(color_parser())
+      .then(@core.color_value_parser("color"))
       .attempt()
       .optional()
       .skip(inline_spaces())
@@ -101,7 +101,7 @@ fn life_event_line_parser(
     .then(participant_code_parser())
     .bind(participant_code => {
       inline_space1()
-      .then(color_parser())
+      .then(@core.color_value_parser("color"))
       .attempt()
       .optional()
       .skip(inline_spaces())
@@ -152,7 +152,7 @@ fn grouping_line_parser() -> @talc.StringParser[Event] {
   let leaf = keyword_parser("else")
     .attempt()
     .or(keyword_parser("also"))
-    .then(inline_space1().then(color_parser()).attempt().optional())
+    .then(inline_space1().then(@core.color_value_parser("color")).attempt().optional())
     .bind(back_color => {
       inline_spaces()
       .then(line_rest_parser("group label"))
@@ -170,12 +170,12 @@ fn grouping_line_parser() -> @talc.StringParser[Event] {
       .then(group_keyword_parser())
       .bind(keyword => {
         inline_space1()
-        .then(color_parser())
+        .then(@core.color_value_parser("color"))
         .attempt()
         .optional()
         .bind(back_color_header => {
           inline_space1()
-          .then(color_parser())
+          .then(@core.color_value_parser("color"))
           .attempt()
           .optional()
           .bind(back_color_body => {
@@ -211,7 +211,7 @@ fn box_line_parser() -> @talc.StringParser[Event] {
     .then(inline_spaces())
     .then(@talc.many_chars(label_character))
     .bind(label => {
-      color_parser()
+      @core.color_value_parser("color")
       .attempt()
       .optional()
       .skip(inline_spaces())

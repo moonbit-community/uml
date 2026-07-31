@@ -285,6 +285,22 @@ pub fn parse(input : String) -> StateDiagram raise @core.ParseError {
     let line = @core.strip_line_comment(parser.lines[parser.index])
       .trim()
       .to_owned()
+    if line.to_lower() == "skinparam {" {
+      parser.index += 1
+      let closed = @core.consume_skinparam_body(
+        fn() {
+          guard parser.index < parser.lines.length() else { return None }
+          let line = @core.strip_line_comment(parser.lines[parser.index])
+          parser.index += 1
+          Some(line)
+        },
+        fn(directive) { parser.style.apply(directive) },
+      )
+      guard closed else {
+        raise SyntaxError(parser.lines.length(), "unclosed skinparam")
+      }
+      continue
+    }
     parser.parse_line(line)
     parser.index += 1
   }

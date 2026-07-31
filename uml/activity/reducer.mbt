@@ -15,10 +15,9 @@ priv enum ReductionBoundary {
 ///|
 fn edge_label(value : String) -> ActivityEdgeLabel {
   let value = value.trim().to_owned()
-  let text = if value.has_prefix("(") && value.has_suffix(")") {
+  let text = {
+    guard value.has_prefix("(") && value.has_suffix(")") else { value }
     value[1:value.length() - 1].trim().to_owned()
-  } else {
-    value
   }
   { text: if text.length() == 0 { None } else { Some(text) } }
 }
@@ -104,6 +103,53 @@ fn at_reduction_boundary(
 }
 
 ///|
+/// Collect the branches of a chain construct (`if`/`fork`/`switch`) until its
+/// terminal node. Each body is reduced with `boundaries`; `continue_with`
+/// maps the node ending a body to the header of the next branch. The finished
+/// instruction is pushed and the index after the terminal is returned, or
+/// `None` when the chain is unterminated.
+fn[B] reduce_chain(
+  instructions : Array[ActivityInstruction],
+  nodes : Array[ActivityNode],
+  header : ActivityNode,
+  cursor : Int,
+  boundaries : Array[ReductionBoundary],
+  branch : (ActivityNode, Array[ActivityInstruction]) -> B,
+  continue_with : (ActivityNode) -> ActivityNode?,
+  finish : (Array[B]) -> ActivityInstruction,
+) -> Int? {
+  let branches = []
+  let mut header = header
+  let mut cursor = cursor
+  while cursor <= nodes.length() {
+    let (body, next) = reduce_flow(nodes, cursor, boundaries)
+    branches.push(branch(header, body))
+    guard next < nodes.length() else { return None }
+    match continue_with(nodes[next]) {
+      Some(next_header) => {
+        header = next_header
+        cursor = next + 1
+      }
+      None => {
+        instructions.push(finish(branches))
+        return Some(next + 1)
+      }
+    }
+  }
+  None
+}
+
+///|
+fn emit(
+  instructions : Array[ActivityInstruction],
+  instruction : ActivityInstruction,
+  index : Int,
+) -> Int {
+  instructions.push(instruction)
+  index + 1
+}
+
+///|
 fn reduce_flow(
   nodes : Array[ActivityNode],
   start : Int,
@@ -116,33 +162,31 @@ fn reduce_flow(
     guard !at_reduction_boundary(node, boundaries) else { break }
     match node {
       ActivityNode::If(_) => {
-        let branches = []
-        let mut branch_node = node
-        let mut cursor = index + 1
-        while cursor <= nodes.length() {
-          let (body, next) = reduce_flow(nodes, cursor, [ElseIf, Else, EndIf])
-          let (condition, incoming) = match branch_node {
-            ActivityNode::If(value) | ActivityNode::ElseIf(value) => {
-              let (condition, incoming) = split_test_and_label(value, " then ")
-              (Some(condition), incoming)
+        match reduce_chain(
+          instructions,
+          nodes,
+          node,
+          index + 1,
+          [ElseIf, Else, EndIf],
+          fn(header, body) {
+            let (condition, incoming) = match header {
+              ActivityNode::If(value) | ActivityNode::ElseIf(value) => {
+                let (condition, incoming) = split_test_and_label(value, " then ")
+                (Some(condition), incoming)
+              }
+              ActivityNode::Else(value) => (None, edge_label(value))
+              _ => (None, { text: None })
             }
-            ActivityNode::Else(value) => (None, edge_label(value))
-            _ => (None, { text: None })
-          }
-          branches.push({ condition, incoming, instructions: body })
-          guard next < nodes.length() else { break }
-          match nodes[next] {
-            ActivityNode::ElseIf(_) | ActivityNode::Else(_) => {
-              branch_node = nodes[next]
-              cursor = next + 1
-            }
-            ActivityNode::EndIf => {
-              instructions.push(ActivityInstruction::IfChain({ branches, }))
-              index = next + 1
-              break
-            }
-            _ => ()
-          }
+            { condition, incoming, instructions: body }
+          },
+          fn(next) { match next {
+            ActivityNode::ElseIf(_) | ActivityNode::Else(_) => Some(next)
+            _ => None
+          } },
+          branches => ActivityInstruction::IfChain({ branches, }),
+        ) {
+          Some(next_index) => index = next_index
+          None => break
         }
       }
       ActivityNode::While(raw) => {
@@ -181,49 +225,52 @@ fn reduce_flow(
         index = end + 1
       }
       ActivityNode::Fork => {
-        let branches = []
-        let mut cursor = index + 1
-        while cursor <= nodes.length() {
-          let (body, next) = reduce_flow(nodes, cursor, [ForkAgain, EndFork])
-          branches.push(body)
-          guard next < nodes.length() else { break }
-          match nodes[next] {
-            ActivityNode::ForkAgain => cursor = next + 1
-            ActivityNode::EndFork => {
-              instructions.push(ActivityInstruction::Fork({ branches, }))
-              index = next + 1
-              break
-            }
-            _ => ()
-          }
+        match reduce_chain(
+          instructions,
+          nodes,
+          node,
+          index + 1,
+          [ForkAgain, EndFork],
+          fn(_header, body) { body },
+          fn(next) { match next {
+            ActivityNode::ForkAgain => Some(next)
+            _ => None
+          } },
+          branches => ActivityInstruction::Fork({ branches, }),
+        ) {
+          Some(next_index) => index = next_index
+          None => break
         }
       }
       ActivityNode::Switch(raw) => {
-        let branches = []
-        let mut cursor = index + 1
-        while cursor < nodes.length() {
-          guard nodes[cursor] is ActivityNode::Case(case_label) else { break }
-          let (body, next) = reduce_flow(nodes, cursor + 1, [Case, EndSwitch])
-          branches.push({
-            condition: None,
-            incoming: edge_label(case_label),
-            instructions: body,
-          })
-          guard next < nodes.length() else { break }
-          match nodes[next] {
-            ActivityNode::Case(_) => cursor = next
-            ActivityNode::EndSwitch => {
-              instructions.push(
-                ActivityInstruction::Switch({
-                  condition: edge_label(raw).text.unwrap_or(""),
-                  branches,
-                }),
-              )
-              index = next + 1
-              break
+        match nodes.get(index + 1) {
+          Some(node) if node is ActivityNode::Case(_) =>
+            match reduce_chain(
+              instructions,
+              nodes,
+              node,
+              index + 2,
+              [Case, EndSwitch],
+              fn(header, body) {
+                let incoming = match header {
+                  ActivityNode::Case(value) => edge_label(value)
+                  _ => { text: None }
+                }
+                { condition: None, incoming, instructions: body }
+              },
+              fn(next) { match next {
+                ActivityNode::Case(_) => Some(next)
+                _ => None
+              } },
+              branches => ActivityInstruction::Switch({
+                condition: edge_label(raw).text.unwrap_or(""),
+                branches,
+              }),
+            ) {
+              Some(next_index) => index = next_index
+              None => break
             }
-            _ => ()
-          }
+          _ => break
         }
       }
       ActivityNode::Partition(label) => {
@@ -233,46 +280,22 @@ fn reduce_flow(
         )
         index = if end < nodes.length() { end + 1 } else { end }
       }
-      ActivityNode::Start => {
-        instructions.push(ActivityInstruction::Start)
-        index += 1
-      }
-      ActivityNode::Stop => {
-        instructions.push(ActivityInstruction::Stop)
-        index += 1
-      }
-      ActivityNode::End => {
-        instructions.push(ActivityInstruction::End)
-        index += 1
-      }
-      ActivityNode::Kill => {
-        instructions.push(ActivityInstruction::Kill)
-        index += 1
-      }
-      ActivityNode::Action(label) => {
-        instructions.push(ActivityInstruction::Action(label))
-        index += 1
-      }
-      ActivityNode::Note(label) => {
-        instructions.push(ActivityInstruction::Note(label))
-        index += 1
-      }
-      ActivityNode::Arrow(value) => {
-        instructions.push(ActivityInstruction::Edge(arrow_label(value)))
-        index += 1
-      }
-      ActivityNode::Swimlane(name) => {
-        instructions.push(ActivityInstruction::Swimlane(name))
-        index += 1
-      }
-      ActivityNode::Label(name) => {
-        instructions.push(ActivityInstruction::Label(name))
-        index += 1
-      }
-      ActivityNode::Goto(name) => {
-        instructions.push(ActivityInstruction::Goto(name))
-        index += 1
-      }
+      ActivityNode::Start => index = emit(instructions, ActivityInstruction::Start, index)
+      ActivityNode::Stop => index = emit(instructions, ActivityInstruction::Stop, index)
+      ActivityNode::End => index = emit(instructions, ActivityInstruction::End, index)
+      ActivityNode::Kill => index = emit(instructions, ActivityInstruction::Kill, index)
+      ActivityNode::Action(label) =>
+        index = emit(instructions, ActivityInstruction::Action(label), index)
+      ActivityNode::Note(label) =>
+        index = emit(instructions, ActivityInstruction::Note(label), index)
+      ActivityNode::Arrow(value) =>
+        index = emit(instructions, ActivityInstruction::Edge(arrow_label(value)), index)
+      ActivityNode::Swimlane(name) =>
+        index = emit(instructions, ActivityInstruction::Swimlane(name), index)
+      ActivityNode::Label(name) =>
+        index = emit(instructions, ActivityInstruction::Label(name), index)
+      ActivityNode::Goto(name) =>
+        index = emit(instructions, ActivityInstruction::Goto(name), index)
       _ => index += 1
     }
   }

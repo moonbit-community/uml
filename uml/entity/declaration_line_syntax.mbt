@@ -103,7 +103,7 @@ fn declaration_shaped_name_parser() -> @talc.StringParser[String] {
 
 ///|
 fn declaration_name_atom_parser() -> @talc.StringParser[DeclarationNameAtom] {
-  let quoted = quoted_value_parser().map(value => (value, true))
+  let quoted = @core.quoted_value_parser().map(value => (value, true))
   let shaped = declaration_shaped_name_parser().map(value => (value, false))
   let plain = @talc.many_chars1(
     @talc.satisfy("declaration name", char => {
@@ -159,7 +159,7 @@ fn declaration_name_syntax_parser() -> @talc.StringParser[DeclarationNameSyntax]
 
 ///|
 fn declaration_target_parser() -> @talc.StringParser[String] {
-  quoted_value_parser()
+  @core.quoted_value_parser()
   .attempt()
   .or(
     @talc.many_chars1(
@@ -227,7 +227,7 @@ fn declaration_line_style_parser() -> @talc.StringParser[
     .optional(),
   )
   .bind(style => {
-    @talc.many_chars(@talc.satisfy("line color", char => !char.is_whitespace())).map(color => {
+    @core.color_token_parser("line color").map(color => {
         let color = if color.length() == 0 { None } else { Some(color) }
         DeclarationLine(style~, color~)
       },
@@ -252,13 +252,7 @@ fn declaration_suffix_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
       ),
     )
     .map(value => DeclarationTag(value))
-  let color = @talc.char('#')
-    .then(
-      @talc.many_chars1(
-        @talc.satisfy("declaration color", char => !char.is_whitespace()),
-      ),
-    )
-    .map(value => DeclarationColor(value))
+  let color = @core.color_value_parser("declaration color").map(value => DeclarationColor(value))
   @talc.choice([
     extends.attempt(),
     implements.attempt(),

@@ -9,17 +9,15 @@ fn ParseCtx::consume_style_directive(
   }
   if line.trim().to_lower() == "skinparam {" {
     self.source.skip_line()
-    while !self.source.eof() {
-      let property = @core.strip_line_comment(self.source.collect_line())
-      if property.trim() == "}" {
-        return true
-      }
-      match @core.parse_style_property(property) {
-        Some(directive) => self.style.apply(directive)
-        None => ()
-      }
-    }
-    self.source.raise_parse_error("unclosed skinparam")
+    let closed = @core.consume_skinparam_body(
+      fn() {
+        guard !self.source.eof() else { return None }
+        Some(@core.strip_line_comment(self.source.collect_line()))
+      },
+      fn(directive) { self.style.apply(directive) },
+    )
+    guard closed else { self.source.raise_parse_error("unclosed skinparam") }
+    return true
   }
   match @core.parse_style_directive(line) {
     Some(directive) => {

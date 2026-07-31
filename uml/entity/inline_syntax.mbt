@@ -35,28 +35,3 @@ fn inline_keyword_parser(keyword : String) -> @talc.StringParser[Unit] {
     }
   })
 }
-
-///|
-fn quoted_value_parser() -> @talc.StringParser[String] {
-  @core.quoted_value_parser()
-}
-
-///|
-fn stereotype_value_parser() -> @talc.StringParser[String] {
-  @core.stereotype_value_parser()
-}
-
-///|
-fn url_value_parser() -> @talc.StringParser[String] {
-  @core.url_value_parser()
-}
-
-///|
-fn color_value_parser(label : String) -> @talc.StringParser[String] {
-  @core.color_value_parser(label)
-}
-
-///|
-fn tag_value_parser(label : String) -> @talc.StringParser[String] {
-  @core.tag_value_parser(label)
-}

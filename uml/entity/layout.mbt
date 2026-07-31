@@ -46,14 +46,6 @@ pub struct GraphvizLayout {
 } derive(Eq, Debug)
 
 ///|
-fn graphviz_rankdir(style : @core.DocumentStyle) -> @rankdir.RankDir {
-  match style.layout_direction {
-    Some(@core.LeftToRight) => @rankdir.LR
-    _ => @rankdir.TB
-  }
-}
-
-///|
 const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / 72.0
 
 ///|
@@ -65,11 +57,6 @@ const PLANTUML_RELATION_LABEL_FONT_SIZE : Int = 13
 ///|
 fn graphviz_node_name(index : Int) -> String {
   "n\{index}"
-}
-
-///|
-fn graphviz_note_name(index : Int) -> String {
-  "note\{index}"
 }
 
 ///|
@@ -90,22 +77,6 @@ fn graphviz_entity_index(diagram : EntityDiagram, node_name : String) -> Int? {
     }
   }
   None
-}
-
-///|
-fn graphviz_point_to_svg(
-  point : @geom.Point,
-  bbox : @geom.Rect,
-) -> (Double, Double) {
-  (point.x - bbox.llx, bbox.ury - point.y)
-}
-
-///|
-fn graphviz_path_to_svg(
-  spline : @geom.Spline,
-  bbox : @geom.Rect,
-) -> Array[(Double, Double)] {
-  spline.points.map(point => graphviz_point_to_svg(point, bbox))
 }
 
 ///|
@@ -178,12 +149,7 @@ fn EntityDiagram::graphviz_layout(
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="class", strict=false)
   graph.set_attr(
     "rankdir",
-    match graphviz_rankdir(self.style) {
-      @rankdir.LR => "LR"
-      @rankdir.TB => "TB"
-      @rankdir.BT => "BT"
-      @rankdir.RL => "RL"
-    },
+    @core.graphviz_rankdir_attr(@core.graphviz_rankdir(self.style)),
   )
   graph.set_attr("splines", "spline")
   graph.set_attr("remincross", "true")
@@ -290,7 +256,7 @@ fn EntityDiagram::graphviz_layout(
     if note.target_kind is LinkNote {
       continue
     }
-    let name = graphviz_note_name(note_index)
+    let name = @core.graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = note_size(note, text_metrics)
@@ -340,7 +306,7 @@ fn EntityDiagram::graphviz_layout(
     }
   }
   let laid_out = @dot_layout.layout_dot(graph, options={
-    rankdir: Some(graphviz_rankdir(self.style)),
+    rankdir: Some(@core.graphviz_rankdir(self.style)),
     nodesep: Some(PLANTUML_MIN_NODESEP_IN),
     ranksep: Some(PLANTUML_MIN_RANKSEP_IN),
     splines: Some(@dot_layout.SplinesMode::Spline),
@@ -348,7 +314,7 @@ fn EntityDiagram::graphviz_layout(
   let bbox = laid_out.bbox
   let nodes : Array[GraphvizNodeLayout] = []
   for node_layout in laid_out.nodes {
-    let (x, y) = graphviz_point_to_svg(node_layout.pos, bbox)
+    let (x, y) = @core.graphviz_point_to_svg(node_layout.pos, bbox)
     match graphviz_entity_index(self, node_layout.node.name()) {
       Some(entity_index) =>
         nodes.push({
@@ -364,32 +330,22 @@ fn EntityDiagram::graphviz_layout(
   let packages : Array[GraphvizPackageLayout] = []
   append_package_layouts(packages, laid_out, bbox, package_indices)
   let notes : Array[GraphvizNoteLayout] = []
-  for node_layout in laid_out.nodes {
-    guard note_names.get(node_layout.node.name()) is Some(note_index) else {
-      continue
-    }
-    let (graphviz_x, graphviz_y) = graphviz_point_to_svg(node_layout.pos, bbox)
+  for note in @core.graphviz_notes(laid_out, note_names, bbox, offset=false) {
     notes.push({
-      note_index,
-      x: graphviz_x,
-      y: graphviz_y,
-      width: node_layout.width_in * 72.0,
-      height: node_layout.height_in * 72.0,
+      note_index: note.note_index,
+      x: note.x,
+      y: note.y,
+      width: note.width,
+      height: note.height,
     })
   }
   let edges : Array[GraphvizEdgeLayout] = []
-  for edge_layout in laid_out.edges {
-    guard relation_names.get(edge_layout.edge.id()) is Some(index_text) else {
-      continue
-    }
-    let relation_index = @string.parse_int(index_text) catch { _ => continue }
-    let paths = edge_layout.splines.map(spline => {
-      graphviz_path_to_svg(spline, bbox)
+  for edge in @core.graphviz_edges(laid_out, relation_names, bbox) {
+    edges.push({
+      relation_index: edge.index,
+      paths: edge.paths,
+      label: edge.label,
     })
-    let label = edge_layout.label_pos.map(point => {
-      graphviz_point_to_svg(point, bbox)
-    })
-    edges.push({ relation_index, paths, label })
   }
   for note_index, note in self.notes {
     guard note.target_kind is LinkNote else { continue }

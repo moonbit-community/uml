@@ -88,8 +88,8 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
     .to_array()
   let nodes = []
   let stack = []
+  let style = @core.DocumentStyle::empty()
   let mut index = 0
-  let mut skinparam_depth = 0
   while index < lines.length() {
     let line_number = index + 1
     let line = @core.strip_line_comment(lines[index]).trim().to_owned()
@@ -104,21 +104,31 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
       continue
     }
     if lower == "skinparam {" {
-      skinparam_depth += 1
-      index += 1
-      continue
-    }
-    if skinparam_depth > 0 {
-      if line == "}" {
-        skinparam_depth -= 1
+      let closed = @core.consume_skinparam_body(
+        fn() {
+          guard index < lines.length() else { return None }
+          let line = lines[index]
+          index += 1
+          Some(@core.strip_line_comment(line).trim().to_owned())
+        },
+        fn(directive) { style.apply(directive) },
+      )
+      guard closed else {
+        raise SyntaxError(lines.length(), "unclosed skinparam")
       }
-      index += 1
       continue
     }
-    if @core.parse_style_directive(line) is Some(_) ||
-      lower.has_prefix("skinparam ") {
-      index += 1
-      continue
+    match @core.parse_style_directive(line) {
+      Some(directive) => {
+        style.apply(directive)
+        index += 1
+        continue
+      }
+      None =>
+        if lower.has_prefix("skinparam ") {
+          index += 1
+          continue
+        }
     }
     if lower.has_prefix("note ") && !line.contains(":") {
       let (text, end) = parse_note(lines, index)
@@ -199,14 +209,11 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
     }
     index += 1
   }
-  guard skinparam_depth == 0 else {
-    raise SyntaxError(lines.length(), "unclosed skinparam")
-  }
   guard stack.is_empty() else {
     raise SyntaxError(
       lines.length(),
       "unclosed \{block_name(stack.last().unwrap())}",
     )
   }
-  { nodes, instructions: reduce(nodes) }
+  { nodes, instructions: reduce(nodes), style }
 }

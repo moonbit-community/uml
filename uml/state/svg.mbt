@@ -1,44 +1,10 @@
 ///|
 fn state_fill(state : StateNode) -> String {
   match state.kind {
-    Initial | Final | History | DeepHistory | Synchronization => "#181818"
-    _ => @core.svg_color(state.color, "#F1F1F1")
+    Initial | Final | History | DeepHistory | Synchronization =>
+      @core.render_defaults().diagram_line
+    _ => @core.svg_color(state.color, @core.render_defaults().node_background)
   }
-}
-
-///|
-fn state_path_data(points : Array[(Double, Double)]) -> String {
-  guard points.length() > 0 else { return "" }
-  let output = StringBuilder()
-  output.write_string("M ")
-  output.write_string(points[0].0.to_string())
-  output.write_string(" ")
-  output.write_string(points[0].1.to_string())
-  if (points.length() - 1) % 3 == 0 {
-    let mut index = 1
-    while index < points.length() {
-      output.write_string(" C ")
-      for offset in 0..<3 {
-        let point = points[index + offset]
-        output.write_string(point.0.to_string())
-        output.write_string(" ")
-        output.write_string(point.1.to_string())
-        if offset < 2 {
-          output.write_string(" ")
-        }
-      }
-      index += 3
-    }
-  } else {
-    for index in 1..<points.length() {
-      let point = points[index]
-      output.write_string(" L ")
-      output.write_string(point.0.to_string())
-      output.write_string(" ")
-      output.write_string(point.1.to_string())
-    }
-  }
-  output.to_string()
 }
 
 ///|
@@ -49,20 +15,15 @@ fn append_state_label(
   y : Double,
   class_name : String,
 ) -> Unit {
-  let lines = text.split("\n").to_array()
-  output.open("text", attributes=[
-    ("x", x.to_string()),
-    ("y", (y - (lines.length() - 1).to_double() * 8.0).to_string()),
-    ("text-anchor", "middle"),
-    ("class", class_name),
-  ])
-  for index, line in lines {
-    output.text("tspan", line.to_owned(), attributes=[
-      ("x", x.to_string()),
-      ("dy", if index == 0 { "0" } else { "16" }),
-    ])
-  }
-  output.close()
+  output.raw(
+    @core.multiline_text_markup(
+      x,
+      y,
+      text,
+      [("text-anchor", "middle"), ("class", class_name)],
+      line_height=16.0,
+    ),
+  )
 }
 
 ///|
@@ -143,7 +104,7 @@ fn append_state_node(
       ("height", height.to_string()),
       ("rx", corner.to_string()),
       ("fill", "none"),
-      ("stroke", "#181818"),
+      ("stroke", diagram.style.diagram_line_color()),
       ("stroke-width", "0.5"),
     ])
     output.empty("line", attributes=[
@@ -300,15 +261,11 @@ fn append_state_edge(
     output.empty(
       "path",
       attributes=[
-        ("d", state_path_data(path)),
+        ("d", @core.spline_path_data(path)),
         ("class", "state-transition"),
         ("fill", "none"),
         ("marker-end", "url(#state-arrow)"),
-        ..match transition.line_style {
-          Some("dashed") | Some("dotted") => [("stroke-dasharray", "6 4")]
-          Some("bold") => [("stroke-width", "3")]
-          _ => []
-        },
+        ..@core.line_style_attributes(transition.line_style),
       ],
     )
   }
@@ -368,8 +325,8 @@ fn append_state_note(
     ("y", layout.y.to_string()),
     ("width", layout.width.to_string()),
     ("height", layout.height.to_string()),
-    ("fill", "#FEFFDD"),
-    ("stroke", "#181818"),
+    ("fill", @core.render_defaults().note_background),
+    ("stroke", @core.render_defaults().diagram_line),
   ])
   append_state_label(
     output,
@@ -396,17 +353,9 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
     ("aria-label", "State diagram"),
   ])
   output.open("defs")
-  output.open("marker", attributes=[
-    ("id", "state-arrow"),
-    ("viewBox", "0 0 10 10"),
-    ("refX", "9"),
-    ("refY", "5"),
-    ("markerWidth", "6"),
-    ("markerHeight", "6"),
-    ("orient", "auto-start-reverse"),
-  ])
-  output.empty("path", attributes=[("d", "M 0 0 L 10 5 L 0 10 z")])
-  output.close()
+  output.raw(
+    @core.arrow_marker_markup("state-arrow", marker_width=6.0, marker_height=6.0),
+  )
   output.close()
   output.open("style")
   output.raw(
@@ -418,13 +367,21 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
     @core.font_family(self.style) +
     ";font-size:" +
     @core.font_size(self.style) +
-    ";fill:#181818}.state-pseudostate-label{font-family:" +
+    ";fill:" +
+    self.style.diagram_text_color() +
+    "}.state-pseudostate-label{font-family:" +
     @core.font_family(self.style) +
-    ";font-size:12px;fill:#181818}.state-transition-label{font-family:" +
+    ";font-size:12px;fill:" +
+    self.style.diagram_text_color() +
+    "}.state-transition-label{font-family:" +
     @core.font_family(self.style) +
-    ";font-size:12px;fill:#181818}.state-note-label{font-family:" +
+    ";font-size:12px;fill:" +
+    self.style.diagram_text_color() +
+    "}.state-note-label{font-family:" +
     @core.font_family(self.style) +
-    ";font-size:12px;fill:#181818}",
+    ";font-size:12px;fill:" +
+    self.style.diagram_text_color() +
+    "}",
   )
   output.close()
   match layout {

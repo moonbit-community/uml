@@ -64,16 +64,21 @@ fn append_multiline_text(
   text : String,
   class? : String,
 ) -> Unit {
-  match class {
-    Some(class) => output <+ "<text class=\"\{class}\" x=\"\{x}\" y=\"\{y}\">"
-    None => output <+ "<text x=\"\{x}\" y=\"\{y}\">"
+  let attributes = match class {
+    Some(class) => [("class", class)]
+    None => []
   }
-  for index, line in text.split("\n") {
-    let dy = if index == 0 { 0 } else { 21 }
-    output <+
-      "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@core.xml_escape(line.to_owned())}</tspan>"
-  }
-  output.write_string("</text>\n")
+  output.write_string(
+    @core.multiline_text_markup(
+      x.to_double(),
+      y.to_double(),
+      text,
+      attributes,
+      line_height=21.0,
+      offset=false,
+    ),
+  )
+  output.write_string("\n")
 }
 
 ///|
@@ -357,23 +362,25 @@ fn render_labelled_svg(diagram : StructuredDiagram, label : String) -> String {
   output <+ "  role=\"img\" aria-label=\"\{label}\">\n"
   let font_size = structured_font_size()
   let key_font_weight = structured_key_font_weight()
+  let defaults = @core.render_defaults()
+  let line = defaults.diagram_line
   output.write_string("<style>\n")
   output <+
-    "svg { font-family: sans-serif; font-size: \{font_size}px; background: #fff }\n"
+    "svg { font-family: sans-serif; font-size: \{font_size}px; background: \{defaults.canvas_background} }\n"
   output.write_string(
     (
-      #|.structured-node rect { fill: #F1F1F1; stroke: #000; stroke-width: 1.5 }
-      #|.structured-node line { stroke: #000; stroke-width: 1 }
-      #|.structured-node text { fill: #000 }
+      $|.structured-node rect { fill: \{defaults.node_background}; stroke: \{line}; stroke-width: 1.5 }
+      $|.structured-node line { stroke: \{line}; stroke-width: 1 }
+      $|.structured-node text { fill: \{line} }
     ),
   )
   output.write_char('\n')
   output <+ ".structured-key { font-weight: \{key_font_weight} }\n"
   output.write_string(
     (
-      #|.structured-edge { fill: none; stroke: #000; stroke-width: 1; stroke-dasharray: 3,3 }
-      #|.structured-arrow, .structured-spot { fill: #000; stroke: #000; stroke-width: 1 }
-      #|</style>
+      $|.structured-edge { fill: none; stroke: \{line}; stroke-width: 1; stroke-dasharray: 3,3 }
+      $|.structured-arrow, .structured-spot { fill: \{line}; stroke: \{line}; stroke-width: 1 }
+      $|</style>
     ),
   )
   output.write_char('\n')

@@ -24,6 +24,7 @@ pub struct RenderDefaults {
   diagram_text : String
   node_background : String
   sequence_participant_background : String
+  partition_background : String
   note_background : String
   transparent : String
 } derive(Eq, Debug)
@@ -36,6 +37,7 @@ pub fn render_defaults() -> RenderDefaults {
     diagram_text: "#181818",
     node_background: "#F1F1F1",
     sequence_participant_background: "#FEFECE",
+    partition_background: "#F7F7F7",
     note_background: "#FEFFDD",
     transparent: "none",
   }
@@ -180,13 +182,35 @@ pub fn DocumentStyle::diagram_text_color(self : DocumentStyle) -> String {
 }
 
 ///|
+fn role_font_color(style : DocumentStyle, key : String) -> String {
+  svg_color(style.property(key), style.diagram_text_color())
+}
+
+///|
+fn role_font_size(
+  style : DocumentStyle,
+  key : String,
+  fallback~ : Int,
+) -> Int {
+  match style.property(key) {
+    Some(value) => parse_font_size(value, fallback~)
+    None => fallback
+  }
+}
+
+///|
+fn role_font_family(style : DocumentStyle, key : String) -> String {
+  style.property(key).unwrap_or(font_family(style))
+}
+
+///|
 pub fn DocumentStyle::usecase_font_color(self : DocumentStyle) -> String {
-  svg_color(self.property("UsecaseFontColor"), self.diagram_text_color())
+  role_font_color(self, "UsecaseFontColor")
 }
 
 ///|
 pub fn DocumentStyle::actor_font_color(self : DocumentStyle) -> String {
-  svg_color(self.property("ActorFontColor"), self.diagram_text_color())
+  role_font_color(self, "ActorFontColor")
 }
 
 ///|
@@ -194,10 +218,7 @@ pub fn DocumentStyle::usecase_font_size(
   self : DocumentStyle,
   fallback~ : Int,
 ) -> Int {
-  match self.property("UsecaseFontSize") {
-    Some(value) => parse_font_size(value, fallback~)
-    None => fallback
-  }
+  role_font_size(self, "UsecaseFontSize", fallback~)
 }
 
 ///|
@@ -205,25 +226,22 @@ pub fn DocumentStyle::actor_font_size(
   self : DocumentStyle,
   fallback~ : Int,
 ) -> Int {
-  match self.property("ActorFontSize") {
-    Some(value) => parse_font_size(value, fallback~)
-    None => fallback
-  }
+  role_font_size(self, "ActorFontSize", fallback~)
 }
 
 ///|
 pub fn DocumentStyle::usecase_font_family(self : DocumentStyle) -> String {
-  self.property("UsecaseFontName").unwrap_or(font_family(self))
+  role_font_family(self, "UsecaseFontName")
 }
 
 ///|
 pub fn DocumentStyle::actor_font_family(self : DocumentStyle) -> String {
-  self.property("ActorFontName").unwrap_or(font_family(self))
+  role_font_family(self, "ActorFontName")
 }
 
 ///|
 pub fn DocumentStyle::arrow_font_color(self : DocumentStyle) -> String {
-  svg_color(self.property("ArrowFontColor"), self.diagram_text_color())
+  role_font_color(self, "ArrowFontColor")
 }
 
 ///|
@@ -231,15 +249,12 @@ pub fn DocumentStyle::arrow_font_size(
   self : DocumentStyle,
   fallback~ : Int,
 ) -> Int {
-  match self.property("ArrowFontSize") {
-    Some(value) => parse_font_size(value, fallback~)
-    None => fallback
-  }
+  role_font_size(self, "ArrowFontSize", fallback~)
 }
 
 ///|
 pub fn DocumentStyle::arrow_font_family(self : DocumentStyle) -> String {
-  self.property("ArrowFontName").unwrap_or(font_family(self))
+  role_font_family(self, "ArrowFontName")
 }
 
 ///|
@@ -382,6 +397,33 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
 }
 
 ///|
+/// Consume the body of a `skinparam { ... }` block, applying each property
+/// directive. `next_line` yields the next stripped line or `None` at end of
+/// input. Returns whether the block was closed with `}`.
+pub fn consume_skinparam_body(
+  next_line : () -> String?,
+  apply : (StyleDirective) -> Unit,
+) -> Bool {
+  let mut closed = false
+  while !closed {
+    match next_line() {
+      None => return false
+      Some(line) => {
+        if line.trim() == "}" {
+          closed = true
+        } else {
+          match parse_style_property(line) {
+            Some(directive) => apply(directive)
+            None => ()
+          }
+        }
+      }
+    }
+  }
+  true
+}
+
+///|
 pub fn font_family(style : DocumentStyle) -> String {
   style.font_family.unwrap_or("Arial, sans-serif")
 }
@@ -396,8 +438,14 @@ pub fn font_size(style : DocumentStyle) -> String {
 }
 
 ///|
-pub fn font_size_value(style : DocumentStyle) -> Int {
-  parse_font_size(style.font_size.unwrap_or("13"), fallback=13)
+pub fn font_size_value(
+  style : DocumentStyle,
+  fallback~ : Int = 13,
+) -> Int {
+  match style.font_size {
+    Some(value) => parse_font_size(value, fallback=fallback)
+    None => fallback
+  }
 }
 
 ///|

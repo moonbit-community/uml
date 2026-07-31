@@ -72,7 +72,7 @@ fn note_name_parser(label : String) -> @talc.StringParser[String] {
       char != '{'
     }),
   )
-  quoted_value_parser().attempt().or(plain).map(@core.unquote_identifier)
+  @core.quoted_value_parser().attempt().or(plain).map(@core.unquote_identifier)
 }
 
 ///|
@@ -103,10 +103,10 @@ fn note_member_name_parser() -> @talc.StringParser[String] {
 ///|
 fn note_metadata_item_parser() -> @talc.StringParser[NoteMetadataItemSyntax] {
   @talc.choice([
-    url_value_parser().attempt().map(value => NoteUrl(value)),
-    stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
-    color_value_parser("note color").attempt().map(value => NoteColor(value)),
-    tag_value_parser("note tag").map(value => NoteTag(value)),
+    @core.url_value_parser().attempt().map(value => NoteUrl(value)),
+    @core.stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
+    @core.color_value_parser("note color").attempt().map(value => NoteColor(value)),
+    @core.tag_value_parser("note tag").map(value => NoteTag(value)),
   ])
 }
 
@@ -167,7 +167,7 @@ fn named_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
     .then(inline_space1())
     .then(note_name_parser("named note code"))
     .map(code => (code, NoteBlock))
-  let inline = quoted_value_parser().bind(text => {
+  let inline = @core.quoted_value_parser().bind(text => {
     inline_space1()
     .then(inline_keyword_parser("as"))
     .then(inline_space1())
@@ -291,7 +291,7 @@ fn link_constraint_line_parser() -> @talc.StringParser[
   .then(inline_keyword_parser("links"))
   .then(
     inline_space1()
-    .then(color_value_parser("constraint color"))
+    .then(@core.color_value_parser("constraint color"))
     .attempt()
     .optional(),
   )

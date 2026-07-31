@@ -37,45 +37,50 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 }
 
 ///|
+/// `(kind, source predicate)` pairs in dispatch priority order.
+let source_predicates : FixedArray[(@core.DiagramKind, (String) -> Bool)] = [
+  (Json, is_json_source),
+  (Yaml, is_yaml_source),
+  (Toml, is_toml_source),
+  (Mindmap, is_mindmap_source),
+  (Activity, is_activity_source),
+  (Sequence, is_sequence_source),
+  (State, is_state_source),
+  (UseCase, is_usecase_source),
+  (Component, is_component_source),
+  (Object, is_object_source),
+  (Class, is_class_source),
+]
+
+///|
+/// Detect the diagram family a source selects, in priority order.
+fn source_kind(source : String) -> @core.DiagramKind? {
+  source_predicates
+  .iter()
+  .find_first(pair => (pair.1)(source))
+  .map(pair => pair.0)
+}
+
+///|
 /// Parse a source into the diagram family its syntax selects.
 ///
 /// The `is_*_source` heuristics run in priority order, mirroring PlantUML's
 /// per-diagram factory selection. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
-  if is_json_source(source) {
-    return { diagram: Json(@nonuml.parse_json(source)) }
+  match source_kind(source) {
+    Some(Json) => { diagram: Json(@nonuml.parse_json(source)) }
+    Some(Yaml) => { diagram: Yaml(@nonuml.parse_yaml(source)) }
+    Some(Toml) => { diagram: Toml(@nonuml.parse_toml(source)) }
+    Some(Mindmap) => { diagram: Mindmap(@mindmap.parse(source)) }
+    Some(Activity) => { diagram: Activity(@activity.parse(source)) }
+    Some(Sequence) => { diagram: Sequence(@sequence.parse(source)) }
+    Some(State) => { diagram: State(@state.parse(source)) }
+    Some(UseCase) => { diagram: UseCase(@entity_usecase.parse(source)) }
+    Some(Component) => { diagram: Component(@entity_component.parse(source)) }
+    Some(Object) => { diagram: Object(@entity_class.parse(source)) }
+    Some(Class) => { diagram: Class(@entity_class.parse(source)) }
+    _ => fail("unknown diagram")
   }
-  if is_yaml_source(source) {
-    return { diagram: Yaml(@nonuml.parse_yaml(source)) }
-  }
-  if is_toml_source(source) {
-    return { diagram: Toml(@nonuml.parse_toml(source)) }
-  }
-  if is_mindmap_source(source) {
-    return { diagram: Mindmap(@mindmap.parse(source)) }
-  }
-  if is_activity_source(source) {
-    return { diagram: Activity(@activity.parse(source)) }
-  }
-  if is_sequence_source(source) {
-    return { diagram: Sequence(@sequence.parse(source)) }
-  }
-  if is_state_source(source) {
-    return { diagram: State(@state.parse(source)) }
-  }
-  if is_usecase_source(source) {
-    return { diagram: UseCase(@entity_usecase.parse(source)) }
-  }
-  if is_component_source(source) {
-    return { diagram: Component(@entity_component.parse(source)) }
-  }
-  if is_object_source(source) {
-    return { diagram: Object(@entity_class.parse(source)) }
-  }
-  if is_class_source(source) {
-    return { diagram: Class(@entity_class.parse(source)) }
-  }
-  fail("unknown diagram")
 }
 
 ///|
@@ -93,7 +98,7 @@ fn meaningful_source_lines(input : String) -> Array[String] {
 }
 
 ///|
-fn starts_with_keyword(line : String, keywords : Array[String]) -> Bool {
+fn starts_with_keyword(line : String, keywords : FixedArray[String]) -> Bool {
   let words = @core.syntax_words(line)
   words.length() > 0 && keywords.contains(words[0].to_lower())
 }
@@ -122,7 +127,7 @@ fn is_sequence_command(line : String) -> Bool {
 
 ///|
 fn is_ambiguous_participant_declaration(line : String) -> Bool {
-  starts_with_keyword(line, participant_shape_keywords())
+  starts_with_keyword(line, participant_shape_keywords)
 }
 
 ///|
@@ -133,12 +138,12 @@ fn has_message_arrow(line : String) -> Bool {
 
 ///|
 fn has_component_declaration(line : String) -> Bool {
-  starts_with_keyword(line, component_keywords())
+  starts_with_keyword(line, component_keywords)
 }
 
 ///|
 fn has_usecase_declaration(line : String) -> Bool {
-  if starts_with_keyword(line, usecase_keywords()) {
+  if starts_with_keyword(line, usecase_keywords) {
     return true
   }
   let trimmed = line.trim().to_owned()
@@ -150,14 +155,14 @@ fn has_usecase_declaration(line : String) -> Bool {
 ///|
 /// These arrow forms are sequence-message syntax, never class relations.
 fn has_sequence_only_message_arrow(line : String) -> Bool {
-  sequence_message_arrows().any(arrow => {
+  sequence_message_arrows.any(arrow => {
     @core.find_unquoted_literal(line, arrow) is Some(_)
   })
 }
 
 ///|
 fn is_class_declaration(line : String) -> Bool {
-  starts_with_keyword(line, class_keywords())
+  starts_with_keyword(line, class_keywords)
 }
 
 ///|
@@ -167,7 +172,7 @@ pub fn is_state_source(input : String) -> Bool {
     let lower = line.to_lower()
     if lower.has_prefix("state ") ||
       lower.has_prefix("frame ") ||
-      state_start_markers().contains(line) ||
+      state_start_markers.contains(line) ||
       line.has_prefix("[*] ") ||
       line.has_suffix(" [*]") {
       return true
@@ -178,7 +183,7 @@ pub fn is_state_source(input : String) -> Bool {
 
 ///|
 fn is_object_declaration(line : String) -> Bool {
-  starts_with_keyword(line, object_keywords())
+  starts_with_keyword(line, object_keywords)
 }
 
 ///|
@@ -269,7 +274,7 @@ pub fn is_class_source(input : String) -> Bool {
   for line in meaningful_source_lines(input) {
     let lower = line.to_lower()
     if is_class_declaration(line) ||
-      class_relation_arrows().any(arrow => {
+      class_relation_arrows.any(arrow => {
         @core.find_unquoted_literal(line, arrow) is Some(_)
       }) ||
       lower.has_prefix("allowmixing") ||
@@ -318,8 +323,8 @@ pub fn is_activity_source(input : String) -> Bool {
   .any(line => line.trim().equal_ignore_ascii_case("@startactivity")) ||
   lines.any(line => {
     let lower = line.to_lower()
-    activity_commands().contains(lower) ||
-    activity_command_prefixes().any(prefix => lower.has_prefix(prefix)) ||
+    activity_commands.contains(lower) ||
+    activity_command_prefixes.any(prefix => lower.has_prefix(prefix)) ||
     (line.has_prefix(":") && line.has_suffix(";"))
   })
 }
