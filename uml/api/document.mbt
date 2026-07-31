@@ -37,80 +37,45 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 }
 
 ///|
-pub fn parse_class(input : String) -> Document raise @core.ParseError {
-  { diagram: Class(@entity_class.parse(input)) }
-}
-
-///|
-pub fn parse_object(input : String) -> Document raise @core.ParseError {
-  { diagram: Object(@entity_class.parse(input)) }
-}
-
-///|
-pub fn parse_component(input : String) -> Document raise @core.ParseError {
-  { diagram: Component(@entity_component.parse(input)) }
-}
-
-///|
-pub fn parse_usecase(input : String) -> Document raise @core.ParseError {
-  { diagram: UseCase(@entity_usecase.parse(input)) }
-}
-
-///|
-pub fn parse_sequence(input : String) -> Document raise @core.ParseError {
-  { diagram: Sequence(@sequence.parse(input)) }
-}
-
-///|
-pub fn parse_state(input : String) -> Document raise @core.ParseError {
-  { diagram: State(@state.parse(input)) }
-}
-
-///|
-pub fn parse_mindmap(input : String) -> Document raise @core.ParseError {
-  { diagram: Mindmap(@mindmap.parse(input)) }
-}
-
-///|
-/// Parse PlantUML's modern activity-diagram command language.
-pub fn parse_activity(input : String) -> Document raise @core.ParseError {
-  { diagram: Activity(@activity.parse(input)) }
-}
-
-///|
-// pub fn parse(input : String) -> Document raise @core.ParseError {
-//   if is_activity_source(input) {
-//     parse_activity(input)
-//   } else if is_sequence_source(input) {
-//     { diagram: Sequence(@sequence.parse(input)) }
-//   } else if is_state_source(input) {
-//     parse_state(input)
-//   } else if is_usecase_source(input) {
-//     parse_usecase(input)
-//   } else if is_component_source(input) {
-//     parse_component(input)
-//   } else if is_object_source(input) {
-//     parse_object(input)
-//   } else if is_class_source(input) {
-//     parse_class(input)
-//   } else {
-//     { diagram: Sequence(@sequence.parse(input)) }
-//   }
-// }
-
-///|
-pub fn parse_json(input : String) -> Document raise @json.ParseError {
-  { diagram: Json(@nonuml.parse_json(input)) }
-}
-
-///|
-pub fn parse_yaml(input : String) -> Document raise @yaml.YamlError {
-  { diagram: Yaml(@nonuml.parse_yaml(input)) }
-}
-
-///|
-pub fn parse_toml(input : String) -> Document raise {
-  { diagram: Toml(@nonuml.parse_toml(input)) }
+/// Parse a source into the diagram family its syntax selects.
+///
+/// The `is_*_source` heuristics run in priority order, mirroring PlantUML's
+/// per-diagram factory selection. A source matching none of them fails.
+pub fn parse(source : String) -> Document raise {
+  if is_json_source(source) {
+    return { diagram: Json(@nonuml.parse_json(source)) }
+  }
+  if is_yaml_source(source) {
+    return { diagram: Yaml(@nonuml.parse_yaml(source)) }
+  }
+  if is_toml_source(source) {
+    return { diagram: Toml(@nonuml.parse_toml(source)) }
+  }
+  if is_mindmap_source(source) {
+    return { diagram: Mindmap(@mindmap.parse(source)) }
+  }
+  if is_activity_source(source) {
+    return { diagram: Activity(@activity.parse(source)) }
+  }
+  if is_sequence_source(source) {
+    return { diagram: Sequence(@sequence.parse(source)) }
+  }
+  if is_state_source(source) {
+    return { diagram: State(@state.parse(source)) }
+  }
+  if is_usecase_source(source) {
+    return { diagram: UseCase(@entity_usecase.parse(source)) }
+  }
+  if is_component_source(source) {
+    return { diagram: Component(@entity_component.parse(source)) }
+  }
+  if is_object_source(source) {
+    return { diagram: Object(@entity_class.parse(source)) }
+  }
+  if is_class_source(source) {
+    return { diagram: Class(@entity_class.parse(source)) }
+  }
+  fail("unknown diagram")
 }
 
 ///|
@@ -128,23 +93,18 @@ fn meaningful_source_lines(input : String) -> Array[String] {
 }
 
 ///|
+fn starts_with_keyword(line : String, keywords : Array[String]) -> Bool {
+  let words = @core.syntax_words(line)
+  words.length() > 0 && keywords.contains(words[0].to_lower())
+}
+
+///|
 fn is_sequence_command(line : String) -> Bool {
   let lower = line.to_lower()
   let words = @core.syntax_words(line)
   let grouping_keyword = match words {
     ["&", keyword, ..] | [keyword, ..] =>
-      match keyword.to_lower() {
-        "opt"
-        | "alt"
-        | "loop"
-        | "par"
-        | "par2"
-        | "break"
-        | "critical"
-        | "group"
-        | "partition" => true
-        _ => false
-      }
+      sequence_grouping_keywords.contains(keyword.to_lower())
     _ => false
   }
   lower == "autonewpage" ||
@@ -162,22 +122,7 @@ fn is_sequence_command(line : String) -> Bool {
 
 ///|
 fn is_ambiguous_participant_declaration(line : String) -> Bool {
-  let words = @core.syntax_words(line)
-  guard words.length() > 0 else { return false }
-  match words[0].to_lower() {
-    "actor"
-    | "boundary"
-    | "control"
-    | "entity"
-    | "database"
-    | "queue"
-    | "collections"
-    | "port"
-    | "portin"
-    | "portout"
-    | "participant" => true
-    _ => false
-  }
+  starts_with_keyword(line, participant_shape_keywords())
 }
 
 ///|
@@ -188,28 +133,13 @@ fn has_message_arrow(line : String) -> Bool {
 
 ///|
 fn has_component_declaration(line : String) -> Bool {
-  let words = @core.syntax_words(line)
-  guard words.length() > 0 else { return false }
-  match words[0].to_lower() {
-    "component"
-    | "boundary"
-    | "control"
-    | "port"
-    | "portin"
-    | "portout"
-    | "collections" => true
-    _ => false
-  }
+  starts_with_keyword(line, component_keywords())
 }
 
 ///|
 fn has_usecase_declaration(line : String) -> Bool {
-  let words = @core.syntax_words(line)
-  if words.length() > 0 {
-    match words[0].to_lower() {
-      "usecase" | "usecase/" => return true
-      _ => ()
-    }
+  if starts_with_keyword(line, usecase_keywords()) {
+    return true
   }
   let trimmed = line.trim().to_owned()
   (trimmed.has_prefix("(") && !trimmed.has_prefix("()")) ||
@@ -220,66 +150,14 @@ fn has_usecase_declaration(line : String) -> Bool {
 ///|
 /// These arrow forms are sequence-message syntax, never class relations.
 fn has_sequence_only_message_arrow(line : String) -> Bool {
-  for arrow in ["->>", "<<-", "\\->", "\\-->", "/->", "/-->"] {
-    if @core.find_unquoted_literal(line, arrow) is Some(_) {
-      return true
-    }
-  }
-  false
+  sequence_message_arrows().any(arrow => {
+    @core.find_unquoted_literal(line, arrow) is Some(_)
+  })
 }
 
 ///|
 fn is_class_declaration(line : String) -> Bool {
-  let words = @core.syntax_words(line)
-  guard words.length() > 0 else { return false }
-  match words[0].to_lower() {
-    "class"
-    | "interface"
-    | "enum"
-    | "annotation"
-    | "abstract"
-    | "object"
-    | "entity"
-    | "exception"
-    | "metaclass"
-    | "stereotype"
-    | "dataclass"
-    | "record"
-    | "map"
-    | "json"
-    | "component"
-    | "database"
-    | "queue"
-    | "actor"
-    | "usecase"
-    | "struct"
-    | "protocol"
-    | "state"
-    | "folder"
-    | "file"
-    | "node"
-    | "cloud"
-    | "person"
-    | "artifact"
-    | "boundary"
-    | "control"
-    | "port"
-    | "portin"
-    | "portout"
-    | "package"
-    | "namespace"
-    | "rectangle"
-    | "hexagon"
-    | "label"
-    | "frame"
-    | "action"
-    | "process"
-    | "stack"
-    | "storage"
-    | "agent"
-    | "collections" => true
-    _ => false
-  }
+  starts_with_keyword(line, class_keywords())
 }
 
 ///|
@@ -289,11 +167,9 @@ pub fn is_state_source(input : String) -> Bool {
     let lower = line.to_lower()
     if lower.has_prefix("state ") ||
       lower.has_prefix("frame ") ||
-      line == "[*]" ||
+      state_start_markers().contains(line) ||
       line.has_prefix("[*] ") ||
-      line.has_suffix(" [*]") ||
-      line == "[H]" ||
-      line == "[H*]" {
+      line.has_suffix(" [*]") {
       return true
     }
   }
@@ -302,20 +178,16 @@ pub fn is_state_source(input : String) -> Bool {
 
 ///|
 fn is_object_declaration(line : String) -> Bool {
-  let words = @core.syntax_words(line)
-  guard words.length() > 0 else { return false }
-  match words[0].to_lower() {
-    "object" | "map" | "json" => true
-    _ => false
-  }
+  starts_with_keyword(line, object_keywords())
 }
 
 ///|
 fn is_non_object_entity_declaration(line : String) -> Bool {
+  let lower = line.to_lower()
   is_class_declaration(line) &&
   !is_object_declaration(line) &&
-  !line.to_lower().has_prefix("package ") &&
-  !line.to_lower().has_prefix("namespace ")
+  !lower.has_prefix("package ") &&
+  !lower.has_prefix("namespace ")
 }
 
 ///|
@@ -395,16 +267,15 @@ pub fn is_class_source(input : String) -> Bool {
   guard !is_sequence_source(input) else { return false }
   guard !is_usecase_source(input) else { return false }
   for line in meaningful_source_lines(input) {
+    let lower = line.to_lower()
     if is_class_declaration(line) ||
-      @core.find_unquoted_literal(line, "--") is Some(_) ||
-      @core.find_unquoted_literal(line, "..") is Some(_) ||
-      @core.find_unquoted_literal(line, "<|") is Some(_) ||
-      @core.find_unquoted_literal(line, ".>") is Some(_) ||
-      @core.find_unquoted_literal(line, "<.") is Some(_) ||
-      line.to_lower().has_prefix("allowmixing") ||
-      line.to_lower().has_prefix("mix_") ||
-      line.to_lower().has_prefix("note on link") ||
-      line.to_lower().has_prefix("constraint on links") ||
+      class_relation_arrows().any(arrow => {
+        @core.find_unquoted_literal(line, arrow) is Some(_)
+      }) ||
+      lower.has_prefix("allowmixing") ||
+      lower.has_prefix("mix_") ||
+      lower.has_prefix("note on link") ||
+      lower.has_prefix("constraint on links") ||
       line.has_prefix("<>") {
       return true
     }
@@ -447,26 +318,8 @@ pub fn is_activity_source(input : String) -> Bool {
   .any(line => line.trim().equal_ignore_ascii_case("@startactivity")) ||
   lines.any(line => {
     let lower = line.to_lower()
-    lower == "start" ||
-    lower == "stop" ||
-    lower == "endif" ||
-    lower == "endwhile" ||
-    lower == "repeat" ||
-    lower.has_prefix("repeat while ") ||
-    lower == "fork" ||
-    lower == "fork again" ||
-    lower == "end fork" ||
-    lower == "endfork" ||
-    lower == "endswitch" ||
-    lower.has_prefix("if ") ||
-    lower.has_prefix("elseif ") ||
-    lower == "else" ||
-    lower.has_prefix("else ") ||
-    lower.has_prefix("while ") ||
-    lower.has_prefix("switch ") ||
-    lower.has_prefix("case ") ||
-    lower.has_prefix("goto ") ||
-    lower.has_prefix("label ") ||
+    activity_commands().contains(lower) ||
+    activity_command_prefixes().any(prefix => lower.has_prefix(prefix)) ||
     (line.has_prefix(":") && line.has_suffix(";"))
   })
 }

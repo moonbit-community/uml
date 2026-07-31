@@ -9,7 +9,5 @@ import {
   "kokic/uml/nonuml",
   "kokic/uml/sequence",
   "kokic/uml/state",
-  "moonbit-community/yaml",
-  "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

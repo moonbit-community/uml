@@ -14,8 +14,3 @@ pub fn Document::render_svg(self : Document) -> String {
     Toml(diagram) => diagram.render_toml_svg()
   }
 }
-
-// ///|
-// pub fn render_svg(input : String) -> String raise @core.ParseError {
-//   parse(input).render_svg()
-// }
