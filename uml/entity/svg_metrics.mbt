@@ -4,7 +4,7 @@ fn Entity::spot(self : Entity) -> (String, String) {
     AbstractClass => ("A", "#A9DCDF")
     Interface => ("I", "#B4A7E5")
     Enum => ("E", "#EB937F")
-    Annotation => ("@", "#B4A7E5")
+    Annotation => ("@", "#E3664A")
     _ => ("C", "#ADD1B2")
   }
 }
