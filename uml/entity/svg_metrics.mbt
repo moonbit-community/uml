@@ -22,14 +22,14 @@ fn Member::visibility_icon(self : Member, x : Int, baseline_y : Int) -> String {
   if self.visibility is Unknown {
     return ""
   }
-  let fill = if self.is_method { "#84BE84" } else { "none" }
-  let color = match self.visibility {
-    Public => "#038048"
-    Private => "#B20000"
-    Protected => "#A9A900"
-    Package => "#A06000"
-    Unknown => @style.render_defaults().diagram_text
+  let (color, method_fill) = match self.visibility {
+    Public => ("#038048", "#84BE84")
+    Private => ("#C82930", "#F24D5C")
+    Protected => ("#B38D22", "#FFFF44")
+    Package => ("#1963A0", "#4177AF")
+    Unknown => (@style.render_defaults().diagram_text, "#84BE84")
   }
+  let fill = if self.is_method { method_fill } else { "none" }
   let center_y = baseline_y - 4
   match self.visibility {
     Public =>
