@@ -53,6 +53,24 @@ test "component declarations take precedence over sequence participants" {
 }
 
 ///|
+test "participant shapes with component-like keywords stay sequence" {
+  let source = "@startuml\nboundary Gateway\ncontrol Controller\ncollections CollectionA\nGateway -> Controller : call\n@enduml"
+  @test.assert_eq(parse(source).kind() is Sequence, true)
+}
+
+///|
+test "sequence grouping with else branches stays sequence" {
+  let source = "@startuml\nAlice -> Bob\nalt success\nBob -> Carol\nelse error\nBob --> Alice\nend\n@enduml"
+  @test.assert_eq(parse(source).kind() is Sequence, true)
+}
+
+///|
+test "activity partition blocks stay activity" {
+  let source = "@startuml\nstart\npartition A {\n:work;\n}\nstop\n@enduml"
+  @test.assert_eq(parse(source).kind() is Activity, true)
+}
+
+///|
 test "usecase endpoint syntax takes precedence over actor messages" {
   let source = "@startuml\nactor Customer\nCustomer --> (Place order)\n@enduml"
   @test.assert_eq(parse(source).kind() is UseCase, true)

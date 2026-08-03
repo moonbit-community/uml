@@ -12,10 +12,12 @@ pub let participant_shape_keywords : FixedArray[String] = [
 ]
 
 ///|
-/// Keywords that select PlantUML's component grammar.
-pub let component_keywords : FixedArray[String] = [
-  "component", "boundary", "control", "port", "portin", "portout", "collections",
-]
+/// Keywords that unambiguously select PlantUML's component grammar.
+///
+/// `boundary`, `control`, `collections`, `port`, and friends are deliberately
+/// excluded: they are sequence-diagram participant shapes first, and PlantUML
+/// resolves such declarations as sequence participants even without messages.
+pub let component_keywords : FixedArray[String] = ["component"]
 
 ///|
 /// Keywords that select PlantUML's class-diagram grammar.

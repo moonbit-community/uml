@@ -38,13 +38,17 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 
 ///|
 /// `(kind, source predicate)` pairs in dispatch priority order.
+///
+/// The order mirrors PlantUML's factory selection: structured formats and the
+/// mindmap are explicit, then sequence (tried first upstream), activity, and
+/// the entity-based families.
 let source_predicates : FixedArray[(DiagramKind, (String) -> Bool)] = [
   (Json, is_json_source),
   (Yaml, is_yaml_source),
   (Toml, is_toml_source),
   (Mindmap, is_mindmap_source),
-  (Activity, is_activity_source),
   (Sequence, is_sequence_source),
+  (Activity, is_activity_source),
   (State, is_state_source),
   (UseCase, is_usecase_source),
   (Component, is_component_source),
@@ -117,7 +121,10 @@ fn is_sequence_command(line : String) -> Bool {
   let words = @parse.syntax_words(line)
   let grouping_keyword = match words {
     ["&", keyword, ..] | [keyword, ..] =>
-      sequence_grouping_keywords.contains(keyword.to_lower())
+      sequence_grouping_keywords.contains(keyword.to_lower()) &&
+      // An activity `partition Name {` opens a block; sequence partitions are
+      // single-line groups closed by `end`.
+      !(keyword.equal_ignore_ascii_case("partition") && line.contains(" {"))
     _ => false
   }
   lower == "autonewpage" ||
