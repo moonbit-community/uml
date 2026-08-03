@@ -323,8 +323,13 @@ fn append_entity(
     _ => ""
   }
   let (spot_text, spot_fill) = entity.spot()
+  let (circle_cx, title_x) = class_title_offsets(
+    entity.display,
+    entity.title_metrics(text_metrics),
+    width,
+  )
   output <+
-    $|<g class="class-node" data-code="\{@style.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + 15}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + 15}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + 29}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{@style.xml_escape(entity.display)}</text>
+    $|<g class="class-node" data-code="\{@style.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + circle_cx}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + title_x}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{@style.xml_escape(entity.display)}</text>
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {

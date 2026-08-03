@@ -94,12 +94,39 @@ fn Entity::header_layout(
   text_metrics : ClassTextMetrics,
 ) -> ClassHeaderLayout {
   // PlantUML places a 22px circled type icon beside every class title.
-  let title_metrics = match self.kind {
+  let title_metrics = self.title_metrics(text_metrics)
+  let width = @metrics.measure_text_with(self.display, title_metrics).width + 32
+  { width, height: text_metrics.header_height() }
+}
+
+///|
+fn Entity::title_metrics(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> @metrics.FontMetrics {
+  match self.kind {
     AbstractClass | Interface => text_metrics.italic
     _ => text_metrics.regular
   }
-  let width = @metrics.measure_text_with(self.display, title_metrics).width + 32
-  { width, height: text_metrics.header_height() }
+}
+
+///|
+/// Horizontal offsets (relative to the class rect) that center the group
+/// [spot circle 22px + gap + title] within `rect_width`, following the
+/// PlantUML HeaderLayout split of the surplus space.
+fn class_title_offsets(
+  display : String,
+  title_metrics : @metrics.FontMetrics,
+  rect_width : Int,
+) -> (Int, Int) {
+  let circle_dim = 26.0
+  let title_width = @metrics.measure_text_with(display, title_metrics).width
+  let surplus = (rect_width.to_double() - circle_dim - title_width.to_double()).max(0.0)
+  let h2 = (circle_dim / 4.0).min(surplus * 0.1)
+  let h1 = (surplus - h2) / 2.0
+  let circle_cx = h1 + 11.0
+  let title_x = h1 + circle_dim + h2
+  (circle_cx.round().to_int(), title_x.round().to_int())
 }
 
 ///|
