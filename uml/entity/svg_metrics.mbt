@@ -157,6 +157,7 @@ priv enum ActorAppearance {
 }
 
 ///|
+#warnings("-unused_value")
 priv enum NodeShape {
   Box
   Ellipse

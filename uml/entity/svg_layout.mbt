@@ -82,6 +82,7 @@ fn ContentBounds::point(
 }
 
 ///|
+#warnings("-unused_value")
 fn ContentBounds::rect(
   self : ContentBounds,
   x : Double,
@@ -93,6 +94,7 @@ fn ContentBounds::rect(
 }
 
 ///|
+#warnings("-unused_value")
 fn ContentBounds::text(
   self : ContentBounds,
   x : Double,
@@ -150,12 +152,12 @@ fn ClassLayout::content_bounds(
           }
         }
       }
-      for package in graphviz.packages {
-        guard package.package_index < diagram.packages.length() else {
+      for p in graphviz.packages {
+        guard p.package_index < diagram.packages.length() else {
           continue
         }
-        bounds = include_point(bounds, package.x, package.y)
-        bounds = include_point(bounds, package.x + package.width, package.y + package.height)
+        bounds = include_point(bounds, p.x, p.y)
+        bounds = include_point(bounds, p.x + p.width, p.y + p.height)
       }
       for note in graphviz.notes {
         guard note.note_index < diagram.notes.length() else { continue }
