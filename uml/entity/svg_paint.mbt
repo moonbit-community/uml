@@ -223,30 +223,70 @@ fn append_relation(
       None => ()
     }
   }
+  let (label_x1, label_y1, label_x2, label_y2) = relation_label_anchors(
+    layout,
+    relation_index,
+    x1,
+    y1,
+    x2,
+    y2,
+  )
   match relation.left_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{x1 - 8}" y="\{y1 - 6}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x1 - 8}" y="\{label_y1 - 6}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{x2 + 8}" y="\{y2 - 6}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x2 + 8}" y="\{label_y2 - 6}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.left_role {
     Some(text) =>
       output <+
-        $|<text x="\{x1 - 8}" y="\{y1 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x1 - 8}" y="\{label_y1 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_role {
     Some(text) =>
       output <+
-        $|<text x="\{x2 + 8}" y="\{y2 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x2 + 8}" y="\{label_y2 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
+}
+
+///|
+/// Endpoints used to anchor cardinality/role labels. With a graphviz layout
+/// the edge's first and last spline points sit on the entity border; the
+/// fallback is the center-based endpoints from `relation_endpoints`.
+fn relation_label_anchors(
+  layout : ClassLayout,
+  relation_index : Int,
+  x1 : Int,
+  y1 : Int,
+  x2 : Int,
+  y2 : Int,
+) -> (Int, Int, Int, Int) {
+  match layout.graphviz {
+    Some(graphviz) =>
+      for edge in graphviz.edges {
+        if edge.index == relation_index && edge.paths.length() > 0 {
+          let first_path = edge.paths[0]
+          let last_path = edge.paths[edge.paths.length() - 1]
+          guard first_path.length() > 0 && last_path.length() > 0 else {
+            continue
+          }
+          let (start_x, start_y) = first_path[0]
+          let (end_x, end_y) = last_path[last_path.length() - 1]
+          return (start_x.round().to_int(), start_y.round().to_int(),
+            end_x.round().to_int(), end_y.round().to_int())
+        }
+      }
+    None => ()
+  }
+  (x1, y1, x2, y2)
 }
 
 ///|
