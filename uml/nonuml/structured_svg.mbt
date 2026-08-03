@@ -363,7 +363,7 @@ fn render_labelled_svg(diagram : StructuredDiagram, label : String) -> String {
   let font_size = structured_font_size()
   let key_font_weight = structured_key_font_weight()
   let defaults = @style.render_defaults()
-  let line = defaults.diagram_line
+  let line = "#000000"
   output.write_string("<style>\n")
   output <+
     "svg { font-family: sans-serif; font-size: \{font_size}px; background: \{defaults.canvas_background} }\n"

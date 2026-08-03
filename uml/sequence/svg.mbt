@@ -31,7 +31,7 @@ fn append_svg_preamble(
     $|.participant-box-group{fill-opacity:.16;stroke:\{line_color};stroke-width:1.1}
     $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:\{text_color}}
     $|.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}
-    $|.activation{fill:\{@style.render_defaults().sequence_participant_background}}
+    $|.activation{fill:\{@style.render_defaults().sequence_activation_background}}
     $|.message,.cross,.destroy{fill:none;stroke:\{line_color};stroke-width:1.3}
     $|.message.dotted{stroke-dasharray:5 4}
     $|.arrow-fill{fill:\{line_color}}

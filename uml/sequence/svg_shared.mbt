@@ -7,6 +7,14 @@ fn svg_color(color : String?) -> String {
 }
 
 ///|
+fn activation_color(color : String?) -> String {
+  @style.svg_color(
+    color,
+    @style.render_defaults().sequence_activation_background,
+  )
+}
+
+///|
 fn note_color(color : String?) -> String {
   @style.svg_color(color, @style.render_defaults().note_background)
 }

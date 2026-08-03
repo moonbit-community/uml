@@ -855,7 +855,7 @@ test "sequence layout and SVG receive document font roles" {
   @test.assert_eq(svg.contains(".participant-label{font-size:16px"), true)
   @test.assert_eq(
     svg.contains(
-      ".message-label,.reference-label,.delay-label{fill:#181818;font-size:15px",
+      ".message-label,.reference-label,.delay-label{fill:#000000;font-size:15px",
     ),
     true,
   )

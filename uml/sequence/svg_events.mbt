@@ -169,7 +169,7 @@ fn append_activations(output : StringBuilder, layout : DiagramLayout) -> Unit {
     let x = participant.center_x - width / 2 + activation.depth * 8
     let height = (activation.end_y - activation.start_y).max(12)
     output <+
-      $|<rect x="\{x}" y="\{activation.start_y}" width="\{width}" height="\{height}" class="activation" fill="\{svg_color(activation.color)}"/>
+      $|<rect x="\{x}" y="\{activation.start_y}" width="\{width}" height="\{height}" class="activation" fill="\{activation_color(activation.color)}"/>
   }
 }
 

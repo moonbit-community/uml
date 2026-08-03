@@ -263,7 +263,7 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
     ";stroke-width:1.5}.activity-swimlane{stroke-dasharray:4 3}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
     line +
     "}.activity-stop-outer,.activity-action,.activity-decision{fill:" +
-    defaults.sequence_participant_background +
+    defaults.node_background +
     ";stroke:" +
     line +
     ";stroke-width:1.5}.activity-note{fill:" +

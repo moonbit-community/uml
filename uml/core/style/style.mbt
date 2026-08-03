@@ -24,6 +24,7 @@ pub struct RenderDefaults {
   diagram_text : String
   node_background : String
   sequence_participant_background : String
+  sequence_activation_background : String
   partition_background : String
   note_background : String
   transparent : String
@@ -34,10 +35,11 @@ pub fn render_defaults() -> RenderDefaults {
   {
     canvas_background: "#FFFFFF",
     diagram_line: "#181818",
-    diagram_text: "#181818",
+    diagram_text: "#000000",
     node_background: "#F1F1F1",
-    sequence_participant_background: "#FEFECE",
-    partition_background: "#F7F7F7",
+    sequence_participant_background: "#E2E2F0",
+    sequence_activation_background: "#FFFFFF",
+    partition_background: "none",
     note_background: "#FEFFDD",
     transparent: "none",
   }

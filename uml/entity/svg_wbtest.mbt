@@ -146,7 +146,7 @@ test "use-case packages render PlantUML-style bold titles" {
     family=UseCaseDiagram,
   ).render_svg()
   @test.assert_eq(
-    svg.contains(".package-title{fill:#181818;font-weight:bold}"),
+    svg.contains(".package-title{fill:#000000;font-weight:bold}"),
     true,
   )
 }
@@ -210,7 +210,7 @@ test "use-case notes use their measured PlantUML font size" {
     "@startuml\nusecase Review\nnote right of Review\n  Review details\nend note\n@enduml",
     family=UseCaseDiagram,
   ).render_svg()
-  @test.assert_eq(svg.contains(".note-text{fill:#181818;font-size:13px}"), true)
+  @test.assert_eq(svg.contains(".note-text{fill:#000000;font-size:13px}"), true)
 }
 
 ///|
