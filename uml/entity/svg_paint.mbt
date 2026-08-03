@@ -297,7 +297,7 @@ fn append_entity(
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + 20}" y="\{member_y}" class="member">\{@style.xml_escape(entry.display_without_visibility())}</text>
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@style.xml_escape(entry.display_without_visibility())}</text>
     }
     section_y += section_height
   }

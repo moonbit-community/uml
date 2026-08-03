@@ -13,3 +13,4 @@ one with `moon run . examples/class/<fixture>.uml`.
 | `05-notes-and-metadata` | Stereotypes, URLs, colors, entity notes, and link notes |
 | `06-visibility-and-style` | Member filtering, layout direction, skin parameters, and targetless notes |
 | `07-association-class` | Association-class endpoint pairs and labelled association links |
+| `08-banking-domain` | A rich multi-class domain: 9 classes/enums/interfaces, 48 members, visibility, and 6 cardinality links |

@@ -56,8 +56,13 @@ fn EntityDiagram::render_svg_with_mode(
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)
+
+  // Note: must be $| (interpolated), not #| (raw) -- \{line_color} is a
+  // placeholder that expands to the diagram line color. A raw string emits
+  // it verbatim, breaking the stroke so hollow arrowheads become invisible.
   let style_markers =
-    #|<style>marker path,marker circle,marker rect{stroke:\{line_color};stroke-width:1}</style>
+    $|<style>marker path,marker circle,marker rect{stroke:\{line_color};stroke-width:1}</style>
+  
   output.write_string(style_markers)
   let style_note =
     $|<style>.package path,.package line{stroke:\{line_color};stroke-width:1.2}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:1.2}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>

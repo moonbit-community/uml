@@ -18,6 +18,14 @@ fn Member::display_without_visibility(self : Member) -> String {
 }
 
 ///|
+/// Horizontal offset of the member text from the class rect's left edge.
+/// PlantUML starts unadorned members (e.g. enum values) at x+5 with no
+/// placeholder, while visibility-prefixed members reserve x+20 for the icon.
+fn Member::member_text_x(self : Member) -> Int {
+  if self.visibility is Unknown { 5 } else { 20 }
+}
+
+///|
 fn Member::visibility_icon(self : Member, x : Int, baseline_y : Int) -> String {
   if self.visibility is Unknown {
     return ""
