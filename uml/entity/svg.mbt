@@ -143,6 +143,8 @@ priv struct ClassTextMetrics {
   actor_italic : @metrics.FontMetrics
   usecase_font_family : String
   actor_font_family : String
+  relation_label_regular : @metrics.FontMetrics
+  arrow_regular : @metrics.FontMetrics
   note : @metrics.FontMetrics
   actor_style : String
 }
@@ -237,7 +239,16 @@ const NOTE_RIGHT_PADDING : Int = 15
 const NOTE_VERTICAL_PADDING : Int = 5
 
 ///|
-const SVG_CANVAS_MARGIN : Int = 10
+/// PlantUML SvekResult canvas margins: the drawn content is shifted so its
+/// top-left corner sits at (6, 6) and the canvas extends 15px beyond the
+/// content's bottom-right corner.
+const SVG_MARGIN_LEFT : Int = 6
+const SVG_MARGIN_TOP : Int = 6
+const SVG_MARGIN_RIGHT : Int = 15
+const SVG_MARGIN_BOTTOM : Int = 15
+
+///|
+const RELATION_LABEL_FONT_SIZE : Int = 12
 
 ///|
 fn ClassTextMetrics::new(style : @core.DocumentStyle) -> ClassTextMetrics {
@@ -273,6 +284,13 @@ fn ClassTextMetrics::new(style : @core.DocumentStyle) -> ClassTextMetrics {
     ),
     usecase_font_family,
     actor_font_family,
+    relation_label_regular: style.font_metrics(
+      font_size=RELATION_LABEL_FONT_SIZE,
+    ),
+    arrow_regular: style.font_metrics_for(
+      style.arrow_font_family(),
+      font_size=style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE),
+    ),
     note: style.font_metrics(font_size=NOTE_FONT_SIZE),
     actor_style: style.actor_style(),
   }
@@ -541,8 +559,6 @@ priv struct ClassLayout {
   columns : Int
   cell_width : Int
   cell_height : Int
-  width : Int
-  height : Int
   graphviz : GraphvizLayout?
 }
 
@@ -553,7 +569,6 @@ fn EntityDiagram::layout(
   usecase? : Bool = false,
 ) -> ClassLayout {
   let columns = self.entities.length().min(3).max(1)
-  let rows = (self.entities.length() + columns - 1) / columns
   let mut cell_width = 220
   let mut cell_height = 180
   for entity in self.entities {
@@ -565,8 +580,6 @@ fn EntityDiagram::layout(
     columns,
     cell_width,
     cell_height,
-    width: columns * cell_width + 24,
-    height: rows * cell_height + 24,
     graphviz: None,
   }
 }
@@ -600,31 +613,214 @@ fn ClassLayout::entity_rect(
 }
 
 ///|
-fn ClassLayout::output_width(self : ClassLayout) -> Int {
-  match self.graphviz {
-    Some(layout) => {
-      let mut width = layout.width.ceil().to_int().max(1)
-      for note in layout.notes {
-        width = width.max((note.x + note.width / 2.0).ceil().to_int())
-      }
-      width
-    }
-    None => self.width
+/// Extent of everything the renderer draws, used to size the SVG canvas like
+/// PlantUML's SvekResult minMax: content is placed at (6, 6) and the canvas
+/// extends 15px beyond the content's bottom-right corner.
+priv struct ContentBounds {
+  min_x : Double
+  min_y : Double
+  max_x : Double
+  max_y : Double
+}
+
+///|
+fn ContentBounds::point(
+  self : ContentBounds,
+  x : Double,
+  y : Double,
+) -> ContentBounds {
+  {
+    min_x: self.min_x.min(x),
+    min_y: self.min_y.min(y),
+    max_x: self.max_x.max(x),
+    max_y: self.max_y.max(y),
   }
 }
 
 ///|
-fn ClassLayout::output_height(self : ClassLayout) -> Int {
-  match self.graphviz {
-    Some(layout) => {
-      let mut height = layout.height.ceil().to_int().max(1)
-      for note in layout.notes {
-        height = height.max((note.y + note.height / 2.0).ceil().to_int())
-      }
-      height
+fn ClassLayout::content_bounds(
+  self : ClassLayout,
+  diagram : EntityDiagram,
+  text_metrics : ClassTextMetrics,
+  usecase~ : Bool,
+) -> ContentBounds {
+  let mut bounds : ContentBounds? = None
+  let include_point = (bounds : ContentBounds?, x : Double, y : Double) => {
+    match bounds {
+      None => Some({ min_x: x, min_y: y, max_x: x, max_y: y })
+      Some(current) =>
+        Some(
+          current.point(x, y),
+        )
     }
-    None => self.height
   }
+  for index, entity in diagram.entities {
+    guard !entity.is_hidden && !entity.is_removed else { continue }
+    let (x, y, w, h) = self.entity_rect(diagram, index, text_metrics, usecase~)
+    let (x, y, w, h) = (
+      x.to_double(),
+      y.to_double(),
+      w.to_double(),
+      h.to_double(),
+    )
+    bounds = include_point(bounds, x, y)
+    bounds = include_point(bounds, x + w, y + h)
+  }
+  match self.graphviz {
+    Some(graphviz) => {
+      for edge in graphviz.edges {
+        for path in edge.paths {
+          for point in path {
+            bounds = include_point(bounds, point.0, point.1)
+          }
+        }
+      }
+      for group in graphviz.packages {
+        guard group.package_index < diagram.packages.length() else {
+          continue
+        }
+        bounds = include_point(bounds, group.x, group.y)
+        bounds = include_point(bounds, group.x + group.width, group.y + group.height)
+      }
+      for note in graphviz.notes {
+        guard note.note_index < diagram.notes.length() else { continue }
+        bounds = include_point(bounds, note.x - note.width / 2.0, note.y - note.height / 2.0)
+        bounds = include_point(bounds, note.x + note.width / 2.0, note.y + note.height / 2.0)
+      }
+    }
+    None => ()
+  }
+  for relation_index, relation in diagram.relations {
+    guard entity_index(diagram, relation.left) is Some(left_index) else {
+      continue
+    }
+    guard entity_index(diagram, relation.right) is Some(right_index) else {
+      continue
+    }
+    let left = diagram.entities[left_index]
+    let right = diagram.entities[right_index]
+    guard !left.is_removed && !right.is_removed else { continue }
+    let ((x1, y1), (x2, y2)) = relation_endpoints(
+      self,
+      diagram,
+      left_index,
+      right_index,
+      text_metrics,
+      usecase~,
+    )
+    match relation.label {
+      Some(label) => {
+        let display = if usecase {
+          @core.display_stereotype(label)
+        } else {
+          label
+        }
+        let measured = @metrics.measure_text_with(
+          display,
+          if usecase {
+            text_metrics.arrow_regular
+          } else {
+            text_metrics.relation_label_regular
+          },
+        )
+        let (px, py) = relation_label_position(
+          self,
+          relation_index,
+          ((x1 + x2) / 2, (y1 + y2) / 2),
+        )
+        bounds = include_point(
+          bounds,
+          px - measured.width.to_double() / 2.0,
+          py - 5.0 - measured.ascent.to_double(),
+        )
+        bounds = include_point(
+          bounds,
+          px + measured.width.to_double() / 2.0,
+          py - 5.0 + measured.descent.to_double(),
+        )
+      }
+      None => ()
+    }
+    for entry in [
+      ((x1 - 8, y1 - 6), relation.left_cardinality),
+      ((x2 + 8, y2 - 6), relation.right_cardinality),
+      ((x1 - 8, y1 + 13), relation.left_role),
+      ((x2 + 8, y2 + 13), relation.right_role),
+    ] {
+      let position = entry.0
+      let text = entry.1
+      match text {
+        Some(value) => {
+          let measured = @metrics.measure_text_with(value, text_metrics.regular)
+          bounds = include_point(
+            bounds,
+            position.0.to_double(),
+            position.1.to_double() - measured.ascent.to_double(),
+          )
+          bounds = include_point(
+            bounds,
+            (position.0 + measured.width).to_double(),
+            position.1.to_double() + measured.descent.to_double(),
+          )
+        }
+        None => ()
+      }
+    }
+  }
+  match bounds {
+    Some(bounds) => bounds
+    None => { min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 }
+  }
+}
+
+///|
+fn relation_endpoints(
+  layout : ClassLayout,
+  diagram : EntityDiagram,
+  left_index : Int,
+  right_index : Int,
+  text_metrics : ClassTextMetrics,
+  usecase~ : Bool,
+) -> ((Int, Int), (Int, Int)) {
+  let (left_x, left_y, left_width, left_height) = layout.entity_rect(
+    diagram,
+    left_index,
+    text_metrics,
+    usecase~,
+  )
+  let (right_x, right_y, right_width, right_height) = layout.entity_rect(
+    diagram,
+    right_index,
+    text_metrics,
+    usecase~,
+  )
+  let left_center = (left_x + left_width / 2, left_y + left_height / 2)
+  let right_center = (right_x + right_width / 2, right_y + right_height / 2)
+  let (x1, y1) = if usecase {
+    usecase_relation_endpoint(
+      left_x,
+      left_y,
+      left_width,
+      left_height,
+      right_center.0,
+      right_center.1,
+    )
+  } else {
+    left_center
+  }
+  let (x2, y2) = if usecase {
+    usecase_relation_endpoint(
+      right_x,
+      right_y,
+      right_width,
+      right_height,
+      left_center.0,
+      left_center.1,
+    )
+  } else {
+    right_center
+  }
+  ((x1, y1), (x2, y2))
 }
 
 ///|
@@ -635,6 +831,11 @@ fn entity_index(diagram : EntityDiagram, code : String) -> Int? {
     }
   }
   None
+}
+
+///|
+fn ClassLayout::node_x(self : ClassLayout, index : Int) -> Int {
+  24 + index % self.columns * self.cell_width
 }
 
 ///|
@@ -663,13 +864,15 @@ fn usecase_relation_endpoint(
 }
 
 ///|
-fn usecase_spline_endpoint(
+/// Clip the path endpoint onto the entity's boundary: the intersection of the
+/// center-to-`toward` ray with the node shape (ellipse for use-cases, box for
+/// every other entity).
+fn relation_spline_endpoint(
   entity : Entity,
   x : Int,
   y : Int,
   width : Int,
   height : Int,
-  current : (Double, Double),
   toward : (Double, Double),
 ) -> (Double, Double) {
   let center_x = x.to_double() + width.to_double() / 2.0
@@ -685,7 +888,7 @@ fn usecase_spline_endpoint(
         (dx * dx / (radius_x * radius_x) + dy * dy / (radius_y * radius_y)).sqrt()
       (center_x + dx * scale, center_y + dy * scale)
     }
-    Component => {
+    _ => {
       let scale_x = width.to_double() / 2.0 / dx.abs()
       let scale_y = height.to_double() / 2.0 / dy.abs()
       let scale = if dx == 0.0 {
@@ -697,17 +900,60 @@ fn usecase_spline_endpoint(
       }
       (center_x + dx * scale, center_y + dy * scale)
     }
-    _ => current
   }
 }
 
 ///|
-fn clip_usecase_spline(
+fn unit_direction(
+  from : (Double, Double),
+  to : (Double, Double),
+) -> (Double, Double) {
+  let dx = to.0 - from.0
+  let dy = to.1 - from.1
+  let length = (dx * dx + dy * dy).sqrt()
+  if length < 0.0001 {
+    (0.0, 0.0)
+  } else {
+    (dx / length, dy / length)
+  }
+}
+
+///|
+/// How far a marker pokes past the path endpoint in its pointing direction:
+/// (viewBox_width - refX) / viewBox_width * markerWidth, per the marker
+/// definitions emitted in render_svg_with_mode.
+fn marker_overhang(marker : String) -> Double {
+  match marker {
+    "arrow" => 0.7
+    "triangle" => 0.9
+    "diamond" | "diamond-open" => 9.166666666666666
+    "bar" => 3.0
+    "circle" | "circle-filled" | "square" | "plus" => 3.5
+    "crowfoot" => 7.5
+    _ => 0.0
+  }
+}
+
+///|
+fn marker_overhang_of(end : RelationEnd) -> Double {
+  match relation_marker(end) {
+    Some(marker) => marker_overhang(marker)
+    None => 0.0
+  }
+}
+
+///|
+/// Clip a relation spline so it starts and ends on the two entity borders,
+/// then extend the endpoints past the border by each marker's overhang so the
+/// arrowheads land in the gap between the entities (PlantUML placement).
+fn clip_relation_spline(
   path : Array[(Double, Double)],
   left : Entity,
   left_rect : (Int, Int, Int, Int),
   right : Entity,
   right_rect : (Int, Int, Int, Int),
+  left_overhang : Double,
+  right_overhang : Double,
 ) -> Array[(Double, Double)] {
   guard path.length() > 1 else { return path }
   let clipped : Array[(Double, Double)] = []
@@ -718,35 +964,41 @@ fn clip_usecase_spline(
   let (right_x, right_y, right_width, right_height) = right_rect
   let original_start = clipped[0]
   let original_end = clipped[clipped.length() - 1]
-  let clipped_start = usecase_spline_endpoint(
+  let start_ray = unit_direction(clipped[0], clipped[1])
+  let clipped_start = relation_spline_endpoint(
     left,
     left_x,
     left_y,
     left_width,
     left_height,
-    clipped[0],
     clipped[1],
   )
-  clipped[0] = clipped_start
+  clipped[0] = (
+    clipped_start.0 + start_ray.0 * left_overhang,
+    clipped_start.1 + start_ray.1 * left_overhang,
+  )
   let last = clipped.length() - 1
-  let clipped_end = usecase_spline_endpoint(
+  let end_ray = unit_direction(clipped[last], clipped[last - 1])
+  let clipped_end = relation_spline_endpoint(
     right,
     right_x,
     right_y,
     right_width,
     right_height,
-    clipped[last],
     clipped[last - 1],
   )
-  clipped[last] = clipped_end
+  clipped[last] = (
+    clipped_end.0 + end_ray.0 * right_overhang,
+    clipped_end.1 + end_ray.1 * right_overhang,
+  )
   if (clipped.length() - 1) % 3 == 0 {
     clipped[1] = (
-      clipped_start.0 + clipped[1].0 - original_start.0,
-      clipped_start.1 + clipped[1].1 - original_start.1,
+      clipped[0].0 + clipped[1].0 - original_start.0,
+      clipped[0].1 + clipped[1].1 - original_start.1,
     )
     clipped[last - 1] = (
-      clipped_end.0 - (original_end.0 - clipped[last - 1].0),
-      clipped_end.1 - (original_end.1 - clipped[last - 1].1),
+      clipped[last].0 - (original_end.0 - clipped[last - 1].0),
+      clipped[last].1 - (original_end.1 - clipped[last - 1].1),
     )
   }
   clipped
@@ -891,11 +1143,6 @@ fn append_notes(
 }
 
 ///|
-fn ClassLayout::node_x(self : ClassLayout, index : Int) -> Int {
-  24 + index % self.columns * self.cell_width
-}
-
-///|
 fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
   24 + index / self.columns * self.cell_height
 }
@@ -917,44 +1164,14 @@ fn append_relation(
   let left = diagram.entities[left_index]
   let right = diagram.entities[right_index]
   guard !left.is_removed && !right.is_removed else { return }
-  let (left_x, left_y, left_width, left_height) = layout.entity_rect(
+  let ((x1, y1), (x2, y2)) = relation_endpoints(
+    layout,
     diagram,
     left_index,
-    text_metrics,
-    usecase~,
-  )
-  let (right_x, right_y, right_width, right_height) = layout.entity_rect(
-    diagram,
     right_index,
     text_metrics,
     usecase~,
   )
-  let left_center = (left_x + left_width / 2, left_y + left_height / 2)
-  let right_center = (right_x + right_width / 2, right_y + right_height / 2)
-  let (x1, y1) = if usecase {
-    usecase_relation_endpoint(
-      left_x,
-      left_y,
-      left_width,
-      left_height,
-      right_center.0,
-      right_center.1,
-    )
-  } else {
-    left_center
-  }
-  let (x2, y2) = if usecase {
-    usecase_relation_endpoint(
-      right_x,
-      right_y,
-      right_width,
-      right_height,
-      left_center.0,
-      left_center.1,
-    )
-  } else {
-    right_center
-  }
   let dash = if relation.dotted { " stroke-dasharray=\"6 4\"" } else { "" }
   let relation_style = @core.stroke_style(relation.line_style, default_width="")
   let relation_color = @core.svg_color(
@@ -964,7 +1181,7 @@ fn append_relation(
   let label_font_size = if usecase {
     diagram.style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE)
   } else {
-    12
+    RELATION_LABEL_FONT_SIZE
   }
   let label_font_family = if usecase {
     diagram.style.arrow_font_family()
@@ -986,6 +1203,20 @@ fn append_relation(
     Some(marker) => " marker-end=\"url(#\{marker})\""
     None => ""
   }
+  let left_overhang = marker_overhang_of(relation.left_end)
+  let right_overhang = marker_overhang_of(relation.right_end)
+  let (left_x, left_y, left_width, left_height) = layout.entity_rect(
+    diagram,
+    left_index,
+    text_metrics,
+    usecase~,
+  )
+  let (right_x, right_y, right_width, right_height) = layout.entity_rect(
+    diagram,
+    right_index,
+    text_metrics,
+    usecase~,
+  )
   let mut drew_spline = false
   match layout.graphviz {
     Some(graphviz) if !(usecase &&
@@ -996,17 +1227,15 @@ fn append_relation(
           for path in edge.paths {
             guard path.length() > 1 else { continue }
             drew_spline = true
-            let clipped = if usecase {
-              clip_usecase_spline(
-                path,
-                left,
-                (left_x, left_y, left_width, left_height),
-                right,
-                (right_x, right_y, right_width, right_height),
-              )
-            } else {
-              path
-            }
+            let clipped = clip_relation_spline(
+              path,
+              left,
+              (left_x, left_y, left_width, left_height),
+              right,
+              (right_x, right_y, right_width, right_height),
+              left_overhang,
+              right_overhang,
+            )
             output <+
               $|<path d="
             output.write_string(@core.spline_path_data(clipped))
@@ -1025,8 +1254,29 @@ fn append_relation(
       None => ()
     }
   } else {
+    let start = relation_spline_endpoint(
+      left,
+      left_x,
+      left_y,
+      left_width,
+      left_height,
+      (x2.to_double(), y2.to_double()),
+    )
+    let end = relation_spline_endpoint(
+      right,
+      right_x,
+      right_y,
+      right_width,
+      right_height,
+      (x1.to_double(), y1.to_double()),
+    )
+    let (dir_x, dir_y) = unit_direction(start, end)
+    let line_x1 = start.0 + dir_x * left_overhang
+    let line_y1 = start.1 + dir_y * left_overhang
+    let line_x2 = end.0 - dir_x * right_overhang
+    let line_y2 = end.1 - dir_y * right_overhang
     output <+
-      $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
+      $|<line x1="\{line_x1}" y1="\{line_y1}" x2="\{line_x2}" y2="\{line_y2}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
     match relation.label {
       Some(label) =>
         output <+
@@ -1328,20 +1578,21 @@ fn EntityDiagram::render_svg_with_mode(
         columns: fallback_layout.columns,
         cell_width: fallback_layout.cell_width,
         cell_height: fallback_layout.cell_height,
-        width: graphviz.width.ceil().to_int().max(1),
-        height: graphviz.height.ceil().to_int().max(1),
         graphviz: Some(graphviz),
       }
     None => fallback_layout
   }
-  let content_width = layout.output_width()
-  let content_height = layout.output_height()
-  let output_width = content_width + 2 * SVG_CANVAS_MARGIN
-  let output_height = content_height + 2 * SVG_CANVAS_MARGIN
+  let bounds = layout.content_bounds(self, text_metrics, usecase~)
+  let content_width = (bounds.max_x - bounds.min_x).ceil().to_int()
+  let content_height = (bounds.max_y - bounds.min_y).ceil().to_int()
+  let output_width = content_width + SVG_MARGIN_LEFT + SVG_MARGIN_RIGHT
+  let output_height = content_height + SVG_MARGIN_TOP + SVG_MARGIN_BOTTOM
+  let view_box_x = bounds.min_x - SVG_MARGIN_LEFT.to_double()
+  let view_box_y = bounds.min_y - SVG_MARGIN_TOP.to_double()
   let output = StringBuilder()
   let diagram_label = if usecase { "Use case diagram" } else { "Class diagram" }
   output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{-SVG_CANVAS_MARGIN} \{-SVG_CANVAS_MARGIN} \{output_width} \{output_height}" role="img" aria-label="\{diagram_label}">
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{diagram_label}">
   let defs_relations =
     $|<defs>
     $|\{@core.arrow_marker_markup("arrow", marker_width=7.0, marker_height=7.0)}
@@ -1361,11 +1612,11 @@ fn EntityDiagram::render_svg_with_mode(
     $|.usecase-title{fill:\{text_color};text-anchor:middle}
     $|.usecase-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}
     $|.member,.relation-label{fill:\{text_color}}
-    $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { 12 }}px}
+    $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)
   let style_markers =
-    #|<style>marker path,marker circle,marker rect{stroke:\{line_color};stroke-width:1}</style>
+    $|<style>marker path,marker circle,marker rect{stroke:\{line_color};stroke-width:1}</style>
   output.write_string(style_markers)
   let style_note =
     $|<style>.package path,.package line{stroke:\{line_color};stroke-width:1.2}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:1.2}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
@@ -1660,13 +1911,16 @@ test "use-case canvas includes notes positioned outside the Graphviz box" {
     columns: 1,
     cell_width: 1,
     cell_height: 1,
-    width: graphviz.width.ceil().to_int(),
-    height: graphviz.height.ceil().to_int(),
     graphviz: Some(graphviz),
   }
   let note = graphviz.notes[0]
+  let bounds = layout.content_bounds(diagram, metrics, usecase=true)
   @test.assert_eq(
-    layout.output_width().to_double() >= note.x + note.width / 2.0,
+    bounds.max_x >= note.x + note.width / 2.0,
+    true,
+  )
+  @test.assert_eq(
+    bounds.min_x <= note.x - note.width / 2.0,
     true,
   )
 }
@@ -1758,9 +2012,10 @@ test "class layout receives document font profile size and title style" {
     true,
   )
   let layout = styled.layout(styled_metrics)
+  let bounds = layout.content_bounds(styled, styled_metrics, usecase=false)
   @test.assert_eq(
-    layout.width >=
-    layout.node_x(0) + styled.entities[0].width(styled_metrics) + 24,
+    bounds.max_x >=
+    layout.node_x(0).to_double() + styled.entities[0].width(styled_metrics).to_double(),
     true,
   )
 }
@@ -1953,4 +2208,179 @@ test "hollow inheritance arrows retain a visible outline" {
   @test.assert_eq(svg.contains("marker-start=\"url(#triangle)\""), true)
   @test.assert_eq(svg.contains("fill=\"white\""), true)
   @test.assert_eq(svg.contains("marker path,marker circle,marker rect"), true)
+}
+
+///|
+fn svg_canvas_view_box(svg : String) -> (Double, Double, Int, Int) raise {
+  let regex = @string.Regex("viewBox=\"(-?[0-9.]+) (-?[0-9.]+) ([0-9]+) ([0-9]+)\"")
+  let mut result = (0.0, 0.0, 0, 0)
+  for m in regex.find(svg) {
+    result = (
+      @string.parse_double(m.group(1).unwrap().to_owned()),
+      @string.parse_double(m.group(2).unwrap().to_owned()),
+      @string.parse_int(m.group(3).unwrap().to_owned()),
+      @string.parse_int(m.group(4).unwrap().to_owned()),
+    )
+    break
+  }
+  result
+}
+
+///|
+fn svg_relation_path_points(svg : String) -> Array[(Double, Double)] raise {
+  let points : Array[(Double, Double)] = []
+  let path_regex = @string.Regex("<path d=\"([^\"]*)\" class=\"relation\"")
+  let num_regex = @string.Regex("-?[0-9.]+")
+  for m in path_regex.find(svg) {
+    let data = m.group(1).unwrap().to_owned()
+    let nums : Array[Double] = []
+    for n in num_regex.find(data) {
+      nums.push(@string.parse_double(n.content().to_owned()))
+    }
+    let mut i = 0
+    while i + 1 < nums.length() {
+      points.push((nums[i], nums[i + 1]))
+      i = i + 2
+    }
+  }
+  points
+}
+
+///|
+test "canvas viewBox wraps the content at PlantUML SvekResult margins" {
+  let diagram = parse("@startuml\nclass A\nclass B\nA --> B\n@enduml")
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics, usecase=false)
+  let layout = {
+    columns: 1,
+    cell_width: 1,
+    cell_height: 1,
+    graphviz: Some(graphviz),
+  }
+  let bounds = layout.content_bounds(diagram, metrics, usecase=false)
+  let svg = diagram.render_svg()
+  let (view_x, view_y, view_w, view_h) = svg_canvas_view_box(svg)
+  @test.assert_eq(view_x, bounds.min_x - SVG_MARGIN_LEFT.to_double())
+  @test.assert_eq(view_y, bounds.min_y - SVG_MARGIN_TOP.to_double())
+  @test.assert_eq(
+    view_w,
+    (bounds.max_x - bounds.min_x).ceil().to_int() +
+    SVG_MARGIN_LEFT +
+    SVG_MARGIN_RIGHT,
+  )
+  @test.assert_eq(
+    view_h,
+    (bounds.max_y - bounds.min_y).ceil().to_int() +
+    SVG_MARGIN_TOP +
+    SVG_MARGIN_BOTTOM,
+  )
+}
+
+///|
+test "content bounds cover every relation spline point" {
+  let diagram = parse("@startuml\nclass A\nclass B\nA --> B\n@enduml")
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics, usecase=false)
+  let layout = {
+    columns: 1,
+    cell_width: 1,
+    cell_height: 1,
+    graphviz: Some(graphviz),
+  }
+  let bounds = layout.content_bounds(diagram, metrics, usecase=false)
+  for edge in graphviz.edges {
+    for path in edge.paths {
+      for point in path {
+        @test.assert_eq(point.0 >= bounds.min_x, true)
+        @test.assert_eq(point.0 <= bounds.max_x, true)
+        @test.assert_eq(point.1 >= bounds.min_y, true)
+        @test.assert_eq(point.1 <= bounds.max_y, true)
+      }
+    }
+  }
+}
+
+///|
+test "rendered canvas contains every drawn relation spline point" {
+  let svg = parse("@startuml\nclass A\nclass B\nA --> B\n@enduml").render_svg()
+  let (view_x, view_y, view_w, view_h) = svg_canvas_view_box(svg)
+  for point in svg_relation_path_points(svg) {
+    @test.assert_eq(
+      point.0 >= view_x && point.0 <= view_x + view_w.to_double(),
+      true,
+    )
+    @test.assert_eq(
+      point.1 >= view_y && point.1 <= view_y + view_h.to_double(),
+      true,
+    )
+  }
+}
+
+///|
+fn svg_class_rects(svg : String) -> Array[(Double, Double, Double, Double)] raise {
+  let rects : Array[(Double, Double, Double, Double)] = []
+  let regex = @string.Regex("<g class=\"class-node\"[^>]*><rect[^>]*x=\"(-?[0-9.]+)\"[^>]*y=\"(-?[0-9.]+)\"[^>]*width=\"([0-9.]+)\"[^>]*height=\"([0-9.]+)\"")
+  for m in regex.find(svg) {
+    rects.push((
+      @string.parse_double(m.group(1).unwrap().to_owned()),
+      @string.parse_double(m.group(2).unwrap().to_owned()),
+      @string.parse_double(m.group(3).unwrap().to_owned()),
+      @string.parse_double(m.group(4).unwrap().to_owned()),
+    ))
+  }
+  rects
+}
+
+///|
+fn svg_relation_path_endpoints(
+  svg : String,
+) -> Array[((Double, Double), (Double, Double))] raise {
+  let result : Array[((Double, Double), (Double, Double))] = []
+  let path_regex = @string.Regex("<path d=\"([^\"]*)\" class=\"relation\"")
+  let num_regex = @string.Regex("-?[0-9.]+")
+  for m in path_regex.find(svg) {
+    let data = m.group(1).unwrap().to_owned()
+    let nums : Array[Double] = []
+    for n in num_regex.find(data) {
+      nums.push(@string.parse_double(n.content().to_owned()))
+    }
+    if nums.length() >= 4 {
+      let last = nums.length() - 1
+      result.push(((nums[0], nums[1]), (nums[last - 1], nums[last])))
+    }
+  }
+  result
+}
+
+///|
+test "relation splines end on the entity borders, not inside the boxes" {
+  let svg = parse(
+    "@startuml\nclass A\nclass B\nA --> B\n@enduml",
+  ).render_svg()
+  let rects = svg_class_rects(svg)
+  @test.assert_eq(rects.length(), 2)
+  for pair in svg_relation_path_endpoints(svg) {
+    for rect in rects {
+      let rect_left = rect.0
+      let rect_top = rect.1
+      let rect_right = rect.0 + rect.2
+      let rect_bottom = rect.1 + rect.3
+      for point in [pair.0, pair.1] {
+        @test.assert_eq(
+          point.0 > rect_left && point.0 < rect_right &&
+          point.1 > rect_top && point.1 < rect_bottom,
+          false,
+        )
+      }
+    }
+  }
+}
+
+///|
+test "marker style block interpolates the line color" {
+  let svg = parse(
+    "@startuml\nParent <|-- Child\n@enduml",
+  ).render_svg()
+  @test.assert_eq(svg.contains("stroke:\\{line_color}"), false)
+  @test.assert_eq(svg.contains("marker path,marker circle,marker rect{stroke:#"), true)
 }
