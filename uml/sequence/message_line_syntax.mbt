@@ -6,13 +6,13 @@ fn message_tail_parser() -> @talc.StringParser[
   .then(activation_spec_parser().attempt().optional())
   .bind(activation => {
     inline_spaces()
-    .then(@core.color_value_parser("color").attempt().optional())
+    .then(@parse.color_value_parser("color").attempt().optional())
     .bind(color => {
       inline_spaces()
       .then(
         @talc.char(':')
         .then(@talc.many_chars(@talc.satisfy("message label", _ => true)))
-        .map(@core.normalize_label)
+        .map(@parse.normalize_label)
         .optional(),
       )
       .map(label => (activation, color, label.bind(value => value)))

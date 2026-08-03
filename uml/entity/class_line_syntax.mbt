@@ -106,7 +106,7 @@ fn parse_class_line(line : String) -> ClassLineSyntax? {
 fn Parser::apply_declaration_syntax(
   self : Parser,
   syntax : DeclarationLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let declaration = syntax.declaration
   let is_usecase_element = declaration.kind is Usecase ||
     declaration.kind is BusinessUsecase ||
@@ -223,7 +223,7 @@ fn Parser::apply_declaration_syntax(
 fn Parser::apply_class_line_syntax(
   self : Parser,
   syntax : ClassLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   match syntax {
     ParsedAllowMixing => self.allow_mixing = true
     ParsedPackageClose => {
@@ -270,12 +270,12 @@ fn text_block_end(line : String, keyword : String) -> Bool {
 fn Parser::consume_text_block(
   self : Parser,
   keyword : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   self.index += 1
   let text = StringBuilder()
   let mut first = true
   while self.index < self.lines.length() {
-    if text_block_end(@core.strip_line_comment(self.lines[self.index]), keyword) {
+    if text_block_end(@parse.strip_line_comment(self.lines[self.index]), keyword) {
       self.style.apply(TextBlock(keyword, text.to_string()))
       return
     }
@@ -293,16 +293,16 @@ fn Parser::consume_text_block(
 fn Parser::consume_braced_block(
   self : Parser,
   kind : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let package_depth = self.package_stack.length()
   self.index += 1
   while self.index < self.lines.length() {
-    let line = @core.strip_line_comment(self.lines[self.index])
+    let line = @parse.strip_line_comment(self.lines[self.index])
     if line == "}" && self.package_stack.length() == package_depth {
       return
     }
-    let reference = @core.unquote_identifier(line)
-    let existing_reference = @core.syntax_words(line).length() == 1 &&
+    let reference = @parse.unquote_identifier(line)
+    let existing_reference = @parse.syntax_words(line).length() == 1 &&
       (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
       self.parse_line(self.lines[self.index])
@@ -315,12 +315,12 @@ fn Parser::consume_braced_block(
 ///|
 fn Parser::consume_skinparam_block(
   self : Parser,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   self.index += 1
-  let closed = @core.consume_skinparam_body(
+  let closed = @style.consume_skinparam_body(
     fn() {
       guard self.index < self.lines.length() else { return None }
-      let line = @core.strip_line_comment(self.lines[self.index])
+      let line = @parse.strip_line_comment(self.lines[self.index])
       if line.trim() != "}" {
         self.index += 1
       }
@@ -335,10 +335,10 @@ fn Parser::consume_skinparam_block(
 fn Parser::consume_common_block(
   self : Parser,
   terminator : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
-    if @core.strip_line_comment(self.lines[self.index]).to_lower() == terminator {
+    if @parse.strip_line_comment(self.lines[self.index]).to_lower() == terminator {
       return
     }
     self.index += 1

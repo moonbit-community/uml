@@ -87,7 +87,7 @@ fn relation_name_parser(
     .then(@talc.many_chars1(@talc.none_of("]")))
     .skip(@talc.char(']'))
     .map(name => { name: "[" + name + "]", port_base: None, port_value: None })
-  let quoted = @core.quoted_value_parser().map(name => {
+  let quoted = @parse.quoted_value_parser().map(name => {
     name,
     port_base: None,
     port_value: None,
@@ -148,8 +148,8 @@ fn relation_couple_parser() -> @talc.StringParser[
       inline_spaces()
       .then(@talc.char(')'))
       .map(_ => {
-        let left = @core.unquote_identifier(first.name)
-        let right = @core.unquote_identifier(second.name)
+        let left = @parse.unquote_identifier(first.name)
+        let right = @parse.unquote_identifier(second.name)
         ({ name: left, port_base: None, port_value: None }, (left, right))
       })
     })
@@ -171,19 +171,19 @@ fn relation_target_parser(
 
 ///|
 fn relation_role_value_parser() -> @talc.StringParser[String] {
-  @core.quoted_value_parser()
+  @parse.quoted_value_parser()
   .attempt()
   .or(
     @talc.many_chars1(
       @talc.satisfy("relation role", char => !char.is_whitespace()),
     ),
   )
-  .map(@core.unquote_identifier)
+  .map(@parse.unquote_identifier)
 }
 
 ///|
 fn relation_modifier_parser() -> @talc.StringParser[RelationEndpointModifier] {
-  let cardinality = @core.quoted_value_parser().map(value => {
+  let cardinality = @parse.quoted_value_parser().map(value => {
     RelationCardinality(value)
   })
   let role = @talc.char('/')
@@ -279,17 +279,17 @@ fn relation_separator_parser() -> @talc.StringParser[String] {
 
 ///|
 fn relation_color_parser() -> @talc.StringParser[RelationMetadataSyntax] {
-  @core.color_value_parser("relation color").map(value => RelationColor(value))
+  @parse.color_value_parser("relation color").map(value => RelationColor(value))
 }
 
 ///|
 fn relation_url_parser() -> @talc.StringParser[RelationMetadataSyntax] {
-  @core.url_value_parser().map(value => RelationUrl(value))
+  @parse.url_value_parser().map(value => RelationUrl(value))
 }
 
 ///|
 fn relation_stereotype_parser() -> @talc.StringParser[RelationMetadataSyntax] {
-  @core.stereotype_value_parser().map(value => RelationStereotype(value))
+  @parse.stereotype_value_parser().map(value => RelationStereotype(value))
 }
 
 ///|

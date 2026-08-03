@@ -1,5 +1,0 @@
-import {
-  "kokic/uml/entity",
-  "kokic/uml/core",
-  "moonbitlang/core/test",
-}

@@ -72,7 +72,7 @@ fn note_name_parser(label : String) -> @talc.StringParser[String] {
       char != '{'
     }),
   )
-  @core.quoted_value_parser().attempt().or(plain).map(@core.unquote_identifier)
+  @parse.quoted_value_parser().attempt().or(plain).map(@parse.unquote_identifier)
 }
 
 ///|
@@ -97,16 +97,16 @@ fn note_member_name_parser() -> @talc.StringParser[String] {
       char != '[' &&
       char != '{'
     }),
-  ).map(@core.unquote_identifier)
+  ).map(@parse.unquote_identifier)
 }
 
 ///|
 fn note_metadata_item_parser() -> @talc.StringParser[NoteMetadataItemSyntax] {
   @talc.choice([
-    @core.url_value_parser().attempt().map(value => NoteUrl(value)),
-    @core.stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
-    @core.color_value_parser("note color").attempt().map(value => NoteColor(value)),
-    @core.tag_value_parser("note tag").map(value => NoteTag(value)),
+    @parse.url_value_parser().attempt().map(value => NoteUrl(value)),
+    @parse.stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
+    @parse.color_value_parser("note color").attempt().map(value => NoteColor(value)),
+    @parse.tag_value_parser("note tag").map(value => NoteTag(value)),
   ])
 }
 
@@ -167,7 +167,7 @@ fn named_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
     .then(inline_space1())
     .then(note_name_parser("named note code"))
     .map(code => (code, NoteBlock))
-  let inline = @core.quoted_value_parser().bind(text => {
+  let inline = @parse.quoted_value_parser().bind(text => {
     inline_space1()
     .then(inline_keyword_parser("as"))
     .then(inline_space1())
@@ -291,7 +291,7 @@ fn link_constraint_line_parser() -> @talc.StringParser[
   .then(inline_keyword_parser("links"))
   .then(
     inline_space1()
-    .then(@core.color_value_parser("constraint color"))
+    .then(@parse.color_value_parser("constraint color"))
     .attempt()
     .optional(),
   )
@@ -344,7 +344,7 @@ fn Parser::push_note_syntax(
   self : Parser,
   syntax : NoteLineSyntax,
   text : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let mut target = ""
   let mut target_kind = EntityNote
   let mut relation_index = None
@@ -407,7 +407,7 @@ fn Parser::push_note_syntax(
 fn Parser::consume_note_syntax(
   self : Parser,
   syntax : NoteLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   match syntax.content {
     NoteInline(text) => self.push_note_syntax(syntax, text)
     NoteBlock => {
@@ -416,7 +416,7 @@ fn Parser::consume_note_syntax(
       self.index += 1
       while self.index < self.lines.length() {
         let line = self.lines[self.index]
-        let terminator = @core.strip_line_comment(line).to_lower()
+        let terminator = @parse.strip_line_comment(line).to_lower()
         if terminator == "end note" ||
           terminator == "endnote" ||
           (syntax.metadata.braced && terminator == "}") {
@@ -440,7 +440,7 @@ fn Parser::consume_note_syntax(
 fn Parser::apply_annotation_syntax(
   self : Parser,
   syntax : ClassAnnotationLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   match syntax {
     ParsedClassNote(note) => self.consume_note_syntax(note)
     ParsedLinkConstraint(constraint) =>

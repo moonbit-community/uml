@@ -157,7 +157,7 @@ fn decode_shaped_entity(
   }
   match encoded {
     Some((shape, raw_inner)) => {
-      let inner = @core.unquote_identifier(raw_inner)
+      let inner = @parse.unquote_identifier(raw_inner)
       if inner.length() > 0 {
         let actual_code = if display == code { inner } else { code }
         return (shape, inner, actual_code)
@@ -167,7 +167,7 @@ fn decode_shaped_entity(
   }
   let value = code.trim()
   if value.length() >= 3 && value.has_prefix("(") && value.has_suffix(")/") {
-    let inner = @core.unquote_identifier(
+    let inner = @parse.unquote_identifier(
       value[1:value.length() - 2].trim().to_owned(),
     )
     if inner.length() > 0 {
@@ -175,7 +175,7 @@ fn decode_shaped_entity(
     }
   }
   if value.length() >= 2 && value.has_prefix("(") && value.has_suffix(")") {
-    let inner = @core.unquote_identifier(
+    let inner = @parse.unquote_identifier(
       value[1:value.length() - 1].trim().to_owned(),
     )
     if inner.length() > 0 {
@@ -191,7 +191,7 @@ fn decode_shaped_entity(
     }
   }
   if value.length() >= 3 && value.has_prefix(":") && value.has_suffix(":/") {
-    let inner = @core.unquote_identifier(
+    let inner = @parse.unquote_identifier(
       value[1:value.length() - 2].trim().to_owned(),
     )
     if inner.length() > 0 {
@@ -199,7 +199,7 @@ fn decode_shaped_entity(
     }
   }
   if value.length() >= 2 && value.has_prefix(":") && value.has_suffix(":") {
-    let inner = @core.unquote_identifier(
+    let inner = @parse.unquote_identifier(
       value[1:value.length() - 1].trim().to_owned(),
     )
     if inner.length() > 0 {
@@ -215,7 +215,7 @@ fn decode_shaped_entity(
     }
   }
   if value.length() >= 2 && value.has_prefix("[") && value.has_suffix("]") {
-    let inner = @core.unquote_identifier(
+    let inner = @parse.unquote_identifier(
       value[1:value.length() - 1].trim().to_owned(),
     )
     if inner.length() > 0 {

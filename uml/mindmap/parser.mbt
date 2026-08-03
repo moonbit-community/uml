@@ -127,7 +127,7 @@ fn parse_raw_idea(line : String) -> RawIdea? {
 fn smart_level(
   marker : String,
   first : String?,
-) -> (Int, String?) raise @core.ParseError {
+) -> (Int, String?) raise @parse.ParseError {
   let initial = first.unwrap_or(marker)
   let normalized = if marker.has_suffix("**") {
     marker.replace(old="\t", new=" ").trim().to_owned()
@@ -162,7 +162,7 @@ fn complete_multiline_label(
   lines : Array[String],
   index : Int,
   first : String,
-) -> (String, Int, String?) raise @core.ParseError {
+) -> (String, Int, String?) raise @parse.ParseError {
   let values = [first]
   let mut last = index
   while !values.last().unwrap_or("").contains(";") {
@@ -189,7 +189,7 @@ fn parent_for(
   ideas : Array[Idea],
   direction : Direction,
   level : Int,
-) -> Int? raise @core.ParseError {
+) -> Int? raise @parse.ParseError {
   let mut index = ideas.length() - 1
   while index >= 0 {
     let candidate = ideas[index]
@@ -207,11 +207,11 @@ fn parse_mindmap_style_block(
   lines : Array[String],
   start : Int,
   style : MindmapStyle,
-) -> Int raise @core.ParseError {
+) -> Int raise @parse.ParseError {
   let mut index = start + 1
   let mut selector : String? = None
   while index < lines.length() {
-    let line = @core.strip_line_comment(lines[index]).trim().to_owned()
+    let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
     if line.equal_ignore_ascii_case("</style>") {
       return index + 1
     }
@@ -231,7 +231,7 @@ fn parse_mindmap_style_block(
     }
     match selector {
       Some(current) => {
-        let words = @core.syntax_words(line)
+        let words = @parse.syntax_words(line)
         if words.length() >= 2 {
           let key = words[0]
           let value = words[1:].to_owned().join(" ")
@@ -253,33 +253,33 @@ fn parse_mindmap_style_block(
 /// Parse a PlantUML mindmap source. Both org-mode (`*`/`#`) and plus/minus
 /// syntax are accepted, including colors, boxless items, stereotypes, and
 /// org-mode multiline labels.
-pub fn parse(input : String) -> MindmapDiagram raise @core.ParseError {
-  let lines = @core.preprocess(input)
+pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
+  let lines = @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array()
   let ideas = []
-  let style = @core.DocumentStyle::empty()
+  let style = @style.DocumentStyle::empty()
   let mindmap_style = MindmapStyle::default()
   let mut index = 0
   let mut multiplier : Int? = None
   let mut org_first : String? = None
   let mut default_direction : Direction = Right
   while index < lines.length() {
-    let line = @core.strip_line_comment(lines[index])
+    let line = @parse.strip_line_comment(lines[index])
     let trimmed = line.trim().to_owned()
     if trimmed.length() == 0 ||
       trimmed.equal_ignore_ascii_case("@startmindmap") ||
       trimmed.equal_ignore_ascii_case("@endmindmap") ||
       trimmed.equal_ignore_ascii_case("@startuml") ||
       trimmed.equal_ignore_ascii_case("@enduml") ||
-      @core.is_preprocessor_directive(trimmed) {
+      @style.is_preprocessor_directive(trimmed) {
       index += 1
       continue
     }
     if trimmed.equal_ignore_ascii_case("skinparam {") {
       index += 1
-      let closed = @core.consume_skinparam_body(
+      let closed = @style.consume_skinparam_body(
         fn() {
           guard index < lines.length() else { return None }
           let line = lines[index]
@@ -300,7 +300,7 @@ pub fn parse(input : String) -> MindmapDiagram raise @core.ParseError {
       index = parse_mindmap_style_block(lines, index, mindmap_style)
       continue
     }
-    match @core.parse_style_directive(trimmed) {
+    match @style.parse_style_directive(trimmed) {
       Some(directive) => {
         style.apply(directive)
         mindmap_style.apply_skinparam(directive)

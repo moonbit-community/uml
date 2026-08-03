@@ -1,7 +1,9 @@
 import {
   "kokic/talcparsec" @talc,
-  "kokic/uml/core",
   "kokic/uml/metrics",
   "moonbitlang/core/string",
   "moonbitlang/core/test",
+  "kokic/uml/core/parse" @parse,
+  "kokic/uml/core/style" @style,
+  "kokic/uml/core/svg" @svg,
 }

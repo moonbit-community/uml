@@ -1,10 +1,13 @@
 import {
   "kokic/talcparsec" @talc,
-  "kokic/uml/core",
   "kokic/uml/metrics",
   "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/geom",
   "moonbit-community/graphviz/layout/dot" @dot_layout,
   "moonbitlang/core/string",
   "moonbitlang/core/test",
+  "kokic/uml/core/parse" @parse,
+  "kokic/uml/core/style" @style,
+  "kokic/uml/core/svg" @svg,
+  "kokic/uml/core/graphviz" @graphviz,
 }

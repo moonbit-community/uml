@@ -2,21 +2,21 @@
 fn state_fill(state : StateNode) -> String {
   match state.kind {
     Initial | Final | History | DeepHistory | Synchronization =>
-      @core.render_defaults().diagram_line
-    _ => @core.svg_color(state.color, @core.render_defaults().node_background)
+      @style.render_defaults().diagram_line
+    _ => @style.svg_color(state.color, @style.render_defaults().node_background)
   }
 }
 
 ///|
 fn append_state_label(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   text : String,
   x : Double,
   y : Double,
   class_name : String,
 ) -> Unit {
   output.raw(
-    @core.multiline_text_markup(
+    @svg.multiline_text_markup(
       x,
       y,
       text,
@@ -28,7 +28,7 @@ fn append_state_label(
 
 ///|
 fn append_state_node(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   diagram : StateDiagram,
   layout : StateNodeLayout,
 ) -> Unit {
@@ -250,7 +250,7 @@ fn append_state_node(
 
 ///|
 fn append_state_edge(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   diagram : StateDiagram,
   edge : StateEdgeLayout,
 ) -> Unit {
@@ -261,11 +261,11 @@ fn append_state_edge(
     output.empty(
       "path",
       attributes=[
-        ("d", @core.spline_path_data(path)),
+        ("d", @svg.spline_path_data(path)),
         ("class", "state-transition"),
         ("fill", "none"),
         ("marker-end", "url(#state-arrow)"),
-        ..@core.line_style_attributes(transition.line_style),
+        ..@svg.line_style_attributes(transition.line_style),
       ],
     )
   }
@@ -284,7 +284,7 @@ fn append_state_edge(
 
 ///|
 fn append_state_region_separator(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   region : StateRegionLayout,
 ) -> Unit {
   match region.separator {
@@ -310,7 +310,7 @@ fn append_state_region_separator(
 
 ///|
 fn append_state_note(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   diagram : StateDiagram,
   layout : StateNoteLayout,
 ) -> Unit {
@@ -325,8 +325,8 @@ fn append_state_note(
     ("y", layout.y.to_string()),
     ("width", layout.width.to_string()),
     ("height", layout.height.to_string()),
-    ("fill", @core.render_defaults().note_background),
-    ("stroke", @core.render_defaults().diagram_line),
+    ("fill", @style.render_defaults().note_background),
+    ("stroke", @style.render_defaults().diagram_line),
   ])
   append_state_label(
     output,
@@ -343,7 +343,7 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
   let layout = Some(self.layout()) catch { _ => None }
   let width = layout.map_or(1.0, value => value.width).ceil().to_int().max(1)
   let height = layout.map_or(1.0, value => value.height).ceil().to_int().max(1)
-  let output = @core.XmlWriter::new()
+  let output = @svg.XmlWriter::new()
   output.open("svg", attributes=[
     ("xmlns", "http://www.w3.org/2000/svg"),
     ("width", width.to_string()),
@@ -354,7 +354,7 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
   ])
   output.open("defs")
   output.raw(
-    @core.arrow_marker_markup("state-arrow", marker_width=6.0, marker_height=6.0),
+    @svg.arrow_marker_markup("state-arrow", marker_width=6.0, marker_height=6.0),
   )
   output.close()
   output.open("style")
@@ -364,21 +364,21 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
     ";stroke-width:1.5}.state-region-separator{stroke:" +
     self.style.diagram_line_color() +
     ";stroke-width:1.2}.state-label{font-family:" +
-    @core.font_family(self.style) +
+    @style.font_family(self.style) +
     ";font-size:" +
-    @core.font_size(self.style) +
+    @style.font_size(self.style) +
     ";fill:" +
     self.style.diagram_text_color() +
     "}.state-pseudostate-label{font-family:" +
-    @core.font_family(self.style) +
+    @style.font_family(self.style) +
     ";font-size:12px;fill:" +
     self.style.diagram_text_color() +
     "}.state-transition-label{font-family:" +
-    @core.font_family(self.style) +
+    @style.font_family(self.style) +
     ";font-size:12px;fill:" +
     self.style.diagram_text_color() +
     "}.state-note-label{font-family:" +
-    @core.font_family(self.style) +
+    @style.font_family(self.style) +
     ";font-size:12px;fill:" +
     self.style.diagram_text_color() +
     "}",
@@ -406,6 +406,6 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
 }
 
 ///|
-pub fn render_state_svg(input : String) -> String raise @core.ParseError {
+pub fn render_state_svg(input : String) -> String raise @parse.ParseError {
   parse(input).render_svg()
 }

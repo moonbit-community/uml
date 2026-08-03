@@ -1,12 +1,17 @@
 ///|
+/// One character inside a double-quoted PlantUML value: a backslash-escaped
+/// pair kept verbatim, or any character that is not a closing quote.
+fn quoted_character_parser() -> @talc.StringParser[String] {
+  @talc.char('\\')
+  .then(@talc.satisfy("escaped quoted character", _ => true))
+  .map(char => "\\" + char.to_string())
+  .or(@talc.none_of("\"").string_map(char => char.to_string()))
+}
+
+///|
 fn alias_identifier_parser() -> @talc.StringParser[(String, String)] {
   let separator = @talc.string(" as ")
-  let quoted_part = @talc.string("\\\"").or(
-    @talc.none_of("\"").string_map(char => char.to_string()),
-  )
-  let quoted_identifier = @talc.char('"')
-    .then(quoted_part.many().map(parts => "\"" + parts.join("") + "\""))
-    .skip(@talc.char('"'))
+  let quoted_identifier = quoted_value_parser().map(value => "\"" + value + "\"")
   let unquoted_character = separator
     .not_followed_by("alias separator")
     .then(@talc.satisfy("identifier character", _ => true))
@@ -28,29 +33,14 @@ fn alias_identifier_parser() -> @talc.StringParser[(String, String)] {
 
 ///|
 fn syntax_words_parser() -> @talc.StringParser[Array[String]] {
-  let quoted_part = @talc.char('\\')
-    .then(@talc.satisfy("escaped character", _ => true))
-    .map(char => "\\" + char.to_string())
-    .or(@talc.none_of("\"").string_map(char => char.to_string()))
-  let quoted = @talc.char('"').bind(_ => {
-    quoted_part
-    .many()
-    .bind(parts => {
-      @talc.char('"')
-      .optional()
-      .map(close => {
-        let suffix = match close {
-          Some(_) => "\""
-          None => ""
-        }
-        "\"" + parts.join("") + suffix
-      })
-    })
-  })
   let unquoted = @talc.satisfy("unquoted character", char => {
     !char.is_whitespace() && char != '"'
   }).string_map(char => char.to_string())
-  let word = quoted.attempt().or(unquoted).some().map(parts => parts.join(""))
+  let word = quoted_syntax_text_parser()
+    .attempt()
+    .or(unquoted)
+    .some()
+    .map(parts => parts.join(""))
   @talc.spaces().then(word.skip(@talc.spaces()).many()).skip(@talc.eof())
 }
 
@@ -62,25 +52,6 @@ priv enum UnquotedSplitToken {
 
 ///|
 fn split_unquoted_parser(delimiter : Char) -> @talc.StringParser[Array[String]] {
-  let quoted_part = @talc.char('\\')
-    .then(@talc.satisfy("escaped character", _ => true))
-    .map(char => "\\" + char.to_string())
-    .or(@talc.none_of("\"").string_map(char => char.to_string()))
-  let quoted = @talc.char('"').bind(_ => {
-    quoted_part
-    .many()
-    .bind(parts => {
-      @talc.char('"')
-      .optional()
-      .map(close => {
-        let suffix = match close {
-          Some(_) => "\""
-          None => ""
-        }
-        Text("\"" + parts.join("") + suffix)
-      })
-    })
-  })
   let text = @talc.satisfy("unquoted character", char => {
       char != delimiter && char != '"'
     })
@@ -88,7 +59,7 @@ fn split_unquoted_parser(delimiter : Char) -> @talc.StringParser[Array[String]] 
     .map(value => Text(value))
   let token = @talc.char(delimiter)
     .map(_ => Delimiter)
-    .or(quoted.attempt())
+    .or(quoted_syntax_text_parser().map(value => Text(value)).attempt())
     .or(text)
   token
   .many()
@@ -122,27 +93,11 @@ fn literal_prefix_parser(needle : String) -> @talc.StringParser[String] {
 fn unquoted_literal_prefix_parser(
   needle : String,
 ) -> @talc.StringParser[String] {
-  let quoted_part = @talc.char('\\')
-    .then(@talc.satisfy("escaped character", _ => true))
-    .map(char => "\\" + char.to_string())
-    .or(@talc.none_of("\"").string_map(char => char.to_string()))
-  let quoted = @talc.char('"').bind(_ => {
-    quoted_part
-    .many()
-    .bind(parts => {
-      @talc.char('"')
-      .optional()
-      .map(close => {
-        let suffix = if close is Some(_) { "\"" } else { "" }
-        "\"" + parts.join("") + suffix
-      })
-    })
-  })
   let unquoted_character = @talc.string(needle)
     .not_followed_by("literal")
     .then(@talc.satisfy("unquoted character", char => char != '"'))
     .string_map(char => char.to_string())
-  quoted
+  quoted_syntax_text_parser()
   .attempt()
   .or(unquoted_character)
   .many()
@@ -152,12 +107,8 @@ fn unquoted_literal_prefix_parser(
 
 ///|
 fn quoted_syntax_text_parser() -> @talc.StringParser[String] {
-  let part = @talc.char('\\')
-    .then(@talc.satisfy("escaped quoted character", _ => true))
-    .map(char => "\\" + char.to_string())
-    .or(@talc.none_of("\"").string_map(char => char.to_string()))
   @talc.char('"').bind(_ => {
-    part
+    quoted_character_parser()
     .many()
     .bind(parts => {
       @talc.char('"')
@@ -173,12 +124,8 @@ fn quoted_syntax_text_parser() -> @talc.StringParser[String] {
 ///|
 /// Parse a quoted PlantUML value and return its unquoted content.
 pub fn quoted_value_parser() -> @talc.StringParser[String] {
-  let part = @talc.char('\\')
-    .then(@talc.satisfy("escaped quoted character", _ => true))
-    .map(char => "\\" + char.to_string())
-    .or(@talc.none_of("\"").string_map(char => char.to_string()))
   @talc.char('"')
-  .then(part.many().map(parts => parts.join("")))
+  .then(quoted_character_parser().many().map(parts => parts.join("")))
   .skip(@talc.char('"'))
 }
 

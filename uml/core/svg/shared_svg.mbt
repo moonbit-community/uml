@@ -49,6 +49,15 @@ pub fn line_style_attributes(
 }
 
 ///|
+/// Serialize a line style as SVG presentation attributes (`name="value"`),
+/// with a leading space so the result can be spliced into a tag.
+pub fn line_style_attributes_markup(line_style : String?) -> String {
+  line_style_attributes(line_style)
+    .map(attr => " \{attr.0}=\"\{attr.1}\"")
+    .join("")
+}
+
+///|
 /// Serialize a line style as a CSS `style` value, falling back to a default
 /// stroke width (empty means no stroke attribute).
 pub fn stroke_style(
@@ -77,11 +86,11 @@ pub fn arrow_marker_markup(
 ) -> String {
   let extra = [
     ..match path_fill {
-      Some(fill) => [(" fill=\"\{xml_escape(fill)}\"")]
+      Some(fill) => [(" fill=\"\{@style.xml_escape(fill)}\"")]
       None => []
     },
     ..match path_class {
-      Some(class) => [(" class=\"\{xml_escape(class)}\"")]
+      Some(class) => [(" class=\"\{@style.xml_escape(class)}\"")]
       None => []
     },
   ].join("")
@@ -109,12 +118,12 @@ pub fn multiline_text_markup(
   let output = StringBuilder()
   output.write_string("<text x=\"\{x}\" y=\"\{baseline}\"")
   for attribute in attributes {
-    output.write_string(" \{attribute.0}=\"\{xml_escape(attribute.1)}\"")
+    output.write_string(" \{attribute.0}=\"\{@style.xml_escape(attribute.1)}\"")
   }
   output.write_string(">")
   for index, line in lines {
     let dy = if index == 0 { 0.0 } else { line_height }
-    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line)}</tspan>"
+    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@style.xml_escape(line)}</tspan>"
   }
   output.write_string("</text>")
   output.to_string()

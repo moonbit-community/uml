@@ -73,7 +73,7 @@ fn note_position_parser() -> @talc.StringParser[NotePosition] {
 ///|
 fn participant_list_prefix_parser() -> @talc.StringParser[Array[String]] {
   let participant = inline_spaces().then(
-    quoted_participant().attempt().or(participant_identifier()),
+    @parse.quoted_value_parser().attempt().or(participant_identifier()),
   )
   let separator = inline_spaces()
     .then(@talc.char(','))
@@ -85,13 +85,6 @@ fn participant_list_prefix_parser() -> @talc.StringParser[Array[String]] {
 ///|
 fn participant_identifier() -> @talc.StringParser[String] {
   @talc.many_chars1(@talc.satisfy("participant identifier", is_ident_char))
-}
-
-///|
-fn quoted_participant() -> @talc.StringParser[String] {
-  @talc.char('"')
-  .then(@talc.many_chars(@talc.none_of("\"")))
-  .skip(@talc.char('"'))
 }
 
 ///|
@@ -118,12 +111,12 @@ fn participant_alias_display() -> @talc.StringParser[String] {
   inline_spaces()
   .then(as_keyword())
   .then(inline_spaces())
-  .then(quoted_participant().attempt().or(participant_identifier()))
+  .then(@parse.quoted_value_parser().attempt().or(participant_identifier()))
 }
 
 ///|
 fn participant_ref_parser() -> @talc.StringParser[PartRef] {
-  let quoted = quoted_participant().bind(display => {
+  let quoted = @parse.quoted_value_parser().bind(display => {
     participant_alias_code()
     .attempt()
     .optional()
@@ -150,7 +143,7 @@ fn participant_ref_parser() -> @talc.StringParser[PartRef] {
 
 ///|
 fn participant_decl_ref_parser() -> @talc.StringParser[PartRef] {
-  let quoted = quoted_participant().bind(display => {
+  let quoted = @parse.quoted_value_parser().bind(display => {
     participant_alias_code()
     .attempt()
     .optional()
@@ -165,7 +158,7 @@ fn participant_decl_ref_parser() -> @talc.StringParser[PartRef] {
     let quoted_display = inline_spaces()
       .then(as_keyword())
       .then(inline_spaces())
-      .then(quoted_participant())
+      .then(@parse.quoted_value_parser())
       .map(display => { code: name, display })
     let alias_code = participant_alias_code()
       .attempt()
@@ -181,7 +174,7 @@ fn participant_decl_ref_parser() -> @talc.StringParser[PartRef] {
 
 ///|
 fn participant_code_parser() -> @talc.StringParser[String] {
-  quoted_participant().attempt().or(participant_identifier())
+  @parse.quoted_value_parser().attempt().or(participant_identifier())
 }
 
 ///|
@@ -339,11 +332,4 @@ fn multicast_parser() -> @talc.StringParser[Array[String]] {
 ///|
 fn anchor_parser() -> @talc.StringParser[String] {
   @talc.char('{').then(participant_identifier()).skip(@talc.char('}'))
-}
-
-///|
-fn quoted_string_parser() -> @talc.StringParser[String] {
-  @talc.char('"')
-  .then(@talc.many_chars(@talc.none_of("\"")))
-  .skip(@talc.char('"'))
 }

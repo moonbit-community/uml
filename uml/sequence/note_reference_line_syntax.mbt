@@ -76,7 +76,7 @@ fn participant_note_tail_parser(
     }
     guard valid else { return @talc.fail("note participants") }
     inline_space1()
-    .then(@core.color_value_parser("color"))
+    .then(@parse.color_value_parser("color"))
     .attempt()
     .optional()
     .bind(color => {
@@ -99,7 +99,7 @@ fn across_note_tail_parser(
   note_style : NoteStyle,
 ) -> @talc.StringParser[NoteLineSyntax] {
   inline_space1()
-  .then(@core.color_value_parser("color"))
+  .then(@parse.color_value_parser("color"))
   .attempt()
   .optional()
   .bind(color => {

@@ -9,7 +9,7 @@ fn layout_for(layout : ActivityLayout, node_index : Int) -> ActivityNodeLayout? 
 
 ///|
 fn append_label(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   x : Int,
   y : Int,
   label : String,
@@ -41,7 +41,7 @@ fn append_label(
 
 ///|
 fn append_edge(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   layout : ActivityLayout,
   edge : ActivityEdgeLayout,
   font_metrics : @metrics.FontMetrics,
@@ -107,7 +107,7 @@ fn append_edge(
 
 ///|
 fn append_region(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   region : ActivityRegionLayout,
   font_metrics : @metrics.FontMetrics,
 ) -> Unit {
@@ -133,7 +133,7 @@ fn append_region(
 
 ///|
 fn append_node(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   layout : ActivityLayout,
   node_layout : ActivityNodeLayout,
   font_metrics : @metrics.FontMetrics,
@@ -231,9 +231,9 @@ fn append_node(
 /// Render a parsed activity diagram with the built-in, non-Graphviz layout.
 pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   let layout = self.layout()
-  let output = @core.XmlWriter::new()
+  let output = @svg.XmlWriter::new()
   let font_metrics = self.style.font_metrics()
-  let defaults = @core.render_defaults()
+  let defaults = @style.render_defaults()
   let line = self.style.diagram_line_color()
   let text = self.style.diagram_text_color()
   output.open("svg", attributes=[
@@ -247,9 +247,9 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   output.open("style")
   output.raw(
     "svg{font-family:" +
-    @core.font_family(self.style) +
+    @style.font_family(self.style) +
     ";font-size:" +
-    @core.font_size(self.style) +
+    @style.font_size(self.style) +
     ";background:" +
     self.style.canvas_color() +
     "}.activity-edge{fill:none;stroke:" +

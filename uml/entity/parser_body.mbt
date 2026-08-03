@@ -36,7 +36,7 @@ fn map_link_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
     let key = key.trim().to_owned()
     guard key.length() > 0 else { return @talc.fail("map link key") }
     @talc.many_chars1(@talc.satisfy("map link target", _ => true)).bind(target => {
-      let target = @core.unquote_identifier(target.trim().to_owned())
+      let target = @parse.unquote_identifier(target.trim().to_owned())
       if target.length() > 0 {
         @talc.pure(ParsedMapLink(key~, arrow~, target~))
       } else {
@@ -82,14 +82,14 @@ priv struct MultilineElementHeader {
 fn Parser::consume_multiline_element(
   self : Parser,
   header : MultilineElementHeader,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let display = StringBuilder()
   if header.first_line.length() > 0 {
     display.write_string(header.first_line)
   }
   self.index += 1
   while self.index < self.lines.length() {
-    let line = @core.strip_line_comment(self.lines[self.index])
+    let line = @parse.strip_line_comment(self.lines[self.index])
     let chars = line.to_array()
     let mut closing = None
     for index in 0..<chars.length() {
@@ -143,7 +143,7 @@ fn valid_json(source : String) -> Bool {
 fn Parser::add_single_line_json(
   self : Parser,
   value : JsonSingleDeclaration,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let qualified_code = self.qualify(value.declaration.code)
   guard !self.has_entity(qualified_code) else {
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
@@ -163,7 +163,7 @@ fn Parser::add_map_link(
   source : Entity,
   entry : MapEntry,
   arrow : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   guard entry.link_target is Some(target) else { return }
   let resolved = self.resolve(target)
   guard self.has_entity(resolved) else {
@@ -203,7 +203,7 @@ fn Parser::consume_json_body_line(
   self : Parser,
   entity_index : Int,
   line : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let delta = parse_brace_delta(line)
   if self.body_depth + delta <= 0 {
     let body = self.entities[entity_index].json_data.unwrap_or("")
@@ -237,7 +237,7 @@ fn Parser::consume_entity_body_line(
   self : Parser,
   entity_index : Int,
   line : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let entity = self.entities[entity_index]
   if entity.kind is Json {
     self.consume_json_body_line(entity_index, line)

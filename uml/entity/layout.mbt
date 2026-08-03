@@ -9,25 +9,8 @@ pub struct GraphvizNodeLayout {
 } derive(Eq, Debug)
 
 ///|
-/// Geometry returned by Graphviz for one relation. Points are in SVG space.
-pub struct GraphvizEdgeLayout {
-  relation_index : Int
-  paths : Array[Array[(Double, Double)]]
-  label : (Double, Double)?
-} derive(Eq, Debug)
-
-///|
 pub struct GraphvizPackageLayout {
   package_index : Int
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-} derive(Eq, Debug)
-
-///|
-pub struct GraphvizNoteLayout {
-  note_index : Int
   x : Double
   y : Double
   width : Double
@@ -40,9 +23,9 @@ pub struct GraphvizLayout {
   width : Double
   height : Double
   nodes : Array[GraphvizNodeLayout]
-  edges : Array[GraphvizEdgeLayout]
+  edges : Array[@graphviz.GraphvizEdge]
   packages : Array[GraphvizPackageLayout]
-  notes : Array[GraphvizNoteLayout]
+  notes : Array[@graphviz.GraphvizNote]
 } derive(Eq, Debug)
 
 ///|
@@ -144,12 +127,12 @@ fn Relation::graphviz_minlen(self : Relation) -> Int {
 fn EntityDiagram::graphviz_layout(
   self : EntityDiagram,
   text_metrics : ClassTextMetrics,
-  usecase? : Bool = false,
 ) -> GraphvizLayout raise @dot_layout.DotLayoutError {
+  let usecase = self.family.is_usecase()
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="class", strict=false)
   graph.set_attr(
     "rankdir",
-    @core.graphviz_rankdir_attr(@core.graphviz_rankdir(self.style)),
+    @graphviz.graphviz_rankdir_attr(@graphviz.graphviz_rankdir(self.style)),
   )
   graph.set_attr("splines", "spline")
   graph.set_attr("remincross", "true")
@@ -174,7 +157,7 @@ fn EntityDiagram::graphviz_layout(
     cluster.set_attr("penwidth", "1.5")
     cluster.set_attr(
       "color",
-      @core.svg_color(group.color, self.style.package_border_color()),
+      @style.svg_color(group.color, self.style.package_border_color()),
     )
     let protection_after = cluster.subgraph(name="\{cluster_name}p1")
     protection_after.set_attr("label", "")
@@ -190,7 +173,7 @@ fn EntityDiagram::graphviz_layout(
       Some(cluster) => cluster.node(name)
       None => graph.node(name)
     }
-    let geometry = entity.node_geometry(text_metrics, usecase~)
+    let geometry = entity.node_geometry(text_metrics, self.family)
     node.set_attr("label", "")
     node.set_attr(
       "shape",
@@ -235,7 +218,7 @@ fn EntityDiagram::graphviz_layout(
     }
     if !label.is_empty() {
       if usecase {
-        label = @core.display_stereotype(label)
+        label = @parse.display_stereotype(label)
       }
       edge.set_attr("label", label)
       if usecase {
@@ -256,7 +239,7 @@ fn EntityDiagram::graphviz_layout(
     if note.target_kind is LinkNote {
       continue
     }
-    let name = @core.graphviz_note_name(note_index)
+    let name = @graphviz.graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = note_size(note, text_metrics)
@@ -306,7 +289,7 @@ fn EntityDiagram::graphviz_layout(
     }
   }
   let laid_out = @dot_layout.layout_dot(graph, options={
-    rankdir: Some(@core.graphviz_rankdir(self.style)),
+    rankdir: Some(@graphviz.graphviz_rankdir(self.style)),
     nodesep: Some(PLANTUML_MIN_NODESEP_IN),
     ranksep: Some(PLANTUML_MIN_RANKSEP_IN),
     splines: Some(@dot_layout.SplinesMode::Spline),
@@ -314,7 +297,7 @@ fn EntityDiagram::graphviz_layout(
   let bbox = laid_out.bbox
   let nodes : Array[GraphvizNodeLayout] = []
   for node_layout in laid_out.nodes {
-    let (x, y) = @core.graphviz_point_to_svg(node_layout.pos, bbox)
+    let (x, y) = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
     match graphviz_entity_index(self, node_layout.node.name()) {
       Some(entity_index) =>
         nodes.push({
@@ -329,30 +312,18 @@ fn EntityDiagram::graphviz_layout(
   }
   let packages : Array[GraphvizPackageLayout] = []
   append_package_layouts(packages, laid_out, bbox, package_indices)
-  let notes : Array[GraphvizNoteLayout] = []
-  for note in @core.graphviz_notes(laid_out, note_names, bbox, offset=false) {
-    notes.push({
-      note_index: note.note_index,
-      x: note.x,
-      y: note.y,
-      width: note.width,
-      height: note.height,
-    })
-  }
-  let edges : Array[GraphvizEdgeLayout] = []
-  for edge in @core.graphviz_edges(laid_out, relation_names, bbox) {
-    edges.push({
-      relation_index: edge.index,
-      paths: edge.paths,
-      label: edge.label,
-    })
-  }
+  let notes : Array[@graphviz.GraphvizNote] = @graphviz.graphviz_notes(
+    laid_out, note_names, bbox, offset=false,
+  )
+  let edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
+    laid_out, relation_names, bbox,
+  )
   for note_index, note in self.notes {
     guard note.target_kind is LinkNote else { continue }
     guard note.relation_index is Some(relation_index) else { continue }
     let (width, height) = note_size(note, text_metrics)
     for edge in edges {
-      guard edge.relation_index == relation_index else { continue }
+      guard edge.index == relation_index else { continue }
       guard edge.paths.length() > 0 && edge.paths[0].length() > 0 else {
         continue
       }

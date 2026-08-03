@@ -8,17 +8,17 @@ fn Parser::finish_entity(self : Parser) -> Unit {
 fn Parser::parse_line(
   self : Parser,
   line : String,
-) -> Unit raise @core.ParseError {
-  let line = @core.strip_line_comment(line).trim().to_owned()
+) -> Unit raise @parse.ParseError {
+  let line = @parse.strip_line_comment(line).trim().to_owned()
   guard line.length() > 0 else { return }
-  match @core.common_block_terminator(line) {
+  match @parse.common_block_terminator(line) {
     Some(terminator) => {
       self.consume_common_block(terminator)
       return
     }
     None => ()
   }
-  match @core.parse_namespace_separator(line) {
+  match @parse.parse_namespace_separator(line) {
     Some(separator) => {
       self.namespace_separator = separator
       match separator {
@@ -29,7 +29,7 @@ fn Parser::parse_line(
     }
     None => ()
   }
-  match @core.parse_style_directive(line) {
+  match @style.parse_style_directive(line) {
     Some(directive) => {
       self.style.apply(directive)
       return
@@ -38,7 +38,7 @@ fn Parser::parse_line(
   }
   let marker = line.to_lower()
   guard marker != "@startuml" && marker != "@enduml" else { return }
-  guard !@core.is_preprocessor_directive(line) else { return }
+  guard !@style.is_preprocessor_directive(line) else { return }
   if self.current_entity is Some(entity_index) {
     self.consume_entity_body_line(entity_index, line)
     return
@@ -50,25 +50,22 @@ fn Parser::parse_line(
 }
 
 ///|
-fn parse_with_mode(
-  input : String,
-  allow_mixing~ : Bool,
-  unclosed_body_message~ : String,
-) -> EntityDiagram raise @core.ParseError {
-  let parser = Parser::new(input, allow_mixing~)
+fn parse_with_family(input : String, family : EntityFamily) -> EntityDiagram raise @parse.ParseError {
+  let parser = Parser::new(input, allow_mixing=family.allow_mixing())
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]
     parser.parse_line(line)
     parser.index += 1
   }
   guard parser.current_entity is None else {
-    raise SyntaxError(parser.line_number(), unclosed_body_message)
+    raise SyntaxError(parser.line_number(), family.unclosed_body_message())
   }
   guard parser.package_stack.is_empty() else {
     raise SyntaxError(parser.line_number(), "unclosed package")
   }
   parser.apply_filter_rules()
   {
+    family,
     entities: parser.entities,
     relations: parser.relations,
     packages: parser.packages,
@@ -79,29 +76,15 @@ fn parse_with_mode(
 }
 
 ///|
-/// Parse the shared entity-diagram grammar with an explicit diagram policy.
+/// Parse the shared entity-diagram grammar for the given diagram family.
 ///
-/// Diagram-family packages own the public entry points and select the policy;
-/// this package only owns their shared syntax and semantic representation.
-pub fn parse_entity_diagram(
+/// The family selects both the mixing policy and, at render time, the SVG
+/// symbols, so diagram-family packages no longer wrap this entry point.
+pub fn parse(
   input : String,
-  allow_mixing~ : Bool,
-  unclosed_body_message~ : String,
-) -> EntityDiagram raise @core.ParseError {
-  parse_with_mode(input, allow_mixing~, unclosed_body_message~)
-}
-
-///|
-/// Backward-compatible class-mode parser entry point.
-///
-/// New callers should import `entity/class` or `entity/component` so the
-/// diagram family is explicit at the package boundary.
-pub fn parse(input : String) -> EntityDiagram raise @core.ParseError {
-  parse_entity_diagram(
-    input,
-    allow_mixing=false,
-    unclosed_body_message="unclosed class body",
-  )
+  family? : EntityFamily = ClassDiagram,
+) -> EntityDiagram raise @parse.ParseError {
+  parse_with_family(input, family)
 }
 
 ///|
@@ -119,7 +102,7 @@ priv struct Parser {
   constraints : Array[LinkConstraint]
   entity_rules : Array[EntityRule]
   portion_rules : Array[PortionRule]
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
   mut current_entity : Int?
   mut last_entity : String?
   mut namespace_separator : String?
@@ -130,7 +113,7 @@ priv struct Parser {
 ///|
 fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
   {
-    lines: @core.preprocess(input)
+    lines: @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array(),
@@ -146,7 +129,7 @@ fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
     constraints: [],
     entity_rules: [],
     portion_rules: [],
-    style: @core.DocumentStyle::empty(),
+    style: @style.DocumentStyle::empty(),
     current_entity: None,
     last_entity: None,
     namespace_separator: Some("."),
@@ -162,19 +145,19 @@ fn Parser::current_package(self : Parser) -> String {
 
 ///|
 fn Parser::line_number(self : Parser) -> Int {
-  @core.line_span(self.index + 1).line
+  @parse.line_span(self.index + 1).line
 }
 
 ///|
-fn Parser::diagnostic(self : Parser, message : String) -> @core.ParseDiagnostic {
-  @core.diagnostic_at_line(self.line_number(), message)
+fn Parser::diagnostic(self : Parser, message : String) -> @parse.ParseDiagnostic {
+  @parse.diagnostic_at_line(self.line_number(), message)
 }
 
 ///|
 fn Parser::raise_parse_error(
   self : Parser,
   message : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }

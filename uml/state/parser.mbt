@@ -13,14 +13,14 @@ priv struct Parser {
   stack : Array[StateScope]
   concurrent_regions : Array[String]
   regions : Array[StateRegion]
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
   mut index : Int
 }
 
 ///|
 fn Parser::new(input : String) -> Parser {
   {
-    lines: @core.preprocess(input)
+    lines: @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array(),
@@ -30,7 +30,7 @@ fn Parser::new(input : String) -> Parser {
     stack: [],
     concurrent_regions: [],
     regions: [],
-    style: @core.DocumentStyle::empty(),
+    style: @style.DocumentStyle::empty(),
     index: 0,
   }
 }
@@ -135,14 +135,14 @@ fn Parser::upsert_state(self : Parser, state : StateNode) -> Unit {
 fn Parser::consume_entity_note(
   self : Parser,
   target : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   guard target.length() > 0 else {
     raise SyntaxError(self.line_number(), "state note needs a target")
   }
   let text = []
   self.index += 1
   while self.index < self.lines.length() {
-    let content = @core.strip_line_comment(self.lines[self.index])
+    let content = @parse.strip_line_comment(self.lines[self.index])
       .trim()
       .to_owned()
     if content.equal_ignore_ascii_case("end note") {
@@ -159,7 +159,7 @@ fn Parser::consume_entity_note(
 fn Parser::apply_line_syntax(
   self : Parser,
   line : String,
-) -> Bool raise @core.ParseError {
+) -> Bool raise @parse.ParseError {
   match parse_line_syntax(line) {
     Some(Declaration(syntax)) => {
       self.upsert_state({
@@ -230,15 +230,15 @@ fn Parser::apply_line_syntax(
 fn Parser::parse_line(
   self : Parser,
   line : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let lower = line.to_lower()
   if line.length() == 0 ||
     lower == "@startuml" ||
     lower == "@enduml" ||
-    @core.is_preprocessor_directive(line) {
+    @style.is_preprocessor_directive(line) {
     return
   }
-  match @core.parse_style_directive(line) {
+  match @style.parse_style_directive(line) {
     Some(directive) => {
       self.style.apply(directive)
       return
@@ -279,18 +279,18 @@ fn Parser::parse_line(
 ///|
 /// Parse the command family registered by PlantUML's `StateDiagramFactory`.
 /// The AST preserves state-specific pseudo-states and composite-state scope.
-pub fn parse(input : String) -> StateDiagram raise @core.ParseError {
+pub fn parse(input : String) -> StateDiagram raise @parse.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
-    let line = @core.strip_line_comment(parser.lines[parser.index])
+    let line = @parse.strip_line_comment(parser.lines[parser.index])
       .trim()
       .to_owned()
     if line.to_lower() == "skinparam {" {
       parser.index += 1
-      let closed = @core.consume_skinparam_body(
+      let closed = @style.consume_skinparam_body(
         fn() {
           guard parser.index < parser.lines.length() else { return None }
-          let line = @core.strip_line_comment(parser.lines[parser.index])
+          let line = @parse.strip_line_comment(parser.lines[parser.index])
           parser.index += 1
           Some(line)
         },

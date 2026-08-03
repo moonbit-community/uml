@@ -1,10 +1,7 @@
-/// Shared document infrastructure.
 import {
-  "moonbitlang/core/string",
-  "moonbitlang/core/test",
-  "kokic/talcparsec" @talc,
-  "kokic/uml/metrics",
+  "kokic/uml/core/style" @style,
   "moonbit-community/graphviz/geom",
   "moonbit-community/graphviz/layout/dot" @dot_layout,
   "moonbit-community/graphviz/layout/dot/rankdir",
+  "moonbitlang/core/string",
 }

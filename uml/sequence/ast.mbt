@@ -140,6 +140,12 @@ priv struct Message {
 }
 
 ///|
+/// A self-message loops back to the same participant.
+fn Message::is_self(self : Message) -> Bool {
+  self.from_code == self.to_code
+}
+
+///|
 #warnings("-unused_value")
 priv enum MessageExoType {
   FromLeft
@@ -278,5 +284,5 @@ struct SequenceDiagram {
   auto_number : Autonumber?
   autoactivate : Bool
   show_footbox : Bool
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
 }

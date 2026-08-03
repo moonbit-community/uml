@@ -68,7 +68,7 @@ priv struct StateMetadataValues {
 
 ///|
 fn state_identifier_parser() -> @talc.StringParser[StateIdentifier] {
-  let quoted = @core.quoted_value_parser().map(value => { value, quoted: true })
+  let quoted = @parse.quoted_value_parser().map(value => { value, quoted: true })
   let unquoted = @talc.take_while("state name", char => {
     !char.is_whitespace() &&
     char != ':' &&
@@ -81,13 +81,13 @@ fn state_identifier_parser() -> @talc.StringParser[StateIdentifier] {
 
 ///|
 fn state_metadata_parser() -> @talc.StringParser[StateMetadata] {
-  @core.stereotype_value_parser()
+  @parse.stereotype_value_parser()
   .lexeme()
   .map(value => Stereotype(value))
   .attempt()
-  .or(@core.url_value_parser().lexeme().map(value => Url(value)).attempt())
+  .or(@parse.url_value_parser().lexeme().map(value => Url(value)).attempt())
   .or(
-    @core.color_value_parser("state color").lexeme().map(value => Color(value)),
+    @parse.color_value_parser("state color").lexeme().map(value => Color(value)),
   )
 }
 
@@ -379,7 +379,7 @@ fn link_note_parser() -> @talc.StringParser[String] {
   @talc.symbol("note")
   .then(@talc.symbol("on"))
   .then(@talc.symbol("link"))
-  .skip(@core.color_value_parser("note color").lexeme().optional())
+  .skip(@parse.color_value_parser("note color").lexeme().optional())
   .then(@talc.symbol(":"))
   .then(@talc.line_content)
   .skip(@talc.eof())

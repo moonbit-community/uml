@@ -73,7 +73,7 @@ pub struct StateDiagram {
   notes : Array[StateNote]
   concurrent_regions : Array[String]
   regions : Array[StateRegion]
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
 } derive(Eq, Debug)
 
 ///|

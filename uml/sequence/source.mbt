@@ -43,15 +43,15 @@ fn Source::skip_line(self : Source) -> Unit {
 }
 
 ///|
-fn Source::diagnostic(self : Source, message : String) -> @core.ParseDiagnostic {
-  @core.diagnostic_at_span(@core.source_span(self.chars, self.pos), message)
+fn Source::diagnostic(self : Source, message : String) -> @parse.ParseDiagnostic {
+  @parse.diagnostic_at_span(@parse.source_span(self.chars, self.pos), message)
 }
 
 ///|
 fn Source::raise_parse_error(
   self : Source,
   message : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }

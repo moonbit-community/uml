@@ -29,7 +29,7 @@ fn signed_integer_parser() -> @talc.StringParser[Int] {
 
 ///|
 fn url_value_parser() -> @talc.StringParser[String] {
-  @core.url_value_parser()
+  @parse.url_value_parser()
 }
 
 ///|
@@ -81,7 +81,7 @@ fn participant_declaration_tail_parser(
     .optional()
     .bind(url => {
       inline_space1()
-      .then(@core.color_value_parser("color"))
+      .then(@parse.color_value_parser("color"))
       .attempt()
       .optional()
       .skip(inline_spaces())
@@ -101,7 +101,7 @@ fn life_event_line_parser(
     .then(participant_code_parser())
     .bind(participant_code => {
       inline_space1()
-      .then(@core.color_value_parser("color"))
+      .then(@parse.color_value_parser("color"))
       .attempt()
       .optional()
       .skip(inline_spaces())
@@ -152,12 +152,12 @@ fn grouping_line_parser() -> @talc.StringParser[Event] {
   let leaf = keyword_parser("else")
     .attempt()
     .or(keyword_parser("also"))
-    .then(inline_space1().then(@core.color_value_parser("color")).attempt().optional())
+    .then(inline_space1().then(@parse.color_value_parser("color")).attempt().optional())
     .bind(back_color => {
       inline_spaces()
       .then(line_rest_parser("group label"))
       .map(label => {
-        GroupingLeaf({ is_end: false, label: label.optional_text(), back_color })
+        GroupingLeaf({ is_end: false, label: @parse.normalize_label(label), back_color })
       })
     })
   let end = keyword_parser("end")
@@ -170,12 +170,12 @@ fn grouping_line_parser() -> @talc.StringParser[Event] {
       .then(group_keyword_parser())
       .bind(keyword => {
         inline_space1()
-        .then(@core.color_value_parser("color"))
+        .then(@parse.color_value_parser("color"))
         .attempt()
         .optional()
         .bind(back_color_header => {
           inline_space1()
-          .then(@core.color_value_parser("color"))
+          .then(@parse.color_value_parser("color"))
           .attempt()
           .optional()
           .bind(back_color_body => {
@@ -211,11 +211,11 @@ fn box_line_parser() -> @talc.StringParser[Event] {
     .then(inline_spaces())
     .then(@talc.many_chars(label_character))
     .bind(label => {
-      @core.color_value_parser("color")
+      @parse.color_value_parser("color")
       .attempt()
       .optional()
       .skip(inline_spaces())
-      .map(color => BoxStart({ label: label.optional_text(), color }))
+      .map(color => BoxStart({ label: @parse.normalize_label(label), color }))
     })
   end.attempt().or(start).skip(@talc.eof())
 }
@@ -270,8 +270,16 @@ fn delay_line_parser() -> @talc.StringParser[Event] {
   .or(ascii.attempt())
   .or(unicode)
   .skip(inline_spaces())
-  .map(label => Delay({ label: label.optional_text() }))
+  .map(label => Delay({ label: @parse.normalize_label(label) }))
   .skip(@talc.eof())
+}
+
+///|
+/// Parse an optional digit-run: an empty run means `None`, otherwise the
+/// parsed value (callers guarantee the run is digit-only).
+fn optional_digits(value : String) -> Int? {
+  guard value.length() > 0 else { None }
+  Some(@string.parse_int(value) catch { _ => 0 })
 }
 
 ///|
@@ -281,7 +289,7 @@ fn hspace_line_parser() -> @talc.StringParser[Event] {
   .bind(raw_pixels => {
     @talc.char('|')
     .then(@talc.char('|').many())
-    .map(_ => HSpace({ pixels: raw_pixels.optional_integer() }))
+    .map(_ => HSpace({ pixels: optional_digits(raw_pixels) }))
   })
   .skip(inline_spaces())
   .skip(@talc.eof())
@@ -293,7 +301,7 @@ fn newpage_line_parser() -> @talc.StringParser[Event] {
   .optional()
   .then(keyword_parser("newpage"))
   .then(line_rest_parser("newpage title"))
-  .map(title => Newpage({ title: title.optional_text() }))
+  .map(title => Newpage({ title: @parse.normalize_label(title) }))
   .skip(@talc.eof())
 }
 
@@ -310,13 +318,13 @@ fn autonumber_line_parser() -> @talc.StringParser[Event] {
     .then(
       inline_space1()
       .then(@talc.many_chars1(@talc.ascii_digit()))
-      .map(value => value.optional_integer().unwrap())
+      .map(value => @string.parse_int(value) catch { _ => 0 })
       .attempt()
       .optional(),
     )
     .bind(increment => {
       inline_space1()
-      .then(quoted_string_parser())
+      .then(@parse.quoted_value_parser())
       .attempt()
       .optional()
       .skip(inline_spaces())
@@ -348,12 +356,12 @@ fn autonumber_line_parser() -> @talc.StringParser[Event] {
     .bind(start => {
       inline_space1()
       .then(@talc.many_chars1(@talc.ascii_digit()))
-      .map(value => value.optional_integer().unwrap())
+      .map(value => @string.parse_int(value) catch { _ => 0 })
       .attempt()
       .optional()
       .bind(increment => {
         inline_space1()
-        .then(quoted_string_parser())
+        .then(@parse.quoted_value_parser())
         .attempt()
         .optional()
         .skip(inline_spaces())
@@ -415,13 +423,13 @@ fn miscellaneous_event_line_parser() -> @talc.StringParser[Event] {
   let auto_newpage = keyword_parser("autonewpage")
     .then(inline_space1())
     .then(@talc.many_chars1(@talc.ascii_digit()))
-    .map(value => AutoNewpage(value.optional_integer()))
+    .map(value => AutoNewpage(optional_digits(value)))
   let return_event = @talc.char('&')
     .optional()
     .then(inline_spaces())
     .then(keyword_parser("return"))
     .then(line_rest_parser("return value"))
-    .map(value => Return({ value: value.optional_text() }))
+    .map(value => Return({ value: @parse.normalize_label(value) }))
   let link_anchor = anchor_parser().bind(_ => {
     inline_spaces()
     .then(@talc.string("<->"))
@@ -432,7 +440,7 @@ fn miscellaneous_event_line_parser() -> @talc.StringParser[Event] {
       .then(
         @talc.char(':')
         .then(line_rest_parser("anchor label"))
-        .map(value => value.optional_text())
+        .map(value => @parse.normalize_label(value))
         .optional(),
       )
       .map(_ => LinkAnchor)

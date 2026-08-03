@@ -69,7 +69,7 @@ fn package_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
 fn stereotype_assignment_line_parser() -> @talc.StringParser[
   ClassCommandLineSyntax,
 ] {
-  let code = @core.quoted_value_parser()
+  let code = @parse.quoted_value_parser()
     .attempt()
     .or(
       @talc.many_chars1(
@@ -78,11 +78,11 @@ fn stereotype_assignment_line_parser() -> @talc.StringParser[
         }),
       ),
     )
-    .map(@core.unquote_identifier)
+    .map(@parse.unquote_identifier)
   code
   .bind(code => {
     inline_space1()
-    .then(@core.stereotype_value_parser())
+    .then(@parse.stereotype_value_parser())
     .map(stereotype => ParsedStereotypeAssignment(code~, stereotype~))
   })
   .skip(@talc.eof())
@@ -90,7 +90,7 @@ fn stereotype_assignment_line_parser() -> @talc.StringParser[
 
 ///|
 fn url_assignment_target_parser() -> @talc.StringParser[String] {
-  @core.quoted_value_parser()
+  @parse.quoted_value_parser()
   .attempt()
   .or(
     @talc.many_chars1(
@@ -99,7 +99,7 @@ fn url_assignment_target_parser() -> @talc.StringParser[String] {
       }),
     ),
   )
-  .map(@core.unquote_identifier)
+  .map(@parse.unquote_identifier)
 }
 
 ///|
@@ -121,7 +121,7 @@ fn url_assignment_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
       .attempt()
       .optional()
       .then(inline_space1())
-      .then(@core.url_value_parser())
+      .then(@parse.url_value_parser())
       .map(url => ParsedUrlAssignment(code~, url~))
     })
   })
@@ -142,7 +142,7 @@ fn Parser::apply_package_declaration(
   group : GroupDeclaration,
 ) -> Unit {
   let parent = self.current_package()
-  let segments = @core.split_unquoted(group.code, '.')
+  let segments = @parse.split_unquoted(group.code, '.')
   let mut prefix = parent
   for segment_index, segment in segments {
     let qualified_name = if prefix.length() == 0 {
@@ -201,7 +201,7 @@ fn Parser::apply_package_declaration(
 fn Parser::apply_class_command(
   self : Parser,
   syntax : ClassCommandLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   match syntax {
     ParsedPackage(group) => self.apply_package_declaration(group)
     ParsedStereotypeAssignment(code~, stereotype~) => {

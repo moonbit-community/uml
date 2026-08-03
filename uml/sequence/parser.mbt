@@ -1,25 +1,25 @@
 ///|
 fn ParseCtx::consume_style_directive(
   self : ParseCtx,
-) -> Bool raise @core.ParseError {
-  let line = @core.strip_line_comment(self.source.current_line())
+) -> Bool raise @parse.ParseError {
+  let line = @parse.strip_line_comment(self.source.current_line())
   let lower = line.trim().to_lower()
   guard lower != "newpage" && !lower.has_prefix("newpage ") else {
     return false
   }
   if line.trim().to_lower() == "skinparam {" {
     self.source.skip_line()
-    let closed = @core.consume_skinparam_body(
+    let closed = @style.consume_skinparam_body(
       fn() {
         guard !self.source.eof() else { return None }
-        Some(@core.strip_line_comment(self.source.collect_line()))
+        Some(@parse.strip_line_comment(self.source.collect_line()))
       },
       fn(directive) { self.style.apply(directive) },
     )
     guard closed else { self.source.raise_parse_error("unclosed skinparam") }
     return true
   }
-  match @core.parse_style_directive(line) {
+  match @style.parse_style_directive(line) {
     Some(directive) => {
       self.source.skip_line()
       self.style.apply(directive)
@@ -65,13 +65,13 @@ fn skip_ignored_line(source : Source) -> Bool {
 /// - `input`: the raw PlantUML source text, optionally wrapped with `@startuml` / `@enduml`.
 ///
 /// Returns a `SequenceDiagram` containing the parsed participants and events.
-pub fn parse(input : String) -> SequenceDiagram raise @core.ParseError {
+pub fn parse(input : String) -> SequenceDiagram raise @parse.ParseError {
   let ctx = ParseCtx::new(input)
 
   while !ctx.source.eof() {
     guard !skip_ignored_line(ctx.source) else { continue }
     let raw_line = ctx.source.current_line()
-    let line = @core.strip_line_comment(raw_line)
+    let line = @parse.strip_line_comment(raw_line)
     if line.trim().equal_ignore_ascii_case("@startuml") {
       ctx.source.skip_line()
       continue
@@ -84,7 +84,7 @@ pub fn parse(input : String) -> SequenceDiagram raise @core.ParseError {
       continue
     }
     let directive = line
-    if @core.is_preprocessor_directive(directive) {
+    if @style.is_preprocessor_directive(directive) {
       ctx.source.skip_line()
       continue
     }

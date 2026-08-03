@@ -26,7 +26,7 @@ fn require_block(
   expected : BlockKind,
   line : Int,
   command : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   guard stack.last() is Some(actual) && actual == expected else {
     raise SyntaxError(
       line,
@@ -41,7 +41,7 @@ fn pop_block(
   expected : BlockKind,
   line : Int,
   command : String,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   require_block(stack, expected, line, command)
   let _ = stack.pop()
 }
@@ -55,11 +55,11 @@ fn command_text(line : String, prefix : String) -> String {
 fn parse_note(
   lines : Array[String],
   start : Int,
-) -> (String, Int) raise @core.ParseError {
+) -> (String, Int) raise @parse.ParseError {
   let text = []
   let mut index = start + 1
   while index < lines.length() {
-    let line = @core.strip_line_comment(lines[index]).trim().to_owned()
+    let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
     if line.equal_ignore_ascii_case("end note") {
       return (text.join("\n"), index)
     }
@@ -81,35 +81,35 @@ fn is_arrow(line : String) -> Bool {
 /// Parse PlantUML's modern activity-diagram commands. The supported command
 /// set follows `activitydiagram3.ActivityDiagramFactory3`; unsupported
 /// commands are rejected rather than being silently treated as activities.
-pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
-  let lines = @core.preprocess(input)
+pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
+  let lines = @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array()
   let nodes = []
   let stack = []
-  let style = @core.DocumentStyle::empty()
+  let style = @style.DocumentStyle::empty()
   let mut index = 0
   while index < lines.length() {
     let line_number = index + 1
-    let line = @core.strip_line_comment(lines[index]).trim().to_owned()
+    let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
     let lower = line.to_lower()
     if line.length() == 0 ||
       lower == "@startuml" ||
       lower == "@enduml" ||
       lower == "@startactivity" ||
       lower == "@endactivity" ||
-      @core.is_preprocessor_directive(line) {
+      @style.is_preprocessor_directive(line) {
       index += 1
       continue
     }
     if lower == "skinparam {" {
-      let closed = @core.consume_skinparam_body(
+      let closed = @style.consume_skinparam_body(
         fn() {
           guard index < lines.length() else { return None }
           let line = lines[index]
           index += 1
-          Some(@core.strip_line_comment(line).trim().to_owned())
+          Some(@parse.strip_line_comment(line).trim().to_owned())
         },
         fn(directive) { style.apply(directive) },
       )
@@ -118,7 +118,7 @@ pub fn parse(input : String) -> ActivityDiagram raise @core.ParseError {
       }
       continue
     }
-    match @core.parse_style_directive(line) {
+    match @style.parse_style_directive(line) {
       Some(directive) => {
         style.apply(directive)
         index += 1

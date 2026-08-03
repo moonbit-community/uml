@@ -12,7 +12,7 @@ fn title_line_parser() -> @talc.StringParser[SequenceLineSyntax] {
   keyword_parser("title")
   .then(line_rest_parser("title"))
   .map(rest => {
-    match rest.optional_text() {
+    match @parse.normalize_label(rest) {
       Some(text) => ParsedTitle(Inline(text))
       None => ParsedTitle(Multiline)
     }
@@ -48,7 +48,7 @@ fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
 fn ParseCtx::apply_note_syntax(
   self : ParseCtx,
   syntax : NoteLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   self.source.skip_line()
   let text = match syntax.text {
     Inline(text) => text
@@ -83,10 +83,10 @@ fn ParseCtx::apply_note_syntax(
 fn ParseCtx::apply_reference_syntax(
   self : ParseCtx,
   syntax : ReferenceLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   self.source.skip_line()
   let label = match syntax.text {
-    Inline(text) => text.optional_text()
+    Inline(text) => @parse.normalize_label(text)
     Multiline =>
       match
         self.source.take_block_text(line => {
@@ -108,7 +108,7 @@ fn ParseCtx::apply_reference_syntax(
 fn ParseCtx::apply_line_syntax(
   self : ParseCtx,
   syntax : SequenceLineSyntax,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   match syntax {
     ParsedEvent(event) => {
       self.source.skip_line()

@@ -20,7 +20,7 @@ pub struct Document {
 }
 
 ///|
-pub fn Document::kind(self : Document) -> @core.DiagramKind {
+pub fn Document::kind(self : Document) -> DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
     Activity(_) => Activity
@@ -38,7 +38,7 @@ pub fn Document::kind(self : Document) -> @core.DiagramKind {
 
 ///|
 /// `(kind, source predicate)` pairs in dispatch priority order.
-let source_predicates : FixedArray[(@core.DiagramKind, (String) -> Bool)] = [
+let source_predicates : FixedArray[(DiagramKind, (String) -> Bool)] = [
   (Json, is_json_source),
   (Yaml, is_yaml_source),
   (Toml, is_toml_source),
@@ -54,7 +54,7 @@ let source_predicates : FixedArray[(@core.DiagramKind, (String) -> Bool)] = [
 
 ///|
 /// Detect the diagram family a source selects, in priority order.
-fn source_kind(source : String) -> @core.DiagramKind? {
+fn source_kind(source : String) -> DiagramKind? {
   source_predicates
   .iter()
   .find_first(pair => (pair.1)(source))
@@ -75,10 +75,18 @@ pub fn parse(source : String) -> Document raise {
     Some(Activity) => { diagram: Activity(@activity.parse(source)) }
     Some(Sequence) => { diagram: Sequence(@sequence.parse(source)) }
     Some(State) => { diagram: State(@state.parse(source)) }
-    Some(UseCase) => { diagram: UseCase(@entity_usecase.parse(source)) }
-    Some(Component) => { diagram: Component(@entity_component.parse(source)) }
-    Some(Object) => { diagram: Object(@entity_class.parse(source)) }
-    Some(Class) => { diagram: Class(@entity_class.parse(source)) }
+    Some(UseCase) =>
+      { diagram: UseCase(@entity.parse(source, family=@entity.UseCaseDiagram)) }
+    Some(Component) =>
+      {
+        diagram: Component(
+          @entity.parse(source, family=@entity.ComponentDiagram),
+        ),
+      }
+    Some(Object) =>
+      { diagram: Object(@entity.parse(source, family=@entity.ObjectDiagram)) }
+    Some(Class) =>
+      { diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)) }
     _ => fail("unknown diagram")
   }
 }
@@ -87,26 +95,26 @@ pub fn parse(source : String) -> Document raise {
 fn meaningful_source_lines(input : String) -> Array[String] {
   input
   .split("\n")
-  .map(line => @core.strip_line_comment(line.to_owned()).trim().to_owned())
+  .map(line => @parse.strip_line_comment(line.to_owned()).trim().to_owned())
   .filter(line => {
     line.length() > 0 &&
     !line.equal_ignore_ascii_case("@startuml") &&
     !line.equal_ignore_ascii_case("@enduml") &&
-    !@core.is_preprocessor_directive(line)
+    !@style.is_preprocessor_directive(line)
   })
   .to_array()
 }
 
 ///|
 fn starts_with_keyword(line : String, keywords : FixedArray[String]) -> Bool {
-  let words = @core.syntax_words(line)
+  let words = @parse.syntax_words(line)
   words.length() > 0 && keywords.contains(words[0].to_lower())
 }
 
 ///|
 fn is_sequence_command(line : String) -> Bool {
   let lower = line.to_lower()
-  let words = @core.syntax_words(line)
+  let words = @parse.syntax_words(line)
   let grouping_keyword = match words {
     ["&", keyword, ..] | [keyword, ..] =>
       sequence_grouping_keywords.contains(keyword.to_lower())
@@ -132,8 +140,8 @@ fn is_ambiguous_participant_declaration(line : String) -> Bool {
 
 ///|
 fn has_message_arrow(line : String) -> Bool {
-  @core.find_unquoted_literal(line, "->") is Some(_) ||
-  @core.find_unquoted_literal(line, "<-") is Some(_)
+  @parse.find_unquoted_literal(line, "->") is Some(_) ||
+  @parse.find_unquoted_literal(line, "<-") is Some(_)
 }
 
 ///|
@@ -156,7 +164,7 @@ fn has_usecase_declaration(line : String) -> Bool {
 /// These arrow forms are sequence-message syntax, never class relations.
 fn has_sequence_only_message_arrow(line : String) -> Bool {
   sequence_message_arrows.any(arrow => {
-    @core.find_unquoted_literal(line, arrow) is Some(_)
+    @parse.find_unquoted_literal(line, arrow) is Some(_)
   })
 }
 
@@ -229,7 +237,7 @@ pub fn is_component_source(input : String) -> Bool {
     if trimmed.has_prefix("[") &&
       (
         has_message_arrow(trimmed) ||
-        @core.find_unquoted_literal(trimmed, "--") is Some(_)
+        @parse.find_unquoted_literal(trimmed, "--") is Some(_)
       ) {
       return true
     }
@@ -275,7 +283,7 @@ pub fn is_class_source(input : String) -> Bool {
     let lower = line.to_lower()
     if is_class_declaration(line) ||
       class_relation_arrows.any(arrow => {
-        @core.find_unquoted_literal(line, arrow) is Some(_)
+        @parse.find_unquoted_literal(line, arrow) is Some(_)
       }) ||
       lower.has_prefix("allowmixing") ||
       lower.has_prefix("mix_") ||

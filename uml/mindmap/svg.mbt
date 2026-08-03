@@ -1,6 +1,6 @@
 ///|
 fn append_mindmap_text(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   x : Int,
   y : Int,
   label : String,
@@ -40,7 +40,7 @@ fn append_mindmap_text(
 
 ///|
 fn append_mindmap_edge(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   edge : EdgeLayout,
   line_color : String,
   line_thickness : Int,
@@ -57,7 +57,7 @@ fn append_mindmap_edge(
 
 ///|
 fn append_mindmap_node(
-  output : @core.XmlWriter,
+  output : @svg.XmlWriter,
   diagram : MindmapDiagram,
   node : NodeLayout,
 ) -> Unit {
@@ -97,20 +97,20 @@ fn append_mindmap_node(
     Box => "box"
     None => "boxless"
   }
-  let fill = @core.svg_color(
+  let fill = @style.svg_color(
     match idea.background_color {
       Some(color) => Some(color)
       None => node_style.background_color
     },
-    @core.render_defaults().node_background,
+    @style.render_defaults().node_background,
   )
-  let line_color = @core.svg_color(
+  let line_color = @style.svg_color(
     node_style.line_color,
-    @core.render_defaults().diagram_line,
+    @style.render_defaults().diagram_line,
   )
-  let font_color = @core.svg_color(
+  let font_color = @style.svg_color(
     node_style.font_color,
-    @core.render_defaults().diagram_text,
+    @style.render_defaults().diagram_text,
   )
   let line_thickness = match node_style.line_thickness {
     Some(value) => value.to_string()
@@ -155,16 +155,16 @@ fn append_mindmap_node(
 /// Render a parsed mindmap as an SVG document.
 pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
   let layout = self.layout()
-  let output = @core.XmlWriter::new()
+  let output = @svg.XmlWriter::new()
   let background = self.style.canvas_color()
-  let font_family = @core.font_family(self.style)
-  let font_size = @core.font_size(self.style)
-  let arrow_color = @core.svg_color(
+  let font_family = @style.font_family(self.style)
+  let font_size = @style.font_size(self.style)
+  let arrow_color = @style.svg_color(
     match self.mindmap_style.arrow.line_color {
       Some(color) => Some(color)
       None => self.style.line_color
     },
-    @core.render_defaults().diagram_line,
+    @style.render_defaults().diagram_line,
   )
   let arrow_thickness = self.mindmap_style.arrow.line_thickness.unwrap_or(1)
   output.open("svg", attributes=[
@@ -196,6 +196,6 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
 }
 
 ///|
-pub fn render_mindmap_svg(input : String) -> String raise @core.ParseError {
+pub fn render_mindmap_svg(input : String) -> String raise @parse.ParseError {
   parse(input).render_svg()
 }

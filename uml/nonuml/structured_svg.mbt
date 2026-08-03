@@ -39,7 +39,7 @@ fn display_text(value : StructuredValueDisplay) -> String {
 ///|
 fn display_svg(value : StructuredValueDisplay) -> String {
   match value {
-    Text(text) => @core.xml_escape(text)
+    Text(text) => @style.xml_escape(text)
     True => "&#9745; true"
     False => "&#9744; false"
     Null => "&#9216;"
@@ -69,7 +69,7 @@ fn append_multiline_text(
     None => []
   }
   output.write_string(
-    @core.multiline_text_markup(
+    @svg.multiline_text_markup(
       x.to_double(),
       y.to_double(),
       text,
@@ -362,7 +362,7 @@ fn render_labelled_svg(diagram : StructuredDiagram, label : String) -> String {
   output <+ "  role=\"img\" aria-label=\"\{label}\">\n"
   let font_size = structured_font_size()
   let key_font_weight = structured_key_font_weight()
-  let defaults = @core.render_defaults()
+  let defaults = @style.render_defaults()
   let line = defaults.diagram_line
   output.write_string("<style>\n")
   output <+

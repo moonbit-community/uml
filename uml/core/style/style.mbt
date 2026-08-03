@@ -304,7 +304,7 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     return Some(
       Property(
         "namespace separator",
-        syntax_words(trimmed.to_owned()).last().unwrap_or(""),
+        @parse.syntax_words(trimmed.to_owned()).last().unwrap_or(""),
       ),
     )
   }

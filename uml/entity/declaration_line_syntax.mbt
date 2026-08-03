@@ -103,7 +103,7 @@ fn declaration_shaped_name_parser() -> @talc.StringParser[String] {
 
 ///|
 fn declaration_name_atom_parser() -> @talc.StringParser[DeclarationNameAtom] {
-  let quoted = @core.quoted_value_parser().map(value => (value, true))
+  let quoted = @parse.quoted_value_parser().map(value => (value, true))
   let shaped = declaration_shaped_name_parser().map(value => (value, false))
   let plain = @talc.many_chars1(
     @talc.satisfy("declaration name", char => {
@@ -124,7 +124,7 @@ fn declaration_name_atom_parser() -> @talc.StringParser[DeclarationNameAtom] {
     declaration_generic_parser()
     .attempt()
     .optional()
-    .map(generic => { value: @core.unquote_identifier(value), generic, quoted })
+    .map(generic => { value: @parse.unquote_identifier(value), generic, quoted })
   })
 }
 
@@ -159,7 +159,7 @@ fn declaration_name_syntax_parser() -> @talc.StringParser[DeclarationNameSyntax]
 
 ///|
 fn declaration_target_parser() -> @talc.StringParser[String] {
-  @core.quoted_value_parser()
+  @parse.quoted_value_parser()
   .attempt()
   .or(
     @talc.many_chars1(
@@ -168,7 +168,7 @@ fn declaration_target_parser() -> @talc.StringParser[String] {
       }),
     ),
   )
-  .map(@core.unquote_identifier)
+  .map(@parse.unquote_identifier)
 }
 
 ///|
@@ -207,7 +207,7 @@ fn declaration_url_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
   .then(@talc.many_chars(character))
   .skip(terminator)
   .bind(content => {
-    match @core.parse_url_target("[[" + content + "]]") {
+    match @parse.parse_url_target("[[" + content + "]]") {
       Some(target) => @talc.pure(DeclarationUrl(target.target))
       None => @talc.fail("URL")
     }
@@ -227,7 +227,7 @@ fn declaration_line_style_parser() -> @talc.StringParser[
     .optional(),
   )
   .bind(style => {
-    @core.color_token_parser("line color").map(color => {
+    @parse.color_token_parser("line color").map(color => {
         let color = if color.length() == 0 { None } else { Some(color) }
         DeclarationLine(style~, color~)
       },
@@ -252,7 +252,7 @@ fn declaration_suffix_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
       ),
     )
     .map(value => DeclarationTag(value))
-  let color = @core.color_value_parser("declaration color").map(value => DeclarationColor(value))
+  let color = @parse.color_value_parser("declaration color").map(value => DeclarationColor(value))
   @talc.choice([
     extends.attempt(),
     implements.attempt(),

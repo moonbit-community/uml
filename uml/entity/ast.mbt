@@ -233,13 +233,55 @@ pub struct LinkConstraint {
 } derive(Eq, Debug)
 
 ///|
+/// The PlantUML diagram family a parsed entity graph belongs to.
+///
+/// The family selects the parsing policy (`allow_mixing`) and the SVG rendering
+/// mode, so diagram-family packages do not need to wrap the shared engine.
+pub(all) enum EntityFamily {
+  ClassDiagram
+  ObjectDiagram
+  ComponentDiagram
+  UseCaseDiagram
+} derive(Eq, Debug)
+
+///|
+/// Whether declarations outside the class grammar may appear without an
+/// explicit `allowmixing` directive.
+pub fn EntityFamily::allow_mixing(self : EntityFamily) -> Bool {
+  match self {
+    ClassDiagram | ObjectDiagram => false
+    ComponentDiagram | UseCaseDiagram => true
+  }
+}
+
+///|
+/// Error text reported when a body block is left open.
+pub fn EntityFamily::unclosed_body_message(self : EntityFamily) -> String {
+  match self {
+    ClassDiagram | ObjectDiagram => "unclosed class body"
+    ComponentDiagram => "unclosed component body"
+    UseCaseDiagram => "unclosed use-case body"
+  }
+}
+
+///|
+/// Whether this family renders with PlantUML's use-case symbols.
+pub fn EntityFamily::is_usecase(self : EntityFamily) -> Bool {
+  match self {
+    UseCaseDiagram => true
+    _ => false
+  }
+}
+
+///|
 pub struct EntityDiagram {
+  family : EntityFamily
   entities : Array[Entity]
   relations : Array[Relation]
   packages : Array[Package]
   notes : Array[Note]
   constraints : Array[LinkConstraint]
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
 } derive(Eq, Debug)
 
 ///|

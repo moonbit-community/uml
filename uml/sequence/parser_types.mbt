@@ -38,13 +38,13 @@ priv struct ParseCtx {
   activating_messages : Array[String]
   mut last_message_from : String?
   mut last_message_to : String?
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
 }
 
 ///|
 fn ParseCtx::new(input : String) -> ParseCtx {
   {
-    source: Source::new(@core.preprocess(input)),
+    source: Source::new(@parse.preprocess(input)),
     participants: Map([]),
     events: [],
     box_stack: [],
@@ -53,7 +53,7 @@ fn ParseCtx::new(input : String) -> ParseCtx {
     activating_messages: [],
     last_message_from: None,
     last_message_to: None,
-    style: @core.DocumentStyle::empty(),
+    style: @style.DocumentStyle::empty(),
   }
 }
 
@@ -80,7 +80,7 @@ fn ParseCtx::ensure_participant(
 fn ParseCtx::declare_participant(
   self : ParseCtx,
   declaration : ParticipantDecl,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   self.ensure_no_pending_create()
   let reference = declaration.reference
   let is_new = !self.participants.contains(reference.code)
@@ -174,7 +174,7 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
 ///|
 fn ParseCtx::ensure_no_pending_create(
   self : ParseCtx,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   guard self.pending_create is Some(code) else { () }
   self.source.raise_parse_error("after create, send a message to \{code}")
 }
@@ -183,7 +183,7 @@ fn ParseCtx::ensure_no_pending_create(
 fn ParseCtx::validate_event(
   self : ParseCtx,
   event : Event,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   match self.pending_create {
     Some(code) =>
       match event {
@@ -219,7 +219,7 @@ fn ParseCtx::validate_event(
 fn ParseCtx::resolve_event(
   self : ParseCtx,
   event : Event,
-) -> Event raise @core.ParseError {
+) -> Event raise @parse.ParseError {
   match event {
     DeactivateLatest =>
       match self.activating_messages.last() {
@@ -240,7 +240,7 @@ fn ParseCtx::resolve_event(
 fn ParseCtx::push_event(
   self : ParseCtx,
   event : Event,
-) -> Unit raise @core.ParseError {
+) -> Unit raise @parse.ParseError {
   let event = self.resolve_event(event)
   self.validate_event(event)
   self.register_event(event)

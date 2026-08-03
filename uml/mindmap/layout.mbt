@@ -131,7 +131,7 @@ fn MindmapDiagram::node_font_size(
   index : Int,
 ) -> Int {
   self.node_style(index).font_size.unwrap_or(
-    @core.font_size_value(self.style, fallback=14),
+    @style.font_size_value(self.style, fallback=14),
   )
 }
 

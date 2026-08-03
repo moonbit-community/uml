@@ -1,0 +1,5 @@
+import {
+  "kokic/uml/core/style" @style,
+  "moonbitlang/core/string",
+  "moonbitlang/core/test",
+}

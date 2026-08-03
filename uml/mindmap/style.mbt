@@ -288,7 +288,7 @@ pub fn MindmapStyle::apply_arrow_property(
 ///|
 pub fn MindmapStyle::apply_skinparam(
   self : MindmapStyle,
-  directive : @core.StyleDirective,
+  directive : @style.StyleDirective,
 ) -> Unit {
   match directive {
     Property(key, value) => {

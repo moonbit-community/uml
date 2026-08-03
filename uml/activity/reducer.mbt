@@ -68,7 +68,7 @@ fn repeat_labels(
 
 ///|
 fn arrow_label(value : String) -> ActivityEdgeLabel {
-  let words = @core.syntax_words(value)
+  let words = @parse.syntax_words(value)
   guard words.length() > 1 else { return { text: None } }
   let text = words[1:].to_owned().join(" ").trim_end(chars=";").to_owned()
   { text: if text.length() == 0 { None } else { Some(text) } }

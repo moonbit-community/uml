@@ -16,7 +16,7 @@ pub fn graphviz_path_to_svg(
 }
 
 ///|
-pub fn graphviz_rankdir(style : DocumentStyle) -> @rankdir.RankDir {
+pub fn graphviz_rankdir(style : @style.DocumentStyle) -> @rankdir.RankDir {
   match style.layout_direction {
     Some(LeftToRight) => @rankdir.LR
     _ => @rankdir.TB
@@ -40,7 +40,7 @@ pub fn graphviz_note_name(index : Int) -> String {
 
 ///|
 /// One graphviz edge normalized into SVG coordinates.
-pub struct GraphvizEdge {
+pub(all) struct GraphvizEdge {
   index : Int
   paths : Array[Array[(Double, Double)]]
   label : (Double, Double)?
@@ -73,7 +73,7 @@ pub fn graphviz_edges(
 
 ///|
 /// One graphviz note node normalized into SVG coordinates.
-pub struct GraphvizNote {
+pub(all) struct GraphvizNote {
   note_index : Int
   x : Double
   y : Double

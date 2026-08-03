@@ -29,6 +29,6 @@ pub struct Idea {
 /// Parsed PlantUML mindmap state.
 pub struct MindmapDiagram {
   ideas : Array[Idea]
-  style : @core.DocumentStyle
+  style : @style.DocumentStyle
   mindmap_style : MindmapStyle
 } derive(Eq, Debug)

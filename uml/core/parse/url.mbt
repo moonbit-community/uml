@@ -25,12 +25,7 @@ pub fn normalize_url_target(value : String) -> String {
 
 ///|
 fn url_target_prefix_parser() -> @talc.StringParser[UrlTarget] {
-  let quoted_part = @talc.string("\\\"").or(
-    @talc.none_of("\"").string_map(char => char.to_string()),
-  )
-  let quoted_target = @talc.char('"')
-    .then(quoted_part.many().map(parts => parts.join("")))
-    .skip(@talc.char('"'))
+  let quoted_target = quoted_value_parser()
   let unquoted_target = @talc.many_chars1(
     @talc.satisfy("URL target", char => !char.is_whitespace() && char != ']'),
   )

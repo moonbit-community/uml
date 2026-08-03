@@ -459,7 +459,7 @@ fn StateDiagram::layout_scope(
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="state", strict=false)
   graph.set_attr(
     "rankdir",
-    @core.graphviz_rankdir_attr(@core.graphviz_rankdir(self.style)),
+    @graphviz.graphviz_rankdir_attr(@graphviz.graphviz_rankdir(self.style)),
   )
   graph.set_attr("splines", "spline")
   let node_names : Map[String, String] = Map([])
@@ -518,7 +518,7 @@ fn StateDiagram::layout_scope(
   for note_index, note in self.notes {
     guard self.note_scope(note) == scope else { continue }
     guard self.note_region_index(note, scope) == region_index else { continue }
-    let name = @core.graphviz_note_name(note_index)
+    let name = @graphviz.graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = state_note_size(note, metrics)
@@ -551,7 +551,7 @@ fn StateDiagram::layout_scope(
     }
   }
   let laid_out = @dot_layout.layout_dot(graph, options={
-    rankdir: Some(@core.graphviz_rankdir(self.style)),
+    rankdir: Some(@graphviz.graphviz_rankdir(self.style)),
     nodesep: Some(plantuml_state_nodesep_in()),
     ranksep: Some(plantuml_state_ranksep_in()),
     splines: Some(@dot_layout.SplinesMode::Spline),
@@ -569,7 +569,7 @@ fn StateDiagram::layout_scope(
     let node_name = node_layout.node.name()
     for index, visible in visible_nodes {
       guard state_graphviz_node_name(index) == node_name else { continue }
-      let (x, y) = @core.graphviz_point_to_svg(node_layout.pos, bbox)
+      let (x, y) = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
       let node_x = x - node_layout.width_in * STATE_DPI / 2.0
       let node_y = y - node_layout.height_in * STATE_DPI / 2.0
       let width = node_layout.width_in * STATE_DPI
@@ -593,14 +593,14 @@ fn StateDiagram::layout_scope(
       }
     }
   }
-  for edge in @core.graphviz_edges(laid_out, transition_names, bbox) {
+  for edge in @graphviz.graphviz_edges(laid_out, transition_names, bbox) {
     output.edges.push({
       transition_index: edge.index,
       paths: edge.paths,
       label: edge.label,
     })
   }
-  for note in @core.graphviz_notes(laid_out, note_names, bbox) {
+  for note in @graphviz.graphviz_notes(laid_out, note_names, bbox) {
     output.notes.push({
       note_index: note.note_index,
       x: note.x,

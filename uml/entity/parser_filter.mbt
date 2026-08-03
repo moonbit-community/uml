@@ -36,7 +36,7 @@ fn selector_for_tokens(tokens : Array[String]) -> EntitySelector {
     return AnyEntities(tokens.map(token => selector_for_tokens([token])))
   }
   let raw = tokens[0]
-  if raw.has_prefix("<<") && @core.normalize_stereotype(raw) is Some(value) {
+  if raw.has_prefix("<<") && @parse.normalize_stereotype(raw) is Some(value) {
     return StereotypedEntities(value)
   }
   if raw.to_lower() == "abstract" {
@@ -44,7 +44,7 @@ fn selector_for_tokens(tokens : Array[String]) -> EntitySelector {
   }
   match declaration_kind(raw) {
     Some(kind) => KindEntities(kind)
-    None => NamedEntity(@core.unquote_identifier(raw))
+    None => NamedEntity(@parse.unquote_identifier(raw))
   }
 }
 
@@ -52,7 +52,7 @@ fn selector_for_tokens(tokens : Array[String]) -> EntitySelector {
 fn visibility_list(tokens : Array[String]) -> Array[Visibility]? {
   let result : Array[Visibility] = []
   for token in tokens {
-    for item in @core.split_unquoted(token, ',') {
+    for item in @parse.split_unquoted(token, ',') {
       let item = item.trim().to_owned()
       guard item.length() > 0 else { continue }
       guard visibility_word(item) is Some(visibility) else { return None }
@@ -143,9 +143,9 @@ priv enum FilterLineSyntax {
 
 ///|
 fn filter_token_parser() -> @talc.StringParser[String] {
-  @core.stereotype_value_parser()
+  @parse.stereotype_value_parser()
   .attempt()
-  .or(@core.quoted_value_parser().attempt())
+  .or(@parse.quoted_value_parser().attempt())
   .or(
     @talc.many_chars1(
       @talc.satisfy("filter token", char => !char.is_whitespace()),

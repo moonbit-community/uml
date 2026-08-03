@@ -102,7 +102,7 @@ fn external_member_line_parser() -> @talc.StringParser[(String, Member)] {
   .skip(separator)
   .bind(target => {
     @talc.many_chars1(@talc.satisfy("external member body", _ => true)).bind(body => {
-      let target = @core.unquote_identifier(target)
+      let target = @parse.unquote_identifier(target)
       let body = body.trim().to_owned()
       let invalid_target = target.length() == 0 ||
         body.length() == 0 ||
