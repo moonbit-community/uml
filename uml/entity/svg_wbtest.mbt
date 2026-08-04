@@ -22,6 +22,19 @@ fn test_relation_text_box_intersects_paths(
 }
 
 ///|
+fn test_svg_marker(svg : String, id : String) -> String raise {
+  let marker_start = "<marker id=\"\{id}\""
+  guard @parse.find_literal(svg, marker_start) is Some(start) else {
+    @test.fail("missing SVG marker: " + id)
+  }
+  let tail = svg[start:].to_owned()
+  guard @parse.find_literal(tail, "</marker>") is Some(end) else {
+    @test.fail("unclosed SVG marker: " + id)
+  }
+  tail[:end].to_owned()
+}
+
+///|
 test "use-case layout uses ellipse and actor geometry before Graphviz" {
   let diagram = parse(
     "@startuml\n:Customer: --> (Place order)\n@enduml",
@@ -772,9 +785,24 @@ test "routed relations preserve endpoint decorations and cardinalities" {
 }
 
 ///|
+test "relation endpoint decorations inherit each relation color" {
+  let svg = parse(
+    "@startuml\nclass Source\nclass Target\nSource --> Target #blue\n@enduml",
+  ).render_svg()
+  @test.assert_eq(svg.contains("style=\"stroke:blue;"), true)
+  @test.assert_eq(
+    svg.contains("marker path,marker circle,marker rect{stroke:context-stroke;"),
+    true,
+  )
+  let arrow = test_svg_marker(svg, "arrow")
+  @test.assert_eq(arrow.contains("fill=\"context-stroke\""), true)
+}
+
+///|
 test "hollow inheritance arrows retain a visible outline" {
   let svg = parse("@startuml\nParent <|-- Child\n@enduml").render_svg()
   @test.assert_eq(svg.contains("marker-start=\"url(#triangle)\""), true)
-  @test.assert_eq(svg.contains("fill=\"white\""), true)
-  @test.assert_eq(svg.contains("marker path,marker circle,marker rect"), true)
+  let triangle = test_svg_marker(svg, "triangle")
+  @test.assert_eq(triangle.contains("fill=\"none\""), true)
+  @test.assert_eq(svg.contains("stroke:context-stroke"), true)
 }
