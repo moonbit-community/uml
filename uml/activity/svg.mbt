@@ -283,10 +283,7 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
     ("orient", "auto"),
     ("markerUnits", "strokeWidth"),
   ])
-  output.empty("path", attributes=[
-    ("d", "M 0 0 L 6 3 L 0 6 Z"),
-    ("fill", line),
-  ])
+  output.empty("path", attributes=[("d", "M 0 0 L 6 3 L 0 6 Z"), ("fill", line)])
   output.close()
   output.close()
   output.empty("rect", attributes=[

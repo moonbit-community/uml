@@ -189,11 +189,7 @@ fn role_font_color(style : DocumentStyle, key : String) -> String {
 }
 
 ///|
-fn role_font_size(
-  style : DocumentStyle,
-  key : String,
-  fallback~ : Int,
-) -> Int {
+fn role_font_size(style : DocumentStyle, key : String, fallback~ : Int) -> Int {
   match style.property(key) {
     Some(value) => parse_font_size(value, fallback~)
     None => fallback
@@ -410,7 +406,7 @@ pub fn consume_skinparam_body(
   while !closed {
     match next_line() {
       None => return false
-      Some(line) => {
+      Some(line) =>
         if line.trim() == "}" {
           closed = true
         } else {
@@ -419,7 +415,6 @@ pub fn consume_skinparam_body(
             None => ()
           }
         }
-      }
     }
   }
   true
@@ -440,12 +435,9 @@ pub fn font_size(style : DocumentStyle) -> String {
 }
 
 ///|
-pub fn font_size_value(
-  style : DocumentStyle,
-  fallback~ : Int = 13,
-) -> Int {
+pub fn font_size_value(style : DocumentStyle, fallback? : Int = 13) -> Int {
   match style.font_size {
-    Some(value) => parse_font_size(value, fallback=fallback)
+    Some(value) => parse_font_size(value, fallback~)
     None => fallback
   }
 }

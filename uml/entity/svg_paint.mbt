@@ -37,6 +37,348 @@ fn append_packages(
 }
 
 ///|
+const NOTE_CORNER_SIZE : Double = 10.0
+
+///|
+const NOTE_POINTER_DELTA : Double = 4.0
+
+///|
+const NOTE_GEOMETRY_EPSILON : Double = 0.0001
+
+///|
+#warnings("-unused_value")
+priv enum NoteOpaleStrategy {
+  OpaleLeft
+  OpaleRight
+  OpaleUp
+  OpaleDown
+} derive(Eq, Debug)
+
+///|
+priv struct NoteOpaleAttachment {
+  strategy : NoteOpaleStrategy
+  note_point : (Double, Double)
+  target_point : (Double, Double)
+}
+
+///|
+fn GraphvizLayout::note_edge(
+  self : GraphvizLayout,
+  note_index : Int,
+) -> @graphviz.GraphvizEdge? {
+  for edge in self.note_edges {
+    if edge.index == note_index {
+      return Some(edge)
+    }
+  }
+  None
+}
+
+///|
+fn GraphvizLayout::node(
+  self : GraphvizLayout,
+  code : String,
+) -> GraphvizNodeLayout? {
+  for node in self.nodes {
+    if node.code == code {
+      return Some(node)
+    }
+  }
+  None
+}
+
+///|
+fn point_distance_squared(
+  first : (Double, Double),
+  second : (Double, Double),
+) -> Double {
+  let dx = first.0 - second.0
+  let dy = first.1 - second.1
+  dx * dx + dy * dy
+}
+
+///|
+fn keep_nearest_nonnegative(current : Double?, candidate : Double) -> Double? {
+  guard candidate >= -NOTE_GEOMETRY_EPSILON else { return current }
+  let candidate = candidate.max(0.0)
+  match current {
+    Some(previous) if previous <= candidate => current
+    _ => Some(candidate)
+  }
+}
+
+///|
+fn clip_ray_to_rect(
+  endpoint : (Double, Double),
+  adjacent : (Double, Double),
+  center : (Double, Double),
+  width : Double,
+  height : Double,
+) -> (Double, Double) {
+  let left = center.0 - width / 2.0
+  let right = center.0 + width / 2.0
+  let top = center.1 - height / 2.0
+  let bottom = center.1 + height / 2.0
+  let inside = endpoint.0 >= left - NOTE_GEOMETRY_EPSILON &&
+    endpoint.0 <= right + NOTE_GEOMETRY_EPSILON &&
+    endpoint.1 >= top - NOTE_GEOMETRY_EPSILON &&
+    endpoint.1 <= bottom + NOTE_GEOMETRY_EPSILON
+  let (dx, dy) = if inside {
+    (adjacent.0 - endpoint.0, adjacent.1 - endpoint.1)
+  } else {
+    (endpoint.0 - adjacent.0, endpoint.1 - adjacent.1)
+  }
+  guard dx != 0.0 || dy != 0.0 else { return endpoint }
+  let mut best : Double? = None
+  if dx != 0.0 {
+    for side in [left, right] {
+      let t = (side - endpoint.0) / dx
+      let y = endpoint.1 + t * dy
+      if y >= top - NOTE_GEOMETRY_EPSILON && y <= bottom + NOTE_GEOMETRY_EPSILON {
+        best = keep_nearest_nonnegative(best, t)
+      }
+    }
+  }
+  if dy != 0.0 {
+    for side in [top, bottom] {
+      let t = (side - endpoint.1) / dy
+      let x = endpoint.0 + t * dx
+      if x >= left - NOTE_GEOMETRY_EPSILON && x <= right + NOTE_GEOMETRY_EPSILON {
+        best = keep_nearest_nonnegative(best, t)
+      }
+    }
+  }
+  match best {
+    Some(t) => (endpoint.0 + t * dx, endpoint.1 + t * dy)
+    None => endpoint
+  }
+}
+
+///|
+fn clip_ray_to_ellipse(
+  endpoint : (Double, Double),
+  adjacent : (Double, Double),
+  center : (Double, Double),
+  width : Double,
+  height : Double,
+) -> (Double, Double) {
+  let radius_x = width / 2.0
+  let radius_y = height / 2.0
+  guard radius_x > 0.0 && radius_y > 0.0 else { return endpoint }
+  let px = endpoint.0 - center.0
+  let py = endpoint.1 - center.1
+  let normalized = px * px / (radius_x * radius_x) +
+    py * py / (radius_y * radius_y)
+  let inside = normalized <= 1.0 + NOTE_GEOMETRY_EPSILON
+  let (dx, dy) = if inside {
+    (adjacent.0 - endpoint.0, adjacent.1 - endpoint.1)
+  } else {
+    (endpoint.0 - adjacent.0, endpoint.1 - adjacent.1)
+  }
+  let a = dx * dx / (radius_x * radius_x) + dy * dy / (radius_y * radius_y)
+  guard a > 0.0 else { return endpoint }
+  let b = 2.0 *
+    (px * dx / (radius_x * radius_x) + py * dy / (radius_y * radius_y))
+  let c = px * px / (radius_x * radius_x) +
+    py * py / (radius_y * radius_y) -
+    1.0
+  let discriminant = b * b - 4.0 * a * c
+  guard discriminant >= 0.0 else { return endpoint }
+  let root = discriminant.sqrt()
+  let first = (-b - root) / (2.0 * a)
+  let second = (-b + root) / (2.0 * a)
+  let best = keep_nearest_nonnegative(
+    keep_nearest_nonnegative(None, first),
+    second,
+  )
+  match best {
+    Some(t) => (endpoint.0 + t * dx, endpoint.1 + t * dy)
+    None => endpoint
+  }
+}
+
+///|
+fn clip_ray_to_node(
+  endpoint : (Double, Double),
+  adjacent : (Double, Double),
+  node : GraphvizNodeLayout,
+  shape : NodeShape,
+) -> (Double, Double) {
+  match shape {
+    Box =>
+      clip_ray_to_rect(
+        endpoint,
+        adjacent,
+        (node.x, node.y),
+        node.width,
+        node.height,
+      )
+    Ellipse =>
+      clip_ray_to_ellipse(
+        endpoint,
+        adjacent,
+        (node.x, node.y),
+        node.width,
+        node.height,
+      )
+  }
+}
+
+///|
+/// Mirrors `EntityImageNote`: orient the routed edge so its first endpoint is
+/// the one attached to the note, then select the nearest note boundary.
+fn note_opale_attachment(
+  note : @graphviz.GraphvizNote,
+  edge : @graphviz.GraphvizEdge,
+  target : GraphvizNodeLayout,
+  target_shape : NodeShape,
+) -> NoteOpaleAttachment? {
+  let center = (note.x, note.y)
+  for path_index, path in edge.paths {
+    guard path.length() > 0 else { continue }
+    let first = match edge.starts.get(path_index) {
+      Some(Some(point)) => point
+      _ => path[0]
+    }
+    let last = match edge.ends.get(path_index) {
+      Some(Some(point)) => point
+      _ => path[path.length() - 1]
+    }
+    let first_adjacent = match edge.starts.get(path_index) {
+      Some(Some(_)) => path[0]
+      _ => if path.length() > 1 { path[1] } else { last }
+    }
+    let last_adjacent = match edge.ends.get(path_index) {
+      Some(Some(_)) => path[path.length() - 1]
+      _ => if path.length() > 1 { path[path.length() - 2] } else { first }
+    }
+    let (raw_note_point, note_adjacent, raw_target_point, target_adjacent) = if point_distance_squared(
+        first, center,
+      ) <=
+      point_distance_squared(last, center) {
+      (first, first_adjacent, last, last_adjacent)
+    } else {
+      (last, last_adjacent, first, first_adjacent)
+    }
+    let note_point = clip_ray_to_rect(
+      raw_note_point,
+      note_adjacent,
+      center,
+      note.width,
+      note.height,
+    )
+    let target_point = clip_ray_to_node(
+      raw_target_point, target_adjacent, target, target_shape,
+    )
+    let left = note.x - note.width / 2.0
+    let right = note.x + note.width / 2.0
+    let top = note.y - note.height / 2.0
+    let bottom = note.y + note.height / 2.0
+    let distance_left = (note_point.0 - left).abs()
+    let distance_right = (note_point.0 - right).abs()
+    let distance_top = (note_point.1 - top).abs()
+    let distance_bottom = (note_point.1 - bottom).abs()
+    let strategy = if distance_left <= distance_right &&
+      distance_left <= distance_top &&
+      distance_left <= distance_bottom {
+      OpaleLeft
+    } else if distance_right <= distance_top &&
+      distance_right <= distance_bottom {
+      OpaleRight
+    } else if distance_top <= distance_bottom {
+      OpaleUp
+    } else {
+      OpaleDown
+    }
+    return Some({ strategy, note_point, target_point })
+  }
+  None
+}
+
+///|
+fn clamp_double(value : Double, lower : Double, upper : Double) -> Double {
+  value.max(lower).min(upper)
+}
+
+///|
+fn normal_note_path(note : @graphviz.GraphvizNote) -> String {
+  let x = note.x - note.width / 2.0
+  let y = note.y - note.height / 2.0
+  let right = x + note.width
+  let bottom = y + note.height
+  (
+    $|M \{x} \{y} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
+  )
+}
+
+///|
+/// Mirrors `Opale.getCorner` for PlantUML's default zero-rounding geometry.
+fn note_corner_path(note : @graphviz.GraphvizNote) -> String {
+  let x = note.x - note.width / 2.0
+  let y = note.y - note.height / 2.0
+  let right = x + note.width
+  (
+    $|M \{right - NOTE_CORNER_SIZE} \{y} L \{right - NOTE_CORNER_SIZE} \{y + NOTE_CORNER_SIZE} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
+  )
+}
+
+///|
+/// Mirrors the four `Opale.getPolygon*` paths with PlantUML's zero-rounding
+/// geometry. The pointer tip is the routed edge endpoint on the target.
+fn opale_note_path(
+  note : @graphviz.GraphvizNote,
+  attachment : NoteOpaleAttachment,
+) -> String {
+  let x = note.x - note.width / 2.0
+  let y = note.y - note.height / 2.0
+  let right = x + note.width
+  let bottom = y + note.height
+  let tip = attachment.target_point
+  match attachment.strategy {
+    OpaleLeft => {
+      let base = clamp_double(
+        attachment.note_point.1 - NOTE_POINTER_DELTA,
+        y,
+        bottom - 2.0 * NOTE_POINTER_DELTA,
+      )
+      (
+        $|M \{x} \{y} L \{x} \{base} L \{tip.0} \{tip.1} L \{x} \{base + 2.0 * NOTE_POINTER_DELTA} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
+      )
+    }
+    OpaleRight => {
+      let base = clamp_double(
+        attachment.note_point.1 - NOTE_POINTER_DELTA,
+        y + NOTE_CORNER_SIZE,
+        bottom - 2.0 * NOTE_POINTER_DELTA,
+      )
+      (
+        $|M \{x} \{y} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{base + 2.0 * NOTE_POINTER_DELTA} L \{tip.0} \{tip.1} L \{right} \{base} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
+      )
+    }
+    OpaleUp => {
+      let base = clamp_double(
+        attachment.note_point.0 - NOTE_POINTER_DELTA,
+        x,
+        right - NOTE_CORNER_SIZE,
+      )
+      (
+        $|M \{x} \{y} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} L \{base + 2.0 * NOTE_POINTER_DELTA} \{y} L \{tip.0} \{tip.1} L \{base} \{y} Z
+      )
+    }
+    OpaleDown => {
+      let base = clamp_double(
+        attachment.note_point.0 - NOTE_POINTER_DELTA,
+        x,
+        right,
+      )
+      (
+        $|M \{x} \{y} L \{x} \{bottom} L \{base} \{bottom} L \{tip.0} \{tip.1} L \{base + 2.0 * NOTE_POINTER_DELTA} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
+      )
+    }
+  }
+}
+
+///|
 fn append_notes(
   output : StringBuilder,
   diagram : EntityDiagram,
@@ -54,42 +396,36 @@ fn append_notes(
           note.color,
           diagram.style.note_background_color(),
         )
-        let mut linked_to_target = false
+        let mut path = normal_note_path(note_layout)
+        let corner_path = note_corner_path(note_layout)
+        let mut path_class = ""
         if note.target_kind is EntityNote || note.target_kind is MemberTip {
-          for node in graphviz.nodes {
-            guard node.code == note.target else { continue }
-            let target_left = node.x - node.width / 2.0
-            let target_right = node.x + node.width / 2.0
-            let target_top = node.y - node.height / 2.0
-            let target_bottom = node.y + node.height / 2.0
-            let corner = 12.0
-            let path = match note.position {
-              Right =>
-                (
-                  $|M \{x} \{y} L \{x} \{node.y - 4.0} L \{target_right} \{node.y} L \{x} \{node.y + 4.0} L \{x} \{y + note_layout.height} L \{x + note_layout.width} \{y + note_layout.height} L \{x + note_layout.width} \{y + corner} L \{x + note_layout.width - corner} \{y} Z
-                )
-              Left =>
-                (
-                  $|M \{x} \{y} L \{x + note_layout.width - corner} \{y} L \{x + note_layout.width} \{y + corner} L \{x + note_layout.width} \{node.y - 4.0} L \{target_left} \{node.y} L \{x + note_layout.width} \{node.y + 4.0} L \{x + note_layout.width} \{y + note_layout.height} L \{x} \{y + note_layout.height} Z
-                )
-              Top =>
-                (
-                  $|M \{x} \{y} L \{x + note_layout.width - corner} \{y} L \{x + note_layout.width} \{y + corner} L \{x + note_layout.width} \{y + note_layout.height} L \{node.x + 4.0} \{y + note_layout.height} L \{node.x} \{target_top} L \{node.x - 4.0} \{y + note_layout.height} L \{x} \{y + note_layout.height} Z
-                )
-              Bottom =>
-                (
-                  $|M \{x} \{y} L \{node.x - 4.0} \{y} L \{node.x} \{target_bottom} L \{node.x + 4.0} \{y} L \{x + note_layout.width - corner} \{y} L \{x + note_layout.width} \{y + corner} L \{x + note_layout.width} \{y + note_layout.height} L \{x} \{y + note_layout.height} Z
-                )
-            }
-            output <+
-              $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><path d="\{path}" class="note-opale-link" fill="\{fill}"/><path d="M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z" fill="\{fill}"/></g>
-            linked_to_target = true
+          match graphviz.note_edge(note_layout.note_index) {
+            Some(edge) =>
+              match (graphviz.node(note.target), diagram.entity(note.target)) {
+                (Some(target), Some(entity)) => {
+                  let target_shape = entity.node_geometry(
+                      text_metrics,
+                      diagram.family,
+                    ).shape
+                  match
+                    note_opale_attachment(
+                      note_layout, edge, target, target_shape,
+                    ) {
+                    Some(attachment) => {
+                      path = opale_note_path(note_layout, attachment)
+                      path_class = " class=\"note-opale-link\""
+                    }
+                    None => ()
+                  }
+                }
+                _ => ()
+              }
+            None => ()
           }
         }
-        if !linked_to_target {
-          output <+
-            $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><rect x="\{x}" y="\{y}" width="\{note_layout.width}" height="\{note_layout.height}" fill="\{fill}"/><path d="M \{x + note_layout.width - 12.0} \{y} L \{x + note_layout.width} \{y + 12.0} L \{x + note_layout.width - 12.0} \{y + 12.0} Z"/></g>
-        }
+        output <+
+          $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
         for line_index, line in note.text.split("\n") {
           output <+
             $|<text x="\{x + NOTE_LEFT_PADDING.to_double()}" y="\{y + NOTE_VERTICAL_PADDING.to_double() + text_metrics.note.ascent.to_double() + line_index.to_double() * text_metrics.note.line_height.to_double()}" class="note-text">\{@style.xml_escape(line.to_owned())}</text>

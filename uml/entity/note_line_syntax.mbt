@@ -72,7 +72,10 @@ fn note_name_parser(label : String) -> @talc.StringParser[String] {
       char != '{'
     }),
   )
-  @parse.quoted_value_parser().attempt().or(plain).map(@parse.unquote_identifier)
+  @parse.quoted_value_parser()
+  .attempt()
+  .or(plain)
+  .map(@parse.unquote_identifier)
 }
 
 ///|
@@ -104,8 +107,12 @@ fn note_member_name_parser() -> @talc.StringParser[String] {
 fn note_metadata_item_parser() -> @talc.StringParser[NoteMetadataItemSyntax] {
   @talc.choice([
     @parse.url_value_parser().attempt().map(value => NoteUrl(value)),
-    @parse.stereotype_value_parser().attempt().map(value => NoteStereotype(value)),
-    @parse.color_value_parser("note color").attempt().map(value => NoteColor(value)),
+    @parse.stereotype_value_parser()
+    .attempt()
+    .map(value => NoteStereotype(value)),
+    @parse.color_value_parser("note color")
+    .attempt()
+    .map(value => NoteColor(value)),
     @parse.tag_value_parser("note tag").map(value => NoteTag(value)),
   ])
 }

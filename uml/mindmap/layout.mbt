@@ -126,10 +126,7 @@ pub fn MindmapDiagram::node_style(
 }
 
 ///|
-fn MindmapDiagram::node_font_size(
-  self : MindmapDiagram,
-  index : Int,
-) -> Int {
+fn MindmapDiagram::node_font_size(self : MindmapDiagram, index : Int) -> Int {
   self.node_style(index).font_size.unwrap_or(
     @style.font_size_value(self.style, fallback=14),
   )

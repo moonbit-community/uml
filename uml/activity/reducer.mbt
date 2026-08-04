@@ -161,34 +161,38 @@ fn reduce_flow(
     let node = nodes[index]
     guard !at_reduction_boundary(node, boundaries) else { break }
     match node {
-      ActivityNode::If(_) => {
-        match reduce_chain(
-          instructions,
-          nodes,
-          node,
-          index + 1,
-          [ElseIf, Else, EndIf],
-          fn(header, body) {
-            let (condition, incoming) = match header {
-              ActivityNode::If(value) | ActivityNode::ElseIf(value) => {
-                let (condition, incoming) = split_test_and_label(value, " then ")
-                (Some(condition), incoming)
+      ActivityNode::If(_) =>
+        match
+          reduce_chain(
+            instructions,
+            nodes,
+            node,
+            index + 1,
+            [ElseIf, Else, EndIf],
+            fn(header, body) {
+              let (condition, incoming) = match header {
+                ActivityNode::If(value) | ActivityNode::ElseIf(value) => {
+                  let (condition, incoming) = split_test_and_label(
+                    value, " then ",
+                  )
+                  (Some(condition), incoming)
+                }
+                ActivityNode::Else(value) => (None, edge_label(value))
+                _ => (None, { text: None })
               }
-              ActivityNode::Else(value) => (None, edge_label(value))
-              _ => (None, { text: None })
-            }
-            { condition, incoming, instructions: body }
-          },
-          fn(next) { match next {
-            ActivityNode::ElseIf(_) | ActivityNode::Else(_) => Some(next)
-            _ => None
-          } },
-          branches => ActivityInstruction::IfChain({ branches, }),
-        ) {
+              { condition, incoming, instructions: body }
+            },
+            fn(next) {
+              match next {
+                ActivityNode::ElseIf(_) | ActivityNode::Else(_) => Some(next)
+                _ => None
+              }
+            },
+            branches => ActivityInstruction::IfChain({ branches, }),
+          ) {
           Some(next_index) => index = next_index
           None => break
         }
-      }
       ActivityNode::While(raw) => {
         let (body, end) = reduce_flow(nodes, index + 1, [EndWhile])
         guard end < nodes.length() else { break }
@@ -224,55 +228,61 @@ fn reduce_flow(
         )
         index = end + 1
       }
-      ActivityNode::Fork => {
-        match reduce_chain(
-          instructions,
-          nodes,
-          node,
-          index + 1,
-          [ForkAgain, EndFork],
-          fn(_header, body) { body },
-          fn(next) { match next {
-            ActivityNode::ForkAgain => Some(next)
-            _ => None
-          } },
-          branches => ActivityInstruction::Fork({ branches, }),
-        ) {
+      ActivityNode::Fork =>
+        match
+          reduce_chain(
+            instructions,
+            nodes,
+            node,
+            index + 1,
+            [ForkAgain, EndFork],
+            fn(_header, body) { body },
+            fn(next) {
+              match next {
+                ActivityNode::ForkAgain => Some(next)
+                _ => None
+              }
+            },
+            branches => ActivityInstruction::Fork({ branches, }),
+          ) {
           Some(next_index) => index = next_index
           None => break
         }
-      }
-      ActivityNode::Switch(raw) => {
+      ActivityNode::Switch(raw) =>
         match nodes.get(index + 1) {
           Some(node) if node is ActivityNode::Case(_) =>
-            match reduce_chain(
-              instructions,
-              nodes,
-              node,
-              index + 2,
-              [Case, EndSwitch],
-              fn(header, body) {
-                let incoming = match header {
-                  ActivityNode::Case(value) => edge_label(value)
-                  _ => { text: None }
-                }
-                { condition: None, incoming, instructions: body }
-              },
-              fn(next) { match next {
-                ActivityNode::Case(_) => Some(next)
-                _ => None
-              } },
-              branches => ActivityInstruction::Switch({
-                condition: edge_label(raw).text.unwrap_or(""),
-                branches,
-              }),
-            ) {
+            match
+              reduce_chain(
+                instructions,
+                nodes,
+                node,
+                index + 2,
+                [Case, EndSwitch],
+                fn(header, body) {
+                  let incoming = match header {
+                    ActivityNode::Case(value) => edge_label(value)
+                    _ => { text: None }
+                  }
+                  { condition: None, incoming, instructions: body }
+                },
+                fn(next) {
+                  match next {
+                    ActivityNode::Case(_) => Some(next)
+                    _ => None
+                  }
+                },
+                branches => {
+                  ActivityInstruction::Switch({
+                    condition: edge_label(raw).text.unwrap_or(""),
+                    branches,
+                  })
+                },
+              ) {
               Some(next_index) => index = next_index
               None => break
             }
           _ => break
         }
-      }
       ActivityNode::Partition(label) => {
         let (body, end) = reduce_flow(nodes, index + 1, [EndPartition])
         instructions.push(
@@ -280,16 +290,24 @@ fn reduce_flow(
         )
         index = if end < nodes.length() { end + 1 } else { end }
       }
-      ActivityNode::Start => index = emit(instructions, ActivityInstruction::Start, index)
-      ActivityNode::Stop => index = emit(instructions, ActivityInstruction::Stop, index)
-      ActivityNode::End => index = emit(instructions, ActivityInstruction::End, index)
-      ActivityNode::Kill => index = emit(instructions, ActivityInstruction::Kill, index)
+      ActivityNode::Start =>
+        index = emit(instructions, ActivityInstruction::Start, index)
+      ActivityNode::Stop =>
+        index = emit(instructions, ActivityInstruction::Stop, index)
+      ActivityNode::End =>
+        index = emit(instructions, ActivityInstruction::End, index)
+      ActivityNode::Kill =>
+        index = emit(instructions, ActivityInstruction::Kill, index)
       ActivityNode::Action(label) =>
         index = emit(instructions, ActivityInstruction::Action(label), index)
       ActivityNode::Note(label) =>
         index = emit(instructions, ActivityInstruction::Note(label), index)
       ActivityNode::Arrow(value) =>
-        index = emit(instructions, ActivityInstruction::Edge(arrow_label(value)), index)
+        index = emit(
+          instructions,
+          ActivityInstruction::Edge(arrow_label(value)),
+          index,
+        )
       ActivityNode::Swimlane(name) =>
         index = emit(instructions, ActivityInstruction::Swimlane(name), index)
       ActivityNode::Label(name) =>

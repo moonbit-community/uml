@@ -43,6 +43,8 @@ pub fn graphviz_note_name(index : Int) -> String {
 pub(all) struct GraphvizEdge {
   index : Int
   paths : Array[Array[(Double, Double)]]
+  starts : Array[(Double, Double)?]
+  ends : Array[(Double, Double)?]
   label : (Double, Double)?
   head_label : (Double, Double)?
   tail_label : (Double, Double)?
@@ -58,12 +60,22 @@ pub fn graphviz_edges(
 ) -> Array[GraphvizEdge] {
   let edges = []
   for edge_layout in laid_out.edges {
-    guard names.get(edge_layout.edge.id()) is Some(index_text) else {
-      continue
-    }
+    guard names.get(edge_layout.edge.id()) is Some(index_text) else { continue }
     let index = @string.parse_int(index_text) catch { _ => continue }
     let paths = edge_layout.splines.map(spline => {
       graphviz_path_to_svg(spline, bbox)
+    })
+    let starts = edge_layout.splines.map(spline => {
+      match spline.start {
+        Some(point) => Some(graphviz_point_to_svg(point, bbox))
+        None => None
+      }
+    })
+    let ends = edge_layout.splines.map(spline => {
+      match spline.end {
+        Some(point) => Some(graphviz_point_to_svg(point, bbox))
+        None => None
+      }
     })
     let label = edge_layout.label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
@@ -74,7 +86,7 @@ pub fn graphviz_edges(
     let tail_label = edge_layout.tail_label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
     })
-    edges.push({ index, paths, label, head_label, tail_label })
+    edges.push({ index, paths, starts, ends, label, head_label, tail_label })
   }
   edges
 }
@@ -96,7 +108,7 @@ pub fn graphviz_notes(
   laid_out : @dot_layout.DotLayoutGraph,
   note_names : Map[String, Int],
   bbox : @geom.Rect,
-  offset~ : Bool = true,
+  offset? : Bool = true,
 ) -> Array[GraphvizNote] {
   let notes = []
   for node_layout in laid_out.nodes {
@@ -106,8 +118,16 @@ pub fn graphviz_notes(
     let (x, y) = graphviz_point_to_svg(node_layout.pos, bbox)
     notes.push({
       note_index,
-      x: if offset { x - node_layout.width_in * 72.0 / 2.0 } else { x },
-      y: if offset { y - node_layout.height_in * 72.0 / 2.0 } else { y },
+      x: if offset {
+        x - node_layout.width_in * 72.0 / 2.0
+      } else {
+        x
+      },
+      y: if offset {
+        y - node_layout.height_in * 72.0 / 2.0
+      } else {
+        y
+      },
       width: node_layout.width_in * 72.0,
       height: node_layout.height_in * 72.0,
     })

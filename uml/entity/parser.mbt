@@ -50,7 +50,10 @@ fn Parser::parse_line(
 }
 
 ///|
-fn parse_with_family(input : String, family : EntityFamily) -> EntityDiagram raise @parse.ParseError {
+fn parse_with_family(
+  input : String,
+  family : EntityFamily,
+) -> EntityDiagram raise @parse.ParseError {
   let parser = Parser::new(input, allow_mixing=family.allow_mixing())
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]
@@ -149,7 +152,10 @@ fn Parser::line_number(self : Parser) -> Int {
 }
 
 ///|
-fn Parser::diagnostic(self : Parser, message : String) -> @parse.ParseDiagnostic {
+fn Parser::diagnostic(
+  self : Parser,
+  message : String,
+) -> @parse.ParseDiagnostic {
   @parse.diagnostic_at_line(self.line_number(), message)
 }
 

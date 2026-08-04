@@ -15,7 +15,9 @@ priv struct SequenceTextMetrics {
 }
 
 ///|
-fn SequenceTextMetrics::new(style : @style.DocumentStyle) -> SequenceTextMetrics {
+fn SequenceTextMetrics::new(
+  style : @style.DocumentStyle,
+) -> SequenceTextMetrics {
   let base_size = @style.font_size_value(style)
   let line_height = base_size + 2
   {
@@ -173,12 +175,7 @@ fn Note::height(self : Note, text_metrics : SequenceTextMetrics) -> Int {
 ///|
 fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
   match self {
-    Message(message) =>
-      if message.is_self() {
-        42
-      } else {
-        14
-      }
+    Message(message) => if message.is_self() { 42 } else { 14 }
     MessageExo(_) => 14
     Note(note) => note.height(text_metrics) + 10
     GroupingStart(_) => 22

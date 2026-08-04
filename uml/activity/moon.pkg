@@ -1,7 +1,7 @@
 import {
   "kokic/uml/metrics",
   "moonbitlang/core/test",
-  "kokic/uml/core/parse" @parse,
-  "kokic/uml/core/style" @style,
-  "kokic/uml/core/svg" @svg,
+  "kokic/uml/core/parse",
+  "kokic/uml/core/style",
+  "kokic/uml/core/svg",
 }

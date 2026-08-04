@@ -1,3 +1,4 @@
+///|
 fn constrain_message_gap(
   gaps : Array[Int],
   participant_index : Map[String, Int],
@@ -422,11 +423,7 @@ fn layout_events(
     match event {
       Message(message) => {
         messages_since_auto_newpage += 1
-        let arrow_extra = if message.is_self() {
-          28
-        } else {
-          6
-        }
+        let arrow_extra = if message.is_self() { 28 } else { 6 }
         last_visual_bottom = last_visual_bottom.max(y + 18 + arrow_extra)
         apply_activation_spec(
           message.activation_spec,

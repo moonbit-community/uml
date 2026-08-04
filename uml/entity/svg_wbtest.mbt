@@ -249,6 +249,31 @@ test "entity notes use an Opale pointer toward their target" {
 }
 
 ///|
+test "link notes use PlantUML folded polygons with one shared fill" {
+  let diagram = parse(
+    "@startuml\nclass Source\nclass Target\nSource --> Target\nnote on link #yellow : secured\n@enduml",
+  )
+  let fill = @style.svg_color(
+    diagram.notes[0].color,
+    diagram.style.note_background_color(),
+  )
+  let svg = diagram.render_svg()
+  guard @parse.find_literal(svg, "<g class=\"class-note\"") is Some(group_start) else {
+    @test.fail("missing class note group")
+  }
+  let group_tail = svg[group_start:].to_owned()
+  guard @parse.find_literal(group_tail, "</g>") is Some(group_end) else {
+    @test.fail("unclosed class note group")
+  }
+  let group = group_tail[:group_end].to_owned()
+  let fill_attribute =
+    $|fill="\{fill}"
+  @test.assert_eq(group.contains("<rect"), false)
+  @test.assert_eq(group.split("<path").to_array().length(), 3)
+  @test.assert_eq(group.split(fill_attribute).to_array().length(), 3)
+}
+
+///|
 test "use-case canvas includes notes positioned outside the Graphviz box" {
   let diagram = parse(
     "@startuml\nusecase Review\nnote right of Review\n  Review details\nend note\n@enduml",
@@ -498,6 +523,47 @@ test "graphviz layout anchors an entity note beside its target" {
     }
   }
   @test.assert_eq(layout.notes[0].x > identity_x.unwrap(), true)
+}
+
+///|
+test "note positions rotate with PlantUML left-to-right rankdir" {
+  let diagram = parse("@startuml\nleft to right direction\nclass User\n@enduml")
+  @test.assert_eq(Right.with_rankdir(diagram.style), Bottom)
+  @test.assert_eq(Left.with_rankdir(diagram.style), Top)
+  @test.assert_eq(Bottom.with_rankdir(diagram.style), Right)
+  @test.assert_eq(Top.with_rankdir(diagram.style), Left)
+}
+
+///|
+test "left-to-right bottom note uses the routed upper attachment" {
+  let diagram = parse(
+    "@startuml\nleft to right direction\nclass User\nclass Session\nUser --> Session\nnote bottom of User : hidden\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let layout = diagram.graphviz_layout(metrics)
+  let note = layout.notes[0]
+  let target = layout.node("User").unwrap()
+  let shape = diagram
+    .entity("User")
+    .unwrap()
+    .node_geometry(metrics, diagram.family).shape
+  let attachment = note_opale_attachment(
+    note,
+    layout.note_edges[0],
+    target,
+    shape,
+  ).unwrap()
+  let note_top = note.y - note.height / 2.0
+  let target_bottom = target.y + target.height / 2.0
+  @test.assert_eq(note_top > target_bottom, true)
+  @test.assert_eq(attachment.strategy, OpaleUp)
+  @test.assert_eq(attachment.note_point.1, note_top)
+  @test.assert_eq(attachment.target_point.1, target_bottom)
+  @test.assert_eq(
+    attachment.target_point.0 >= target.x - target.width / 2.0 &&
+    attachment.target_point.0 <= target.x + target.width / 2.0,
+    true,
+  )
 }
 
 ///|

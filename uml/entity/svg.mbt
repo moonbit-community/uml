@@ -1,6 +1,5 @@
-fn EntityDiagram::render_svg_with_mode(
-  self : EntityDiagram,
-) -> String {
+///|
+fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
   let usecase = self.family.is_usecase()
   let background = self.style.canvas_color()
   let font_family = @style.font_family(self.style)
@@ -9,9 +8,7 @@ fn EntityDiagram::render_svg_with_mode(
   let text_color = self.style.diagram_text_color()
   let text_metrics = ClassTextMetrics::new(self.style)
   let fallback_layout = self.layout(text_metrics)
-  let graphviz = Some(self.graphviz_layout(text_metrics)) catch {
-    _ => None
-  }
+  let graphviz = Some(self.graphviz_layout(text_metrics)) catch { _ => None }
   let layout = match graphviz {
     Some(graphviz) =>
       {
@@ -62,7 +59,7 @@ fn EntityDiagram::render_svg_with_mode(
   // it verbatim, breaking the stroke so hollow arrowheads become invisible.
   let style_markers =
     $|<style>marker path,marker circle,marker rect{stroke:\{line_color};stroke-width:1}</style>
-  
+
   output.write_string(style_markers)
   let style_note =
     $|<style>.package path,.package line{stroke:\{line_color};stroke-width:1.2}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:1.2}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
@@ -84,34 +81,17 @@ fn EntityDiagram::render_svg_with_mode(
     }
     for relation_index, relation in self.relations {
       append_relation(
-        output,
-        self,
-        relation_index,
-        relation,
-        text_metrics,
-        layout,
+        output, self, relation_index, relation, text_metrics, layout,
       )
     }
   } else {
     for relation_index, relation in self.relations {
       append_relation(
-        output,
-        self,
-        relation_index,
-        relation,
-        text_metrics,
-        layout,
+        output, self, relation_index, relation, text_metrics, layout,
       )
     }
     for index, entity in self.entities {
-      append_entity(
-        output,
-        self,
-        entity,
-        index,
-        text_metrics,
-        layout,
-      )
+      append_entity(output, self, entity, index, text_metrics, layout)
     }
   }
   append_notes(output, self, text_metrics, layout)

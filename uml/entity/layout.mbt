@@ -24,6 +24,7 @@ pub struct GraphvizLayout {
   height : Double
   nodes : Array[GraphvizNodeLayout]
   edges : Array[@graphviz.GraphvizEdge]
+  note_edges : Array[@graphviz.GraphvizEdge]
   relation_labels : Array[RelationLabelLayout]
   packages : Array[GraphvizPackageLayout]
   notes : Array[@graphviz.GraphvizNote]
@@ -68,6 +69,23 @@ fn graphviz_entity_index(diagram : EntityDiagram, node_name : String) -> Int? {
     }
   }
   None
+}
+
+///|
+/// PlantUML converts note positions into Graphviz's rank coordinate system
+/// before it creates the attachment link. `Position.withRankdir` rotates the
+/// four positions when the diagram is laid out from left to right.
+fn NotePosition::with_rankdir(
+  self : NotePosition,
+  style : @style.DocumentStyle,
+) -> NotePosition {
+  guard style.layout_direction is Some(LeftToRight) else { return self }
+  match self {
+    Right => Bottom
+    Left => Top
+    Bottom => Right
+    Top => Left
+  }
 }
 
 ///|
@@ -272,6 +290,7 @@ fn EntityDiagram::graphviz_layout(
     }
   }
   let note_names : Map[String, Int] = Map([])
+  let note_edge_names : Map[Int, String] = Map([])
   for note_index, note in self.notes {
     if note.target_kind is LinkNote {
       continue
@@ -298,27 +317,28 @@ fn EntityDiagram::graphviz_layout(
       Some(target) =>
         match node_names.get(target) {
           Some(target_name) => {
-            let left = match note.position {
-              Left | Top if usecase => node
-              _ => graph.node(target_name)
+            let position = note.position.with_rankdir(self.style)
+            let (left_name, right_name, minlen, rank_same) = match position {
+              Right => (target_name, name, 0, true)
+              Left => (name, target_name, 0, true)
+              Bottom => (target_name, name, 1, false)
+              Top => (name, target_name, 1, false)
             }
-            let right = match note.position {
-              Left | Top if usecase => graph.node(target_name)
-              _ => node
+            if rank_same {
+              let rank = graph.subgraph(name="rank_note_\{note_index}")
+              rank.set_attr("rank", "same")
+              let _ = rank.node(left_name)
+              let _ = rank.node(right_name)
             }
-            let edge = graph.edge(left, right, name="note_edge\{note_index}")
+            let edge = graph.edge(
+              graph.node(left_name),
+              graph.node(right_name),
+              name="note_edge\{note_index}",
+            )
+            note_edge_names[edge.id()] = "\{note_index}"
             edge.set_attr("dir", "none")
-            edge.set_attr("style", if usecase { "dotted" } else { "invis" })
-            if !usecase {
-              edge.set_attr("constraint", "false")
-            }
-            if usecase {
-              let minlen = match note.position {
-                Top | Bottom => 1
-                Left | Right => 0
-              }
-              edge.set_attr("minlen", "\{minlen}")
-            }
+            edge.set_attr("style", "invis")
+            edge.set_attr("minlen", "\{minlen}")
           }
           None => ()
         }
@@ -358,6 +378,9 @@ fn EntityDiagram::graphviz_layout(
   let edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
     laid_out, relation_names, bbox,
   )
+  let note_edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
+    laid_out, note_edge_names, bbox,
+  )
   let relation_labels = build_relation_label_layouts(
     self, text_metrics, nodes, edges,
   )
@@ -389,6 +412,7 @@ fn EntityDiagram::graphviz_layout(
     height: bbox.ury - bbox.lly,
     nodes,
     edges,
+    note_edges,
     relation_labels,
     packages,
     notes,

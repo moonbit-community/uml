@@ -43,7 +43,10 @@ fn Source::skip_line(self : Source) -> Unit {
 }
 
 ///|
-fn Source::diagnostic(self : Source, message : String) -> @parse.ParseDiagnostic {
+fn Source::diagnostic(
+  self : Source,
+  message : String,
+) -> @parse.ParseDiagnostic {
   @parse.diagnostic_at_span(@parse.source_span(self.chars, self.pos), message)
 }
 

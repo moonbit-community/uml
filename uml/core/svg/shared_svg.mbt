@@ -37,9 +37,7 @@ pub fn spline_path_data(points : Array[(Double, Double)]) -> String {
 
 ///|
 /// Map a PlantUML line style token to SVG presentation attributes.
-pub fn line_style_attributes(
-  line_style : String?,
-) -> Array[(String, String)] {
+pub fn line_style_attributes(line_style : String?) -> Array[(String, String)] {
   match line_style {
     Some("dashed") => [("stroke-dasharray", "6 4")]
     Some("dotted") => [("stroke-dasharray", "2 3")]
@@ -53,8 +51,8 @@ pub fn line_style_attributes(
 /// with a leading space so the result can be spliced into a tag.
 pub fn line_style_attributes_markup(line_style : String?) -> String {
   line_style_attributes(line_style)
-    .map(attr => " \{attr.0}=\"\{attr.1}\"")
-    .join("")
+  .map(attr => " \{attr.0}=\"\{attr.1}\"")
+  .join("")
 }
 
 ///|
@@ -62,15 +60,16 @@ pub fn line_style_attributes_markup(line_style : String?) -> String {
 /// stroke width (empty means no stroke attribute).
 pub fn stroke_style(
   line_style : String?,
-  default_width~ : String = "1.2",
+  default_width? : String = "1.2",
 ) -> String {
   match line_style_attributes(line_style) {
     [(name, value)] => "\{name}:\{value}"
-    _ => if default_width.length() == 0 {
-      ""
-    } else {
-      "stroke-width:\{default_width}"
-    }
+    _ =>
+      if default_width.length() == 0 {
+        ""
+      } else {
+        "stroke-width:\{default_width}"
+      }
   }
 }
 
@@ -86,11 +85,11 @@ pub fn arrow_marker_markup(
 ) -> String {
   let extra = [
     ..match path_fill {
-      Some(fill) => [(" fill=\"\{@style.xml_escape(fill)}\"")]
+      Some(fill) => [" fill=\"\{@style.xml_escape(fill)}\""]
       None => []
     },
     ..match path_class {
-      Some(class) => [(" class=\"\{@style.xml_escape(class)}\"")]
+      Some(class) => [" class=\"\{@style.xml_escape(class)}\""]
       None => []
     },
   ].join("")
@@ -107,7 +106,7 @@ pub fn multiline_text_markup(
   text : String,
   attributes : Array[(String, String)],
   line_height~ : Double,
-  offset~ : Bool = true,
+  offset? : Bool = true,
 ) -> String {
   let lines = text.split("\n").map(StringView::to_owned).to_array()
   let baseline = if offset {
@@ -123,7 +122,8 @@ pub fn multiline_text_markup(
   output.write_string(">")
   for index, line in lines {
     let dy = if index == 0 { 0.0 } else { line_height }
-    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@style.xml_escape(line)}</tspan>"
+    output <+
+      "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@style.xml_escape(line)}</tspan>"
   }
   output.write_string("</text>")
   output.to_string()

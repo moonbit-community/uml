@@ -415,6 +415,14 @@ fn ClassLayout::content_bounds(
           }
         }
       }
+      for edge in graphviz.note_edges {
+        for path in edge.paths {
+          for point in path {
+            let (x, y) = point
+            bounds = include_point(bounds, x, y)
+          }
+        }
+      }
       for p in graphviz.packages {
         guard p.package_index < diagram.packages.length() else { continue }
         bounds = include_point(bounds, p.x, p.y)

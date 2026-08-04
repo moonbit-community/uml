@@ -105,12 +105,9 @@ fn region_for_range(
   kind : ActivityRegionKind,
   label : String,
 ) -> ActivityRegionLayout? {
-  region_for(
-    layouts,
-    kind,
-    label,
-    layout => layout.node_index > start && layout.node_index < end,
-  )
+  region_for(layouts, kind, label, layout => {
+    layout.node_index > start && layout.node_index < end
+  })
 }
 
 ///|
@@ -192,13 +189,9 @@ fn region_for_swimlane(
   layouts : Array[ActivityNodeLayout],
   label : String,
 ) -> ActivityRegionLayout? {
-  region_for(
-    layouts,
-    ActivityRegionKind::Swimlane,
-    label,
-    layout =>
-      swimlane_for_node(nodes, layout.node_index) is Some(name) && name == label,
-  )
+  region_for(layouts, ActivityRegionKind::Swimlane, label, layout => {
+    swimlane_for_node(nodes, layout.node_index) is Some(name) && name == label
+  })
 }
 
 ///|

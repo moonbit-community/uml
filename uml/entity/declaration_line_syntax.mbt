@@ -228,10 +228,9 @@ fn declaration_line_style_parser() -> @talc.StringParser[
   )
   .bind(style => {
     @parse.color_token_parser("line color").map(color => {
-        let color = if color.length() == 0 { None } else { Some(color) }
-        DeclarationLine(style~, color~)
-      },
-    )
+      let color = if color.length() == 0 { None } else { Some(color) }
+      DeclarationLine(style~, color~)
+    })
   })
 }
 
@@ -252,7 +251,9 @@ fn declaration_suffix_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
       ),
     )
     .map(value => DeclarationTag(value))
-  let color = @parse.color_value_parser("declaration color").map(value => DeclarationColor(value))
+  let color = @parse.color_value_parser("declaration color").map(value => {
+    DeclarationColor(value)
+  })
   @talc.choice([
     extends.attempt(),
     implements.attempt(),

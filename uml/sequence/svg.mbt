@@ -1,3 +1,4 @@
+///|
 fn append_svg_preamble(
   output : StringBuilder,
   layout : DiagramLayout,

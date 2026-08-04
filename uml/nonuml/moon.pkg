@@ -6,6 +6,6 @@ import {
   "moonbitlang/core/string",
   "moonbit-community/yaml",
   "moonbitlang/core/test",
-  "kokic/uml/core/style" @style,
-  "kokic/uml/core/svg" @svg,
+  "kokic/uml/core/style",
+  "kokic/uml/core/svg",
 }

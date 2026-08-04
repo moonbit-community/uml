@@ -152,12 +152,21 @@ fn grouping_line_parser() -> @talc.StringParser[Event] {
   let leaf = keyword_parser("else")
     .attempt()
     .or(keyword_parser("also"))
-    .then(inline_space1().then(@parse.color_value_parser("color")).attempt().optional())
+    .then(
+      inline_space1()
+      .then(@parse.color_value_parser("color"))
+      .attempt()
+      .optional(),
+    )
     .bind(back_color => {
       inline_spaces()
       .then(line_rest_parser("group label"))
       .map(label => {
-        GroupingLeaf({ is_end: false, label: @parse.normalize_label(label), back_color })
+        GroupingLeaf({
+          is_end: false,
+          label: @parse.normalize_label(label),
+          back_color,
+        })
       })
     })
   let end = keyword_parser("end")

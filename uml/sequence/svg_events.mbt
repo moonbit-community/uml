@@ -1,3 +1,4 @@
+///|
 fn DiagramLayout::group_bounds(
   self : DiagramLayout,
   group : GroupSpan,

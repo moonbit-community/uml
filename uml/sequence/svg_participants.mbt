@@ -1,3 +1,4 @@
+///|
 fn append_participant(
   output : StringBuilder,
   layout : ParticipantLayout,
