@@ -17,7 +17,5 @@ import {
   "kokic/talcparsec@0.1.1",
   "bobzhang/toml@0.4.2",
   "moonbit-community/yaml@0.0.6",
-  "moonbit-community/graphviz@0.1.1",
+  "moonbit-community/graphviz@0.1.2",
 }
-
-// preferred_target = "js"
