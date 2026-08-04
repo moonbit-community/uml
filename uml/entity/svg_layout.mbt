@@ -203,7 +203,7 @@ fn ClassLayout::content_bounds(
           self,
           relation_index,
           ((x1 + x2) / 2, (y1 + y2) / 2),
-          measured.width.to_double() / 2.0,
+          display,
         )
         bounds = include_point(
           bounds,
@@ -448,7 +448,7 @@ fn relation_label_position(
   layout : ClassLayout,
   relation_index : Int,
   fallback : (Int, Int),
-  half_width : Double,
+  label_text : String,
 ) -> (Double, Double) {
   match layout.graphviz {
     Some(graphviz) =>
@@ -457,7 +457,7 @@ fn relation_label_position(
           let position = edge.label.unwrap_or(
             (fallback.0.to_double(), fallback.1.to_double()),
           )
-          return offset_label_from_edge(position, edge.paths, half_width)
+          return offset_label_from_edge(position, edge.paths, label_text)
         }
       }
     None => ()
@@ -466,50 +466,50 @@ fn relation_label_position(
 }
 
 ///|
-/// Nudge the label box away from the edge spline so the text keeps a small
-/// visual gap instead of overlapping the line. The text box corners are
-/// sampled against the spline; if any corner is closer than the clearance
-/// the box is pushed along the normal until the closest corner clears it.
+/// Push the label anchor away from the edge spline until the whole text box
+/// clears the line by a small gap. The graphviz label position centers the
+/// text on the edge midpoint, so the box edges can overlap the spline.
 fn offset_label_from_edge(
   label : (Double, Double),
   paths : Array[Array[(Double, Double)]],
-  half_width : Double,
+  label_text : String,
 ) -> (Double, Double) {
-  // The rendering drops the baseline 5px below `label` and the text is
-  // roughly label_font_size tall, so the text box center sits here.
-  let half_height = RELATION_LABEL_FONT_SIZE.to_double() / 2.0
-  let center = (label.0, label.1 - 5.0 - half_height)
   let mut offset_x = 0.0
   let mut offset_y = 0.0
   let clearance = 3.0
+  let half_width = label_text.length().to_double() * 3.5
+  let half_height = 5.0
+  let segments = sample_spline_segments(paths)
+  if label_text == "owns" {
+    println("DBG owns: label=(" + label.0.to_string() + "," + label.1.to_string() + ") segments=" + segments.length().to_string())
+  }
   for _iteration in 0..<8 {
+    // The rendered baseline is 5px below `label`; the text box spans roughly
+    // 10px upward from the baseline, so its center sits 10px below `label`.
+    let (cx, cy) = (label.0 + offset_x, label.1 + offset_y - 10.0)
     let corners = [
-      (center.0 + offset_x - half_width, center.1 + offset_y - half_height),
-      (center.0 + offset_x - half_width, center.1 + offset_y + half_height),
-      (center.0 + offset_x + half_width, center.1 + offset_y - half_height),
-      (center.0 + offset_x + half_width, center.1 + offset_y + half_height),
+      (cx - half_width, cy - half_height),
+      (cx - half_width, cy + half_height),
+      (cx + half_width, cy - half_height),
+      (cx + half_width, cy + half_height),
     ]
     let mut best_corner = (0.0, 0.0)
     let mut best_dist = 1.0e9
     let mut best_nx = 0.0
     let mut best_ny = 0.0
-    for path in paths {
-      guard path.length() > 1 else { continue }
-      for index in 0..<(path.length() - 1) {
-        let a = path[index]
-        let b = path[index + 1]
-        for corner_index in 0..<corners.length() {
-          let (cx, cy) = corners[corner_index]
-          let (nx, ny) = closest_point_on_segment((cx, cy), a, b)
-          let dx = cx - nx
-          let dy = cy - ny
-          let dist = (dx * dx + dy * dy).sqrt()
-          if dist < best_dist {
-            best_dist = dist
-            best_corner = (cx, cy)
-            best_nx = nx
-            best_ny = ny
-          }
+    for seg_index in 0..<segments.length() {
+      let (a, b) = segments[seg_index]
+      for corner_index in 0..<corners.length() {
+        let (corner_x, corner_y) = corners[corner_index]
+        let (nx, ny) = closest_point_on_segment((corner_x, corner_y), a, b)
+        let dx = corner_x - nx
+        let dy = corner_y - ny
+        let dist = (dx * dx + dy * dy).sqrt()
+        if dist < best_dist {
+          best_dist = dist
+          best_corner = (corner_x, corner_y)
+          best_nx = nx
+          best_ny = ny
         }
       }
     }
@@ -524,6 +524,39 @@ fn offset_label_from_edge(
     offset_y += dy / normal_length * shift
   }
   (label.0 + offset_x, label.1 + offset_y)
+}
+
+///|
+/// Flatten each 3n+1 cubic Bezier spline into short polyline segments so
+/// distance-to-edge checks follow the actual curve, not the control polygon.
+fn sample_spline_segments(
+  paths : Array[Array[(Double, Double)]],
+) -> Array[((Double, Double), (Double, Double))] {
+  let segments : Array[((Double, Double), (Double, Double))] = []
+  for path in paths {
+    guard (path.length() - 1) % 3 == 0 && path.length() >= 4 else { continue }
+    let count = (path.length() - 1) / 3
+    for index in 0..<count {
+      let p0 = path[index * 3]
+      let p1 = path[index * 3 + 1]
+      let p2 = path[index * 3 + 2]
+      let p3 = path[index * 3 + 3]
+      let mut prev = p0
+      for step in 1..=24 {
+        let t = step.to_double() / 24.0
+        let u = 1.0 - t
+        let point = (
+          u * u * u * p0.0 + 3.0 * u * u * t * p1.0 +
+            3.0 * u * t * t * p2.0 + t * t * t * p3.0,
+          u * u * u * p0.1 + 3.0 * u * u * t * p1.1 +
+            3.0 * u * t * t * p2.1 + t * t * t * p3.1,
+        )
+        segments.push((prev, point))
+        prev = point
+      }
+    }
+  }
+  segments
 }
 
 ///|
@@ -544,3 +577,4 @@ fn closest_point_on_segment(
   let t = t.max(0.0).min(1.0)
   (ax + tx * t, ay + ty * t)
 }
+

@@ -287,20 +287,6 @@ const SVG_MARGIN_BOTTOM : Int = 15
 const RELATION_LABEL_FONT_SIZE : Int = 12
 
 ///|
-/// Distance used to push cardinality/role labels just outside the entity
-/// border so they are never covered by the entity body.
-const CARDINALITY_LABEL_MARGIN : Double = 12.0
-
-///|
-/// Horizontal offset of cardinality/role labels from the edge endpoint,
-/// giving the label text a small gap from the edge line.
-const RELATION_END_LABEL_X_OFFSET : Int = 9
-
-///|
-/// Vertical offset of cardinality/role labels from the edge endpoint.
-const RELATION_END_LABEL_Y_OFFSET : Int = 4
-
-///|
 fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
   let font_size = if style.font_size is None {
     14

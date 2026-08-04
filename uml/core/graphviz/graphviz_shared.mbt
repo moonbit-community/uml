@@ -44,6 +44,8 @@ pub(all) struct GraphvizEdge {
   index : Int
   paths : Array[Array[(Double, Double)]]
   label : (Double, Double)?
+  head_label : (Double, Double)?
+  tail_label : (Double, Double)?
 } derive(Eq, Debug)
 
 ///|
@@ -66,7 +68,13 @@ pub fn graphviz_edges(
     let label = edge_layout.label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
     })
-    edges.push({ index, paths, label })
+    let head_label = edge_layout.head_label_pos.map(point => {
+      graphviz_point_to_svg(point, bbox)
+    })
+    let tail_label = edge_layout.tail_label_pos.map(point => {
+      graphviz_point_to_svg(point, bbox)
+    })
+    edges.push({ index, paths, label, head_label, tail_label })
   }
   edges
 }

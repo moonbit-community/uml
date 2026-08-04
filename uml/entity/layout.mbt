@@ -221,13 +221,30 @@ fn EntityDiagram::graphviz_layout(
         label = @parse.display_stereotype(label)
       }
       edge.set_attr("label", label)
-      if usecase {
-        edge.set_attr(
-          "fontsize",
-          "\{self.style.arrow_font_size(fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)}",
-        )
-        edge.set_attr("fontname", self.style.arrow_font_family())
-      }
+      edge.set_attr(
+        "fontsize",
+        "\{self.style.arrow_font_size(fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)}",
+      )
+      edge.set_attr("fontname", self.style.arrow_font_family())
+    }
+    if relation.left_cardinality is Some(text) {
+      edge.set_attr("taillabel", text)
+    }
+    if relation.right_cardinality is Some(text) {
+      edge.set_attr("headlabel", text)
+    }
+    if relation.left_role is Some(text) && edge.get_attr("taillabel") is None {
+      edge.set_attr("taillabel", text)
+    }
+    if relation.right_role is Some(text) && edge.get_attr("headlabel") is None {
+      edge.set_attr("headlabel", text)
+    }
+    if relation.left_cardinality is Some(_) ||
+      relation.left_role is Some(_) ||
+      relation.right_cardinality is Some(_) ||
+      relation.right_role is Some(_) {
+      edge.set_attr("labeldistance", "3.5")
+      edge.set_attr("labelangle", "-25")
     }
     edge.set_attr("dir", "none")
     if relation.dotted {
