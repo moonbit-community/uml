@@ -47,6 +47,7 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
     $|.relation{stroke:\{line_color};stroke-width:1.2}
     $|.class-node > line,.relation{fill:none}
     $|.class-title{fill:\{text_color}}
+    $|.class-stereotype{fill:\{text_color};font-style:italic}
     $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
     $|.usecase-title{fill:\{text_color};text-anchor:middle}
     $|.usecase-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}

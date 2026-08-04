@@ -404,6 +404,67 @@ test "class layout receives document font profile size and title style" {
 }
 
 ///|
+test "class stereotypes participate in header and Graphviz geometry" {
+  let plain = parse("@startuml\nclass Service\n@enduml")
+  let stereotyped = parse("@startuml\nclass Service <<backend>>\n@enduml")
+  let long_stereotype = parse(
+    "@startuml\nclass Service <<externally-managed-service>>\n@enduml",
+  )
+  let plain_metrics = ClassTextMetrics::new(plain.style)
+  let stereotype_metrics = ClassTextMetrics::new(stereotyped.style)
+  let long_metrics = ClassTextMetrics::new(long_stereotype.style)
+  let plain_header = plain.entities[0].header_layout(plain_metrics)
+  let stereotype_header = stereotyped.entities[0].header_layout(
+    stereotype_metrics,
+  )
+  let long_header = long_stereotype.entities[0].header_layout(long_metrics)
+  let plain_node = plain.graphviz_layout(plain_metrics).nodes[0]
+  let stereotype_node = stereotyped.graphviz_layout(stereotype_metrics).nodes[0]
+  let svg = stereotyped.render_svg()
+  @test.assert_eq(stereotype_header.height > plain_header.height, true)
+  @test.assert_eq(long_header.width > plain_header.width, true)
+  @test.assert_eq(stereotype_node.height > plain_node.height, true)
+  @test.assert_eq(svg.contains("class=\"class-stereotype\""), true)
+  @test.assert_eq(svg.contains("«backend»"), true)
+  @test.assert_eq(
+    @parse.find_literal(svg, "class=\"class-stereotype\"").unwrap() <
+    @parse.find_literal(svg, "class=\"class-title\"").unwrap(),
+    true,
+  )
+}
+
+///|
+test "hide stereotype restores the plain class header" {
+  let plain = parse("@startuml\nclass Service\n@enduml")
+  let hidden = parse(
+    "@startuml\nhide stereotype\nclass Service <<backend>>\n@enduml",
+  )
+  let plain_metrics = ClassTextMetrics::new(plain.style)
+  let hidden_metrics = ClassTextMetrics::new(hidden.style)
+  let plain_header = plain.entities[0].header_layout(plain_metrics)
+  let hidden_header = hidden.entities[0].header_layout(hidden_metrics)
+  @test.assert_eq(hidden_header.width, plain_header.width)
+  @test.assert_eq(hidden_header.height, plain_header.height)
+  @test.assert_eq(
+    hidden.render_svg().contains("class=\"class-stereotype\""),
+    false,
+  )
+}
+
+///|
+test "class stereotype font skinparams drive metrics and SVG text" {
+  let diagram = parse(
+    "@startuml\nskinparam ClassStereotypeFontColor #456789\nskinparam ClassStereotypeFontSize 18\nskinparam ClassStereotypeFontName Courier New\nclass Service <<backend>>\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let svg = diagram.render_svg()
+  @test.assert_eq(metrics.class_stereotype.profile, Monospace)
+  @test.assert_eq(metrics.class_stereotype.font_size, 18)
+  @test.assert_eq(svg.contains("fill=\"#456789\""), true)
+  @test.assert_eq(svg.contains("font-family=\"Courier New\""), true)
+}
+
+///|
 test "class body keeps empty field and method sections" {
   let empty = parse("@startuml\ninterface Empty\n@enduml")
   let with_field = parse("@startuml\ninterface Empty {\n+ id : Int\n}\n@enduml")

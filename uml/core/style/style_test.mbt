@@ -30,6 +30,10 @@ test "font name skinparams preserve families with spaces" {
     parse_style_property("ActorFontName Courier New"),
     Some(Property("ActorFontName", "Courier New")),
   )
+  @test.assert_eq(
+    parse_style_property("ClassStereotypeFontName Times New Roman"),
+    Some(Property("ClassStereotypeFontName", "Times New Roman")),
+  )
 }
 
 ///|
@@ -53,6 +57,9 @@ test "document color resolution uses shared render defaults and skinparams" {
   style.apply(Property("ActorFontSize", "12pt"))
   style.apply(Property("UsecaseFontName", "Courier"))
   style.apply(Property("ActorFontName", "Times New Roman"))
+  style.apply(Property("ClassStereotypeFontColor", "#123abc"))
+  style.apply(Property("ClassStereotypeFontSize", "17"))
+  style.apply(Property("ClassStereotypeFontName", "Georgia"))
   style.apply(Property("ArrowFontColor", "#abcd12"))
   style.apply(Property("ArrowFontSize", "15"))
   style.apply(Property("ArrowFontName", "Courier New"))
@@ -68,6 +75,9 @@ test "document color resolution uses shared render defaults and skinparams" {
   @test.assert_eq(style.actor_font_size(fallback=14), 16)
   @test.assert_eq(style.usecase_font_family(), "Courier")
   @test.assert_eq(style.actor_font_family(), "Times New Roman")
+  @test.assert_eq(style.class_stereotype_font_color(), "#123abc")
+  @test.assert_eq(style.class_stereotype_font_size(fallback=12), 17)
+  @test.assert_eq(style.class_stereotype_font_family(), "Georgia")
   @test.assert_eq(style.arrow_font_color(), "#abcd12")
   @test.assert_eq(style.arrow_font_size(fallback=13), 15)
   @test.assert_eq(style.arrow_font_family(), "Courier New")

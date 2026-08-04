@@ -238,6 +238,28 @@ pub fn DocumentStyle::actor_font_family(self : DocumentStyle) -> String {
 }
 
 ///|
+pub fn DocumentStyle::class_stereotype_font_color(
+  self : DocumentStyle,
+) -> String {
+  role_font_color(self, "ClassStereotypeFontColor")
+}
+
+///|
+pub fn DocumentStyle::class_stereotype_font_size(
+  self : DocumentStyle,
+  fallback~ : Int,
+) -> Int {
+  role_font_size(self, "ClassStereotypeFontSize", fallback~)
+}
+
+///|
+pub fn DocumentStyle::class_stereotype_font_family(
+  self : DocumentStyle,
+) -> String {
+  role_font_family(self, "ClassStereotypeFontName")
+}
+
+///|
 pub fn DocumentStyle::arrow_font_color(self : DocumentStyle) -> String {
   role_font_color(self, "ArrowFontColor")
 }
@@ -378,7 +400,8 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
   if words.length() >= 2 &&
     (
       words[0].equal_ignore_ascii_case("UsecaseFontName") ||
-      words[0].equal_ignore_ascii_case("ActorFontName")
+      words[0].equal_ignore_ascii_case("ActorFontName") ||
+      words[0].equal_ignore_ascii_case("ClassStereotypeFontName")
     ) {
     return Some(Property(words[0], words[1:].to_owned().join(" ")))
   }

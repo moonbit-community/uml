@@ -616,13 +616,23 @@ fn append_entity(
     _ => ""
   }
   let (spot_text, spot_fill) = entity.spot()
-  let (circle_cx, title_x) = class_title_offsets(
-    entity.display,
-    entity.title_metrics(text_metrics),
-    width,
-  )
+  let placement = header.placement(width)
   output <+
-    $|<g class="class-node" data-code="\{@style.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/><circle cx="\{x + circle_cx}" cy="\{y + 16}" r="11" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + 20}" class="class-spot">\{spot_text}</text><text x="\{x + title_x}" y="\{y + header.height - 11}" class="class-title"\{title_style}>\{@style.xml_escape(entity.display)}</text>
+    $|<g class="class-node" data-code="\{@style.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/>
+  match placement.circle_center {
+    Some((circle_cx, circle_cy)) =>
+      output <+
+        $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
+    None => ()
+  }
+  match (header.stereotype, placement.stereotype_position) {
+    (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
+      output <+
+        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="class-stereotype" fill="\{diagram.style.class_stereotype_font_color()}" font-family="\{@style.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@style.xml_escape(stereotype)}</text>
+    _ => ()
+  }
+  output <+
+    $|<text x="\{x + placement.title_x}" y="\{y + placement.title_baseline}" class="class-title"\{title_style}>\{@style.xml_escape(entity.display)}</text>
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {

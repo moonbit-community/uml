@@ -57,11 +57,6 @@ fn Member::visibility_icon(self : Member, x : Int, baseline_y : Int) -> String {
 }
 
 ///|
-fn ClassTextMetrics::header_height(self : ClassTextMetrics) -> Int {
-  (self.regular.line_height + 16).max(32)
-}
-
-///|
 fn ClassTextMetrics::row_height(self : ClassTextMetrics) -> Int {
   self.regular.line_height.max(17)
 }
@@ -70,6 +65,21 @@ fn ClassTextMetrics::row_height(self : ClassTextMetrics) -> Int {
 priv struct ClassHeaderLayout {
   width : Int
   height : Int
+  circle_width : Int
+  circle_height : Int
+  title_width : Int
+  title_height : Int
+  stereotype_width : Int
+  stereotype_height : Int
+  stereotype : String?
+}
+
+///|
+priv struct ClassHeaderPlacement {
+  circle_center : (Int, Int)?
+  title_x : Int
+  title_baseline : Int
+  stereotype_position : (Int, Int)?
 }
 
 ///|
@@ -97,10 +107,48 @@ fn Entity::header_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
 ) -> ClassHeaderLayout {
-  // PlantUML places a 22px circled type icon beside every class title.
   let title_metrics = self.title_metrics(text_metrics)
-  let width = @metrics.measure_text_with(self.display, title_metrics).width + 32
-  { width, height: text_metrics.header_height() }
+  let title = @metrics.measure_text_with(self.display, title_metrics)
+  let title_width = title.width + 2 * CLASS_NAME_HORIZONTAL_MARGIN
+  let circle_width = if self.circle_hidden {
+    0
+  } else {
+    2 * CLASS_SPOT_RADIUS + CLASS_SPOT_LEFT_MARGIN + CLASS_SPOT_RIGHT_MARGIN
+  }
+  let circle_height = if self.circle_hidden {
+    0
+  } else {
+    2 * CLASS_SPOT_RADIUS + 2 * CLASS_SPOT_VERTICAL_MARGIN
+  }
+  let (stereotype, stereotype_width, stereotype_height) = match
+    self.stereotype {
+    Some(value) if !self.stereotype_hidden => {
+      let display = @parse.display_stereotype(value)
+      let metrics = @metrics.measure_text_with(
+        display,
+        text_metrics.class_stereotype,
+      )
+      (
+        Some(display),
+        metrics.width + 2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
+        metrics.height,
+      )
+    }
+    _ => (None, 0, 0)
+  }
+  {
+    width: circle_width + title_width.max(stereotype_width),
+    height: circle_height.max(
+      stereotype_height + title.height + CLASS_HEADER_VERTICAL_PADDING,
+    ),
+    circle_width,
+    circle_height,
+    title_width,
+    title_height: title.height,
+    stereotype_width,
+    stereotype_height,
+    stereotype,
+  }
 }
 
 ///|
@@ -115,24 +163,70 @@ fn Entity::title_metrics(
 }
 
 ///|
-/// Horizontal offsets (relative to the class rect) that center the group
-/// [spot circle 22px + gap + title] within `rect_width`, following the
-/// PlantUML HeaderLayout split of the surplus space.
-fn class_title_offsets(
-  display : String,
-  title_metrics : @metrics.FontMetrics,
+/// Positions the circled character, stereotype, and name within the final
+/// class width using PlantUML HeaderLayout's surplus-width split.
+fn ClassHeaderLayout::placement(
+  self : ClassHeaderLayout,
   rect_width : Int,
-) -> (Int, Int) {
-  let circle_dim = 26.0
-  let title_width = @metrics.measure_text_with(display, title_metrics).width
-  let surplus = (rect_width.to_double() - circle_dim - title_width.to_double()).max(
-    0.0,
-  )
-  let h2 = (circle_dim / 4.0).min(surplus * 0.1)
+) -> ClassHeaderPlacement {
+  let content_width = self.title_width.max(self.stereotype_width)
+  let circle_width = self.circle_width.to_double()
+  let surplus = (rect_width.to_double() -
+  circle_width -
+  content_width.to_double()).max(0.0)
+  let h2 = (circle_width / 4.0).min(surplus * 0.1)
   let h1 = (surplus - h2) / 2.0
-  let circle_cx = h1 + 11.0
-  let title_x = h1 + circle_dim + h2
-  (circle_cx.round().to_int(), title_x.round().to_int())
+  let circle_center = if self.circle_width == 0 {
+    None
+  } else {
+    Some(
+      (
+        (h1 + CLASS_SPOT_LEFT_MARGIN.to_double() + CLASS_SPOT_RADIUS.to_double())
+        .round()
+        .to_int(),
+        ((self.height - self.circle_height).to_double() / 2.0 +
+        CLASS_SPOT_VERTICAL_MARGIN.to_double() +
+        CLASS_SPOT_RADIUS.to_double())
+        .round()
+        .to_int(),
+      ),
+    )
+  }
+  let content_x = circle_width + h1 + h2
+  let vertical_surplus = (self.height -
+    self.stereotype_height -
+    self.title_height).to_double() /
+    2.0
+  let title_x = (content_x +
+    (content_width - self.title_width).to_double() / 2.0 +
+    CLASS_NAME_HORIZONTAL_MARGIN.to_double())
+    .round()
+    .to_int()
+  let title_baseline = (vertical_surplus +
+    self.stereotype_height.to_double() +
+    self.title_height.to_double() -
+    CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
+    .round()
+    .to_int()
+  let stereotype_position = match self.stereotype {
+    Some(_) =>
+      Some(
+        (
+          (content_x +
+          (content_width - self.stereotype_width).to_double() / 2.0 +
+          CLASS_STEREOTYPE_HORIZONTAL_MARGIN.to_double())
+          .round()
+          .to_int(),
+          (vertical_surplus +
+          self.stereotype_height.to_double() -
+          CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
+          .round()
+          .to_int(),
+        ),
+      )
+    None => None
+  }
+  { circle_center, title_x, title_baseline, stereotype_position }
 }
 
 ///|
@@ -178,6 +272,8 @@ fn Entity::entry_visible(self : Entity, entry : Member) -> Bool {
 priv struct ClassTextMetrics {
   regular : @metrics.FontMetrics
   italic : @metrics.FontMetrics
+  class_stereotype : @metrics.FontMetrics
+  class_stereotype_font_family : String
   usecase_regular : @metrics.FontMetrics
   usecase_italic : @metrics.FontMetrics
   actor_regular : @metrics.FontMetrics
@@ -215,6 +311,33 @@ priv struct NodeGeometry {
 
 ///|
 const TEXT_BLOCK_ELLIPSE_MARGIN : Double = 6.0
+
+///|
+const CLASS_NAME_HORIZONTAL_MARGIN : Int = 3
+
+///|
+const CLASS_STEREOTYPE_HORIZONTAL_MARGIN : Int = 1
+
+///|
+const CLASS_STEREOTYPE_FONT_SIZE : Int = 12
+
+///|
+const CLASS_HEADER_VERTICAL_PADDING : Int = 10
+
+///|
+const CLASS_SPOT_RADIUS : Int = 11
+
+///|
+const CLASS_SPOT_LEFT_MARGIN : Int = 4
+
+///|
+const CLASS_SPOT_RIGHT_MARGIN : Int = 0
+
+///|
+const CLASS_SPOT_VERTICAL_MARGIN : Int = 5
+
+///|
+const CLASS_TEXT_BASELINE_BOTTOM_GAP : Int = 3
 
 ///|
 const USECASE_BODY_HORIZONTAL_MARGIN : Int = 12
@@ -315,9 +438,19 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
   let actor_font_size = style.actor_font_size(fallback=font_size)
   let usecase_font_family = style.usecase_font_family()
   let actor_font_family = style.actor_font_family()
+  let class_stereotype_font_family = style.class_stereotype_font_family()
+  let class_stereotype_font_size = style.class_stereotype_font_size(
+    fallback=CLASS_STEREOTYPE_FONT_SIZE,
+  )
   {
     regular: style.font_metrics(font_size~),
     italic: style.font_metrics(font_size~, font_style=Italic),
+    class_stereotype: style.font_metrics_for(
+      class_stereotype_font_family,
+      font_size=class_stereotype_font_size,
+      font_style=Italic,
+    ),
+    class_stereotype_font_family,
     usecase_regular: style.font_metrics_for(
       usecase_font_family,
       font_size=usecase_font_size,
