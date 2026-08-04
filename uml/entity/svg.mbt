@@ -45,9 +45,9 @@ fn EntityDiagram::render_svg_with_mode(
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
-    $|.class-node rect,.class-node line{stroke:\{line_color};stroke-width:1.2}
+    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:1.2}
     $|.relation{stroke:\{line_color};stroke-width:1.2}
-    $|.class-node line,.relation{fill:none}
+    $|.class-node > line,.relation{fill:none}
     $|.class-title{fill:\{text_color}}
     $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
     $|.usecase-title{fill:\{text_color};text-anchor:middle}
