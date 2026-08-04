@@ -245,25 +245,25 @@ fn append_relation(
   match relation.left_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{label_x1 - RELATION_END_LABEL_X_OFFSET}" y="\{label_y1 - RELATION_END_LABEL_Y_OFFSET}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x1}" y="\{label_y1 - RELATION_END_LABEL_Y_OFFSET}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{label_x2 + RELATION_END_LABEL_X_OFFSET}" y="\{label_y2 - RELATION_END_LABEL_Y_OFFSET}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x2}" y="\{label_y2 - RELATION_END_LABEL_Y_OFFSET}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.left_role {
     Some(text) =>
       output <+
-        $|<text x="\{label_x1 - RELATION_END_LABEL_X_OFFSET}" y="\{label_y1 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x1}" y="\{label_y1 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_role {
     Some(text) =>
       output <+
-        $|<text x="\{label_x2 + RELATION_END_LABEL_X_OFFSET}" y="\{label_y2 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x2}" y="\{label_y2 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
 }
@@ -271,9 +271,9 @@ fn append_relation(
 ///|
 /// Endpoints used to anchor cardinality/role labels. With a graphviz layout
 /// the edge's first and last spline points sit on the entity border; the
-/// fallback is the center-based endpoints from `relation_endpoints`. The
-/// anchors are pushed out of the entity rect so labels stay visible instead
-/// of being covered by the entity body.
+/// fallback is the center-based endpoints from `relation_endpoints`. Each
+/// anchor is pushed out of its entity rect and perpendicular to the edge so
+/// the label clears both the entity body and the edge line.
 fn relation_label_anchors(
   layout : ClassLayout,
   relation_index : Int,
@@ -310,14 +310,18 @@ fn relation_label_anchors(
       }
     None => (x1.to_double(), y1.to_double(), x2.to_double(), y2.to_double())
   }
-  let (out_start_x, out_start_y) = push_outside_rect(
+  let (out_start_x, out_start_y) = cardinality_anchor(
     start_x,
     start_y,
-    left_rect,
-  )
-  let (out_end_x, out_end_y) = push_outside_rect(
     end_x,
     end_y,
+    left_rect,
+  )
+  let (out_end_x, out_end_y) = cardinality_anchor(
+    end_x,
+    end_y,
+    start_x,
+    start_y,
     right_rect,
   )
   (out_start_x.round().to_int(), out_start_y.round().to_int(),
@@ -325,34 +329,44 @@ fn relation_label_anchors(
 }
 
 ///|
-/// Push a point that lies on (or near) a rect border just outside it, so a
-/// label anchored there is not covered by the rect. The point moves away from
-/// the rect center along the dominant axis.
-fn push_outside_rect(
-  px : Double,
-  py : Double,
+/// Place a cardinality/role label just outside the entity rect, perpendicular
+/// to the edge direction, so it is neither covered by the entity body nor
+/// sitting on the edge line. `point` is the edge endpoint on the rect border
+/// and `other` is the far endpoint that fixes the edge direction.
+fn cardinality_anchor(
+  point_x : Double,
+  point_y : Double,
+  other_x : Double,
+  other_y : Double,
   rect : (Int, Int, Int, Int),
 ) -> (Double, Double) {
   let (rx, ry, rw, rh) = rect
   let center_x = rx.to_double() + rw.to_double() / 2.0
   let center_y = ry.to_double() + rh.to_double() / 2.0
-  let dx = px - center_x
-  let dy = py - center_y
-  if dx.abs() > dy.abs() {
-    let target = if dx > 0.0 {
-      (rx + rw).to_double() + CARDINALITY_LABEL_MARGIN
-    } else {
-      rx.to_double() - CARDINALITY_LABEL_MARGIN
-    }
-    (target, py)
-  } else {
-    let target = if dy > 0.0 {
-      (ry + rh).to_double() + CARDINALITY_LABEL_MARGIN
-    } else {
-      ry.to_double() - CARDINALITY_LABEL_MARGIN
-    }
-    (px, target)
+  // Edge direction from the entity center toward the far endpoint.
+  let dx = other_x - center_x
+  let dy = other_y - center_y
+  let length = (dx * dx + dy * dy).sqrt()
+  guard length > 0.0001 else {
+    return (point_x, point_y)
   }
+  let ux = dx / length
+  let uy = dy / length
+  // Perpendicular direction (rotate 90 deg); pick the side away from the rect.
+  let mut px = -uy
+  let mut py = ux
+  if px * (point_x - center_x) + py * (point_y - center_y) < 0.0 {
+    px = -px
+    py = -py
+  }
+  // Anchor sits outside the rect along the edge direction, then offset
+  // perpendicular so the label clears the edge line. The along offset must
+  // cover the text height so the whole label leaves the entity body.
+  let along = CARDINALITY_LABEL_MARGIN + 10.0
+  let across = RELATION_END_LABEL_X_OFFSET.to_double()
+  let anchor_x = point_x + ux * along + px * across
+  let anchor_y = point_y + uy * along + py * across
+  (anchor_x, anchor_y)
 }
 
 ///|

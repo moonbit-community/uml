@@ -479,60 +479,51 @@ fn offset_label_from_edge(
   // roughly label_font_size tall, so the text box center sits here.
   let half_height = RELATION_LABEL_FONT_SIZE.to_double() / 2.0
   let center = (label.0, label.1 - 5.0 - half_height)
-  // Sample the text box corners: left/right edges at top and bottom.
-  let corners = [
-    (center.0 - half_width, center.1 - half_height),
-    (center.0 - half_width, center.1 + half_height),
-    (center.0 + half_width, center.1 - half_height),
-    (center.0 + half_width, center.1 + half_height),
-  ]
-  let clearance = 2.0
-  let mut best_corner = (0.0, 0.0)
-  let mut best_dist = 1.0e9
-  for path in paths {
-    guard path.length() > 1 else { continue }
-    for index in 0..<(path.length() - 1) {
-      let a = path[index]
-      let b = path[index + 1]
-      for corner_index in 0..<corners.length() {
-        let (cx, cy) = corners[corner_index]
-        let (nx, ny) = closest_point_on_segment((cx, cy), a, b)
-        let dx = cx - nx
-        let dy = cy - ny
-        let dist = (dx * dx + dy * dy).sqrt()
-        if dist < best_dist {
-          best_dist = dist
-          best_corner = (cx, cy)
+  let mut offset_x = 0.0
+  let mut offset_y = 0.0
+  let clearance = 3.0
+  for _iteration in 0..<8 {
+    let corners = [
+      (center.0 + offset_x - half_width, center.1 + offset_y - half_height),
+      (center.0 + offset_x - half_width, center.1 + offset_y + half_height),
+      (center.0 + offset_x + half_width, center.1 + offset_y - half_height),
+      (center.0 + offset_x + half_width, center.1 + offset_y + half_height),
+    ]
+    let mut best_corner = (0.0, 0.0)
+    let mut best_dist = 1.0e9
+    let mut best_nx = 0.0
+    let mut best_ny = 0.0
+    for path in paths {
+      guard path.length() > 1 else { continue }
+      for index in 0..<(path.length() - 1) {
+        let a = path[index]
+        let b = path[index + 1]
+        for corner_index in 0..<corners.length() {
+          let (cx, cy) = corners[corner_index]
+          let (nx, ny) = closest_point_on_segment((cx, cy), a, b)
+          let dx = cx - nx
+          let dy = cy - ny
+          let dist = (dx * dx + dy * dy).sqrt()
+          if dist < best_dist {
+            best_dist = dist
+            best_corner = (cx, cy)
+            best_nx = nx
+            best_ny = ny
+          }
         }
       }
     }
+    guard best_dist < clearance else { break }
+    let (corner_x, corner_y) = best_corner
+    let dx = corner_x - best_nx
+    let dy = corner_y - best_ny
+    let normal_length = (dx * dx + dy * dy).sqrt()
+    guard normal_length > 0.0001 else { break }
+    let shift = clearance - best_dist
+    offset_x += dx / normal_length * shift
+    offset_y += dy / normal_length * shift
   }
-  guard best_dist < clearance else { return label }
-  // Find the closest point on the edge to the offending corner.
-  let (corner_x, corner_y) = best_corner
-  let mut closest = (0.0, 0.0)
-  let mut closest_dist = 1.0e9
-  for path in paths {
-    guard path.length() > 1 else { continue }
-    for index in 0..<(path.length() - 1) {
-      let a = path[index]
-      let b = path[index + 1]
-      let (nx, ny) = closest_point_on_segment((corner_x, corner_y), a, b)
-      let dist = ((corner_x - nx) * (corner_x - nx) + (corner_y - ny) * (corner_y - ny)).sqrt()
-      if dist < closest_dist {
-        closest_dist = dist
-        closest = (nx, ny)
-      }
-    }
-  }
-  let (nx, ny) = closest
-  let dx = corner_x - nx
-  let dy = corner_y - ny
-  let normal_length = (dx * dx + dy * dy).sqrt()
-  guard normal_length > 0.0001 else { return label }
-  let shift = clearance - closest_dist
-  // Translate the whole box (and thus the label anchor) along the normal.
-  (label.0 + dx / normal_length * shift, label.1 + dy / normal_length * shift)
+  (label.0 + offset_x, label.1 + offset_y)
 }
 
 ///|
