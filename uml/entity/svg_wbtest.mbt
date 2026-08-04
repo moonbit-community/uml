@@ -1,4 +1,27 @@
 ///|
+fn test_relation_text_box_intersects_paths(
+  text_box : RelationTextBox,
+  paths : Array[Array[(Double, Double)]],
+) -> Bool {
+  let segments = sample_spline_segments(paths)
+  match
+    nearest_relation_path_distance(relation_text_box_center(text_box), segments) {
+    None => false
+    Some(nearest) => {
+      let center = relation_text_box_center(text_box)
+      let half_extent = if nearest.distance < 0.0001 {
+        text_box.width.max(text_box.height) / 2.0
+      } else {
+        let nx = (center.0 - nearest.point.0) / nearest.distance
+        let ny = (center.1 - nearest.point.1) / nearest.distance
+        nx.abs() * text_box.width / 2.0 + ny.abs() * text_box.height / 2.0
+      }
+      nearest.distance < half_extent
+    }
+  }
+}
+
+///|
 test "use-case layout uses ellipse and actor geometry before Graphviz" {
   let diagram = parse(
     "@startuml\n:Customer: --> (Place order)\n@enduml",
@@ -64,7 +87,10 @@ test "actor stereotypes participate in use-case node geometry" {
   )
   let plain_metrics = ClassTextMetrics::new(plain.style)
   let stereotyped_metrics = ClassTextMetrics::new(stereotyped.style)
-  let plain_geometry = plain.entities[0].node_geometry(plain_metrics, UseCaseDiagram)
+  let plain_geometry = plain.entities[0].node_geometry(
+    plain_metrics,
+    UseCaseDiagram,
+  )
   let stereotyped_geometry = stereotyped.entities[0].node_geometry(
     stereotyped_metrics,
     UseCaseDiagram,
@@ -230,23 +256,11 @@ test "use-case canvas includes notes positioned outside the Graphviz box" {
   )
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
-  let layout = {
-    columns: 1,
-    cell_width: 1,
-    cell_height: 1,
-    width: 1,
-    graphviz: Some(graphviz),
-  }
+  let layout = { ..diagram.layout(metrics), graphviz: Some(graphviz) }
   let note = graphviz.notes[0]
   let bounds = layout.content_bounds(diagram, metrics)
-  @test.assert_eq(
-    bounds.max_x >= note.x + note.width / 2.0,
-    true,
-  )
-  @test.assert_eq(
-    bounds.min_x <= note.x - note.width / 2.0,
-    true,
-  )
+  @test.assert_eq(bounds.max_x >= note.x + note.width / 2.0, true)
+  @test.assert_eq(bounds.min_x <= note.x - note.width / 2.0, true)
 }
 
 ///|
@@ -290,8 +304,14 @@ test "use-case font sizes affect matching node geometry and SVG text" {
   )
   let regular_metrics = ClassTextMetrics::new(regular.style)
   let styled_metrics = ClassTextMetrics::new(styled.style)
-  let regular_actor = regular.entities[0].node_geometry(regular_metrics, UseCaseDiagram)
-  let styled_actor = styled.entities[0].node_geometry(styled_metrics, UseCaseDiagram)
+  let regular_actor = regular.entities[0].node_geometry(
+    regular_metrics,
+    UseCaseDiagram,
+  )
+  let styled_actor = styled.entities[0].node_geometry(
+    styled_metrics,
+    UseCaseDiagram,
+  )
   let regular_usecase = regular.entities[1].node_geometry(
     regular_metrics,
     UseCaseDiagram,
@@ -514,6 +534,164 @@ test "graphviz layout follows PlantUML inheritance ordering without fake labels"
 }
 
 ///|
+test "relation layout preserves measured boxes and final content bounds" {
+  let diagram = parse(
+    "@startuml\nclass Bank\nclass Branch\nBank \"1\" -- \"*\" Branch : manages\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics)
+  let relation_layout = graphviz.relation_labels[0]
+  let label = relation_layout.label.unwrap()
+  let measured = @metrics.measure_text_with(
+    "manages",
+    metrics.relation_label_regular,
+  )
+  @test.assert_eq(label.width, measured.width.to_double())
+  @test.assert_eq(label.height, measured.height.to_double())
+  @test.assert_eq(label.baseline, label.y + measured.baseline.to_double())
+  let layout = {
+    columns: 1,
+    cell_width: 1,
+    cell_height: 1,
+    width: 1,
+    graphviz: Some(graphviz),
+  }
+  let bounds = layout.content_bounds(diagram, metrics)
+  for text_box in relation_layout.boxes() {
+    @test.assert_eq(bounds.min_x <= text_box.x, true)
+    @test.assert_eq(bounds.min_y <= text_box.y, true)
+    @test.assert_eq(bounds.max_x >= text_box.x + text_box.width, true)
+    @test.assert_eq(bounds.max_y >= text_box.y + text_box.height, true)
+    @test.assert_eq(
+      test_relation_text_box_intersects_paths(text_box, graphviz.edges[0].paths),
+      false,
+    )
+    for node in graphviz.nodes {
+      let node_rect = (
+        node.x - node.width / 2.0,
+        node.y - node.height / 2.0,
+        node.width,
+        node.height,
+      )
+      @test.assert_eq(relation_box_intersects_rect(text_box, node_rect), false)
+    }
+  }
+}
+
+///|
+test "vertical endpoint labels use the forward positive-angle side" {
+  let diagram = parse(
+    "@startuml\nclass Bank\nclass Branch\nBank \"1\" -- \"*\" Branch : manages\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics)
+  let relation_layout = graphviz.relation_labels[0]
+  let path = graphviz.edges[0].paths[0]
+  let path_start = path[0]
+  let path_end = path[path.length() - 1]
+  let edge_direction = (path_end.0 - path_start.0, path_end.1 - path_start.1)
+  let tail_tangent = relation_path_tangent([path], true, edge_direction)
+  let head_tangent = relation_path_tangent([path], false, edge_direction)
+  @test.assert_eq(
+    relation_text_box_side(
+      relation_layout.left_cardinality.unwrap(),
+      path_start,
+      tail_tangent,
+    ) >
+    0.0,
+    true,
+  )
+  @test.assert_eq(
+    relation_text_box_side(
+      relation_layout.right_cardinality.unwrap(),
+      path_end,
+      head_tangent,
+    ) >
+    0.0,
+    true,
+  )
+}
+
+///|
+test "horizontal endpoint labels use the forward positive-angle side" {
+  let diagram = parse(
+    "@startuml\nleft to right direction\nclass Bank\nclass Branch\nBank \"1\" -- \"*\" Branch : manages\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics)
+  let relation_layout = graphviz.relation_labels[0]
+  let path = graphviz.edges[0].paths[0]
+  let path_start = path[0]
+  let path_end = path[path.length() - 1]
+  let edge_direction = (path_end.0 - path_start.0, path_end.1 - path_start.1)
+  let tail_tangent = relation_path_tangent([path], true, edge_direction)
+  let head_tangent = relation_path_tangent([path], false, edge_direction)
+  @test.assert_eq(
+    relation_text_box_side(
+      relation_layout.left_cardinality.unwrap(),
+      path_start,
+      tail_tangent,
+    ) >
+    0.0,
+    true,
+  )
+  @test.assert_eq(
+    relation_text_box_side(
+      relation_layout.right_cardinality.unwrap(),
+      path_end,
+      head_tangent,
+    ) >
+    0.0,
+    true,
+  )
+}
+
+///|
+test "relation roles use the opposite side of the endpoint tangent" {
+  let diagram = parse(
+    "@startuml\nclass Bank\nclass Branch\nBank \"1\" /bank -- \"*\" /branches Branch\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics)
+  let relation_layout = graphviz.relation_labels[0]
+  let edge = graphviz.edges[0]
+  let path = edge.paths[0]
+  let line_start = path[0]
+  let line_end = path[path.length() - 1]
+  let mostly_vertical = (line_end.1 - line_start.1).abs() >=
+    (line_end.0 - line_start.0).abs()
+  @test.assert_eq(mostly_vertical, true)
+  let cardinality = relation_layout.left_cardinality.unwrap()
+  let role = relation_layout.left_role.unwrap()
+  let line_x = line_start.0
+  let cardinality_x = relation_text_box_center(cardinality).0
+  let role_x = relation_text_box_center(role).0
+  @test.assert_eq((cardinality_x - line_x) * (role_x - line_x) < 0.0, true)
+}
+
+///|
+test "relation roles follow horizontal endpoint tangents" {
+  let diagram = parse(
+    "@startuml\nleft to right direction\nclass Bank\nclass Branch\nBank \"1\" /bank -- \"*\" /branches Branch\n@enduml",
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics)
+  let relation_layout = graphviz.relation_labels[0]
+  let path = graphviz.edges[0].paths[0]
+  let line_start = path[0]
+  let line_end = path[path.length() - 1]
+  let mostly_horizontal = (line_end.0 - line_start.0).abs() >
+    (line_end.1 - line_start.1).abs()
+  @test.assert_eq(mostly_horizontal, true)
+  let cardinality = relation_layout.left_cardinality.unwrap()
+  let role = relation_layout.left_role.unwrap()
+  let line_y = line_start.1
+  let cardinality_y = relation_text_box_center(cardinality).1
+  let role_y = relation_text_box_center(role).1
+  @test.assert_eq((cardinality_y - line_y) * (role_y - line_y) < 0.0, true)
+}
+
+///|
 test "routed relations preserve endpoint decorations and cardinalities" {
   let diagram = parse(
     "@startuml\nOrder \"1\" *-- \"many\" Item : contains\nClient --[dashed]--> Service\n@enduml",
@@ -534,4 +712,3 @@ test "hollow inheritance arrows retain a visible outline" {
   @test.assert_eq(svg.contains("fill=\"white\""), true)
   @test.assert_eq(svg.contains("marker path,marker circle,marker rect"), true)
 }
-

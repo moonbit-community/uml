@@ -122,21 +122,13 @@ fn append_relation(
   let right = diagram.entities[right_index]
   guard !left.is_removed && !right.is_removed else { return }
   let ((x1, y1), (x2, y2)) = relation_endpoints(
-    layout,
-    diagram,
-    left_index,
-    right_index,
-    text_metrics,
+    layout, diagram, left_index, right_index, text_metrics,
   )
   let (left_x, left_y, left_width, left_height) = layout.entity_rect(
-    diagram,
-    left_index,
-    text_metrics,
+    diagram, left_index, text_metrics,
   )
   let (right_x, right_y, right_width, right_height) = layout.entity_rect(
-    diagram,
-    right_index,
-    text_metrics,
+    diagram, right_index, text_metrics,
   )
   // Dotted arrows render with the dash pattern shared by the dashed line
   // style, matching PlantUML where a dotted arrow draws dash-like segments.
@@ -153,7 +145,7 @@ fn append_relation(
   let label_font_size = if usecase {
     diagram.style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE)
   } else {
-    RELATION_LABEL_FONT_SIZE
+    text_metrics.relation_label_regular.font_size
   }
   let label_font_family = if usecase {
     diagram.style.arrow_font_family()
@@ -165,6 +157,9 @@ fn append_relation(
   } else {
     diagram.style.diagram_text_color()
   }
+  let relation_label_layout = layout.relation_label_layout(
+    diagram, relation_index, relation, text_metrics,
+  )
   let style =
     $| style="stroke:\{relation_color};\{relation_style}"
   let marker_start = match relation_marker(relation.left_end) {
@@ -206,83 +201,51 @@ fn append_relation(
       }
     _ => ()
   }
-  if drew_spline {
-    match relation.label {
-      Some(label) => {
-        let display = if usecase { @parse.display_stereotype(label) } else { label }
-        let (label_x, label_y) = relation_label_position(
-          layout,
-          relation_index,
-          ((x1 + x2) / 2, (y1 + y2) / 2),
-          display,
-        )
-        output <+
-          $|<text x="\{label_x}" y="\{label_y - 5.0}" class="relation-label" fill="\{label_color}" font-family="\{@style.xml_escape(label_font_family)}" font-size="\{label_font_size}">\{@style.xml_escape(display)}</text>
-      }
-      None => ()
-    }
-  } else {
+  if !drew_spline {
     output <+
       $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
-    match relation.label {
-      Some(label) =>
-        output <+
-          $|<text x="\{(x1 + x2) / 2}" y="\{(y1 + y2) / 2 - 5}" class="relation-label" fill="\{label_color}" font-family="\{@style.xml_escape(label_font_family)}" font-size="\{label_font_size}">\{@style.xml_escape(if usecase { @parse.display_stereotype(label) } else { label })}</text>
-      None => ()
-    }
   }
-  let (tail_x, tail_y, head_x, head_y) = match layout.graphviz {
-    Some(graphviz) =>
-      {
-        let mut tail = None
-        let mut head = None
-        for edge in graphviz.edges {
-          if edge.index == relation_index {
-            tail = edge.tail_label
-            head = edge.head_label
-          }
-        }
-        match (tail, head) {
-          (Some((tx, ty)), Some((hx, hy))) => (tx, ty, hx, hy)
-          _ =>
-            (
-              x1.to_double(),
-              y1.to_double(),
-              x2.to_double(),
-              y2.to_double(),
-            )
-        }
+  match relation_label_layout.label {
+    Some(text_box) => {
+      let x = if usecase {
+        text_box.x + text_box.width / 2.0
+      } else {
+        text_box.x
       }
-    None =>
-      (
-        x1.to_double(),
-        y1.to_double(),
-        x2.to_double(),
-        y2.to_double(),
-      )
-  }
-  match relation.left_cardinality {
-    Some(text) =>
+      let anchor_style = if usecase {
+        ""
+      } else {
+        " style=\"text-anchor:start\""
+      }
       output <+
-        $|<text x="\{tail_x.round().to_int()}" y="\{tail_y.round().to_int() + 5}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{x}" y="\{text_box.baseline}" class="relation-label" fill="\{label_color}" font-family="\{@style.xml_escape(label_font_family)}" font-size="\{label_font_size}"\{anchor_style}>\{@style.xml_escape(text_box.text)}</text>
+    }
     None => ()
   }
-  match relation.right_cardinality {
-    Some(text) =>
+  let end_label_font_size = text_metrics.relation_end_regular.font_size
+  let end_label_font_family = text_metrics.relation_end_font_family
+  match relation_label_layout.left_cardinality {
+    Some(text_box) =>
       output <+
-        $|<text x="\{head_x.round().to_int()}" y="\{head_y.round().to_int() + 5}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
     None => ()
   }
-  match relation.left_role {
-    Some(text) =>
+  match relation_label_layout.right_cardinality {
+    Some(text_box) =>
       output <+
-        $|<text x="\{tail_x.round().to_int()}" y="\{tail_y.round().to_int() + 18}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
     None => ()
   }
-  match relation.right_role {
-    Some(text) =>
+  match relation_label_layout.left_role {
+    Some(text_box) =>
       output <+
-        $|<text x="\{head_x.round().to_int()}" y="\{head_y.round().to_int() + 18}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
+    None => ()
+  }
+  match relation_label_layout.right_role {
+    Some(text_box) =>
+      output <+
+        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
     None => ()
   }
 }
@@ -297,11 +260,7 @@ fn append_entity(
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
-  let (x, y, width, height) = layout.entity_rect(
-    diagram,
-    index,
-    text_metrics,
-  )
+  let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let header = entity.header_layout(text_metrics)
   let body = entity.body_layout(text_metrics)
   let row_height = text_metrics.row_height()
@@ -357,11 +316,7 @@ fn append_usecase_entity(
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
-  let (x, y, width, height) = layout.entity_rect(
-    diagram,
-    index,
-    text_metrics,
-  )
+  let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let (background, border) = match entity.kind {
     Usecase | BusinessUsecase =>
       (
@@ -390,14 +345,7 @@ fn append_usecase_entity(
   match entity.kind {
     Usecase | BusinessUsecase | Actor | BusinessActor | Component => ()
     _ => {
-      append_entity(
-        output,
-        diagram,
-        entity,
-        index,
-        text_metrics,
-        layout,
-      )
+      append_entity(output, diagram, entity, index, text_metrics, layout)
       return
     }
   }

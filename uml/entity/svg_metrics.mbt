@@ -22,7 +22,11 @@ fn Member::display_without_visibility(self : Member) -> String {
 /// PlantUML starts unadorned members (e.g. enum values) at x+5 with no
 /// placeholder, while visibility-prefixed members reserve x+20 for the icon.
 fn Member::member_text_x(self : Member) -> Int {
-  if self.visibility is Unknown { 5 } else { 20 }
+  if self.visibility is Unknown {
+    5
+  } else {
+    20
+  }
 }
 
 ///|
@@ -121,7 +125,9 @@ fn class_title_offsets(
 ) -> (Int, Int) {
   let circle_dim = 26.0
   let title_width = @metrics.measure_text_with(display, title_metrics).width
-  let surplus = (rect_width.to_double() - circle_dim - title_width.to_double()).max(0.0)
+  let surplus = (rect_width.to_double() - circle_dim - title_width.to_double()).max(
+    0.0,
+  )
   let h2 = (circle_dim / 4.0).min(surplus * 0.1)
   let h1 = (surplus - h2) / 2.0
   let circle_cx = h1 + 11.0
@@ -179,6 +185,8 @@ priv struct ClassTextMetrics {
   usecase_font_family : String
   actor_font_family : String
   relation_label_regular : @metrics.FontMetrics
+  relation_end_regular : @metrics.FontMetrics
+  relation_end_font_family : String
   arrow_regular : @metrics.FontMetrics
   note : @metrics.FontMetrics
   actor_style : String
@@ -279,12 +287,22 @@ const NOTE_VERTICAL_PADDING : Int = 5
 /// top-left corner sits at (6, 6) and the canvas extends 15px beyond the
 /// content's bottom-right corner.
 const SVG_MARGIN_LEFT : Int = 6
+
+///|
 const SVG_MARGIN_TOP : Int = 6
+
+///|
 const SVG_MARGIN_RIGHT : Int = 15
+
+///|
 const SVG_MARGIN_BOTTOM : Int = 15
 
 ///|
 const RELATION_LABEL_FONT_SIZE : Int = 12
+
+///|
+/// Class relation endpoint labels use PlantUML's cardinality font role.
+const RELATION_END_FONT_SIZE : Int = PLANTUML_RELATION_LABEL_FONT_SIZE
 
 ///|
 fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
@@ -323,6 +341,8 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
     relation_label_regular: style.font_metrics(
       font_size=RELATION_LABEL_FONT_SIZE,
     ),
+    relation_end_regular: style.font_metrics(font_size=RELATION_END_FONT_SIZE),
+    relation_end_font_family: @style.font_family(style),
     arrow_regular: style.font_metrics_for(
       style.arrow_font_family(),
       font_size=style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE),

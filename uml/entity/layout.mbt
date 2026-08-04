@@ -24,6 +24,7 @@ pub struct GraphvizLayout {
   height : Double
   nodes : Array[GraphvizNodeLayout]
   edges : Array[@graphviz.GraphvizEdge]
+  relation_labels : Array[RelationLabelLayout]
   packages : Array[GraphvizPackageLayout]
   notes : Array[@graphviz.GraphvizNote]
 } derive(Eq, Debug)
@@ -36,6 +37,13 @@ const PLANTUML_MIN_RANKSEP_IN : Double = 60.0 / 72.0
 
 ///|
 const PLANTUML_RELATION_LABEL_FONT_SIZE : Int = 13
+
+///|
+/// Defaults returned by CucaDiagram#getLabeldistance/getLabelangle.
+const PLANTUML_LABEL_DISTANCE : String = "1.7"
+
+///|
+const PLANTUML_LABEL_ANGLE : String = "25"
 
 ///|
 fn graphviz_node_name(index : Int) -> String {
@@ -221,11 +229,18 @@ fn EntityDiagram::graphviz_layout(
         label = @parse.display_stereotype(label)
       }
       edge.set_attr("label", label)
-      edge.set_attr(
-        "fontsize",
-        "\{self.style.arrow_font_size(fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)}",
-      )
-      edge.set_attr("fontname", self.style.arrow_font_family())
+      let label_font_size = if usecase {
+        self.style.arrow_font_size(fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)
+      } else {
+        text_metrics.relation_label_regular.font_size
+      }
+      let label_font_name = if usecase {
+        self.style.arrow_font_family()
+      } else {
+        @style.font_family(self.style)
+      }
+      edge.set_attr("fontsize", "\{label_font_size}")
+      edge.set_attr("fontname", label_font_name)
     }
     if relation.left_cardinality is Some(text) {
       edge.set_attr("taillabel", text)
@@ -243,8 +258,13 @@ fn EntityDiagram::graphviz_layout(
       relation.left_role is Some(_) ||
       relation.right_cardinality is Some(_) ||
       relation.right_role is Some(_) {
-      edge.set_attr("labeldistance", "3.5")
-      edge.set_attr("labelangle", "-25")
+      edge.set_attr("labeldistance", PLANTUML_LABEL_DISTANCE)
+      edge.set_attr("labelangle", PLANTUML_LABEL_ANGLE)
+      edge.set_attr(
+        "labelfontsize",
+        "\{text_metrics.relation_end_regular.font_size}",
+      )
+      edge.set_attr("labelfontname", text_metrics.relation_end_font_family)
     }
     edge.set_attr("dir", "none")
     if relation.dotted {
@@ -330,10 +350,16 @@ fn EntityDiagram::graphviz_layout(
   let packages : Array[GraphvizPackageLayout] = []
   append_package_layouts(packages, laid_out, bbox, package_indices)
   let notes : Array[@graphviz.GraphvizNote] = @graphviz.graphviz_notes(
-    laid_out, note_names, bbox, offset=false,
+    laid_out,
+    note_names,
+    bbox,
+    offset=false,
   )
   let edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
     laid_out, relation_names, bbox,
+  )
+  let relation_labels = build_relation_label_layouts(
+    self, text_metrics, nodes, edges,
   )
   for note_index, note in self.notes {
     guard note.target_kind is LinkNote else { continue }
@@ -363,6 +389,7 @@ fn EntityDiagram::graphviz_layout(
     height: bbox.ury - bbox.lly,
     nodes,
     edges,
+    relation_labels,
     packages,
     notes,
   }
