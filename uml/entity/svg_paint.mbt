@@ -226,6 +226,8 @@ fn append_relation(
   let (label_x1, label_y1, label_x2, label_y2) = relation_label_anchors(
     layout,
     relation_index,
+    (left_x, left_y, left_width, left_height),
+    (right_x, right_y, right_width, right_height),
     x1,
     y1,
     x2,
@@ -234,25 +236,25 @@ fn append_relation(
   match relation.left_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{label_x1 - 8}" y="\{label_y1 - 6}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x1 - RELATION_END_LABEL_X_OFFSET}" y="\{label_y1 - RELATION_END_LABEL_Y_OFFSET}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_cardinality {
     Some(text) =>
       output <+
-        $|<text x="\{label_x2 + 8}" y="\{label_y2 - 6}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x2 + RELATION_END_LABEL_X_OFFSET}" y="\{label_y2 - RELATION_END_LABEL_Y_OFFSET}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.left_role {
     Some(text) =>
       output <+
-        $|<text x="\{label_x1 - 8}" y="\{label_y1 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x1 - RELATION_END_LABEL_X_OFFSET}" y="\{label_y1 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
   match relation.right_role {
     Some(text) =>
       output <+
-        $|<text x="\{label_x2 + 8}" y="\{label_y2 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
+        $|<text x="\{label_x2 + RELATION_END_LABEL_X_OFFSET}" y="\{label_y2 + 13}" class="relation-end-label">\{@style.xml_escape(text)}</text>
     None => ()
   }
 }
@@ -260,33 +262,88 @@ fn append_relation(
 ///|
 /// Endpoints used to anchor cardinality/role labels. With a graphviz layout
 /// the edge's first and last spline points sit on the entity border; the
-/// fallback is the center-based endpoints from `relation_endpoints`.
+/// fallback is the center-based endpoints from `relation_endpoints`. The
+/// anchors are pushed out of the entity rect so labels stay visible instead
+/// of being covered by the entity body.
 fn relation_label_anchors(
   layout : ClassLayout,
   relation_index : Int,
+  left_rect : (Int, Int, Int, Int),
+  right_rect : (Int, Int, Int, Int),
   x1 : Int,
   y1 : Int,
   x2 : Int,
   y2 : Int,
 ) -> (Int, Int, Int, Int) {
-  match layout.graphviz {
+  let (start_x, start_y, end_x, end_y) = match layout.graphviz {
     Some(graphviz) =>
-      for edge in graphviz.edges {
-        if edge.index == relation_index && edge.paths.length() > 0 {
-          let first_path = edge.paths[0]
-          let last_path = edge.paths[edge.paths.length() - 1]
-          guard first_path.length() > 0 && last_path.length() > 0 else {
-            continue
+      {
+        let mut start_x = x1.to_double()
+        let mut start_y = y1.to_double()
+        let mut end_x = x2.to_double()
+        let mut end_y = y2.to_double()
+        for edge in graphviz.edges {
+          if edge.index == relation_index && edge.paths.length() > 0 {
+            let first_path = edge.paths[0]
+            let last_path = edge.paths[edge.paths.length() - 1]
+            guard first_path.length() > 0 && last_path.length() > 0 else {
+              continue
+            }
+            let (sx, sy) = first_path[0]
+            let (ex, ey) = last_path[last_path.length() - 1]
+            start_x = sx
+            start_y = sy
+            end_x = ex
+            end_y = ey
           }
-          let (start_x, start_y) = first_path[0]
-          let (end_x, end_y) = last_path[last_path.length() - 1]
-          return (start_x.round().to_int(), start_y.round().to_int(),
-            end_x.round().to_int(), end_y.round().to_int())
         }
+        (start_x, start_y, end_x, end_y)
       }
-    None => ()
+    None => (x1.to_double(), y1.to_double(), x2.to_double(), y2.to_double())
   }
-  (x1, y1, x2, y2)
+  let (out_start_x, out_start_y) = push_outside_rect(
+    start_x,
+    start_y,
+    left_rect,
+  )
+  let (out_end_x, out_end_y) = push_outside_rect(
+    end_x,
+    end_y,
+    right_rect,
+  )
+  (out_start_x.round().to_int(), out_start_y.round().to_int(),
+    out_end_x.round().to_int(), out_end_y.round().to_int())
+}
+
+///|
+/// Push a point that lies on (or near) a rect border just outside it, so a
+/// label anchored there is not covered by the rect. The point moves away from
+/// the rect center along the dominant axis.
+fn push_outside_rect(
+  px : Double,
+  py : Double,
+  rect : (Int, Int, Int, Int),
+) -> (Double, Double) {
+  let (rx, ry, rw, rh) = rect
+  let center_x = rx.to_double() + rw.to_double() / 2.0
+  let center_y = ry.to_double() + rh.to_double() / 2.0
+  let dx = px - center_x
+  let dy = py - center_y
+  if dx.abs() > dy.abs() {
+    let target = if dx > 0.0 {
+      (rx + rw).to_double() + CARDINALITY_LABEL_MARGIN
+    } else {
+      rx.to_double() - CARDINALITY_LABEL_MARGIN
+    }
+    (target, py)
+  } else {
+    let target = if dy > 0.0 {
+      (ry + rh).to_double() + CARDINALITY_LABEL_MARGIN
+    } else {
+      ry.to_double() - CARDINALITY_LABEL_MARGIN
+    }
+    (px, target)
+  }
 }
 
 ///|
