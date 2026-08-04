@@ -208,9 +208,18 @@ fn append_relation(
   }
   if drew_spline {
     match relation.label {
-      Some(label) =>
+      Some(label) => {
+        let display = if usecase { @parse.display_stereotype(label) } else { label }
+        let half_width = label.length().to_double() * 3.5
+        let (label_x, label_y) = relation_label_position(
+          layout,
+          relation_index,
+          ((x1 + x2) / 2, (y1 + y2) / 2),
+          half_width,
+        )
         output <+
-          $|<text x="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).0}" y="\{relation_label_position(layout, relation_index, ((x1 + x2) / 2, (y1 + y2) / 2)).1 - 5.0}" class="relation-label" fill="\{label_color}" font-family="\{@style.xml_escape(label_font_family)}" font-size="\{label_font_size}">\{@style.xml_escape(if usecase { @parse.display_stereotype(label) } else { label })}</text>
+          $|<text x="\{label_x}" y="\{label_y - 5.0}" class="relation-label" fill="\{label_color}" font-family="\{@style.xml_escape(label_font_family)}" font-size="\{label_font_size}">\{@style.xml_escape(display)}</text>
+      }
       None => ()
     }
   } else {

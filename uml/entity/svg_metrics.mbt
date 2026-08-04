@@ -289,12 +289,12 @@ const RELATION_LABEL_FONT_SIZE : Int = 12
 ///|
 /// Distance used to push cardinality/role labels just outside the entity
 /// border so they are never covered by the entity body.
-const CARDINALITY_LABEL_MARGIN : Double = 16.0
+const CARDINALITY_LABEL_MARGIN : Double = 8.0
 
 ///|
 /// Horizontal offset of cardinality/role labels from the edge endpoint,
 /// giving the label text a small gap from the edge line.
-const RELATION_END_LABEL_X_OFFSET : Int = 13
+const RELATION_END_LABEL_X_OFFSET : Int = 7
 
 ///|
 /// Vertical offset of cardinality/role labels from the edge endpoint.
