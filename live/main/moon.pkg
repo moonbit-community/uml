@@ -2,9 +2,12 @@ import {
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",
+  "moonbit-community/rabbita/dom",
   "moonbit-community/rabbita/http",
   "Yoorkin/rui",
   "kokic/uml/api",
+  "kokic/uml/core/style",
+  "moonbitlang/core/test",
 }
 
 supported_targets = "js"

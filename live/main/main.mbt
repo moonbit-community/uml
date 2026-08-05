@@ -1,8 +1,30 @@
 ///|
-using @html {div, h1, li, textarea, ul}
+using @html {button, div, h1, li, textarea, ul}
 
 ///|
 using @rabbita {type Html, type Val}
+
+///|
+enum Theme {
+  Light
+  Dark
+} derive(Eq, Debug)
+
+///|
+fn Theme::css_name(self : Theme) -> String {
+  match self {
+    Light => "light"
+    Dark => "dark"
+  }
+}
+
+///|
+fn Theme::toggle(self : Theme) -> Theme {
+  match self {
+    Light => Dark
+    Dark => Light
+  }
+}
 
 ///|
 enum Msg {
@@ -11,6 +33,7 @@ enum Msg {
   SizesChanged(Array[Int])
   ManifestLoaded(Result[Map[String, Array[String]], String])
   SourceLoaded(String, Result[String, String])
+  ThemeToggled
 }
 
 ///|
@@ -21,6 +44,7 @@ struct AppState {
   categories : Map[String, Array[String]]
   sources : Map[String, String]
   load_error : String?
+  theme : Theme
 } derive(Eq)
 
 ///|
@@ -40,7 +64,23 @@ fn update(
     SourceLoaded(path, Ok(source)) =>
       (apply_source(state, path, source), @cmd.none)
     SourceLoaded(path, Err(_)) => (apply_source(state, path, ""), @cmd.none)
+    ThemeToggled => (toggle_theme(state), apply_theme(state.theme.toggle()))
   }
+}
+
+///|
+fn toggle_theme(state : AppState) -> AppState {
+  { ..state, theme: state.theme.toggle() }
+}
+
+///|
+fn apply_theme(theme : Theme) -> @cmd.Cmd {
+  @cmd.custom_cmd(_ => {
+    match @dom.document().get_document_element() {
+      Some(element) => element.set_attribute("data-theme", theme.css_name())
+      None => ()
+    }
+  })
 }
 
 ///|
@@ -131,12 +171,13 @@ fn initial_state() -> AppState {
     categories: Map([]),
     sources: Map([]),
     load_error: None,
+    theme: Light,
   }
 }
 
 ///|
 fn app_state_tag(state : AppState) -> String {
-  "\{state.active_file}|\{state.source}|\{state.categories.length()}|\{state.load_error.unwrap_or("")}"
+  "\{state.active_file}|\{state.source}|\{state.categories.length()}|\{state.load_error.unwrap_or("")}|\{state.theme.css_name()}"
 }
 
 ///|
@@ -154,7 +195,10 @@ fn file_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
     )
   }
   div(class="file-panel") <| [
-    h1(class="panel-title", "Files"),
+    div(class="panel-header") <| [
+      h1(class="panel-title", "Files"),
+      theme_toggle(state, emit),
+    ],
     if state.load_error is Some(_) {
       div(class="file-placeholder", "加载失败")
     } else if state.categories.is_empty() {
@@ -188,6 +232,61 @@ fn editor_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
 }
 
 ///|
+/// The paint scheme used for the preview. Every role maps to a CSS variable,
+/// so a single SVG adapts to the active light/dark theme without re-rendering.
+fn theme_color_scheme() -> @style.ColorScheme {
+  @style.ColorScheme::ColorScheme(
+    "var(--uml-text)",
+    "var(--uml-line)",
+    canvas="var(--uml-canvas)",
+    node="var(--uml-node)",
+    note="var(--uml-note)",
+    partition="var(--uml-partition)",
+    participant="var(--uml-participant)",
+    activation="var(--uml-activation)",
+    lifeline="var(--uml-lifeline)",
+    divider="var(--uml-divider)",
+    divider_title="var(--uml-divider-title)",
+    delay="var(--uml-delay)",
+    reference_tab="var(--uml-reference-tab)",
+    page_break="var(--uml-page-break)",
+    transparent="var(--uml-transparent)",
+    spot_abstract="var(--uml-spot-abstract)",
+    spot_interface="var(--uml-spot-interface)",
+    spot_enum="var(--uml-spot-enum)",
+    spot_annotation="var(--uml-spot-annotation)",
+    spot_class="var(--uml-spot-class)",
+    visibility_public_stroke="var(--uml-visibility-public-stroke)",
+    visibility_public_fill="var(--uml-visibility-public-fill)",
+    visibility_private_stroke="var(--uml-visibility-private-stroke)",
+    visibility_private_fill="var(--uml-visibility-private-fill)",
+    visibility_protected_stroke="var(--uml-visibility-protected-stroke)",
+    visibility_protected_fill="var(--uml-visibility-protected-fill)",
+    visibility_package_stroke="var(--uml-visibility-package-stroke)",
+    visibility_package_fill="var(--uml-visibility-package-fill)",
+  )
+}
+
+///|
+fn theme_toggle(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
+  let target = state.theme.toggle()
+  button(
+    class="theme-toggle",
+    title=if target is Dark {
+      "Switch to dark theme"
+    } else {
+      "Switch to light theme"
+    },
+    on_click=emit(ThemeToggled),
+    if target is Dark {
+      "Dark"
+    } else {
+      "Light"
+    },
+  )
+}
+
+///|
 #warnings("-alert_xss_vulnerable")
 fn preview_content(state : AppState) -> Array[Html] {
   if state.load_error is Some(error) {
@@ -195,7 +294,12 @@ fn preview_content(state : AppState) -> Array[Html] {
   } else if state.source == "" {
     [div(class="preview-message", "加载中…")]
   } else {
-    let svg : String = @api.render_svg(state.source) catch { e => "\{e}" }
+    let svg : String = @api.render_svg(
+      state.source,
+      color_scheme=theme_color_scheme(),
+    ) catch {
+      e => "\{e}"
+    }
     [div(attrs=@html.Attrs::build().inner_html(svg), "")]
   }
 }
