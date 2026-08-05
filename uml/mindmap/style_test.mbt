@@ -28,6 +28,12 @@ test "skinparam node dimensions participate in layout" {
 }
 
 ///|
+test "hyphenated mindmap skinparam prefixes use normalized suffixes" {
+  let diagram = parse("skinparam MindMap-Node-BackgroundColor #aabbcc\n* Root")
+  @test.assert_eq(diagram.node_style(0).background_color, Some("#aabbcc"))
+}
+
+///|
 test "same class width and margins affect layout without overlaps" {
   let diagram = parse(
     "<style>\nNode {\n  SameClassWidth true\n  Margin 30\n}\n</style>\n* Root\n** short\n** a considerably longer sibling",

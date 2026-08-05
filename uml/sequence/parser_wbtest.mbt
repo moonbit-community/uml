@@ -635,11 +635,7 @@ test "parse a complete sequence diagram" {
   @test.assert_eq(result.show_footbox, false)
 
   match result.events[0] {
-    Message(message) => {
-      @test.assert_eq(message.anchor, Some("request"))
-      @test.assert_eq(message.parallel, true)
-      @test.assert_eq(message.multicast, [])
-    }
+    Message(message) => @test.assert_eq(message.anchor, Some("request"))
     _ => fail("not a multicast message")
   }
   match result.events[3] {
@@ -688,7 +684,13 @@ test "parse a complete sequence diagram" {
     BoxStart(box) => @test.assert_eq(box.color, Some("lightblue"))
     _ => fail("not a box")
   }
-  match result.auto_number {
+  let mut autonumber = None
+  for event in result.events {
+    if event is Autonumber(config) {
+      autonumber = Some(config)
+    }
+  }
+  match autonumber {
     Some(number) => {
       @test.assert_eq(number.start, Some("1.2"))
       @test.assert_eq(number.increment, Some(3))

@@ -12,14 +12,11 @@ fn append_packages(
           continue
         }
         let group = diagram.packages[package_layout.package_index]
-        let fill = @style.svg_color(
+        let fill = @svg.svg_color(
           group.color,
           diagram.style.package_background_color(),
         )
-        let tab_width = @metrics.measure_text_with(
-            group.display,
-            text_metrics.regular,
-          ).width.to_double() +
+        let tab_width = text_metrics.regular.measure(group.display).width.to_double() +
           18.0
         let x = package_layout.x
         let y = package_layout.y
@@ -30,7 +27,7 @@ fn append_packages(
           $|<g class="package">
           $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
           $|<line x1="\{x}" y1="\{y + 22.0}" x2="\{x + tab_width + 1.5}" y2="\{y + 22.0}" style="stroke:\{border_color}"/>
-          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@style.xml_escape(group.display)}</text></g>
+          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text></g>
       }
     None => ()
   }
@@ -46,13 +43,12 @@ const NOTE_POINTER_DELTA : Double = 4.0
 const NOTE_GEOMETRY_EPSILON : Double = 0.0001
 
 ///|
-#warnings("-unused_value")
 priv enum NoteOpaleStrategy {
   OpaleLeft
   OpaleRight
   OpaleUp
   OpaleDown
-} derive(Eq, Debug)
+}
 
 ///|
 priv struct NoteOpaleAttachment {
@@ -234,23 +230,24 @@ fn note_opale_attachment(
   target_shape : NodeShape,
 ) -> NoteOpaleAttachment? {
   let center = (note.x, note.y)
-  for path_index, path in edge.paths {
+  for spline in edge.splines {
+    let path = spline.points
     guard path.length() > 0 else { continue }
-    let first = match edge.starts.get(path_index) {
-      Some(Some(point)) => point
-      _ => path[0]
+    let first = match spline.arrow_start {
+      Some(point) => point
+      None => path[0]
     }
-    let last = match edge.ends.get(path_index) {
-      Some(Some(point)) => point
-      _ => path[path.length() - 1]
+    let last = match spline.arrow_end {
+      Some(point) => point
+      None => path[path.length() - 1]
     }
-    let first_adjacent = match edge.starts.get(path_index) {
-      Some(Some(_)) => path[0]
-      _ => if path.length() > 1 { path[1] } else { last }
+    let first_adjacent = match spline.arrow_start {
+      Some(_) => path[0]
+      None => if path.length() > 1 { path[1] } else { last }
     }
-    let last_adjacent = match edge.ends.get(path_index) {
-      Some(Some(_)) => path[path.length() - 1]
-      _ => if path.length() > 1 { path[path.length() - 2] } else { first }
+    let last_adjacent = match spline.arrow_end {
+      Some(_) => path[path.length() - 1]
+      None => if path.length() > 1 { path[path.length() - 2] } else { first }
     }
     let (raw_note_point, note_adjacent, raw_target_point, target_adjacent) = if point_distance_squared(
         first, center,
@@ -392,7 +389,7 @@ fn append_notes(
         let note = diagram.notes[note_layout.note_index]
         let x = note_layout.x - note_layout.width / 2.0
         let y = note_layout.y - note_layout.height / 2.0
-        let fill = @style.svg_color(
+        let fill = @svg.svg_color(
           note.color,
           diagram.style.note_background_color(),
         )
@@ -428,7 +425,7 @@ fn append_notes(
           $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
         for line_index, line in note.text.split("\n") {
           output <+
-            $|<text x="\{x + NOTE_LEFT_PADDING.to_double()}" y="\{y + NOTE_VERTICAL_PADDING.to_double() + text_metrics.note.ascent.to_double() + line_index.to_double() * text_metrics.note.line_height.to_double()}" class="note-text">\{@style.xml_escape(line.to_owned())}</text>
+            $|<text x="\{x + NOTE_LEFT_PADDING.to_double()}" y="\{y + NOTE_VERTICAL_PADDING.to_double() + text_metrics.note.ascent.to_double() + line_index.to_double() * text_metrics.note.line_height.to_double()}" class="note-text">\{@svg.xml_escape(line.to_owned())}</text>
         }
       }
     None => ()
@@ -438,6 +435,29 @@ fn append_notes(
 ///|
 fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
   24 + index / self.columns * self.cell_height
+}
+
+///|
+fn append_relation_decoration(
+  output : StringBuilder,
+  end : RelationEnd,
+  endpoint : (Double, Double),
+  adjacent : (Double, Double),
+  color : String,
+) -> Unit {
+  guard end.decoration_geometry(endpoint, adjacent) is Some(geometry) else {
+    return
+  }
+  guard geometry.points.length() > 0 else { return }
+  output <+
+    $|<path d="M \{geometry.points[0].0} \{geometry.points[0].1}
+  for index in 1..<geometry.points.length() {
+    output <+
+      $| L \{geometry.points[index].0} \{geometry.points[index].1}
+  }
+  let fill = if geometry.filled { color } else { "none" }
+  output <+
+    $| z" class="relation-decoration" fill="\{fill}" style="stroke:\{color}"/>
 }
 
 ///|
@@ -460,12 +480,6 @@ fn append_relation(
   let ((x1, y1), (x2, y2)) = relation_endpoints(
     layout, diagram, left_index, right_index, text_metrics,
   )
-  let (left_x, left_y, left_width, left_height) = layout.entity_rect(
-    diagram, left_index, text_metrics,
-  )
-  let (right_x, right_y, right_width, right_height) = layout.entity_rect(
-    diagram, right_index, text_metrics,
-  )
   // Dotted arrows render with the dash pattern shared by the dashed line
   // style, matching PlantUML where a dotted arrow draws dash-like segments.
   let dash = if relation.dotted {
@@ -474,7 +488,7 @@ fn append_relation(
     ""
   }
   let relation_style = @svg.stroke_style(relation.line_style, default_width="")
-  let relation_color = @style.svg_color(
+  let relation_color = @svg.svg_color(
     relation.color,
     diagram.style.diagram_line_color(),
   )
@@ -486,7 +500,7 @@ fn append_relation(
   let label_font_family = if usecase {
     diagram.style.arrow_font_family()
   } else {
-    @style.font_family(diagram.style)
+    diagram.style.font_family()
   }
   let label_color = if usecase {
     diagram.style.arrow_font_color()
@@ -513,33 +527,76 @@ fn append_relation(
       relation.direction is Automatic) =>
       for edge in graphviz.edges {
         if edge.index == relation_index {
-          for path in edge.paths {
+          let first_index = relation_edge_first_spline_index(edge)
+          let last_index = relation_edge_last_spline_index(edge)
+          for spline_index, spline in edge.splines {
+            let path = spline.points
             guard path.length() > 1 else { continue }
             drew_spline = true
-            let clipped = if usecase {
-              clip_usecase_spline(
-                path,
-                left,
-                (left_x, left_y, left_width, left_height),
-                right,
-                (right_x, right_y, right_width, right_height),
-              )
-            } else {
-              path
-            }
+            let visible_path = shorten_relation_spline(
+              path,
+              if first_index == Some(spline_index) {
+                relation.left_end.decoration_length()
+              } else {
+                0.0
+              },
+              if last_index == Some(spline_index) {
+                relation.right_end.decoration_length()
+              } else {
+                0.0
+              },
+            )
             output <+
               $|<path d="
-            output.write_string(@svg.spline_path_data(clipped))
+            output.write_string(@svg.spline_path_data(visible_path))
             output <+
               $|" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
+            if first_index == Some(spline_index) {
+              append_relation_decoration(
+                output,
+                relation.left_end,
+                path[0],
+                path[1],
+                relation_color,
+              )
+            }
+            if last_index == Some(spline_index) {
+              let last = path.length() - 1
+              append_relation_decoration(
+                output,
+                relation.right_end,
+                path[last],
+                path[last - 1],
+                relation_color,
+              )
+            }
           }
         }
       }
     _ => ()
   }
   if !drew_spline {
+    let visible_line = shorten_relation_spline(
+      [(x1.to_double(), y1.to_double()), (x2.to_double(), y2.to_double())],
+      relation.left_end.decoration_length(),
+      relation.right_end.decoration_length(),
+    )
     output <+
-      $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
+      $|<line x1="\{visible_line[0].0}" y1="\{visible_line[0].1}" x2="\{visible_line[1].0}" y2="\{visible_line[1].1}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
+    append_relation_decoration(
+      output,
+      relation.left_end,
+      (x1.to_double(), y1.to_double()),
+      (x2.to_double(), y2.to_double()),
+      relation_color,
+    )
+    append_relation_decoration(
+      output,
+      relation.right_end,
+      (x2.to_double(), y2.to_double()),
+      (x1.to_double(), y1.to_double()),
+      relation_color,
+    )
   }
   match relation_label_layout.label {
     Some(text_box) => {
@@ -554,35 +611,15 @@ fn append_relation(
         " style=\"text-anchor:start\""
       }
       output <+
-        $|<text x="\{x}" y="\{text_box.baseline}" class="relation-label" fill="\{label_color}" font-family="\{@style.xml_escape(label_font_family)}" font-size="\{label_font_size}"\{anchor_style}>\{@style.xml_escape(text_box.text)}</text>
+        $|<text x="\{x}" y="\{text_box.baseline}" class="relation-label" fill="\{label_color}" font-family="\{@svg.xml_escape(label_font_family)}" font-size="\{label_font_size}"\{anchor_style}>\{@svg.xml_escape(text_box.text)}</text>
     }
     None => ()
   }
   let end_label_font_size = text_metrics.relation_end_regular.font_size
   let end_label_font_family = text_metrics.relation_end_font_family
-  match relation_label_layout.left_cardinality {
-    Some(text_box) =>
-      output <+
-        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
-    None => ()
-  }
-  match relation_label_layout.right_cardinality {
-    Some(text_box) =>
-      output <+
-        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
-    None => ()
-  }
-  match relation_label_layout.left_role {
-    Some(text_box) =>
-      output <+
-        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
-    None => ()
-  }
-  match relation_label_layout.right_role {
-    Some(text_box) =>
-      output <+
-        $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@style.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@style.xml_escape(text_box.text)}</text>
-    None => ()
+  for text_box in relation_label_layout.end_boxes() {
+    output <+
+      $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@svg.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@svg.xml_escape(text_box.text)}</text>
   }
 }
 
@@ -600,11 +637,11 @@ fn append_entity(
   let header = entity.header_layout(text_metrics)
   let body = entity.body_layout(text_metrics)
   let row_height = text_metrics.row_height()
-  let fill = @style.svg_color(
+  let fill = @svg.svg_color(
     entity.color,
     diagram.style.class_background_color(),
   )
-  let stroke = @style.svg_color(
+  let stroke = @svg.svg_color(
     entity.line_color,
     diagram.style.class_border_color(),
   )
@@ -618,7 +655,7 @@ fn append_entity(
   let (spot_text, spot_fill) = entity.spot()
   let placement = header.placement(width)
   output <+
-    $|<g class="class-node" data-code="\{@style.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/>
+    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/>
   match placement.circle_center {
     Some((circle_cx, circle_cy)) =>
       output <+
@@ -628,11 +665,11 @@ fn append_entity(
   match (header.stereotype, placement.stereotype_position) {
     (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
       output <+
-        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="class-stereotype" fill="\{diagram.style.class_stereotype_font_color()}" font-family="\{@style.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@style.xml_escape(stereotype)}</text>
+        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="class-stereotype" fill="\{diagram.style.class_stereotype_font_color()}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
     _ => ()
   }
   output <+
-    $|<text x="\{x + placement.title_x}" y="\{y + placement.title_baseline}" class="class-title"\{title_style}>\{@style.xml_escape(entity.display)}</text>
+    $|<text x="\{x + placement.title_x}" y="\{y + placement.title_baseline}" class="class-title"\{title_style}>\{@svg.xml_escape(entity.display)}</text>
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {
@@ -645,7 +682,7 @@ fn append_entity(
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@style.xml_escape(entry.display_without_visibility())}</text>
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
     }
     section_y += section_height
   }
@@ -680,8 +717,8 @@ fn append_usecase_entity(
         diagram.style.class_border_color(),
       )
   }
-  let fill = @style.svg_color(entity.color, background)
-  let stroke = @style.svg_color(entity.line_color, border)
+  let fill = @svg.svg_color(entity.color, background)
+  let stroke = @svg.svg_color(entity.line_color, border)
   let text_color = match entity.kind {
     Usecase | BusinessUsecase => diagram.style.usecase_font_color()
     Actor | BusinessActor => diagram.style.actor_font_color()
@@ -702,11 +739,11 @@ fn append_usecase_entity(
     _ => ""
   }
   output <+
-    $|<g class="\{node_class}" data-code="\{@style.xml_escape(entity.qualified_code)}">
+    $|<g class="\{node_class}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
   match entity.url {
     Some(url) =>
       output <+
-        $|<a href="\{@style.xml_escape(url)}">
+        $|<a href="\{@svg.xml_escape(url)}">
     None => ()
   }
   match entity.kind {
@@ -718,32 +755,26 @@ fn append_usecase_entity(
       // The ellipse itself has grown by 6px, so SVG text needs a +2px
       // top offset before converting its font ascent to a baseline.
       let content_top = y + height / 2 - content_height / 2 + 2
-      let title_metrics = @metrics.measure_text_with(
-        entity.display,
-        text_metrics.usecase_regular,
-      )
+      let title_metrics = text_metrics.usecase_regular.measure(entity.display)
       output <+
         $|<ellipse cx="\{x + width / 2}" cy="\{y + height / 2}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/>
       match stereotype {
         Some(value) => {
-          let metrics = @metrics.measure_text_with(
-            value,
-            text_metrics.usecase_italic,
-          )
+          let metrics = text_metrics.usecase_italic.measure(value)
           output <+
-            $|<text x="\{x + width / 2}" y="\{content_top + metrics.baseline}" class="usecase-stereotype" fill="\{text_color}" font-family="\{@style.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_italic.font_size}">\{@style.xml_escape(value)}</text>
+            $|<text x="\{x + width / 2}" y="\{content_top + metrics.baseline}" class="usecase-stereotype" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_italic.font_size}">\{@svg.xml_escape(value)}</text>
         }
         None => ()
       }
       let title_y = match stereotype {
         Some(value) =>
           content_top +
-          @metrics.measure_text_with(value, text_metrics.usecase_italic).height +
+          text_metrics.usecase_italic.measure(value).height +
           title_metrics.baseline
         None => content_top + title_metrics.baseline
       }
       output <+
-        $|<text x="\{x + width / 2}" y="\{title_y}" class="usecase-title" fill="\{text_color}" font-family="\{@style.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_regular.font_size}">\{@style.xml_escape(entity.display)}</text>
+        $|<text x="\{x + width / 2}" y="\{title_y}" class="usecase-title" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
       if entity.kind is BusinessUsecase {
         let (mark_start, mark_end) = usecase_business_mark(x, y, width, height)
         output <+
@@ -752,10 +783,7 @@ fn append_usecase_entity(
     }
     Actor | BusinessActor => {
       let center_x = x + width / 2
-      let title = @metrics.measure_text_with(
-        entity.display,
-        text_metrics.actor_regular,
-      )
+      let title = text_metrics.actor_regular.measure(entity.display)
       let (_, _, stereotype) = entity.actor_content_layout(text_metrics)
       let appearance = actor_appearance(text_metrics.actor_style)
       let (figure_width, figure_height) = actor_figure_geometry(
@@ -763,20 +791,16 @@ fn append_usecase_entity(
         business=entity.kind is BusinessActor,
       )
       let stereotype_height = match stereotype {
-        Some(value) =>
-          @metrics.measure_text_with(value, text_metrics.actor_italic).height
+        Some(value) => text_metrics.actor_italic.measure(value).height
         None => 0
       }
       let figure_top = y + stereotype_height
       let label_y = figure_top + figure_height + title.baseline
       match stereotype {
         Some(value) => {
-          let metrics = @metrics.measure_text_with(
-            value,
-            text_metrics.actor_italic,
-          )
+          let metrics = text_metrics.actor_italic.measure(value)
           output <+
-            $|<text x="\{center_x}" y="\{y + metrics.baseline}" class="usecase-stereotype" fill="\{text_color}" font-family="\{@style.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_italic.font_size}">\{@style.xml_escape(value)}</text>
+            $|<text x="\{center_x}" y="\{y + metrics.baseline}" class="usecase-stereotype" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_italic.font_size}">\{@svg.xml_escape(value)}</text>
         }
         None => ()
       }
@@ -796,7 +820,7 @@ fn append_usecase_entity(
           $|<circle cx="\{center_x}" cy="\{figure_top + 9}" r="8" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x} \{figure_top + 17} L \{center_x} \{figure_top + 43} M \{center_x - 13} \{figure_top + 27} L \{center_x + 13} \{figure_top + 27} M \{center_x} \{figure_top + 43} L \{center_x - 13} \{figure_top + figure_height} M \{center_x} \{figure_top + 43} L \{center_x + 13} \{figure_top + figure_height}" fill="none" stroke="\{stroke}" style="\{line_attributes}"/>
       }
       output <+
-        $|<text x="\{center_x}" y="\{label_y}" class="usecase-title" fill="\{text_color}" font-family="\{@style.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_regular.font_size}">\{@style.xml_escape(entity.display)}</text>
+        $|<text x="\{center_x}" y="\{label_y}" class="usecase-title" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
       if entity.kind is BusinessActor && figure_width == ACTOR_FIGURE_WIDTH {
         let (mark_start, mark_end) = actor_business_mark(
           center_x,
@@ -808,17 +832,14 @@ fn append_usecase_entity(
       }
     }
     Component => {
-      let title = @metrics.measure_text_with(
-        entity.display,
-        text_metrics.regular,
-      )
+      let title = text_metrics.regular.measure(entity.display)
       let tab_x = x + width - COMPONENT_TAB_WIDTH - COMPONENT_TAB_INSET
       let tab_y = y + COMPONENT_TAB_INSET
       let mark_x = tab_x - COMPONENT_TAB_MARK_LEFT_OFFSET
       let first_mark_y = tab_y + COMPONENT_TAB_MARK_TOP_OFFSET
       let second_mark_y = first_mark_y + COMPONENT_TAB_MARK_GAP
       output <+
-        $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + width / 2}" y="\{y + (height + title.height) / 2 - 2}" class="usecase-title" fill="\{text_color}">\{@style.xml_escape(entity.display)}</text>
+        $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + width / 2}" y="\{y + (height + title.height) / 2 - 2}" class="usecase-title" fill="\{text_color}">\{@svg.xml_escape(entity.display)}</text>
     }
     _ => ()
   }

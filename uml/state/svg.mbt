@@ -1,9 +1,20 @@
 ///|
+
+///|
+const STATE_CORNER_RADIUS : Double = 12.5
+
+///|
+const STATE_THIN_STROKE_WIDTH : String = "0.5"
+
+///|
+const STATE_FINAL_STROKE_WIDTH : String = "2"
+
+///|
 fn state_fill(state : StateNode) -> String {
   match state.kind {
     Initial | Final | History | DeepHistory | Synchronization =>
       @style.render_defaults().diagram_line
-    _ => @style.svg_color(state.color, @style.render_defaults().node_background)
+    _ => @svg.svg_color(state.color, @style.render_defaults().node_background)
   }
 }
 
@@ -52,7 +63,7 @@ fn append_state_node(
     ("data-code", state.code),
   ])
   if composite {
-    let corner = 12.5
+    let corner = STATE_CORNER_RADIUS
     let header_bottom = y + STATE_HEADER_HEIGHT
     output.empty("path", attributes=[
       (
@@ -105,15 +116,15 @@ fn append_state_node(
       ("rx", corner.to_string()),
       ("fill", "none"),
       ("stroke", diagram.style.diagram_line_color()),
-      ("stroke-width", "0.5"),
+      ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     output.empty("line", attributes=[
       ("x1", x.to_string()),
       ("y1", header_bottom.to_string()),
       ("x2", (x + width).to_string()),
       ("y2", header_bottom.to_string()),
-      ("stroke", "#181818"),
-      ("stroke-width", "0.5"),
+      ("stroke", diagram.style.diagram_line_color()),
+      ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     append_state_label(
       output,
@@ -140,8 +151,8 @@ fn append_state_node(
         ("cy", center_y.to_string()),
         ("r", radius.to_string()),
         ("fill", "none"),
-        ("stroke", "#181818"),
-        ("stroke-width", "2"),
+        ("stroke", diagram.style.diagram_line_color()),
+        ("stroke-width", STATE_FINAL_STROKE_WIDTH),
       ])
       output.empty("circle", attributes=[
         ("cx", center_x.to_string()),
@@ -155,8 +166,8 @@ fn append_state_node(
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", "#FFFFFF"),
-        ("stroke", "#181818"),
+        ("fill", @style.render_defaults().canvas_background),
+        ("stroke", diagram.style.diagram_line_color()),
       ])
       append_state_label(
         output,
@@ -201,7 +212,7 @@ fn append_state_node(
           " Z",
         ),
         ("fill", state_fill(state)),
-        ("stroke", "#181818"),
+        ("stroke", diagram.style.diagram_line_color()),
       ])
       append_state_label(
         output,
@@ -223,18 +234,18 @@ fn append_state_node(
         ("y", y.to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
-        ("rx", "12.5"),
+        ("rx", STATE_CORNER_RADIUS.to_string()),
         ("fill", state_fill(state)),
-        ("stroke", "#181818"),
-        ("stroke-width", "0.5"),
+        ("stroke", diagram.style.diagram_line_color()),
+        ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
       output.empty("line", attributes=[
         ("x1", x.to_string()),
         ("y1", (y + STATE_HEADER_HEIGHT).to_string()),
         ("x2", (x + width).to_string()),
         ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
-        ("stroke", "#181818"),
-        ("stroke-width", "0.5"),
+        ("stroke", diagram.style.diagram_line_color()),
+        ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
       append_state_label(
         output,
@@ -364,21 +375,21 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
     ";stroke-width:1.5}.state-region-separator{stroke:" +
     self.style.diagram_line_color() +
     ";stroke-width:1.2}.state-label{font-family:" +
-    @style.font_family(self.style) +
+    self.style.font_family() +
     ";font-size:" +
-    @style.font_size(self.style) +
+    self.style.font_size() +
     ";fill:" +
     self.style.diagram_text_color() +
     "}.state-pseudostate-label{font-family:" +
-    @style.font_family(self.style) +
+    self.style.font_family() +
     ";font-size:12px;fill:" +
     self.style.diagram_text_color() +
     "}.state-transition-label{font-family:" +
-    @style.font_family(self.style) +
+    self.style.font_family() +
     ";font-size:12px;fill:" +
     self.style.diagram_text_color() +
     "}.state-note-label{font-family:" +
-    @style.font_family(self.style) +
+    self.style.font_family() +
     ";font-size:12px;fill:" +
     self.style.diagram_text_color() +
     "}",

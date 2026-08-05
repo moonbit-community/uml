@@ -181,6 +181,44 @@ pub struct Relation {
 } derive(Eq, Debug)
 
 ///|
+fn Relation::new(
+  left : String,
+  right : String,
+  kind : RelationKind,
+  raw_arrow : String,
+  left_end : RelationEnd,
+  right_end : RelationEnd,
+) -> Relation {
+  {
+    left,
+    right,
+    kind,
+    left_cardinality: None,
+    right_cardinality: None,
+    left_role: None,
+    right_role: None,
+    left_qualifier: None,
+    right_qualifier: None,
+    label: None,
+    dotted: raw_arrow.contains("."),
+    raw_arrow,
+    left_end,
+    right_end,
+    direction: Automatic,
+    line_style: None,
+    color: None,
+    url: None,
+    stereotype: None,
+    weight: None,
+    inside: None,
+    left_port: None,
+    right_port: None,
+    left_couple: None,
+    right_couple: None,
+  }
+}
+
+///|
 pub struct Package {
   name : String
   qualified_name : String

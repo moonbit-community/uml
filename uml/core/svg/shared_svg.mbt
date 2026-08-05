@@ -85,15 +85,22 @@ pub fn arrow_marker_markup(
 ) -> String {
   let extra = [
     ..match path_fill {
-      Some(fill) => [" fill=\"\{@style.xml_escape(fill)}\""]
+      Some(fill) => [" fill=\"\{xml_escape(fill)}\""]
       None => []
     },
     ..match path_class {
-      Some(class) => [" class=\"\{@style.xml_escape(class)}\""]
+      Some(class) => [" class=\"\{xml_escape(class)}\""]
       None => []
     },
   ].join("")
   "<marker id=\"\{id}\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"\{marker_width}\" markerHeight=\"\{marker_height}\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\"\{extra}/></marker>"
+}
+
+///|
+/// Vertical reference used to position a multiline SVG text block.
+pub(all) enum MultilineTextAnchor {
+  Center
+  Baseline
 }
 
 ///|
@@ -106,24 +113,22 @@ pub fn multiline_text_markup(
   text : String,
   attributes : Array[(String, String)],
   line_height~ : Double,
-  offset? : Bool = true,
+  anchor? : MultilineTextAnchor = Center,
 ) -> String {
   let lines = text.split("\n").map(StringView::to_owned).to_array()
-  let baseline = if offset {
-    y - (lines.length() - 1).to_double() * line_height / 2.0
-  } else {
-    y
+  let baseline = match anchor {
+    Center => y - (lines.length() - 1).to_double() * line_height / 2.0
+    Baseline => y
   }
   let output = StringBuilder()
   output.write_string("<text x=\"\{x}\" y=\"\{baseline}\"")
   for attribute in attributes {
-    output.write_string(" \{attribute.0}=\"\{@style.xml_escape(attribute.1)}\"")
+    output.write_string(" \{attribute.0}=\"\{xml_escape(attribute.1)}\"")
   }
   output.write_string(">")
   for index, line in lines {
     let dy = if index == 0 { 0.0 } else { line_height }
-    output <+
-      "<tspan x=\"\{x}\" dy=\"\{dy}\">\{@style.xml_escape(line)}</tspan>"
+    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line)}</tspan>"
   }
   output.write_string("</text>")
   output.to_string()

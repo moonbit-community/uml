@@ -22,19 +22,6 @@ fn test_relation_text_box_intersects_paths(
 }
 
 ///|
-fn test_svg_marker(svg : String, id : String) -> String raise {
-  let marker_start = "<marker id=\"\{id}\""
-  guard @parse.find_literal(svg, marker_start) is Some(start) else {
-    @test.fail("missing SVG marker: " + id)
-  }
-  let tail = svg[start:].to_owned()
-  guard @parse.find_literal(tail, "</marker>") is Some(end) else {
-    @test.fail("unclosed SVG marker: " + id)
-  }
-  tail[:end].to_owned()
-}
-
-///|
 test "use-case layout uses ellipse and actor geometry before Graphviz" {
   let diagram = parse(
     "@startuml\n:Customer: --> (Place order)\n@enduml",
@@ -45,8 +32,8 @@ test "use-case layout uses ellipse and actor geometry before Graphviz" {
   let usecase = diagram.entity("Place order").unwrap()
   let actor_geometry = actor.node_geometry(metrics, UseCaseDiagram)
   let usecase_geometry = usecase.node_geometry(metrics, UseCaseDiagram)
-  @test.assert_eq(actor_geometry.shape, Box)
-  @test.assert_eq(usecase_geometry.shape, Ellipse)
+  @test.assert_eq(actor_geometry.shape is Box, true)
+  @test.assert_eq(usecase_geometry.shape is Ellipse, true)
   @test.assert_eq(actor_geometry.height > usecase_geometry.height, true)
   @test.assert_eq(usecase_geometry.width > usecase_geometry.height, true)
 }
@@ -77,6 +64,16 @@ test "dependency links preserve their dot length for Graphviz ranks" {
   let relation = diagram.relations[0]
   @test.assert_eq(relation.dotted, true)
   @test.assert_eq(relation.graphviz_minlen(), 0)
+}
+
+///|
+test "relation parser and endpoint classifier share one decoration vocabulary" {
+  for entry in left_relation_decorations {
+    @test.assert_eq(left_relation_end(entry.0 + "--"), entry.1)
+  }
+  for entry in right_relation_decorations {
+    @test.assert_eq(right_relation_end("--" + entry.0), entry.1)
+  }
 }
 
 ///|
@@ -111,7 +108,7 @@ test "actor stereotypes participate in use-case node geometry" {
   let svg = stereotyped.render_svg()
   @test.assert_eq(stereotyped_geometry.height > plain_geometry.height, true)
   @test.assert_eq(
-    svg.contains(">\{@style.xml_escape("«external»")}</text>"),
+    svg.contains(">\{@svg.xml_escape("«external»")}</text>"),
     true,
   )
 }
@@ -266,7 +263,7 @@ test "link notes use PlantUML folded polygons with one shared fill" {
   let diagram = parse(
     "@startuml\nclass Source\nclass Target\nSource --> Target\nnote on link #yellow : secured\n@enduml",
   )
-  let fill = @style.svg_color(
+  let fill = @svg.svg_color(
     diagram.notes[0].color,
     diagram.style.note_background_color(),
   )
@@ -559,7 +556,7 @@ test "graphviz layout emits semantic node and spline geometry" {
   let layout = diagram.graphviz_layout(metrics)
   @test.assert_eq(layout.nodes.length(), 2)
   @test.assert_eq(layout.edges.length(), 1)
-  @test.assert_eq(layout.edges[0].paths.length() > 0, true)
+  @test.assert_eq(layout.edges[0].splines.length() > 0, true)
   @test.assert_eq(layout.edges[0].label is Some(_), true)
   @test.assert_eq(layout.width > 0.0 && layout.height > 0.0, true)
   let svg = diagram.render_svg()
@@ -630,7 +627,7 @@ test "left-to-right bottom note uses the routed upper attachment" {
   let note_top = note.y - note.height / 2.0
   let target_bottom = target.y + target.height / 2.0
   @test.assert_eq(note_top > target_bottom, true)
-  @test.assert_eq(attachment.strategy, OpaleUp)
+  @test.assert_eq(attachment.strategy is OpaleUp, true)
   @test.assert_eq(attachment.note_point.1, note_top)
   @test.assert_eq(attachment.target_point.1, target_bottom)
   @test.assert_eq(
@@ -703,7 +700,10 @@ test "relation layout preserves measured boxes and final content bounds" {
     @test.assert_eq(bounds.max_x >= text_box.x + text_box.width, true)
     @test.assert_eq(bounds.max_y >= text_box.y + text_box.height, true)
     @test.assert_eq(
-      test_relation_text_box_intersects_paths(text_box, graphviz.edges[0].paths),
+      test_relation_text_box_intersects_paths(
+        text_box,
+        relation_edge_paths(graphviz.edges[0]),
+      ),
       false,
     )
     for node in graphviz.nodes {
@@ -726,7 +726,7 @@ test "vertical endpoint labels use the forward positive-angle side" {
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
-  let path = graphviz.edges[0].paths[0]
+  let path = graphviz.edges[0].splines[0].points
   let path_start = path[0]
   let path_end = path[path.length() - 1]
   let edge_direction = (path_end.0 - path_start.0, path_end.1 - path_start.1)
@@ -760,7 +760,7 @@ test "horizontal endpoint labels use the forward positive-angle side" {
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
-  let path = graphviz.edges[0].paths[0]
+  let path = graphviz.edges[0].splines[0].points
   let path_start = path[0]
   let path_end = path[path.length() - 1]
   let edge_direction = (path_end.0 - path_start.0, path_end.1 - path_start.1)
@@ -795,7 +795,7 @@ test "relation roles use the opposite side of the endpoint tangent" {
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
   let edge = graphviz.edges[0]
-  let path = edge.paths[0]
+  let path = edge.splines[0].points
   let line_start = path[0]
   let line_end = path[path.length() - 1]
   let mostly_vertical = (line_end.1 - line_start.1).abs() >=
@@ -817,7 +817,7 @@ test "relation roles follow horizontal endpoint tangents" {
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
-  let path = graphviz.edges[0].paths[0]
+  let path = graphviz.edges[0].splines[0].points
   let line_start = path[0]
   let line_end = path[path.length() - 1]
   let mostly_horizontal = (line_end.0 - line_start.0).abs() >
@@ -837,7 +837,7 @@ test "routed relations preserve endpoint decorations and cardinalities" {
     "@startuml\nOrder \"1\" *-- \"many\" Item : contains\nClient --[dashed]--> Service\n@enduml",
   )
   let svg = diagram.render_svg()
-  @test.assert_eq(svg.contains("url(#diamond)"), true)
+  @test.assert_eq(svg.contains("class=\"relation-decoration\""), true)
   @test.assert_eq(svg.contains("marker path,marker circle,marker rect"), true)
   @test.assert_eq(svg.contains("marker-start=\"url(#triangle)\""), false)
   @test.assert_eq(svg.contains(">1</text>"), true)
@@ -852,18 +852,40 @@ test "relation endpoint decorations inherit each relation color" {
   ).render_svg()
   @test.assert_eq(svg.contains("style=\"stroke:blue;"), true)
   @test.assert_eq(
-    svg.contains("marker path,marker circle,marker rect{stroke:context-stroke;"),
+    svg.contains(
+      "class=\"relation-decoration\" fill=\"blue\" style=\"stroke:blue\"",
+    ),
     true,
   )
-  let arrow = test_svg_marker(svg, "arrow")
-  @test.assert_eq(arrow.contains("fill=\"context-stroke\""), true)
 }
 
 ///|
 test "hollow inheritance arrows retain a visible outline" {
   let svg = parse("@startuml\nParent <|-- Child\n@enduml").render_svg()
-  @test.assert_eq(svg.contains("marker-start=\"url(#triangle)\""), true)
-  let triangle = test_svg_marker(svg, "triangle")
-  @test.assert_eq(triangle.contains("fill=\"none\""), true)
-  @test.assert_eq(svg.contains("stroke:context-stroke"), true)
+  @test.assert_eq(
+    svg.contains("class=\"relation-decoration\" fill=\"none\""),
+    true,
+  )
+  @test.assert_eq(svg.contains("style=\"stroke:#181818\""), true)
+}
+
+///|
+test "class relation lines stop before endpoint decorations" {
+  let path = [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0), (30.0, 0.0)]
+  let shortened = shorten_relation_spline(
+    path,
+    RelationEnd::Extension.decoration_length(),
+    RelationEnd::Arrow.decoration_length(),
+  )
+  @test.assert_eq(shortened.length(), path.length())
+  @test.assert_eq(shortened[0].0 > path[0].0, true)
+  @test.assert_eq(
+    shortened[shortened.length() - 1].0 < path[path.length() - 1].0,
+    true,
+  )
+  @test.assert_eq(shortened[1].0 - shortened[0].0, path[1].0 - path[0].0)
+  @test.assert_eq(
+    shortened[shortened.length() - 1].0 - shortened[shortened.length() - 2].0,
+    path[path.length() - 1].0 - path[path.length() - 2].0,
+  )
 }

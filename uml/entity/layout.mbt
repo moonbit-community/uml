@@ -31,10 +31,10 @@ pub struct GraphvizLayout {
 } derive(Eq, Debug)
 
 ///|
-const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / 72.0
+const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / @graphviz.GRAPHVIZ_DPI
 
 ///|
-const PLANTUML_MIN_RANKSEP_IN : Double = 60.0 / 72.0
+const PLANTUML_MIN_RANKSEP_IN : Double = 60.0 / @graphviz.GRAPHVIZ_DPI
 
 ///|
 const PLANTUML_RELATION_LABEL_FONT_SIZE : Int = 13
@@ -123,7 +123,7 @@ fn note_size(note : Note, text_metrics : ClassTextMetrics) -> (Int, Int) {
   let mut width = 0
   for line in lines {
     width = width.max(
-      @metrics.measure_text_with(line.to_owned(), text_metrics.note).width +
+      text_metrics.note.measure(line.to_owned()).width +
       NOTE_LEFT_PADDING +
       NOTE_RIGHT_PADDING,
     )
@@ -155,12 +155,7 @@ fn EntityDiagram::graphviz_layout(
   text_metrics : ClassTextMetrics,
 ) -> GraphvizLayout raise @dot_layout.DotLayoutError {
   let usecase = self.family.is_usecase()
-  let graph = @cgraph.Graph::new(@cgraph.Directed, name="class", strict=false)
-  graph.set_attr(
-    "rankdir",
-    @graphviz.graphviz_rankdir_attr(@graphviz.graphviz_rankdir(self.style)),
-  )
-  graph.set_attr("splines", "spline")
+  let graph = @graphviz.new_directed_graph("class", self.style)
   graph.set_attr("remincross", "true")
   graph.set_attr("searchsize", "500")
   let package_content_graphs : Map[String, @cgraph.Graph] = Map([])
@@ -183,7 +178,7 @@ fn EntityDiagram::graphviz_layout(
     cluster.set_attr("penwidth", "1.5")
     cluster.set_attr(
       "color",
-      @style.svg_color(group.color, self.style.package_border_color()),
+      @svg.svg_color(group.color, self.style.package_border_color()),
     )
     let protection_after = cluster.subgraph(name="\{cluster_name}p1")
     protection_after.set_attr("label", "")
@@ -200,17 +195,15 @@ fn EntityDiagram::graphviz_layout(
       None => graph.node(name)
     }
     let geometry = entity.node_geometry(text_metrics, self.family)
-    node.set_attr("label", "")
-    node.set_attr(
-      "shape",
-      match geometry.shape {
+    @graphviz.set_fixed_node_size(
+      node,
+      geometry.width.to_double(),
+      geometry.height.to_double(),
+      shape=match geometry.shape {
         Box => "box"
         Ellipse => "ellipse"
       },
     )
-    node.set_attr("width", "\{(geometry.width.to_double() / 72.0)}")
-    node.set_attr("height", "\{(geometry.height.to_double() / 72.0)}")
-    node.set_attr("fixedsize", "true")
   }
   let relation_names : Map[Int, String] = Map([])
   for relation_index, relation in self.relations {
@@ -255,7 +248,7 @@ fn EntityDiagram::graphviz_layout(
       let label_font_name = if usecase {
         self.style.arrow_font_family()
       } else {
-        @style.font_family(self.style)
+        self.style.font_family()
       }
       edge.set_attr("fontsize", "\{label_font_size}")
       edge.set_attr("fontname", label_font_name)
@@ -299,11 +292,12 @@ fn EntityDiagram::graphviz_layout(
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = note_size(note, text_metrics)
-    node.set_attr("label", "")
-    node.set_attr("shape", "note")
-    node.set_attr("width", "\{width.to_double() / 72.0}")
-    node.set_attr("height", "\{height.to_double() / 72.0}")
-    node.set_attr("fixedsize", "true")
+    @graphviz.set_fixed_node_size(
+      node,
+      width.to_double(),
+      height.to_double(),
+      shape="note",
+    )
     let target = match note.target_kind {
       EntityNote | MemberTip => Some(note.target)
       LinkNote =>
@@ -345,25 +339,32 @@ fn EntityDiagram::graphviz_layout(
       None => ()
     }
   }
-  let laid_out = @dot_layout.layout_dot(graph, options={
-    rankdir: Some(@graphviz.graphviz_rankdir(self.style)),
-    nodesep: Some(PLANTUML_MIN_NODESEP_IN),
-    ranksep: Some(PLANTUML_MIN_RANKSEP_IN),
-    splines: Some(@dot_layout.SplinesMode::Spline),
-  })
+  let laid_out = @graphviz.layout_dot(
+    graph,
+    self.style,
+    PLANTUML_MIN_NODESEP_IN,
+    PLANTUML_MIN_RANKSEP_IN,
+  )
   let bbox = laid_out.bbox
   let nodes : Array[GraphvizNodeLayout] = []
   for node_layout in laid_out.nodes {
     let (x, y) = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
     match graphviz_entity_index(self, node_layout.node.name()) {
-      Some(entity_index) =>
+      Some(entity_index) => {
+        let raw_width = @graphviz.inches_to_points(node_layout.width_in)
+        let raw_height = @graphviz.inches_to_points(node_layout.height_in)
+        let width = raw_width.ceil().max(1.0)
+        let height = raw_height.ceil().max(1.0)
+        let left = (x - raw_width / 2.0).floor()
+        let top = (y - raw_height / 2.0).floor()
         nodes.push({
           code: self.entities[entity_index].qualified_code,
-          x,
-          y,
-          width: node_layout.width_in * 72.0,
-          height: node_layout.height_in * 72.0,
+          x: left + width / 2.0,
+          y: top + height / 2.0,
+          width,
+          height,
         })
+      }
       None => ()
     }
   }
@@ -373,11 +374,12 @@ fn EntityDiagram::graphviz_layout(
     laid_out,
     note_names,
     bbox,
-    offset=false,
+    anchor=Center,
   )
-  let edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
+  let raw_edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
     laid_out, relation_names, bbox,
   )
+  let edges = normalize_relation_edges(self, text_metrics, nodes, raw_edges)
   let note_edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
     laid_out, note_edge_names, bbox,
   )
@@ -390,13 +392,13 @@ fn EntityDiagram::graphviz_layout(
     let (width, height) = note_size(note, text_metrics)
     for edge in edges {
       guard edge.index == relation_index else { continue }
-      guard edge.paths.length() > 0 && edge.paths[0].length() > 0 else {
+      guard edge.splines.length() > 0 && edge.splines[0].points.length() > 0 else {
         continue
       }
-      let anchor_x = edge.paths[0][0].0
+      let anchor_x = edge.splines[0].points[0].0
       let anchor_y = match edge.label {
         Some((_, y)) => y
-        None => edge.paths[0][0].1
+        None => edge.splines[0].points[0].1
       }
       notes.push({
         note_index,

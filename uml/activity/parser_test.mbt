@@ -81,3 +81,8 @@ test "rejects unmatched and unclosed control-flow blocks" {
     }
   }
 }
+
+///|
+test "rejects arbitrary dash-prefixed lines as arrows" {
+  @test.assert_raise(() => ignore(parse("@startuml\n- not an arrow\n@enduml")))
+}

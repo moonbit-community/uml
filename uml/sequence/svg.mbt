@@ -5,9 +5,9 @@ fn append_svg_preamble(
   style : @style.DocumentStyle,
 ) -> Unit {
   let background = style.canvas_color()
-  let font_family = @style.font_family(style)
-  let font_size = @style.font_size(style)
-  let base_font_size = @style.font_size_value(style)
+  let font_family = style.font_family()
+  let font_size = style.font_size()
+  let base_font_size = style.font_size_value()
   let body_font_size = (base_font_size - 1).max(1)
   let small_font_size = (base_font_size - 2).max(1)
   let line_color = style.diagram_line_color()

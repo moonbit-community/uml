@@ -115,3 +115,20 @@ test "finds literals only outside quoted text" {
   @test.assert_eq(find_literal("角色::端口", "::"), Some(2))
   @test.assert_eq(find_literal("abc", ""), Some(0))
 }
+
+///|
+test "shared block collector consumes the terminator exactly once" {
+  let source = ["first", "second", "end note", "after"]
+  let mut index = 0
+  let lines = collect_lines_until(
+    fn() {
+      guard index < source.length() else { return None }
+      let line = source[index]
+      index += 1
+      Some(line)
+    },
+    line => line == "end note",
+  )
+  @test.assert_eq(lines, Some(["first", "second"]))
+  @test.assert_eq(source[index], "after")
+}

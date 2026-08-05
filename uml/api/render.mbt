@@ -8,8 +8,13 @@ pub fn Document::render_svg(self : Document) -> String {
       diagram.render_svg()
     State(diagram) => diagram.render_svg()
     Mindmap(diagram) => diagram.render_svg()
-    Json(diagram) => diagram.render_json_svg()
-    Yaml(diagram) => diagram.render_yaml_svg()
-    Toml(diagram) => diagram.render_toml_svg()
+    Json(diagram) | Yaml(diagram) | Toml(diagram) => diagram.render_svg()
   }
+}
+
+///|
+/// Parse a PlantUML source with the document heuristics and render the
+/// selected diagram family to SVG.
+pub fn render_svg(source : String) -> String raise {
+  parse(source).render_svg()
 }

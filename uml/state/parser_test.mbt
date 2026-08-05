@@ -54,6 +54,15 @@ test "renders semantic state node and transition labels without coordinates" {
 }
 
 ///|
+test "state pseudo-state borders inherit the shared diagram line color" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam ArrowColor #123456\n[*] --> Done\nDone --> [*]\n@enduml",
+  )
+  @test.assert_eq(svg.contains("stroke=\"#123456\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#181818\""), false)
+}
+
+///|
 test "preserves declaration stereotypes and frame aliases in scope" {
   let diagram = parse(
     "@startuml\nstate Decision <<choice>>\nframe \"Order flow\" as Flow {\nstate Paid\n}\n@enduml",

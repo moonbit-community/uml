@@ -56,25 +56,26 @@ fn parse_note(
   lines : Array[String],
   start : Int,
 ) -> (String, Int) raise @parse.ParseError {
-  let text = []
   let mut index = start + 1
-  while index < lines.length() {
-    let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
-    if line.equal_ignore_ascii_case("end note") {
-      return (text.join("\n"), index)
-    }
-    text.push(line)
-    index += 1
+  guard @parse.collect_lines_until(
+      fn() {
+        guard index < lines.length() else { return None }
+        let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
+        index += 1
+        Some(line)
+      },
+      line => line.equal_ignore_ascii_case("end note"),
+    )
+    is Some(text) else {
+    raise SyntaxError(start + 1, "unclosed note")
   }
-  raise SyntaxError(start + 1, "unclosed note")
+  (text.join("\n"), index - 1)
 }
 
 ///|
-fn is_arrow(line : String) -> Bool {
+fn is_activity_arrow(line : String) -> Bool {
   line.has_prefix("->") ||
-  line.has_prefix("<-") ||
-  line.has_prefix("-") ||
-  line.has_prefix(".")
+  (line.has_prefix("-[") && line.find("]->") is Some(_))
 }
 
 ///|
@@ -202,7 +203,7 @@ pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
       nodes.push(Label(command_text(line, "label")))
     } else if lower.has_prefix("goto ") {
       nodes.push(Goto(command_text(line, "goto")))
-    } else if is_arrow(line) {
+    } else if is_activity_arrow(line) {
       nodes.push(Arrow(line))
     } else {
       raise SyntaxError(line_number, "unsupported activity command")

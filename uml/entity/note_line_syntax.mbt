@@ -418,27 +418,30 @@ fn Parser::consume_note_syntax(
   match syntax.content {
     NoteInline(text) => self.push_note_syntax(syntax, text)
     NoteBlock => {
-      let text = StringBuilder()
-      let mut first = true
-      self.index += 1
-      while self.index < self.lines.length() {
-        let line = self.lines[self.index]
-        let terminator = @parse.strip_line_comment(line).to_lower()
-        if terminator == "end note" ||
-          terminator == "endnote" ||
-          (syntax.metadata.braced && terminator == "}") {
-          guard !first else { self.raise_parse_error("no note defined") }
-          self.push_note_syntax(syntax, text.to_string())
-          return
-        }
-        if !first {
-          text.write_char('\n')
-        }
-        text.write_string(line.trim().to_owned())
-        first = false
-        self.index += 1
+      let mut index = self.index + 1
+      guard @parse.collect_lines_until(
+          fn() {
+            guard index < self.lines.length() else { return None }
+            let line = self.lines[index]
+            index += 1
+            Some(line)
+          },
+          line => {
+            let normalized = @parse.strip_line_comment(line).to_lower()
+            normalized == "end note" ||
+            normalized == "endnote" ||
+            (syntax.metadata.braced && normalized == "}")
+          },
+        )
+        is Some(lines) else {
+        self.raise_parse_error("unclosed note")
       }
-      self.raise_parse_error("unclosed note")
+      guard !lines.is_empty() else { self.raise_parse_error("no note defined") }
+      self.index = index - 1
+      self.push_note_syntax(
+        syntax,
+        lines.map(line => line.trim().to_owned()).join("\n"),
+      )
     }
   }
 }

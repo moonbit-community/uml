@@ -1,4 +1,7 @@
 ///|
+const UML_EXTENSION : String = ".uml"
+
+///|
 fn main raise {
   let command = @argparse.Command(
     "uml",
@@ -15,7 +18,7 @@ fn main raise {
   guard matches.values.get("input") is Some([input_path]) else {
     return println(command.render_help())
   }
-  guard input_path.has_suffix(".uml") else {
+  guard input_path.has_suffix(UML_EXTENSION) else {
     return println("error: input path must end with .uml")
   }
 
@@ -32,7 +35,7 @@ fn main raise {
 
 ///|
 fn output_path_for(input_path : String) -> String {
-  let extension_start = input_path.length() - 4
+  let extension_start = input_path.length() - UML_EXTENSION.length()
   input_path.unsafe_substring(start=0, end=extension_start) + ".svg"
 }
 

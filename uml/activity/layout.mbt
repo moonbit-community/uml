@@ -285,8 +285,8 @@ fn tiles_from_instructions(
 }
 
 ///|
-fn node_label(node : ActivityNode) -> String? {
-  match node {
+fn ActivityNode::label(self : ActivityNode) -> String? {
+  match self {
     Action(label) | Note(label) => Some(label)
     If(label) | ElseIf(label) | Switch(label) =>
       Some(test_text(label, " then "))
@@ -305,8 +305,8 @@ fn test_text(value : String, separator : String) -> String {
 }
 
 ///|
-fn is_decision(node : ActivityNode) -> Bool {
-  match node {
+fn ActivityNode::is_decision(self : ActivityNode) -> Bool {
+  match self {
     If(_) | While(_) | EndWhile(_) | RepeatWhile(_) | Switch(_) | Case(_) =>
       true
     _ => false
@@ -314,25 +314,26 @@ fn is_decision(node : ActivityNode) -> Bool {
 }
 
 ///|
-fn is_fork(node : ActivityNode) -> Bool {
-  match node {
+fn ActivityNode::is_fork(self : ActivityNode) -> Bool {
+  match self {
     Fork | EndFork => true
     _ => false
   }
 }
 
 ///|
-fn node_size(
-  node : ActivityNode,
+fn ActivityNode::size(
+  self : ActivityNode,
   metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
-  match node {
+  match self {
     Start | Stop | End | Kill | EndIf | Repeat | EndSwitch =>
       { width: TERMINAL_SIZE, height: TERMINAL_SIZE }
-    _ if is_fork(node) => { width: FORK_WIDTH, height: FORK_HEIGHT }
-    _ if is_decision(node) => {
-      let label_width = node_label(node)
-        .map(label => @metrics.measure_text_with(label, metrics).width)
+    _ if self.is_fork() => { width: FORK_WIDTH, height: FORK_HEIGHT }
+    _ if self.is_decision() => {
+      let label_width = self
+        .label()
+        .map(label => metrics.measure(label).width)
         .unwrap_or(0)
       {
         width: (label_width + TEXT_PADDING_X * 2).max(MINIMUM_DECISION_WIDTH),
@@ -340,14 +341,14 @@ fn node_size(
       }
     }
     Note(label) => {
-      let text = @metrics.measure_text_with(label, metrics)
+      let text = metrics.measure(label)
       {
         width: text.width + TEXT_PADDING_X * 2,
         height: text.height + TEXT_PADDING_Y * 2,
       }
     }
     Action(label) => {
-      let text = @metrics.measure_text_with(label, metrics)
+      let text = metrics.measure(label)
       {
         width: (text.width + TEXT_PADDING_X * 2).max(MINIMUM_ACTION_WIDTH),
         height: text.height + TEXT_PADDING_Y * 2,
@@ -410,7 +411,7 @@ fn measure_if_chain(
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics)
     let decision = branch.decision
-      .map(index => node_size(nodes[index], metrics))
+      .map(index => nodes[index].size(metrics))
       .unwrap_or({ width: 0, height: 0 })
     if index > 0 {
       width += BRANCH_GAP
@@ -433,7 +434,7 @@ fn measure_tile(
   metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   match tile {
-    Leaf(index) => node_size(nodes[index], metrics)
+    Leaf(index) => nodes[index].size(metrics)
     LabelAnchor(_) | GotoAnchor(_) => { width: 0, height: 0 }
     Partition(tiles) => measure_sequence(tiles, nodes, metrics)
     Swimlane(index) => {
@@ -442,16 +443,16 @@ fn measure_tile(
     }
     IfChain(branches, exit) => {
       let branches_size = measure_if_chain(branches, nodes, metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let exit_size = nodes[exit].size(metrics)
       {
         width: branches_size.width.max(exit_size.width),
         height: branches_size.height + VERTICAL_GAP + exit_size.height,
       }
     }
     Switch(entry, branches, exit) => {
-      let entry_size = node_size(nodes[entry], metrics)
+      let entry_size = nodes[entry].size(metrics)
       let branches_size = measure_branches(branches, nodes, metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let exit_size = nodes[exit].size(metrics)
       {
         width: entry_size.width.max(branches_size.width).max(exit_size.width),
         height: entry_size.height +
@@ -462,7 +463,7 @@ fn measure_tile(
       }
     }
     WhileLoop(entry, body, _, _) => {
-      let entry_size = node_size(nodes[entry], metrics)
+      let entry_size = nodes[entry].size(metrics)
       let body_size = measure_sequence(body, nodes, metrics)
       {
         width: entry_size.width.max(body_size.width),
@@ -470,9 +471,9 @@ fn measure_tile(
       }
     }
     RepeatLoop(entry, body, exit, _, _) => {
-      let entry_size = node_size(nodes[entry], metrics)
+      let entry_size = nodes[entry].size(metrics)
       let body_size = measure_sequence(body, nodes, metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let exit_size = nodes[exit].size(metrics)
       {
         width: entry_size.width.max(body_size.width).max(exit_size.width),
         height: entry_size.height +
@@ -483,9 +484,9 @@ fn measure_tile(
       }
     }
     Parallel(entry, branches, exit) => {
-      let entry_size = node_size(nodes[entry], metrics)
+      let entry_size = nodes[entry].size(metrics)
       let branches_size = measure_branches(branches, nodes, metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let exit_size = nodes[exit].size(metrics)
       {
         width: entry_size.width.max(branches_size.width).max(exit_size.width),
         height: entry_size.height +

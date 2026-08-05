@@ -21,6 +21,23 @@ pub(all) enum StructuredNodeKind {
 } derive(Eq, Debug)
 
 ///|
+/// Source format represented by a structured-data diagram.
+pub(all) enum StructuredFormat {
+  Json
+  Yaml
+  Toml
+} derive(Eq, Debug)
+
+///|
+pub fn StructuredFormat::aria_label(self : StructuredFormat) -> String {
+  match self {
+    Json => "JSON diagram"
+    Yaml => "YAML diagram"
+    Toml => "TOML diagram"
+  }
+}
+
+///|
 /// A structured-data record node shared by JSON, YAML, and TOML renderers.
 /// Objects have key/value rows; arrays have single value rows. Compound rows
 /// point to another record node.
@@ -31,6 +48,7 @@ pub struct StructuredNode {
 
 ///|
 pub struct StructuredDiagram {
+  format : StructuredFormat
   root : StructuredNode
 } derive(Eq, Debug)
 
@@ -61,4 +79,63 @@ fn source_between_markers(
 ///|
 fn blank_node() -> StructuredNode {
   { kind: Array, rows: [{ key: None, value: Text(""), child: None }] }
+}
+
+///|
+priv enum StructuredValueView[T] {
+  ScalarView(StructuredValueDisplay)
+  ObjectView(Array[(String, T)])
+  ArrayView(Array[T])
+  EmptyView
+}
+
+///|
+fn[T] structured_row_from_view(
+  key : String?,
+  view : StructuredValueView[T],
+  inspect : (T) -> StructuredValueView[T],
+) -> StructuredRow {
+  match view {
+    ScalarView(value) => { key, value, child: None }
+    ObjectView(_) | ArrayView(_) | EmptyView =>
+      {
+        key,
+        value: Compound,
+        child: Some(structured_node_from_view(view, inspect)),
+      }
+  }
+}
+
+///|
+fn[T] structured_node_from_view(
+  view : StructuredValueView[T],
+  inspect : (T) -> StructuredValueView[T],
+) -> StructuredNode {
+  match view {
+    EmptyView => blank_node()
+    ScalarView(value) =>
+      { kind: Array, rows: [{ key: None, value, child: None }] }
+    ObjectView(entries) =>
+      {
+        kind: Object,
+        rows: entries.map(entry => {
+          structured_row_from_view(Some(entry.0), inspect(entry.1), inspect)
+        }),
+      }
+    ArrayView(values) =>
+      {
+        kind: Array,
+        rows: values.map(value => {
+          structured_row_from_view(None, inspect(value), inspect)
+        }),
+      }
+  }
+}
+
+///|
+fn[T] structured_node_from_value(
+  value : T,
+  inspect : (T) -> StructuredValueView[T],
+) -> StructuredNode {
+  structured_node_from_view(inspect(value), inspect)
 }

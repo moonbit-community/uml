@@ -108,7 +108,7 @@ fn Entity::header_layout(
   text_metrics : ClassTextMetrics,
 ) -> ClassHeaderLayout {
   let title_metrics = self.title_metrics(text_metrics)
-  let title = @metrics.measure_text_with(self.display, title_metrics)
+  let title = title_metrics.measure(self.display)
   let title_width = title.width + 2 * CLASS_NAME_HORIZONTAL_MARGIN
   let circle_width = if self.circle_hidden {
     0
@@ -124,10 +124,7 @@ fn Entity::header_layout(
     self.stereotype {
     Some(value) if !self.stereotype_hidden => {
       let display = @parse.display_stereotype(value)
-      let metrics = @metrics.measure_text_with(
-        display,
-        text_metrics.class_stereotype,
-      )
+      let metrics = text_metrics.class_stereotype.measure(display)
       (
         Some(display),
         metrics.width + 2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
@@ -296,11 +293,10 @@ priv enum ActorAppearance {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum NodeShape {
   Box
   Ellipse
-} derive(Eq, Debug)
+}
 
 ///|
 priv struct NodeGeometry {
@@ -432,7 +428,7 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
   let font_size = if style.font_size is None {
     14
   } else {
-    @style.font_size_value(style)
+    style.font_size_value()
   }
   let usecase_font_size = style.usecase_font_size(fallback=font_size)
   let actor_font_size = style.actor_font_size(fallback=font_size)
@@ -475,7 +471,7 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
       font_size=RELATION_LABEL_FONT_SIZE,
     ),
     relation_end_regular: style.font_metrics(font_size=RELATION_END_FONT_SIZE),
-    relation_end_font_family: @style.font_family(style),
+    relation_end_font_family: style.font_family(),
     arrow_regular: style.font_metrics_for(
       style.arrow_font_family(),
       font_size=style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE),
@@ -514,14 +510,10 @@ fn Entity::width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
   let mut width = self.header_layout(text_metrics).width
   let body = self.body_layout(text_metrics)
   for entry in body.fields {
-    width = width.max(
-      @metrics.measure_text_with(entry.raw, text_metrics.regular).width + 28,
-    )
+    width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
   }
   for entry in body.methods {
-    width = width.max(
-      @metrics.measure_text_with(entry.raw, text_metrics.regular).width + 28,
-    )
+    width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
   }
   width
 }
@@ -531,20 +523,14 @@ fn Entity::usecase_content_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, String?) {
-  let title = @metrics.measure_text_with(
-    self.display,
-    text_metrics.usecase_regular,
-  )
+  let title = text_metrics.usecase_regular.measure(self.display)
   // BodyEnhanced1 uses TextBlockUtils.withMargin(block, 6, 0), which adds
   // 6px to both horizontal sides. Its UEmpty footprint participates in sizing.
   let title_width = title.width + USECASE_BODY_HORIZONTAL_MARGIN
   match self.stereotype {
     Some(stereotype) if !self.stereotype_hidden => {
       let display = @parse.display_stereotype(stereotype)
-      let stereotype_metrics = @metrics.measure_text_with(
-        display,
-        text_metrics.usecase_italic,
-      )
+      let stereotype_metrics = text_metrics.usecase_italic.measure(display)
       (
         title_width.max(stereotype_metrics.width),
         title.height + stereotype_metrics.height,
@@ -668,10 +654,7 @@ fn Entity::actor_content_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, String?) {
-  let title = @metrics.measure_text_with(
-    self.display,
-    text_metrics.actor_regular,
-  )
+  let title = text_metrics.actor_regular.measure(self.display)
   let (figure_width, figure_height) = actor_figure_geometry(
     actor_appearance(text_metrics.actor_style),
     business=self.kind is BusinessActor,
@@ -679,10 +662,7 @@ fn Entity::actor_content_layout(
   match self.stereotype {
     Some(stereotype) if !self.stereotype_hidden => {
       let display = @parse.display_stereotype(stereotype)
-      let stereotype_metrics = @metrics.measure_text_with(
-        display,
-        text_metrics.actor_italic,
-      )
+      let stereotype_metrics = text_metrics.actor_italic.measure(display)
       (
         title.width.max(stereotype_metrics.width).max(figure_width),
         stereotype_metrics.height + figure_height + title.height,
@@ -698,7 +678,7 @@ fn Entity::component_geometry(
   self : Entity,
   text_metrics : ClassTextMetrics,
 ) -> NodeGeometry {
-  let title = @metrics.measure_text_with(self.display, text_metrics.regular)
+  let title = text_metrics.regular.measure(self.display)
   {
     width: title.width + COMPONENT_HORIZONTAL_PADDING,
     height: title.height + COMPONENT_VERTICAL_PADDING,

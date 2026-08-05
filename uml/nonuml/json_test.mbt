@@ -1,10 +1,21 @@
 ///|
 test "parses an object into PlantUML record rows in document order" {
   let diagram = parse_json("{\"z\":true,\"user\":{\"name\":\"Ada\"}}")
+  @test.assert_eq(diagram.format, Json)
   @test.assert_eq(diagram.root.kind, Object)
   @test.assert_eq(diagram.root.rows[0].key, Some("z"))
   @test.assert_eq(diagram.root.rows[1].key, Some("user"))
   @test.assert_eq(diagram.root.rows[1].value, Compound)
+}
+
+///|
+test "structured renderer derives its label from the diagram format" {
+  let diagram = parse_json("{\"value\":1}")
+  @test.assert_eq(diagram.render_svg(), diagram.render_json_svg())
+  @test.assert_eq(
+    diagram.render_svg().contains(diagram.format.aria_label()),
+    true,
+  )
 }
 
 ///|

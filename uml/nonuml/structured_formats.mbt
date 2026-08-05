@@ -12,56 +12,34 @@ fn yaml_value_display(value : @yaml.Yaml) -> StructuredValueDisplay {
 }
 
 ///|
-fn yaml_node_from_value(value : @yaml.Yaml) -> StructuredNode {
+fn yaml_value_view(value : @yaml.Yaml) -> StructuredValueView[@yaml.Yaml] {
   match value {
-    Map(map) if map.is_empty() => blank_node()
-    Array(values) if values.is_empty() => blank_node()
+    Map(map) if map.is_empty() => EmptyView
+    Array(values) if values.is_empty() => EmptyView
     Map(map) => {
-      let rows = []
+      let entries = []
       for key, child_value in map {
-        let child = match child_value {
-          Map(_) | Array(_) => Some(yaml_node_from_value(child_value))
-          _ => None
-        }
-        rows.push({
-          key: Some(key),
-          value: yaml_value_display(child_value),
-          child,
-        })
+        entries.push((key, child_value))
       }
-      { kind: Object, rows }
+      ObjectView(entries)
     }
-    Array(values) => {
-      let rows = []
-      for child_value in values {
-        let child = match child_value {
-          Map(_) | Array(_) => Some(yaml_node_from_value(child_value))
-          _ => None
-        }
-        rows.push({ key: None, value: yaml_value_display(child_value), child })
-      }
-      { kind: Array, rows }
-    }
-    _ =>
-      {
-        kind: Array,
-        rows: [{ key: None, value: yaml_value_display(value), child: None }],
-      }
+    Array(values) => ArrayView(values)
+    _ => ScalarView(yaml_value_display(value))
   }
 }
 
 ///|
 fn yaml_root(documents : Array[@yaml.Yaml]) -> StructuredNode {
   match documents {
-    [document] => yaml_node_from_value(document)
-    _ => yaml_node_from_value(Array(documents))
+    [document] => structured_node_from_value(document, yaml_value_view)
+    _ => structured_node_from_value(@yaml.Array(documents), yaml_value_view)
   }
 }
 
 ///|
 pub fn parse_yaml(input : String) -> StructuredDiagram raise @yaml.YamlError {
   let source = source_between_markers(input, "@startyaml", "@endyaml")
-  { root: yaml_root(@yaml.Yaml::load_from_string(source)) }
+  { format: Yaml, root: yaml_root(@yaml.Yaml::load_from_string(source)) }
 }
 
 ///|
@@ -78,46 +56,29 @@ fn toml_value_display(value : @toml.TomlValue) -> StructuredValueDisplay {
 }
 
 ///|
-fn toml_node_from_value(value : @toml.TomlValue) -> StructuredNode {
+fn toml_value_view(
+  value : @toml.TomlValue,
+) -> StructuredValueView[@toml.TomlValue] {
   match value {
-    TomlTable(table) if table.is_empty() => blank_node()
-    TomlArray(values) if values.is_empty() => blank_node()
+    TomlTable(table) if table.is_empty() => EmptyView
+    TomlArray(values) if values.is_empty() => EmptyView
     TomlTable(table) => {
-      let rows = []
+      let entries = []
       for key, child_value in table {
-        let child = match child_value {
-          TomlTable(_) | TomlArray(_) => Some(toml_node_from_value(child_value))
-          _ => None
-        }
-        rows.push({
-          key: Some(key),
-          value: toml_value_display(child_value),
-          child,
-        })
+        entries.push((key, child_value))
       }
-      { kind: Object, rows }
+      ObjectView(entries)
     }
-    TomlArray(values) => {
-      let rows = []
-      for child_value in values {
-        let child = match child_value {
-          TomlTable(_) | TomlArray(_) => Some(toml_node_from_value(child_value))
-          _ => None
-        }
-        rows.push({ key: None, value: toml_value_display(child_value), child })
-      }
-      { kind: Array, rows }
-    }
-    _ =>
-      {
-        kind: Array,
-        rows: [{ key: None, value: toml_value_display(value), child: None }],
-      }
+    TomlArray(values) => ArrayView(values)
+    _ => ScalarView(toml_value_display(value))
   }
 }
 
 ///|
 pub fn parse_toml(input : String) -> StructuredDiagram raise {
   let source = source_between_markers(input, "@starttoml", "@endtoml")
-  { root: toml_node_from_value(@toml.parse(source)) }
+  {
+    format: Toml,
+    root: structured_node_from_value(@toml.parse(source), toml_value_view),
+  }
 }

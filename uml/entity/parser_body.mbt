@@ -170,31 +170,15 @@ fn Parser::add_map_link(
     self.raise_parse_error("No such entity " + target)
   }
   self.relations.push({
-    left: source.qualified_code,
-    right: resolved,
-    kind: Association,
-    left_cardinality: None,
-    right_cardinality: None,
-    left_role: None,
-    right_role: None,
-    left_qualifier: None,
-    right_qualifier: None,
-    label: None,
-    dotted: false,
-    raw_arrow: arrow,
-    left_end: Arrow,
-    right_end: Plain,
-    direction: Automatic,
-    line_style: None,
-    color: None,
-    url: None,
-    stereotype: None,
-    weight: None,
-    inside: None,
+    ..Relation::new(
+      source.qualified_code,
+      resolved,
+      Association,
+      arrow,
+      Arrow,
+      Plain,
+    ),
     left_port: Some(entry.key),
-    right_port: None,
-    left_couple: None,
-    right_couple: None,
   })
 }
 

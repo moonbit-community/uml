@@ -77,7 +77,7 @@ fn append_mindmap_node(
       // SVG positions text by its baseline. PlantUML's box renderer starts a
       // line after the top padding plus the font's baseline offset.
       (text_x, anchor, node.y + padding_y + font_size)
-    None => {
+    Boxless => {
       // Java adds the horizontal margin on the side away from the connector.
       // The connector itself meets the opposite edge of this virtual box.
       let text_x = match idea.direction {
@@ -95,20 +95,20 @@ fn append_mindmap_node(
   }
   let shape_class = match idea.shape {
     Box => "box"
-    None => "boxless"
+    Boxless => "boxless"
   }
-  let fill = @style.svg_color(
+  let fill = @svg.svg_color(
     match idea.background_color {
       Some(color) => Some(color)
       None => node_style.background_color
     },
     @style.render_defaults().node_background,
   )
-  let line_color = @style.svg_color(
+  let line_color = @svg.svg_color(
     node_style.line_color,
     @style.render_defaults().diagram_line,
   )
-  let font_color = @style.svg_color(
+  let font_color = @svg.svg_color(
     node_style.font_color,
     @style.render_defaults().diagram_text,
   )
@@ -136,7 +136,7 @@ fn append_mindmap_node(
         ("stroke", line_color),
         ("stroke-width", line_thickness),
       ])
-    None => ()
+    Boxless => ()
   }
   append_mindmap_text(
     output,
@@ -157,9 +157,9 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
   let layout = self.layout()
   let output = @svg.XmlWriter::new()
   let background = self.style.canvas_color()
-  let font_family = @style.font_family(self.style)
-  let font_size = @style.font_size(self.style)
-  let arrow_color = @style.svg_color(
+  let font_family = self.style.font_family()
+  let font_size = self.style.font_size()
+  let arrow_color = @svg.svg_color(
     match self.mindmap_style.arrow.line_color {
       Some(color) => Some(color)
       None => self.style.line_color

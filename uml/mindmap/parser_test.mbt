@@ -35,7 +35,7 @@ test "parses item presentation without changing hierarchy" {
   )
   let idea = diagram.ideas[1]
   @test.assert_eq(idea.background_color, Some("#aabbcc"))
-  @test.assert_eq(idea.shape, None)
+  @test.assert_eq(idea.shape, Boxless)
   @test.assert_eq(idea.label, "Boxless")
   @test.assert_eq(idea.stereotype, Some("<<tag>>"))
   @test.assert_eq(idea.parent, Some(0))

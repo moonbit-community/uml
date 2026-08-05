@@ -66,58 +66,14 @@ fn relation_stroke_parser() -> @talc.StringParser[RelationStroke] {
 fn relation_arrow_candidate_parser() -> @talc.StringParser[
   RelationArrowCandidate,
 ] {
-  let left_decor = @talc.choice([
-      relation_symbol("<|:"),
-      relation_symbol("<||"),
-      relation_symbol("}o"),
-      relation_symbol("|o"),
-      relation_symbol("}|"),
-      relation_symbol("<|"),
-      relation_symbol("<<"),
-      relation_symbol("0)"),
-      relation_symbol("()"),
-      relation_symbol("))"),
-      relation_symbol("||"),
-      relation_symbol("*"),
-      relation_symbol("o"),
-      relation_symbol("x"),
-      relation_symbol("}"),
-      relation_symbol("<_"),
-      relation_symbol("<"),
-      relation_symbol("0"),
-      relation_symbol("@"),
-      relation_symbol(")"),
-      relation_symbol("#"),
-      relation_symbol("+"),
-    ])
+  let left_decor = @talc.choice(
+      left_relation_decorations.map(entry => relation_symbol(entry.0)),
+    )
     .attempt()
     .optional()
-  let right_decor = @talc.choice([
-      relation_symbol(":|>"),
-      relation_symbol("||>"),
-      relation_symbol("o{"),
-      relation_symbol("o|"),
-      relation_symbol("|{"),
-      relation_symbol("|>"),
-      relation_symbol(">>"),
-      relation_symbol("(0"),
-      relation_symbol("()"),
-      relation_symbol("(("),
-      relation_symbol("||"),
-      relation_symbol("*"),
-      relation_symbol("o"),
-      relation_symbol("x"),
-      relation_symbol("{"),
-      relation_symbol("_>"),
-      relation_symbol(">"),
-      relation_symbol("0"),
-      relation_symbol("@"),
-      relation_symbol("("),
-      relation_symbol("#"),
-      relation_symbol("+"),
-      relation_symbol("\\"),
-      relation_symbol("//"),
-    ])
+  let right_decor = @talc.choice(
+      right_relation_decorations.map(entry => relation_symbol(entry.0)),
+    )
     .attempt()
     .optional()
   let inside = @talc.choice([

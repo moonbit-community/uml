@@ -259,7 +259,7 @@ fn append_message(
 ) -> Unit {
   guard layout.participant_at(message.from_code) is Some(from) else { return }
   guard layout.participant_at(message.to_code) is Some(to) else { return }
-  let y = placement.y + 18
+  let y = placement.y + MESSAGE_ARROW_OFFSET
   let label = message.rendered_label(placement.number)
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
   let line_class = "message\{dotted}"
@@ -268,7 +268,7 @@ fn append_message(
   match message.anchor {
     Some(anchor) =>
       output <+
-        $|<g id="\{@style.xml_escape(anchor)}" class="message-anchor">
+        $|<g id="\{@svg.xml_escape(anchor)}" class="message-anchor">
     None => ()
   }
   if from.participant.code == to.participant.code {
@@ -336,23 +336,6 @@ fn append_message(
   if message.arrow_config.part is Full {
     append_arrow_head(output, message.arrow_config.head2, to.center_x, end_y)
   }
-  for code in message.multicast {
-    guard layout.participant_at(code) is Some(target) else { continue }
-    let target_marker = match message.arrow_config.part {
-      Full => message.arrow_config.head2.marker(false)
-      TopPart | BottomPart => ""
-    }
-    output <+
-      $|<line x1="\{from.center_x}" y1="\{start_y}" x2="\{target.center_x}" y2="\{end_y}" class="\{line_class}"\{target_marker}/>
-    append_partial_arrow_head(
-      output,
-      message.arrow_config.head2,
-      message.arrow_config.part,
-      target.center_x,
-      end_y,
-      target.center_x >= from.center_x,
-    )
-  }
   if message.anchor is Some(_) {
     output.write_string("</g>\n")
   }
@@ -368,7 +351,7 @@ fn append_exo_message(
   guard layout.participant_at(message.participant_code) is Some(participant) else {
     return
   }
-  let y = placement.y + 18
+  let y = placement.y + MESSAGE_ARROW_OFFSET
   let (outside_x, participant_x) = match message.exo_type {
     FromLeft | ToLeft =>
       (
@@ -550,7 +533,7 @@ fn append_return(
   preceding_message : Message?,
 ) -> Unit {
   guard layout.participants.length() >= 2 else { return }
-  let y = placement.y + 18
+  let y = placement.y + MESSAGE_ARROW_OFFSET
   let mut activation : ActivationSpan? = None
   for candidate in layout.activations {
     if candidate.start_y <= y && y <= candidate.end_y {
@@ -624,7 +607,6 @@ fn append_event(
       append_reference(output, layout, reference, placement)
     Return(value) =>
       append_return(output, layout, value, placement, arrow_anchor)
-    GroupingLeaf(_) => ()
     Newpage(page) => {
       append_line(
         output,
@@ -655,7 +637,23 @@ fn append_event(
             $|<metadata class="auto-newpage" data-height="\{height}"/>
         None => output.write_string("<metadata class=\"auto-newpage\"/>\n")
       }
-    _ => ()
+    GroupingStart(_)
+    | GroupingLeaf(_)
+    | LifeEvent(_)
+    | HSpace(_)
+    | BoxStart(_)
+    | BoxEnd
+    | Autonumber(_)
+    | AutonumberStop
+    | AutonumberResume(_)
+    | AutonumberIncrement(_)
+    | Autoactivate(_)
+    | Footbox(_)
+    | HideUnlinked(_)
+    | Create
+    | Url(_, _)
+    | DeactivateLatest
+    | IgnoreNewpage => ()
   }
 }
 

@@ -1,12 +1,10 @@
 ///|
-#warnings("-unused_value")
 priv struct PartRef {
   code : String
   display : String
 }
 
 ///|
-#warnings("-unused_value")
 priv struct ParticipantDecl {
   typ : ParticipantType
   reference : PartRef
@@ -17,7 +15,6 @@ priv struct ParticipantDecl {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct DressingResult {
   head : ArrowHead
   circle : Bool
@@ -27,7 +24,6 @@ priv struct DressingResult {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct ParseCtx {
   source : Source
   participants : Map[String, Participant]
@@ -137,9 +133,6 @@ fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
     Message(message) => {
       self.ensure_participant(message.from_code, message.from_code, Participant)
       self.ensure_participant(message.to_code, message.to_code, Participant)
-      message.multicast.each(code => {
-        self.ensure_participant(code, code, Participant)
-      })
     }
     MessageExo(message) =>
       self.ensure_participant(

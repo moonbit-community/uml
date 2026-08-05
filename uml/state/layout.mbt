@@ -61,9 +61,6 @@ priv struct StateVisibleNode {
 }
 
 ///|
-const STATE_DPI : Double = 72.0
-
-///|
 const STATE_CANVAS_PADDING : Double = 28.0
 
 ///|
@@ -92,12 +89,12 @@ const STATE_TERMINAL_SIZE : Double = 24.0
 
 ///|
 fn plantuml_state_nodesep_in() -> Double {
-  35.0 / STATE_DPI
+  35.0 / @graphviz.GRAPHVIZ_DPI
 }
 
 ///|
 fn plantuml_state_ranksep_in() -> Double {
-  35.0 / STATE_DPI
+  35.0 / @graphviz.GRAPHVIZ_DPI
 }
 
 ///|
@@ -148,19 +145,6 @@ fn shift_state_note(
 }
 
 ///|
-fn StateDiagram::state_by_code(
-  self : StateDiagram,
-  code : String,
-) -> StateNode? {
-  for state in self.states {
-    if state.code == code {
-      return Some(state)
-    }
-  }
-  None
-}
-
-///|
 fn StateDiagram::has_children(self : StateDiagram, code : String) -> Bool {
   for state in self.states {
     if state.parent == Some(code) {
@@ -190,11 +174,11 @@ fn StateDiagram::scope_path(
   code : String,
 ) -> Array[String] {
   let path : Array[String] = []
-  let mut current = self.state_by_code(code)
+  let mut current = self.state(code)
   while current is Some(state) {
     path.push(state.code)
     current = match state.parent {
-      Some(parent) => self.state_by_code(parent)
+      Some(parent) => self.state(parent)
       None => None
     }
   }
@@ -242,11 +226,7 @@ fn StateDiagram::transition_region_index(
   match scope {
     None => -1
     Some(scope) =>
-      match
-        (
-          self.state_by_code(transition.source),
-          self.state_by_code(transition.target),
-        ) {
+      match (self.state(transition.source), self.state(transition.target)) {
         (Some(source), Some(target)) if source.parent == Some(scope) &&
           target.parent == Some(scope) &&
           source.region_index == target.region_index => source.region_index
@@ -284,7 +264,7 @@ fn StateDiagram::state_note_scope(
   self : StateDiagram,
   target : String,
 ) -> String? {
-  match self.state_by_code(target) {
+  match self.state(target) {
     Some(state) => state.parent
     None => None
   }
@@ -296,7 +276,7 @@ fn StateDiagram::state_note_region_index(
   target : String,
   scope : String?,
 ) -> Int {
-  match (self.state_by_code(target), scope) {
+  match (self.state(target), scope) {
     (Some(state), Some(scope)) if state.parent == Some(scope) =>
       state.region_index
     _ => -1
@@ -360,7 +340,7 @@ fn state_text_size(
   text : String,
   metrics : @metrics.FontMetrics,
 ) -> (Double, Double) {
-  let measured = @metrics.measure_text_with(text, metrics)
+  let measured = metrics.measure(text)
   (measured.width.to_double(), measured.height.to_double())
 }
 
@@ -456,19 +436,12 @@ fn StateDiagram::layout_scope(
   metrics : @metrics.FontMetrics,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
   let visible_nodes = self.visible_nodes_for_scope(scope, region_index, metrics)
-  let graph = @cgraph.Graph::new(@cgraph.Directed, name="state", strict=false)
-  graph.set_attr(
-    "rankdir",
-    @graphviz.graphviz_rankdir_attr(@graphviz.graphviz_rankdir(self.style)),
-  )
-  graph.set_attr("splines", "spline")
+  let graph = @graphviz.new_directed_graph("state", self.style)
   let node_names : Map[String, String] = Map([])
   for index, visible in visible_nodes {
     let name = state_graphviz_node_name(index)
     node_names[visible.state.code] = name
     let node = graph.node(name)
-    node.set_attr("label", "")
-    node.set_attr("shape", "box")
     let (width, height) = match visible.child {
       Some(child) =>
         (
@@ -479,9 +452,7 @@ fn StateDiagram::layout_scope(
         )
       None => visible.state.leaf_size(metrics)
     }
-    node.set_attr("width", (width / STATE_DPI).to_string())
-    node.set_attr("height", (height / STATE_DPI).to_string())
-    node.set_attr("fixedsize", "true")
+    @graphviz.set_fixed_node_size(node, width, height)
   }
   let transition_names : Map[Int, String] = Map([])
   for transition_index, transition in self.transitions {
@@ -522,11 +493,7 @@ fn StateDiagram::layout_scope(
     note_names[name] = note_index
     let node = graph.node(name)
     let (width, height) = state_note_size(note, metrics)
-    node.set_attr("label", "")
-    node.set_attr("shape", "note")
-    node.set_attr("width", (width / STATE_DPI).to_string())
-    node.set_attr("height", (height / STATE_DPI).to_string())
-    node.set_attr("fixedsize", "true")
+    @graphviz.set_fixed_node_size(node, width, height, shape="note")
     match self.note_anchor(note, scope) {
       Some(anchor) =>
         match node_names.get(anchor) {
@@ -550,12 +517,12 @@ fn StateDiagram::layout_scope(
       notes: [],
     }
   }
-  let laid_out = @dot_layout.layout_dot(graph, options={
-    rankdir: Some(@graphviz.graphviz_rankdir(self.style)),
-    nodesep: Some(plantuml_state_nodesep_in()),
-    ranksep: Some(plantuml_state_ranksep_in()),
-    splines: Some(@dot_layout.SplinesMode::Spline),
-  })
+  let laid_out = @graphviz.layout_dot(
+    graph,
+    self.style,
+    plantuml_state_nodesep_in(),
+    plantuml_state_ranksep_in(),
+  )
   let bbox = laid_out.bbox
   let output : StateFragment = {
     width: bbox.urx - bbox.llx,
@@ -570,10 +537,10 @@ fn StateDiagram::layout_scope(
     for index, visible in visible_nodes {
       guard state_graphviz_node_name(index) == node_name else { continue }
       let (x, y) = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
-      let node_x = x - node_layout.width_in * STATE_DPI / 2.0
-      let node_y = y - node_layout.height_in * STATE_DPI / 2.0
-      let width = node_layout.width_in * STATE_DPI
-      let height = node_layout.height_in * STATE_DPI
+      let width = @graphviz.inches_to_points(node_layout.width_in)
+      let height = @graphviz.inches_to_points(node_layout.height_in)
+      let node_x = x - width / 2.0
+      let node_y = y - height / 2.0
       output.nodes.push({
         code: visible.state.code,
         x: node_x,
@@ -596,7 +563,7 @@ fn StateDiagram::layout_scope(
   for edge in @graphviz.graphviz_edges(laid_out, transition_names, bbox) {
     output.edges.push({
       transition_index: edge.index,
-      paths: edge.paths,
+      paths: edge.splines.map(spline => spline.points),
       label: edge.label,
     })
   }

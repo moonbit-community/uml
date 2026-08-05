@@ -127,7 +127,7 @@ fn place_leaf(
   y : Int,
   layouts : Array[ActivityNodeLayout],
 ) -> PlacedTile {
-  let size = node_size(nodes[index], metrics)
+  let size = nodes[index].size(metrics)
   guard size.height > 0 else {
     return {
       entry: None,
@@ -179,7 +179,7 @@ fn place_tile(
         match branch.decision {
           Some(decision) =>
             decision_height = decision_height.max(
-              node_size(nodes[decision], metrics).height,
+              nodes[decision].size(metrics).height,
             )
           None => ()
         }
@@ -191,7 +191,7 @@ fn place_tile(
       for branch in branches {
         let body_size = measure_sequence(branch.tiles, nodes, metrics)
         let decision_size = branch.decision
-          .map(index => node_size(nodes[index], metrics))
+          .map(index => nodes[index].size(metrics))
           .unwrap_or({ width: 0, height: 0 })
         let branch_width = body_size.width
           .max(decision_size.width)
@@ -252,7 +252,7 @@ fn place_tile(
         placed.push({ tile: body, label: branch.label })
         cursor_x += branch_width + BRANCH_GAP
       }
-      let exit_size = node_size(nodes[exit], metrics)
+      let exit_size = nodes[exit].size(metrics)
       let exit_placed = place_leaf(
         exit,
         nodes,
@@ -273,8 +273,8 @@ fn place_tile(
     }
     Switch(entry, branches, exit) => {
       let size = measure_tile(tile, nodes, metrics)
-      let entry_size = node_size(nodes[entry], metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let entry_size = nodes[entry].size(metrics)
+      let exit_size = nodes[exit].size(metrics)
       let entry_placed = place_leaf(
         entry,
         nodes,
@@ -322,7 +322,7 @@ fn place_tile(
     }
     WhileLoop(entry, body, enter_label, exit_label) => {
       let size = measure_tile(tile, nodes, metrics)
-      let entry_size = node_size(nodes[entry], metrics)
+      let entry_size = nodes[entry].size(metrics)
       let body_size = measure_sequence(body, nodes, metrics)
       let entry_placed = place_leaf(
         entry,
@@ -363,9 +363,9 @@ fn place_tile(
     }
     RepeatLoop(entry, body, exit, retry_label, exit_label) => {
       let size = measure_tile(tile, nodes, metrics)
-      let entry_size = node_size(nodes[entry], metrics)
+      let entry_size = nodes[entry].size(metrics)
       let body_size = measure_sequence(body, nodes, metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let exit_size = nodes[exit].size(metrics)
       let entry_placed = place_leaf(
         entry,
         nodes,
@@ -409,8 +409,8 @@ fn place_tile(
     }
     Parallel(entry, branches, exit) => {
       let size = measure_tile(tile, nodes, metrics)
-      let entry_size = node_size(nodes[entry], metrics)
-      let exit_size = node_size(nodes[exit], metrics)
+      let entry_size = nodes[entry].size(metrics)
+      let exit_size = nodes[exit].size(metrics)
       let entry_placed = place_leaf(
         entry,
         nodes,

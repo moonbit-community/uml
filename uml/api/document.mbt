@@ -37,61 +37,35 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 }
 
 ///|
-/// `(kind, source predicate)` pairs in dispatch priority order.
-///
-/// The order mirrors PlantUML's factory selection: structured formats and the
-/// mindmap are explicit, then sequence (tried first upstream), activity, and
-/// the entity-based families.
-let source_predicates : FixedArray[(DiagramKind, (String) -> Bool)] = [
-  (Json, is_json_source),
-  (Yaml, is_yaml_source),
-  (Toml, is_toml_source),
-  (Mindmap, is_mindmap_source),
-  (Sequence, is_sequence_source),
-  (Activity, is_activity_source),
-  (State, is_state_source),
-  (UseCase, is_usecase_source),
-  (Component, is_component_source),
-  (Object, is_object_source),
-  (Class, is_class_source),
-]
-
-///|
-/// Detect the diagram family a source selects, in priority order.
-fn source_kind(source : String) -> DiagramKind? {
-  source_predicates
-  .iter()
-  .find_first(pair => (pair.1)(source))
-  .map(pair => pair.0)
-}
-
-///|
 /// Parse a source into the diagram family its syntax selects.
 ///
 /// The `is_*_source` heuristics run in priority order, mirroring PlantUML's
 /// per-diagram factory selection. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
-  match source_kind(source) {
-    Some(Json) => { diagram: Json(@nonuml.parse_json(source)) }
-    Some(Yaml) => { diagram: Yaml(@nonuml.parse_yaml(source)) }
-    Some(Toml) => { diagram: Toml(@nonuml.parse_toml(source)) }
-    Some(Mindmap) => { diagram: Mindmap(@mindmap.parse(source)) }
-    Some(Activity) => { diagram: Activity(@activity.parse(source)) }
-    Some(Sequence) => { diagram: Sequence(@sequence.parse(source)) }
-    Some(State) => { diagram: State(@state.parse(source)) }
-    Some(UseCase) =>
+  match () {
+    _ if is_json_source(source) => { diagram: Json(@nonuml.parse_json(source)) }
+    _ if is_yaml_source(source) => { diagram: Yaml(@nonuml.parse_yaml(source)) }
+    _ if is_toml_source(source) => { diagram: Toml(@nonuml.parse_toml(source)) }
+    _ if is_mindmap_source(source) =>
+      { diagram: Mindmap(@mindmap.parse(source)) }
+    _ if is_sequence_source(source) =>
+      { diagram: Sequence(@sequence.parse(source)) }
+    _ if is_activity_source(source) =>
+      { diagram: Activity(@activity.parse(source)) }
+    _ if is_state_source(source) => { diagram: State(@state.parse(source)) }
+    _ if is_usecase_source(source) =>
       { diagram: UseCase(@entity.parse(source, family=@entity.UseCaseDiagram)) }
-    Some(Component) =>
+    _ if is_component_source(source) =>
       {
         diagram: Component(
           @entity.parse(source, family=@entity.ComponentDiagram),
         ),
       }
-    Some(Object) =>
+    _ if is_object_source(source) =>
       { diagram: Object(@entity.parse(source, family=@entity.ObjectDiagram)) }
-    Some(Class) =>
+    _ if is_class_source(source) =>
       { diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)) }
-    _ => fail("unknown diagram")
+    _ => raise @parse.SyntaxError(1, "unknown diagram")
   }
 }
 

@@ -16,18 +16,40 @@ priv struct PlacedNode {
 }
 
 ///|
-fn structured_font_size() -> Int {
-  14
-}
+const STRUCTURED_FONT_SIZE : Int = 14
 
 ///|
-fn structured_key_font_weight() -> Int {
-  700
-}
+const STRUCTURED_KEY_FONT_WEIGHT : Int = 700
 
 ///|
-fn display_text(value : StructuredValueDisplay) -> String {
-  match value {
+const STRUCTURED_LINE_HEIGHT : Int = 21
+
+///|
+const STRUCTURED_CELL_PADDING : Int = 5
+
+///|
+const STRUCTURED_TEXT_BASELINE_OFFSET : Int = 16
+
+///|
+const STRUCTURED_COLUMN_MIN_WIDTH : Int = 30
+
+///|
+const STRUCTURED_NODE_GAP : Int = 38
+
+///|
+const STRUCTURED_SIBLING_GAP : Int = 8
+
+///|
+const STRUCTURED_CANVAS_PADDING : Int = 10
+
+///|
+const STRUCTURED_LINE_COLOR : String = "#000000"
+
+///|
+fn StructuredValueDisplay::measurement_text(
+  self : StructuredValueDisplay,
+) -> String {
+  match self {
     Text(text) => text
     True => "[x] true"
     False => "[ ] false"
@@ -37,9 +59,9 @@ fn display_text(value : StructuredValueDisplay) -> String {
 }
 
 ///|
-fn display_svg(value : StructuredValueDisplay) -> String {
-  match value {
-    Text(text) => @style.xml_escape(text)
+fn StructuredValueDisplay::svg_markup(self : StructuredValueDisplay) -> String {
+  match self {
+    Text(text) => @svg.xml_escape(text)
     True => "&#9745; true"
     False => "&#9744; false"
     Null => "&#9216;"
@@ -48,10 +70,10 @@ fn display_svg(value : StructuredValueDisplay) -> String {
 }
 
 ///|
-fn row_offset(metrics : NodeMetrics, index : Int) -> Int {
+fn NodeMetrics::row_offset(self : NodeMetrics, index : Int) -> Int {
   let mut offset = 0
   for row_index in 0..<index {
-    offset += metrics.row_heights[row_index]
+    offset += self.row_heights[row_index]
   }
   offset
 }
@@ -74,8 +96,8 @@ fn append_multiline_text(
       y.to_double(),
       text,
       attributes,
-      line_height=21.0,
-      offset=false,
+      line_height=STRUCTURED_LINE_HEIGHT.to_double(),
+      anchor=Baseline,
     ),
   )
   output.write_string("\n")
@@ -90,7 +112,7 @@ fn append_value_text(
 ) -> Unit {
   match value {
     Text(text) => append_multiline_text(output, x, y, text)
-    _ => output <+ "<text x=\"\{x}\" y=\"\{y}\">\{display_svg(value)}</text>\n"
+    _ => output <+ "<text x=\"\{x}\" y=\"\{y}\">\{value.svg_markup()}</text>\n"
   }
 }
 
@@ -103,78 +125,83 @@ fn is_blank_node(node : StructuredNode) -> Bool {
 }
 
 ///|
-fn node_metrics(node : StructuredNode) -> NodeMetrics {
+fn StructuredNode::metrics(self : StructuredNode) -> NodeMetrics {
   let regular_metrics = @metrics.FontMetrics::from_defaults(
-    font_size=structured_font_size(),
-    line_height=21,
+    font_size=STRUCTURED_FONT_SIZE,
+    line_height=STRUCTURED_LINE_HEIGHT,
   )
   let key_metrics = @metrics.FontMetrics::from_defaults(
-    font_size=structured_font_size(),
-    font_weight=structured_key_font_weight(),
-    line_height=21,
+    font_size=STRUCTURED_FONT_SIZE,
+    font_weight=STRUCTURED_KEY_FONT_WEIGHT,
+    line_height=STRUCTURED_LINE_HEIGHT,
   )
   let mut key_width = 0
   let mut value_width = 0
   let row_heights = []
-  for row in node.rows {
+  for row in self.rows {
     let key_height = match row.key {
       Some(key) => {
-        let key_measurement = @metrics.measure_text_with(key, key_metrics)
-        key_width = key_width.max(key_measurement.width + 10)
+        let key_measurement = key_metrics.measure(key)
+        key_width = key_width.max(
+          key_measurement.width + STRUCTURED_CELL_PADDING * 2,
+        )
         key_measurement.height
       }
       None => 0
     }
-    let value_metrics = @metrics.measure_text_with(
-      display_text(row.value),
-      regular_metrics,
+    let value_metrics = regular_metrics.measure(row.value.measurement_text())
+    value_width = value_width.max(
+      value_metrics.width + STRUCTURED_CELL_PADDING * 2,
     )
-    value_width = value_width.max(value_metrics.width + 10)
-    row_heights.push(key_height.max(value_metrics.height).max(21))
+    row_heights.push(
+      key_height.max(value_metrics.height).max(STRUCTURED_LINE_HEIGHT),
+    )
   }
-  let height = if is_blank_node(node) {
+  let height = if is_blank_node(self) {
     15
   } else {
     row_heights.fold(init=0, (total, row_height) => total + row_height)
   }
-  match node.kind {
+  match self.kind {
     Object => {
-      key_width = key_width.max(30)
-      value_width = value_width.max(30)
+      key_width = key_width.max(STRUCTURED_COLUMN_MIN_WIDTH)
+      value_width = value_width.max(STRUCTURED_COLUMN_MIN_WIDTH)
       { key_width, width: key_width + value_width, height, row_heights }
     }
     Array => {
-      value_width = value_width.max(30)
+      value_width = value_width.max(STRUCTURED_COLUMN_MIN_WIDTH)
       { key_width: 0, width: value_width, height, row_heights }
     }
   }
 }
 
 ///|
-fn layout_node(
-  node : StructuredNode,
+fn StructuredNode::place(
+  self : StructuredNode,
   x : Int,
   next_y : Int,
 ) -> (PlacedNode, Int) {
-  let metrics = node_metrics(node)
+  let metrics = self.metrics()
   let children = []
   let mut child_y = next_y
-  for index, row in node.rows {
+  for index, row in self.rows {
     match row.child {
       Some(child) => {
-        let (placed, following_y) = layout_node(
-          child,
-          x + metrics.width + 38,
+        let (placed, following_y) = child.place(
+          x + metrics.width + STRUCTURED_NODE_GAP,
           child_y,
         )
         children.push((index, placed))
-        child_y = following_y + 8
+        child_y = following_y + STRUCTURED_SIBLING_GAP
       }
       None => ()
     }
   }
   if children.is_empty() {
-    return ({ node, metrics, x, y: next_y, children }, next_y + metrics.height)
+    return (
+      { node: self, metrics, x, y: next_y, children },
+      next_y + metrics.height,
+    )
   }
   let first = children[0].1
   let last = children[children.length() - 1].1
@@ -183,51 +210,51 @@ fn layout_node(
     ) /
     2 -
     metrics.height / 2
-  ({ node, metrics, x, y, children }, child_y.max(y + metrics.height))
+  ({ node: self, metrics, x, y, children }, child_y.max(y + metrics.height))
 }
 
 ///|
-fn max_right(node : PlacedNode) -> Int {
-  let mut right = node.x + node.metrics.width
-  for pair in node.children {
+fn PlacedNode::max_right(self : PlacedNode) -> Int {
+  let mut right = self.x + self.metrics.width
+  for pair in self.children {
     let (_, child) = pair
-    right = right.max(max_right(child))
+    right = right.max(child.max_right())
   }
   right
 }
 
 ///|
-fn max_bottom(node : PlacedNode) -> Int {
-  let mut bottom = node.y + node.metrics.height
-  for pair in node.children {
+fn PlacedNode::max_bottom(self : PlacedNode) -> Int {
+  let mut bottom = self.y + self.metrics.height
+  for pair in self.children {
     let (_, child) = pair
-    bottom = bottom.max(max_bottom(child))
+    bottom = bottom.max(child.max_bottom())
   }
   bottom
 }
 
 ///|
-fn min_top(node : PlacedNode) -> Int {
-  let mut top = node.y
-  for pair in node.children {
+fn PlacedNode::min_top(self : PlacedNode) -> Int {
+  let mut top = self.y
+  for pair in self.children {
     let (_, child) = pair
-    top = top.min(min_top(child))
+    top = top.min(child.min_top())
   }
   top
 }
 
 ///|
-fn shift_node(node : PlacedNode, delta : Int) -> PlacedNode {
+fn PlacedNode::shifted(self : PlacedNode, delta : Int) -> PlacedNode {
   let children = []
-  for pair in node.children {
+  for pair in self.children {
     let (row, child) = pair
-    children.push((row, shift_node(child, delta)))
+    children.push((row, child.shifted(delta)))
   }
   {
-    node: node.node,
-    metrics: node.metrics,
-    x: node.x,
-    y: node.y + delta,
+    node: self.node,
+    metrics: self.metrics,
+    x: self.x,
+    y: self.y + delta,
     children,
   }
 }
@@ -245,9 +272,9 @@ fn align_empty_records(node : PlacedNode) -> PlacedNode {
     let child = align_empty_records(original_child)
     let child = if is_empty_record(child) {
       let port_y = node.y +
-        row_offset(node.metrics, row) +
+        node.metrics.row_offset(row) +
         node.metrics.row_heights[row] / 2
-      shift_node(child, port_y - (child.y + child.metrics.height / 2))
+      child.shifted(port_y - (child.y + child.metrics.height / 2))
     } else {
       child
     }
@@ -262,7 +289,7 @@ fn append_edges(output : StringBuilder, node : PlacedNode) -> Unit {
     let (row_index, child) = pair
     let x1 = node.x + node.metrics.width - 12
     let y1 = node.y +
-      row_offset(node.metrics, row_index) +
+      node.metrics.row_offset(row_index) +
       node.metrics.row_heights[row_index] / 2
     let x2 = child.x
     let y2 = child.y + child.metrics.height / 2
@@ -293,7 +320,7 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
     return
   }
   for index, row in node.node.rows {
-    let row_y = node.y + row_offset(node.metrics, index)
+    let row_y = node.y + node.metrics.row_offset(index)
     let row_height = node.metrics.row_heights[index]
     if index > 0 {
       output.write_string("<line\n")
@@ -305,16 +332,27 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
         let divider = node.x + node.metrics.key_width
         append_multiline_text(
           output,
-          node.x + 5,
-          row_y + 16,
+          node.x + STRUCTURED_CELL_PADDING,
+          row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
           key,
           class="structured-key",
         )
         output <+
           "<line x1=\"\{divider}\" y1=\"\{row_y}\" x2=\"\{divider}\" y2=\"\{row_y + row_height}\"/>\n"
-        append_value_text(output, divider + 5, row_y + 16, row.value)
+        append_value_text(
+          output,
+          divider + STRUCTURED_CELL_PADDING,
+          row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
+          row.value,
+        )
       }
-      None => append_value_text(output, node.x + 5, row_y + 16, row.value)
+      None =>
+        append_value_text(
+          output,
+          node.x + STRUCTURED_CELL_PADDING,
+          row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
+          row.value,
+        )
     }
   }
   output.write_string("</g>\n")
@@ -328,58 +366,57 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 pub fn StructuredDiagram::render_json_svg(
   diagram : StructuredDiagram,
 ) -> String {
-  render_labelled_svg(diagram, "JSON diagram")
+  diagram.render_svg()
 }
 
 ///|
 pub fn StructuredDiagram::render_yaml_svg(
   diagram : StructuredDiagram,
 ) -> String {
-  render_labelled_svg(diagram, "YAML diagram")
+  diagram.render_svg()
 }
 
 ///|
 pub fn StructuredDiagram::render_toml_svg(
   diagram : StructuredDiagram,
 ) -> String {
-  render_labelled_svg(diagram, "TOML diagram")
+  diagram.render_svg()
 }
 
 ///|
-fn render_labelled_svg(diagram : StructuredDiagram, label : String) -> String {
-  let (initial_root, _) = layout_node(diagram.root, 10, 10)
-  let shifted_root = shift_node(
-    initial_root,
-    (10 - min_top(initial_root)).max(0),
+pub fn StructuredDiagram::render_svg(diagram : StructuredDiagram) -> String {
+  let (initial_root, _) = diagram.root.place(
+    STRUCTURED_CANVAS_PADDING,
+    STRUCTURED_CANVAS_PADDING,
+  )
+  let shifted_root = initial_root.shifted(
+    (STRUCTURED_CANVAS_PADDING - initial_root.min_top()).max(0),
   )
   let root = align_empty_records(shifted_root)
-  let width = max_right(root) + 10
-  let height = max_bottom(root) + 10
+  let width = root.max_right() + STRUCTURED_CANVAS_PADDING
+  let height = root.max_bottom() + STRUCTURED_CANVAS_PADDING
   let output = StringBuilder()
   output.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\"\n")
   output <+
     "  width=\"\{width}\" height=\"\{height}\" viewBox=\"0 0 \{width} \{height}\"\n"
-  output <+ "  role=\"img\" aria-label=\"\{label}\">\n"
-  let font_size = structured_font_size()
-  let key_font_weight = structured_key_font_weight()
+  output <+ "  role=\"img\" aria-label=\"\{diagram.format.aria_label()}\">\n"
   let defaults = @style.render_defaults()
-  let line = "#000000"
   output.write_string("<style>\n")
   output <+
-    "svg { font-family: sans-serif; font-size: \{font_size}px; background: \{defaults.canvas_background} }\n"
+    "svg { font-family: sans-serif; font-size: \{STRUCTURED_FONT_SIZE}px; background: \{defaults.canvas_background} }\n"
   output.write_string(
     (
-      $|.structured-node rect { fill: \{defaults.node_background}; stroke: \{line}; stroke-width: 1.5 }
-      $|.structured-node line { stroke: \{line}; stroke-width: 1 }
-      $|.structured-node text { fill: \{line} }
+      $|.structured-node rect { fill: \{defaults.node_background}; stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1.5 }
+      $|.structured-node line { stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1 }
+      $|.structured-node text { fill: \{STRUCTURED_LINE_COLOR} }
     ),
   )
   output.write_char('\n')
-  output <+ ".structured-key { font-weight: \{key_font_weight} }\n"
+  output <+ ".structured-key { font-weight: \{STRUCTURED_KEY_FONT_WEIGHT} }\n"
   output.write_string(
     (
-      $|.structured-edge { fill: none; stroke: \{line}; stroke-width: 1; stroke-dasharray: 3,3 }
-      $|.structured-arrow, .structured-spot { fill: \{line}; stroke: \{line}; stroke-width: 1 }
+      $|.structured-edge { fill: none; stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1; stroke-dasharray: 3,3 }
+      $|.structured-arrow, .structured-spot { fill: \{STRUCTURED_LINE_COLOR}; stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1 }
       $|</style>
     ),
   )

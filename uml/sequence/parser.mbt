@@ -30,20 +30,23 @@ fn ParseCtx::consume_style_directive(
 }
 
 ///|
-fn diagram_options(events : Array[Event]) -> (Autonumber?, Bool, Bool) {
-  let mut auto_number = None
+priv struct DiagramOptions {
+  autoactivate : Bool
+  show_footbox : Bool
+}
+
+///|
+fn diagram_options(events : Array[Event]) -> DiagramOptions {
   let mut autoactivate = false
   let mut show_footbox = true
   for event in events {
     match event {
-      Autonumber(config) => auto_number = Some(config)
-      AutonumberStop => auto_number = None
       Autoactivate(enabled) => autoactivate = enabled
       Footbox(enabled) => show_footbox = enabled
       _ => ()
     }
   }
-  (auto_number, autoactivate, show_footbox)
+  { autoactivate, show_footbox }
 }
 
 ///|
@@ -108,13 +111,12 @@ pub fn parse(input : String) -> SequenceDiagram raise @parse.ParseError {
     raise SyntaxError(diagnostic.line_number(), diagnostic.message)
   }
 
-  let (auto_number, autoactivate, show_footbox) = diagram_options(ctx.events)
+  let options = diagram_options(ctx.events)
   {
     participants: ctx.participants,
     events: ctx.events,
-    auto_number,
-    autoactivate,
-    show_footbox,
+    autoactivate: options.autoactivate,
+    show_footbox: options.show_footbox,
     style: ctx.style,
   }
 }

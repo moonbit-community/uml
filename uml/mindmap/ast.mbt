@@ -9,7 +9,7 @@ pub(all) enum Direction {
 /// The visual form requested by a mindmap item.
 pub(all) enum IdeaShape {
   Box
-  None
+  Boxless
 } derive(Eq, Debug)
 
 ///|

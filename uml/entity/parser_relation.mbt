@@ -1,99 +1,75 @@
 ///|
+let left_relation_decorations : Array[(String, RelationEnd)] = [
+  ("<|:", DefinedBy),
+  ("<||", Redefines),
+  ("}o", CircleCrowfoot),
+  ("|o", CircleLine),
+  ("}|", LineCrowfoot),
+  ("<|", Extension),
+  ("<<", TriangleArrow),
+  ("0)", CircleConnect),
+  ("()", Parenthesis),
+  ("))", Parenthesis),
+  ("||", DoubleLine),
+  ("*", CompositionEnd),
+  ("o", AggregationEnd),
+  ("x", NotNavigable),
+  ("}", Crowfoot),
+  ("<_", Arrow),
+  ("<", Arrow),
+  ("^", Extension),
+  ("0", CircleEnd),
+  ("@", FilledCircle),
+  (")", Parenthesis),
+  ("#", Square),
+  ("+", Plus),
+]
+
+///|
+let right_relation_decorations : Array[(String, RelationEnd)] = [
+  (":|>", DefinedBy),
+  ("||>", Redefines),
+  ("o{", CircleCrowfoot),
+  ("o|", CircleLine),
+  ("|{", LineCrowfoot),
+  ("|>", Extension),
+  (">>", TriangleArrow),
+  ("(0", CircleConnect),
+  ("()", Parenthesis),
+  ("((", Parenthesis),
+  ("||", DoubleLine),
+  ("*", CompositionEnd),
+  ("o", AggregationEnd),
+  ("x", NotNavigable),
+  ("{", Crowfoot),
+  ("_>", Arrow),
+  (">", Arrow),
+  ("^", Extension),
+  ("0", CircleEnd),
+  ("@", FilledCircle),
+  ("(", Parenthesis),
+  ("#", Square),
+  ("+", Plus),
+  ("\\", HalfArrowUp),
+  ("//", HalfArrowDown),
+]
+
+///|
 fn left_relation_end(arrow : String) -> RelationEnd {
-  if arrow.has_prefix("<|:") {
-    DefinedBy
-  } else if arrow.has_prefix("<||") {
-    Redefines
-  } else if arrow.has_prefix("<|") || arrow.has_prefix("^") {
-    Extension
-  } else if arrow.has_prefix("}o") {
-    CircleCrowfoot
-  } else if arrow.has_prefix("|o") {
-    CircleLine
-  } else if arrow.has_prefix("}|") {
-    LineCrowfoot
-  } else if arrow.has_prefix("||") {
-    DoubleLine
-  } else if arrow.has_prefix("*") {
-    CompositionEnd
-  } else if arrow.has_prefix("o") {
-    AggregationEnd
-  } else if arrow.has_prefix("x") {
-    NotNavigable
-  } else if arrow.has_prefix("}") {
-    Crowfoot
-  } else if arrow.has_prefix("<<") {
-    TriangleArrow
-  } else if arrow.has_prefix("<") {
-    Arrow
-  } else if arrow.has_prefix("0)") {
-    CircleConnect
-  } else if arrow.has_prefix("0") {
-    CircleEnd
-  } else if arrow.has_prefix("@") {
-    FilledCircle
-  } else if arrow.has_prefix("()") ||
-    arrow.has_prefix("))") ||
-    arrow.has_prefix(")") {
-    Parenthesis
-  } else if arrow.has_prefix("#") {
-    Square
-  } else if arrow.has_prefix("+") {
-    Plus
-  } else {
-    Plain
+  for entry in left_relation_decorations {
+    guard arrow.has_prefix(entry.0) else { continue }
+    return entry.1
   }
+  Plain
 }
 
 ///|
 fn right_relation_end(arrow : String) -> RelationEnd {
-  if arrow.has_suffix(":|>") {
-    DefinedBy
-  } else if arrow.has_suffix("||>") {
-    Redefines
-  } else if arrow.has_suffix("|>") || arrow.has_suffix("^") {
-    Extension
-  } else if arrow.has_suffix("o{") {
-    CircleCrowfoot
-  } else if arrow.has_suffix("o|") {
-    CircleLine
-  } else if arrow.has_suffix("|{") {
-    LineCrowfoot
-  } else if arrow.has_suffix("||") {
-    DoubleLine
-  } else if arrow.has_suffix("*") {
-    CompositionEnd
-  } else if arrow.has_suffix("o") {
-    AggregationEnd
-  } else if arrow.has_suffix("x") {
-    NotNavigable
-  } else if arrow.has_suffix("{") {
-    Crowfoot
-  } else if arrow.has_suffix(">>") {
-    TriangleArrow
-  } else if arrow.has_suffix(">") {
-    Arrow
-  } else if arrow.has_suffix("(0") {
-    CircleConnect
-  } else if arrow.has_suffix("0") {
-    CircleEnd
-  } else if arrow.has_suffix("@") {
-    FilledCircle
-  } else if arrow.has_suffix("()") ||
-    arrow.has_suffix("((") ||
-    arrow.has_suffix("(") {
-    Parenthesis
-  } else if arrow.has_suffix("#") {
-    Square
-  } else if arrow.has_suffix("+") {
-    Plus
-  } else if arrow.has_suffix("\\") {
-    HalfArrowUp
-  } else if arrow.has_suffix("//") {
-    HalfArrowDown
-  } else {
-    Plain
+  for entry in right_relation_decorations {
+    guard arrow.has_suffix(entry.0) else { continue }
+    return entry.1
   }
+  Plain
 }
 
 ///|
@@ -230,9 +206,14 @@ fn Parser::apply_relation_syntax(
     self.ensure_relation_entity(right_name, right_end)
   }
   self.relations.push({
-    left,
-    right,
-    kind: relation_kind(left_end, right_end, arrow),
+    ..Relation::new(
+      left,
+      right,
+      relation_kind(left_end, right_end, arrow),
+      arrow,
+      left_end,
+      right_end,
+    ),
     left_cardinality: syntax.left.cardinality,
     right_cardinality: syntax.right.cardinality,
     left_role: syntax.left.role,
@@ -240,10 +221,6 @@ fn Parser::apply_relation_syntax(
     left_qualifier: syntax.left.qualifier,
     right_qualifier: syntax.right.qualifier,
     label: syntax.label,
-    dotted: arrow.contains("."),
-    raw_arrow: arrow,
-    left_end,
-    right_end,
     direction: relation_direction(arrow),
     line_style: relation_style(arrow),
     color: syntax.color,

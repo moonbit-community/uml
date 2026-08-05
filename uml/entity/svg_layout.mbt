@@ -60,6 +60,18 @@ fn RelationLabelLayout::boxes(
 }
 
 ///|
+fn RelationLabelLayout::end_boxes(
+  self : RelationLabelLayout,
+) -> Array[RelationTextBox] {
+  [
+    self.left_cardinality,
+    self.right_cardinality,
+    self.left_role,
+    self.right_role,
+  ].filter_map(box => box)
+}
+
+///|
 priv enum RelationLabelKind {
   Label
   LeftCardinality
@@ -81,7 +93,7 @@ fn relation_text_box_from_top_left(
   y : Double,
   metrics : @metrics.FontMetrics,
 ) -> RelationTextBox {
-  let measured = @metrics.measure_text_with(text, metrics)
+  let measured = metrics.measure(text)
   {
     text,
     x,
@@ -100,7 +112,7 @@ fn relation_text_box_from_center(
   center : (Double, Double),
   metrics : @metrics.FontMetrics,
 ) -> RelationTextBox {
-  let measured = @metrics.measure_text_with(text, metrics)
+  let measured = metrics.measure(text)
   relation_text_box_from_top_left(
     text,
     center.0 - measured.width.to_double() / 2.0,
@@ -347,40 +359,6 @@ fn ContentBounds::point(
 }
 
 ///|
-#warnings("-unused_value")
-fn ContentBounds::rect(
-  self : ContentBounds,
-  x : Double,
-  y : Double,
-  w : Double,
-  h : Double,
-) -> ContentBounds {
-  self.point(x, y).point(x + w, y + h)
-}
-
-///|
-#warnings("-unused_value")
-fn ContentBounds::text(
-  self : ContentBounds,
-  x : Double,
-  baseline_y : Double,
-  measured : @metrics.TextMetrics,
-  anchor_middle? : Bool = true,
-) -> ContentBounds {
-  let left = if anchor_middle {
-    x - measured.width.to_double() / 2.0
-  } else {
-    x
-  }
-  self
-  .point(left, baseline_y - measured.ascent.to_double())
-  .point(
-    left + measured.width.to_double(),
-    baseline_y + measured.descent.to_double(),
-  )
-}
-
-///|
 fn ClassLayout::content_bounds(
   self : ClassLayout,
   diagram : EntityDiagram,
@@ -408,16 +386,16 @@ fn ClassLayout::content_bounds(
   match self.graphviz {
     Some(graphviz) => {
       for edge in graphviz.edges {
-        for path in edge.paths {
-          for point in path {
+        for spline in edge.splines {
+          for point in spline.points {
             let (x, y) = point
             bounds = include_point(bounds, x, y)
           }
         }
       }
       for edge in graphviz.note_edges {
-        for path in edge.paths {
-          for point in path {
+        for spline in edge.splines {
+          for point in spline.points {
             let (x, y) = point
             bounds = include_point(bounds, x, y)
           }
@@ -861,7 +839,7 @@ fn build_relation_label_layouts(
           relation,
           text_metrics,
           usecase,
-          edge.paths,
+          relation_edge_paths(edge),
           left_center,
           right_center,
           edge.label,
@@ -984,102 +962,8 @@ fn usecase_relation_endpoint(
 }
 
 ///|
-fn usecase_spline_endpoint(
-  entity : Entity,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
-  current : (Double, Double),
-  toward : (Double, Double),
-) -> (Double, Double) {
-  let center_x = x.to_double() + width.to_double() / 2.0
-  let center_y = y.to_double() + height.to_double() / 2.0
-  let dx = toward.0 - center_x
-  let dy = toward.1 - center_y
-  guard dx != 0.0 || dy != 0.0 else { return (center_x, center_y) }
-  match entity.kind {
-    Usecase | BusinessUsecase => {
-      let radius_x = width.to_double() / 2.0
-      let radius_y = height.to_double() / 2.0
-      let scale = 1.0 /
-        (dx * dx / (radius_x * radius_x) + dy * dy / (radius_y * radius_y)).sqrt()
-      (center_x + dx * scale, center_y + dy * scale)
-    }
-    Component => {
-      let scale_x = width.to_double() / 2.0 / dx.abs()
-      let scale_y = height.to_double() / 2.0 / dy.abs()
-      let scale = if dx == 0.0 {
-        scale_y
-      } else if dy == 0.0 {
-        scale_x
-      } else {
-        scale_x.min(scale_y)
-      }
-      (center_x + dx * scale, center_y + dy * scale)
-    }
-    _ => current
-  }
-}
-
-///|
-fn clip_usecase_spline(
-  path : Array[(Double, Double)],
-  left : Entity,
-  left_rect : (Int, Int, Int, Int),
-  right : Entity,
-  right_rect : (Int, Int, Int, Int),
-) -> Array[(Double, Double)] {
-  guard path.length() > 1 else { return path }
-  let clipped : Array[(Double, Double)] = []
-  for point in path {
-    clipped.push(point)
-  }
-  let (left_x, left_y, left_width, left_height) = left_rect
-  let (right_x, right_y, right_width, right_height) = right_rect
-  let original_start = clipped[0]
-  let original_end = clipped[clipped.length() - 1]
-  let clipped_start = usecase_spline_endpoint(
-    left,
-    left_x,
-    left_y,
-    left_width,
-    left_height,
-    clipped[0],
-    clipped[1],
-  )
-  clipped[0] = clipped_start
-  let last = clipped.length() - 1
-  let clipped_end = usecase_spline_endpoint(
-    right,
-    right_x,
-    right_y,
-    right_width,
-    right_height,
-    clipped[last],
-    clipped[last - 1],
-  )
-  clipped[last] = clipped_end
-  if (clipped.length() - 1) % 3 == 0 {
-    clipped[1] = (
-      clipped_start.0 + clipped[1].0 - original_start.0,
-      clipped_start.1 + clipped[1].1 - original_start.1,
-    )
-    clipped[last - 1] = (
-      clipped_end.0 - (original_end.0 - clipped[last - 1].0),
-      clipped_end.1 - (original_end.1 - clipped[last - 1].1),
-    )
-  }
-  clipped
-}
-
-///|
 fn relation_marker(end : RelationEnd) -> String? {
   match end {
-    Extension | Redefines | DefinedBy => Some("triangle")
-    CompositionEnd => Some("diamond")
-    AggregationEnd => Some("diamond-open")
-    Arrow | TriangleArrow | HalfArrowUp | HalfArrowDown => Some("arrow")
     NotNavigable | DoubleLine => Some("bar")
     CircleEnd | CircleConnect | CircleLine | CircleCrowfoot => Some("circle")
     FilledCircle => Some("circle-filled")

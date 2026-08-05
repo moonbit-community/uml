@@ -24,7 +24,7 @@ fn message_tail_parser() -> @talc.StringParser[
 fn message_line_parser() -> @talc.StringParser[Event] {
   @talc.char('&')
   .optional()
-  .bind(parallel => {
+  .bind(_ => {
     inline_spaces()
     .then(anchor_parser().attempt().optional())
     .bind(anchor => {
@@ -47,14 +47,13 @@ fn message_line_parser() -> @talc.StringParser[Event] {
               .then(anchor_parser().attempt().optional())
               .then(message_tail_parser())
               .bind(tail => {
-                guard message_direction(left, right) is Some(reverse) else {
+                guard message_direction(left, right) is Some(direction) else {
                   return @talc.fail("message direction")
                 }
                 let (activation_spec, life_color, label) = tail
-                let (from, to) = if reverse {
-                  (second.code, first.code)
-                } else {
-                  (first.code, second.code)
+                let (from, to) = match direction {
+                  Reverse => (second.code, first.code)
+                  Forward => (first.code, second.code)
                 }
                 @talc.pure(
                   Message({
@@ -62,13 +61,9 @@ fn message_line_parser() -> @talc.StringParser[Event] {
                     to_code: to,
                     label,
                     arrow_config: ArrowConfig::from_dressing(
-                      left, right, body, reverse,
+                      left, right, body, direction,
                     ),
-                    parallel: parallel is Some(_),
                     anchor,
-                    // PlantUML accepts trailing `& participant` here without
-                    // creating an additional message branch.
-                    multicast: [],
                     activation_spec,
                     life_color,
                   }),
@@ -109,7 +104,11 @@ fn left_exo_message_parser() -> @talc.StringParser[Event] {
               left,
               right,
               body,
-              left.has_dir,
+              if left.has_dir {
+                Reverse
+              } else {
+                Forward
+              },
             ),
             short_arrow: short_arrow is Some(_),
             activation_spec,
@@ -150,7 +149,11 @@ fn right_exo_message_parser() -> @talc.StringParser[Event] {
               left,
               right,
               body,
-              left.has_dir,
+              if left.has_dir {
+                Reverse
+              } else {
+                Forward
+              },
             ),
             short_arrow: short_arrow is Some(_),
             activation_spec,

@@ -1,6 +1,6 @@
 ///|
 fn svg_color(color : String?) -> String {
-  @style.svg_color(
+  @svg.svg_color(
     color,
     @style.render_defaults().sequence_participant_background,
   )
@@ -8,15 +8,12 @@ fn svg_color(color : String?) -> String {
 
 ///|
 fn activation_color(color : String?) -> String {
-  @style.svg_color(
-    color,
-    @style.render_defaults().sequence_activation_background,
-  )
+  @svg.svg_color(color, @style.render_defaults().sequence_activation_background)
 }
 
 ///|
 fn note_color(color : String?) -> String {
-  @style.svg_color(color, @style.render_defaults().note_background)
+  @svg.svg_color(color, @style.render_defaults().note_background)
 }
 
 ///|
@@ -53,7 +50,7 @@ fn append_text(
         ("class", class_name),
       ],
       line_height=line_height.to_double(),
-      offset=false,
+      anchor=Baseline,
     ),
   )
   output.write_string("\n")

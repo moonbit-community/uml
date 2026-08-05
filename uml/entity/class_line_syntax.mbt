@@ -158,64 +158,16 @@ fn Parser::apply_declaration_syntax(
       Class
     }
     let parent = self.ensure_entity_as(parent, parent_kind)
-    self.relations.push({
-      left: parent,
-      right: child,
-      kind: Extension,
-      left_cardinality: None,
-      right_cardinality: None,
-      left_role: None,
-      right_role: None,
-      left_qualifier: None,
-      right_qualifier: None,
-      label: None,
-      dotted: false,
-      raw_arrow: "<|--",
-      left_end: Extension,
-      right_end: Plain,
-      direction: Automatic,
-      line_style: None,
-      color: None,
-      url: None,
-      stereotype: None,
-      weight: None,
-      inside: None,
-      left_port: None,
-      right_port: None,
-      left_couple: None,
-      right_couple: None,
-    })
+    self.relations.push(
+      Relation::new(parent, child, Extension, "<|--", Extension, Plain),
+    )
   }
   for interface in declaration.implements {
     let child = self.resolve(declaration.code)
     let interface = self.ensure_entity_as(interface, Interface)
-    self.relations.push({
-      left: interface,
-      right: child,
-      kind: Realization,
-      left_cardinality: None,
-      right_cardinality: None,
-      left_role: None,
-      right_role: None,
-      left_qualifier: None,
-      right_qualifier: None,
-      label: None,
-      dotted: true,
-      raw_arrow: "<|..",
-      left_end: Extension,
-      right_end: Plain,
-      direction: Automatic,
-      line_style: None,
-      color: None,
-      url: None,
-      stereotype: None,
-      weight: None,
-      inside: None,
-      left_port: None,
-      right_port: None,
-      left_couple: None,
-      right_couple: None,
-    })
+    self.relations.push(
+      Relation::new(interface, child, Realization, "<|..", Extension, Plain),
+    )
   }
 }
 

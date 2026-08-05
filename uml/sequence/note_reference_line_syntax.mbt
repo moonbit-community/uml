@@ -164,20 +164,11 @@ fn Source::take_block_text(
   self : Source,
   terminator : (String) -> Bool,
 ) -> String? {
-  let output = StringBuilder()
-  let mut first = true
-  while !self.eof() {
-    let line = self.current_line()
-    if terminator(line.trim().to_lower().to_owned()) {
-      self.skip_line()
-      return Some(output.to_string())
-    }
-    if !first {
-      output.write_char('\n')
-    }
-    output.write_string(line)
-    first = false
-    self.skip_line()
-  }
-  None
+  @parse.collect_lines_until(
+    fn() {
+      guard !self.eof() else { return None }
+      Some(self.collect_line())
+    },
+    line => terminator(line.trim().to_lower().to_owned()),
+  ).map(lines => lines.join("\n"))
 }

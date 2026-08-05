@@ -18,7 +18,7 @@ priv struct SequenceTextMetrics {
 fn SequenceTextMetrics::new(
   style : @style.DocumentStyle,
 ) -> SequenceTextMetrics {
-  let base_size = @style.font_size_value(style)
+  let base_size = style.font_size_value()
   let line_height = base_size + 2
   {
     participant: style.font_metrics(
@@ -134,9 +134,24 @@ fn TextSize::of_with(
   text : String,
   font_metrics : @metrics.FontMetrics,
 ) -> TextSize {
-  let metrics = @metrics.measure_text_with(text, font_metrics)
+  let metrics = font_metrics.measure(text)
   { width: metrics.width, height: metrics.height }
 }
+
+///|
+const MESSAGE_ARROW_OFFSET : Int = 18
+
+///|
+const MESSAGE_EVENT_HEIGHT : Int = 14
+
+///|
+const SELF_MESSAGE_EVENT_HEIGHT : Int = 42
+
+///|
+const SELF_MESSAGE_LOOP_DEPTH : Int = 28
+
+///|
+const MESSAGE_VISUAL_CLEARANCE : Int = 6
 
 ///|
 fn Message::display_label(self : Message) -> String {
@@ -157,14 +172,13 @@ fn Message::label_height(
 
 ///|
 fn ParticipantType::header_height(self : ParticipantType) -> Int {
-  match self {
-    Actor => 76
-    Boundary | Control | Entity => 48
-    Database => 67
+  self.symbol_height() +
+  (match self {
+    Actor | Boundary | Control | Entity | Database => 16
     Queue => 26
     Collections => 40
     Participant => 36
-  }
+  })
 }
 
 ///|
@@ -175,8 +189,13 @@ fn Note::height(self : Note, text_metrics : SequenceTextMetrics) -> Int {
 ///|
 fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
   match self {
-    Message(message) => if message.is_self() { 42 } else { 14 }
-    MessageExo(_) => 14
+    Message(message) =>
+      if message.is_self() {
+        SELF_MESSAGE_EVENT_HEIGHT
+      } else {
+        MESSAGE_EVENT_HEIGHT
+      }
+    MessageExo(_) => MESSAGE_EVENT_HEIGHT
     Note(note) => note.height(text_metrics) + 10
     GroupingStart(_) => 22
     GroupingLeaf(leaf) => if leaf.is_end { 0 } else { 29 }
@@ -380,16 +399,10 @@ fn SequenceDiagram::participant_is_linked(
 ) -> Bool {
   for event in self.events {
     match event {
-      Message(message) => {
+      Message(message) =>
         if message.from_code == code || message.to_code == code {
           return true
         }
-        for target in message.multicast {
-          if target == code {
-            return true
-          }
-        }
-      }
       MessageExo(message) => if message.participant_code == code { return true }
       Note(note) =>
         for participant in note.participant_codes {

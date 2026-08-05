@@ -171,7 +171,7 @@ fn append_node(
         ("class", "activity-stop-inner"),
       ])
     }
-    _ if is_fork(node) =>
+    _ if node.is_fork() =>
       output.empty("rect", attributes=[
         ("x", x.to_string()),
         ("y", y.to_string()),
@@ -179,7 +179,7 @@ fn append_node(
         ("height", height.to_string()),
         ("class", "activity-fork"),
       ])
-    _ if is_decision(node) => {
+    _ if node.is_decision() => {
       output.empty("path", attributes=[
         (
           "d",
@@ -187,7 +187,7 @@ fn append_node(
         ),
         ("class", "activity-decision"),
       ])
-      match node_label(node) {
+      match node.label() {
         Some(label) =>
           append_label(output, center_x, center_y + 4, label, font_metrics)
         None => ()
@@ -247,9 +247,9 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
   output.open("style")
   output.raw(
     "svg{font-family:" +
-    @style.font_family(self.style) +
+    self.style.font_family() +
     ";font-size:" +
-    @style.font_size(self.style) +
+    self.style.font_size() +
     ";background:" +
     self.style.canvas_color() +
     "}.activity-edge{fill:none;stroke:" +

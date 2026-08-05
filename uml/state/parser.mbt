@@ -62,9 +62,19 @@ fn Parser::open_region(
 }
 
 ///|
-fn endpoint_kind(value : String, source : Bool) -> StateKind {
+priv enum EndpointRole {
+  TransitionSource
+  TransitionTarget
+}
+
+///|
+fn endpoint_kind(value : String, role : EndpointRole) -> StateKind {
   match value {
-    "[*]" => if source { Initial } else { Final }
+    "[*]" =>
+      match role {
+        TransitionSource => Initial
+        TransitionTarget => Final
+      }
     "[H]" => History
     "[H*]" => DeepHistory
     _ if value.has_prefix("==") && value.has_suffix("==") => Synchronization
@@ -73,9 +83,13 @@ fn endpoint_kind(value : String, source : Bool) -> StateKind {
 }
 
 ///|
-fn endpoint_code(value : String, source : Bool) -> String {
+fn endpoint_code(value : String, role : EndpointRole) -> String {
   match value {
-    "[*]" => if source { "__initial__" } else { "__final__" }
+    "[*]" =>
+      match role {
+        TransitionSource => "__initial__"
+        TransitionTarget => "__final__"
+      }
     "[H]" => "__history__"
     "[H*]" => "__deep_history__"
     _ if value.has_prefix("==") && value.has_suffix("==") =>
@@ -88,9 +102,9 @@ fn endpoint_code(value : String, source : Bool) -> String {
 fn Parser::ensure_endpoint(
   self : Parser,
   raw : String,
-  source : Bool,
+  role : EndpointRole,
 ) -> String {
-  let base_code = endpoint_code(raw, source)
+  let base_code = endpoint_code(raw, role)
   let code = match self.parent() {
     Some(parent) if raw == "[*]" ||
       raw == "[H]" ||
@@ -108,7 +122,7 @@ fn Parser::ensure_endpoint(
     self.states.push({
       code,
       display: raw,
-      kind: endpoint_kind(raw, source),
+      kind: endpoint_kind(raw, role),
       parent: self.parent(),
       region_index: self.region_index(),
       description: None,
@@ -139,20 +153,23 @@ fn Parser::consume_entity_note(
   guard target.length() > 0 else {
     raise SyntaxError(self.line_number(), "state note needs a target")
   }
-  let text = []
-  self.index += 1
-  while self.index < self.lines.length() {
-    let content = @parse.strip_line_comment(self.lines[self.index])
-      .trim()
-      .to_owned()
-    if content.equal_ignore_ascii_case("end note") {
-      self.notes.push({ target: StateNote(target), text: text.join("\n") })
-      return
-    }
-    text.push(content)
-    self.index += 1
+  let mut index = self.index + 1
+  guard @parse.collect_lines_until(
+      fn() {
+        guard index < self.lines.length() else { return None }
+        let line = @parse.strip_line_comment(self.lines[index])
+          .trim()
+          .to_owned()
+        index += 1
+        Some(line)
+      },
+      line => line.equal_ignore_ascii_case("end note"),
+    )
+    is Some(text) else {
+    raise SyntaxError(self.line_number(), "unclosed note")
   }
-  raise SyntaxError(self.line_number(), "unclosed note")
+  self.index = index - 1
+  self.notes.push({ target: StateNote(target), text: text.join("\n") })
 }
 
 ///|
@@ -196,8 +213,8 @@ fn Parser::apply_line_syntax(
       true
     }
     Some(Transition(syntax)) => {
-      let source = self.ensure_endpoint(syntax.source, true)
-      let target = self.ensure_endpoint(syntax.target, false)
+      let source = self.ensure_endpoint(syntax.source, TransitionSource)
+      let target = self.ensure_endpoint(syntax.target, TransitionTarget)
       self.transitions.push({
         source,
         target,

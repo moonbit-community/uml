@@ -16,28 +16,12 @@ fn append_attribute(
   name : String,
   value : String,
 ) -> Unit {
-  output <+ " \{name}=\""
-  for char in value {
-    match char {
-      '&' => output.write_string("&amp;")
-      '<' => output.write_string("&lt;")
-      '"' => output.write_string("&quot;")
-      _ => output.write_char(char)
-    }
-  }
-  output.write_char('"')
+  output <+ " \{name}=\"\{xml_escape_attribute(value)}\""
 }
 
 ///|
 fn append_text(output : StringBuilder, value : String) -> Unit {
-  for char in value {
-    match char {
-      '&' => output.write_string("&amp;")
-      '<' => output.write_string("&lt;")
-      '>' => output.write_string("&gt;")
-      _ => output.write_char(char)
-    }
-  }
+  output.write_string(xml_escape_text(value))
 }
 
 ///|

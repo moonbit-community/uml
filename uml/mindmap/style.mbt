@@ -286,6 +286,12 @@ pub fn MindmapStyle::apply_arrow_property(
 }
 
 ///|
+const MINDMAP_NODE_PREFIX : String = "mindmapnode"
+
+///|
+const MINDMAP_ARROW_PREFIX : String = "mindmaparrow"
+
+///|
 pub fn MindmapStyle::apply_skinparam(
   self : MindmapStyle,
   directive : @style.StyleDirective,
@@ -293,10 +299,17 @@ pub fn MindmapStyle::apply_skinparam(
   match directive {
     Property(key, value) => {
       let normalized = key.to_lower().replace(old="-", new="")
-      if normalized.has_prefix("mindmapnode") {
-        self.apply_node_property("Node", key[11:].to_owned(), value)
-      } else if normalized.has_prefix("mindmaparrow") {
-        self.apply_arrow_property(key[12:].to_owned(), value)
+      if normalized.has_prefix(MINDMAP_NODE_PREFIX) {
+        self.apply_node_property(
+          "Node",
+          normalized[MINDMAP_NODE_PREFIX.length():].to_owned(),
+          value,
+        )
+      } else if normalized.has_prefix(MINDMAP_ARROW_PREFIX) {
+        self.apply_arrow_property(
+          normalized[MINDMAP_ARROW_PREFIX.length():].to_owned(),
+          value,
+        )
       }
     }
     _ => ()

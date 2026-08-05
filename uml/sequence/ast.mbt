@@ -1,5 +1,4 @@
 ///|
-#warnings("-unused_value")
 priv enum ParticipantType {
   Participant
   Actor
@@ -12,14 +11,12 @@ priv enum ParticipantType {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct ParticipantBox {
   label : String?
   color : String?
 } derive(Eq)
 
 ///|
-#warnings("-unused_value")
 priv struct Participant {
   code : String
   display : String
@@ -31,7 +28,6 @@ priv struct Participant {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum ArrowBody {
   Solid
   Dotted
@@ -46,7 +42,6 @@ priv enum ArrowHead {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum ArrowPart {
   Full
   TopPart
@@ -54,7 +49,6 @@ priv enum ArrowPart {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct ArrowConfig {
   body : ArrowBody
   head1 : ArrowHead
@@ -65,7 +59,6 @@ priv struct ArrowConfig {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum NotePosition {
   Left
   Right
@@ -77,7 +70,6 @@ priv enum NotePosition {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum NoteStyle {
   NodeNormal
   Hexagonal
@@ -85,7 +77,6 @@ priv enum NoteStyle {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum GroupKeyword {
   Opt
   Alt
@@ -99,7 +90,6 @@ priv enum GroupKeyword {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum ActivationSpec {
   Activate
   Deactivate
@@ -108,7 +98,6 @@ priv enum ActivationSpec {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct GroupingStart {
   keyword : GroupKeyword
   header : String
@@ -118,7 +107,6 @@ priv struct GroupingStart {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct GroupingLeaf {
   is_end : Bool
   label : String?
@@ -126,15 +114,12 @@ priv struct GroupingLeaf {
 }
 
 ///|
-#warnings("-unused_value-unused_field")
 priv struct Message {
   from_code : String
   to_code : String
   label : String?
   arrow_config : ArrowConfig
-  parallel : Bool
   anchor : String?
-  multicast : Array[String]
   activation_spec : ActivationSpec?
   life_color : String?
 }
@@ -146,7 +131,6 @@ fn Message::is_self(self : Message) -> Bool {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum MessageExoType {
   FromLeft
   ToLeft
@@ -155,7 +139,6 @@ priv enum MessageExoType {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct MessageExo {
   participant_code : String
   exo_type : MessageExoType
@@ -167,7 +150,6 @@ priv struct MessageExo {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Note {
   participant_codes : Array[String]
   position : NotePosition
@@ -178,45 +160,38 @@ priv struct Note {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Delay {
   label : String?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Divider {
   title : String
 }
 
 ///|
-#warnings("-unused_value")
 priv struct HSpace {
   pixels : Int?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Newpage {
   title : String?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Reference {
   participant_codes : Array[String]
   label : String?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct BoxStart {
   label : String?
   color : String?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Autonumber {
   start : String?
   increment : Int?
@@ -224,20 +199,17 @@ priv struct Autonumber {
 }
 
 ///|
-#warnings("-unused_value")
 priv struct AutonumberResume {
   increment : Int?
   format : String?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct Return {
   value : String?
 }
 
 ///|
-#warnings("-unused_value")
 priv struct LifeEvent {
   participant_code : String
   event_type : ActivationSpec
@@ -245,7 +217,6 @@ priv struct LifeEvent {
 }
 
 ///|
-#warnings("-unused_value")
 priv enum Event {
   Message(Message)
   MessageExo(MessageExo)
@@ -277,11 +248,9 @@ priv enum Event {
 }
 
 ///|
-#warnings("-unused_value")
 struct SequenceDiagram {
   participants : Map[String, Participant]
   events : Array[Event]
-  auto_number : Autonumber?
   autoactivate : Bool
   show_footbox : Bool
   style : @style.DocumentStyle

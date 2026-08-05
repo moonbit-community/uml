@@ -2,8 +2,8 @@
 fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
   let usecase = self.family.is_usecase()
   let background = self.style.canvas_color()
-  let font_family = @style.font_family(self.style)
-  let font_size = @style.font_size(self.style)
+  let font_family = self.style.font_family()
+  let font_size = self.style.font_size()
   let line_color = self.style.diagram_line_color()
   let text_color = self.style.diagram_text_color()
   let text_metrics = ClassTextMetrics::new(self.style)
@@ -32,19 +32,12 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
   let marker_context_stroke = "context-stroke"
   output <+
     $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{diagram_label}">
-  let defs_relations =
-    $|<defs>
-    $|\{@svg.arrow_marker_markup("arrow", marker_width=7.0, marker_height=7.0, path_fill=marker_context_stroke)}
-    $|<marker id="triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="none"/></marker>
-    $|<marker id="diamond" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z" fill="\{marker_context_stroke}"/></marker>
-    $|<marker id="diamond-open" viewBox="0 0 12 10" refX="1" refY="5" markerWidth="10" markerHeight="8" orient="auto-start-reverse"><path d="M 0 5 L 6 0 L 12 5 L 6 10 z" fill="none"/></marker>
-    $|</defs>
-  output.write_string(defs_relations)
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
     $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:1.2}
     $|.relation{stroke:\{line_color};stroke-width:1.2}
+    $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
     $|.class-node > line,.relation{fill:none}
     $|.class-title{fill:\{text_color}}
     $|.class-stereotype{fill:\{text_color};font-style:italic}

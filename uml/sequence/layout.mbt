@@ -183,45 +183,16 @@ fn layout_participants(
     let right = layouts[participant_index + 1]
     gaps.push(left.width / 2 + right.width / 2 + 21)
   }
-  let mut autonumber = false
-  let mut next_number = "1"
-  let mut number_increment = 1
-  let mut number_format : String? = None
+  let autonumber = AutonumberState::new()
   for event in diagram.events {
+    autonumber.apply(event)
     match event {
       Message(message) => {
-        let number = if autonumber {
-          let value = next_number
-          next_number = increment_autonumber(next_number, number_increment)
-          match number_format {
-            Some(format) => Some(format_autonumber(format, value))
-            None => Some(value)
-          }
-        } else {
-          None
-        }
+        let number = autonumber.take()
         constrain_message_gap(gaps, index, message, number, text_metrics)
       }
+      MessageExo(_) | Return(_) => ignore(autonumber.take())
       Note(note) => constrain_note_gap(gaps, index, note, text_metrics)
-      Autonumber(config) => {
-        autonumber = true
-        next_number = config.start.unwrap_or("1")
-        number_increment = config.increment.unwrap_or(1)
-        number_format = config.format
-      }
-      AutonumberStop => autonumber = false
-      AutonumberResume(config) => {
-        autonumber = true
-        number_increment = config.increment.unwrap_or(number_increment)
-        number_format = match config.format {
-          Some(format) => Some(format)
-          None => number_format
-        }
-      }
-      AutonumberIncrement(position) =>
-        next_number = increment_autonumber_part(
-          next_number, position, number_increment,
-        )
       _ => ()
     }
   }
@@ -260,7 +231,7 @@ fn start_activation(
     caller_code,
     depth,
     start_y: y,
-    end_y: y + 18,
+    end_y: y + MESSAGE_ARROW_OFFSET,
     color,
   })
   let indices = active.get(participant_code).unwrap_or([])
@@ -347,18 +318,10 @@ fn layout_events(
   let auto_page_breaks = []
   let mut auto_newpage : Int? = None
   let mut messages_since_auto_newpage = 0
-  let mut autonumber = false
-  let mut next_number = diagram.auto_number.map_or("1", config => {
-    config.start.unwrap_or("1")
-  })
-  let mut number_increment = diagram.auto_number.map_or(1, config => {
-    config.increment.unwrap_or(1)
-  })
-  let mut number_format : String? = diagram.auto_number.map_or(None, config => {
-    config.format
-  })
+  let autonumber = AutonumberState::new()
 
   for event_index, event in diagram.events {
+    autonumber.apply(event)
     // Auto pagination is a layout marker inserted before the next message;
     // it keeps the parsed event stream unchanged for metadata and numbering.
     let auto_page_break = match auto_newpage {
@@ -392,14 +355,7 @@ fn layout_events(
       _ => current_y
     }
     let number = match event {
-      Message(_) | MessageExo(_) | Return(_) if autonumber => {
-        let value = next_number
-        next_number = increment_autonumber(next_number, number_increment)
-        match number_format {
-          Some(format) => Some(format_autonumber(format, value))
-          None => Some(value)
-        }
-      }
+      Message(_) | MessageExo(_) | Return(_) => autonumber.take()
       _ => None
     }
     placements.push({ y, height, number, ignored })
@@ -423,13 +379,19 @@ fn layout_events(
     match event {
       Message(message) => {
         messages_since_auto_newpage += 1
-        let arrow_extra = if message.is_self() { 28 } else { 6 }
-        last_visual_bottom = last_visual_bottom.max(y + 18 + arrow_extra)
+        let arrow_extra = if message.is_self() {
+          SELF_MESSAGE_LOOP_DEPTH
+        } else {
+          MESSAGE_VISUAL_CLEARANCE
+        }
+        last_visual_bottom = last_visual_bottom.max(
+          y + MESSAGE_ARROW_OFFSET + arrow_extra,
+        )
         apply_activation_spec(
           message.activation_spec,
           message.to_code,
           Some(message.from_code),
-          y + 18,
+          y + MESSAGE_ARROW_OFFSET,
           message.life_color,
           activations,
           active,
@@ -443,16 +405,16 @@ fn layout_events(
             active,
             message.to_code,
             Some(message.from_code),
-            y + 18,
+            y + MESSAGE_ARROW_OFFSET,
             None,
           )
         }
         last_message_to = Some(message.to_code)
-        last_message_arrow_y = Some(y + 18)
+        last_message_arrow_y = Some(y + MESSAGE_ARROW_OFFSET)
       }
       MessageExo(message) => {
         messages_since_auto_newpage += 1
-        last_visual_bottom = last_visual_bottom.max(y + 18)
+        last_visual_bottom = last_visual_bottom.max(y + MESSAGE_ARROW_OFFSET)
         apply_activation_spec(
           message.activation_spec,
           message.participant_code,
@@ -464,7 +426,7 @@ fn layout_events(
           destroys,
         )
         last_message_to = Some(message.participant_code)
-        last_message_arrow_y = Some(y + 18)
+        last_message_arrow_y = Some(y + MESSAGE_ARROW_OFFSET)
       }
       LifeEvent(life) => {
         let life_y = if life.event_type is Activate &&
@@ -527,25 +489,6 @@ fn layout_events(
           }
         }
       Autoactivate(enabled) => autoactivate = enabled
-      Autonumber(config) => {
-        autonumber = true
-        next_number = config.start.unwrap_or("1")
-        number_increment = config.increment.unwrap_or(1)
-        number_format = config.format
-      }
-      AutonumberStop => autonumber = false
-      AutonumberResume(config) => {
-        autonumber = true
-        number_increment = config.increment.unwrap_or(number_increment)
-        number_format = match config.format {
-          Some(format) => Some(format)
-          None => number_format
-        }
-      }
-      AutonumberIncrement(position) =>
-        next_number = increment_autonumber_part(
-          next_number, position, number_increment,
-        )
       IgnoreNewpage => ignore_newpage = true
       AutoNewpage(size) => {
         auto_newpage = size
@@ -723,14 +666,16 @@ fn participant_lifetimes(
       Message(message) =>
         match message.activation_spec {
           Some(Create) => births[message.to_code] = placements[index].y
-          Some(Destroy) => deaths[message.to_code] = placements[index].y + 18
+          Some(Destroy) =>
+            deaths[message.to_code] = placements[index].y + MESSAGE_ARROW_OFFSET
           _ => ()
         }
       MessageExo(message) =>
         match message.activation_spec {
           Some(Create) => births[message.participant_code] = placements[index].y
           Some(Destroy) =>
-            deaths[message.participant_code] = placements[index].y + 18
+            deaths[message.participant_code] = placements[index].y +
+              MESSAGE_ARROW_OFFSET
           _ => ()
         }
       LifeEvent(life) =>

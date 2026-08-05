@@ -9,11 +9,11 @@ fn append_participant(
   let fill = svg_color(layout.participant.color)
   match layout.participant.url {
     Some(url) =>
-      output <+ "<a href=\"\{@style.xml_escape(url)}\" target=\"_top\">\n"
+      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
     None => ()
   }
   output <+
-    $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{@style.xml_escape(layout.participant.code)}">
+    $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{@svg.xml_escape(layout.participant.code)}">
   match layout.participant.typ {
     Actor | Boundary | Control | Entity | Database =>
       append_vertical_participant(output, layout, y, is_tail)

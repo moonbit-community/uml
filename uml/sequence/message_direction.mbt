@@ -3,9 +3,12 @@ fn ArrowConfig::from_dressing(
   left : DressingResult,
   right : DressingResult,
   body : ArrowBody,
-  reverse : Bool,
+  direction : MessageDirection,
 ) -> ArrowConfig {
-  let (start, end) = if reverse { (right, left) } else { (left, right) }
+  let (start, end) = match direction {
+    Reverse => (right, left)
+    Forward => (left, right)
+  }
   let head1 = if start.cross { CrossX } else { start.head }
   let head2 = if end.cross { CrossX } else { end.head }
   let part = match (start.part, end.part) {
@@ -24,11 +27,20 @@ fn ArrowConfig::from_dressing(
 }
 
 ///|
-fn message_direction(left : DressingResult, right : DressingResult) -> Bool? {
+priv enum MessageDirection {
+  Forward
+  Reverse
+}
+
+///|
+fn message_direction(
+  left : DressingResult,
+  right : DressingResult,
+) -> MessageDirection? {
   if right.has_dir || left.cross || right.cross {
-    Some(false)
+    Some(Forward)
   } else if left.has_dir {
-    Some(true)
+    Some(Reverse)
   } else {
     None
   }

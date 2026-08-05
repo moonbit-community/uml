@@ -65,7 +65,7 @@ fn parse_color_and_shape(rest : String) -> (String?, IdeaShape, String) {
     (None, rest)
   }
   if remainder.has_prefix("_") {
-    (color, None, remainder[1:].trim_start().to_owned())
+    (color, Boxless, remainder[1:].trim_start().to_owned())
   } else {
     (color, Box, remainder.trim_start().to_owned())
   }

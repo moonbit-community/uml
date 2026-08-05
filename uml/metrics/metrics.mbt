@@ -324,6 +324,12 @@ pub fn measure_text_with(text : String, metrics : FontMetrics) -> TextMetrics {
 }
 
 ///|
+/// Measure text with this font profile.
+pub fn FontMetrics::measure(self : FontMetrics, text : String) -> TextMetrics {
+  measure_text_with(text, self)
+}
+
+///|
 pub fn measure_text(text : String, line_height? : Int = 15) -> TextMetrics {
-  measure_text_with(text, FontMetrics::from_defaults(line_height~))
+  FontMetrics::from_defaults(line_height~).measure(text)
 }

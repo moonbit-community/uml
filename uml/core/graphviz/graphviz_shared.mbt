@@ -1,4 +1,63 @@
 ///|
+/// Graphviz uses points as its normalized output unit.
+pub const GRAPHVIZ_DPI : Double = 72.0
+
+///|
+/// Convert SVG pixels/Graphviz points to inches for fixed-size attributes.
+pub fn points_to_inches(points : Double) -> Double {
+  points / GRAPHVIZ_DPI
+}
+
+///|
+/// Convert Graphviz inches to SVG pixels/points.
+pub fn inches_to_points(inches : Double) -> Double {
+  inches * GRAPHVIZ_DPI
+}
+
+///|
+/// Create the common directed spline graph used by PlantUML diagram layouts.
+pub fn new_directed_graph(
+  name : String,
+  style : @style.DocumentStyle,
+) -> @cgraph.Graph {
+  let graph = @cgraph.Graph::new(@cgraph.Directed, name~, strict=false)
+  graph.set_attr("rankdir", graphviz_rankdir_attr(graphviz_rankdir(style)))
+  graph.set_attr("splines", "spline")
+  graph
+}
+
+///|
+/// Configure a Graphviz node with an exact SVG-space size.
+pub fn set_fixed_node_size(
+  node : @cgraph.Node,
+  width : Double,
+  height : Double,
+  shape? : String = "box",
+) -> Unit {
+  node.set_attr("label", "")
+  node.set_attr("shape", shape)
+  node.set_attr("width", points_to_inches(width).to_string())
+  node.set_attr("height", points_to_inches(height).to_string())
+  node.set_attr("fixedsize", "true")
+}
+
+///|
+/// Execute dot with the shared rank direction and spline mode.
+pub fn layout_dot(
+  graph : @cgraph.Graph,
+  style : @style.DocumentStyle,
+  nodesep : Double,
+  ranksep : Double,
+) -> @dot_layout.DotLayoutGraph raise @dot_layout.DotLayoutError {
+  @dot_layout.layout_dot(graph, options={
+    rankdir: Some(graphviz_rankdir(style)),
+    nodesep: Some(nodesep),
+    ranksep: Some(ranksep),
+    splines: Some(@dot_layout.SplinesMode::Spline),
+  })
+}
+
+///|
 /// Normalize a graphviz point (inches, y-up) into SVG coordinates (y-down).
 pub fn graphviz_point_to_svg(
   point : @geom.Point,
@@ -8,11 +67,15 @@ pub fn graphviz_point_to_svg(
 }
 
 ///|
-pub fn graphviz_path_to_svg(
+fn graphviz_path_to_svg(
   spline : @geom.Spline,
   bbox : @geom.Rect,
-) -> Array[(Double, Double)] {
-  spline.points.map(point => graphviz_point_to_svg(point, bbox))
+) -> GraphvizSpline {
+  {
+    arrow_start: spline.start.map(point => graphviz_point_to_svg(point, bbox)),
+    arrow_end: spline.end.map(point => graphviz_point_to_svg(point, bbox)),
+    points: spline.points.map(point => graphviz_point_to_svg(point, bbox)),
+  }
 }
 
 ///|
@@ -39,12 +102,20 @@ pub fn graphviz_note_name(index : Int) -> String {
 }
 
 ///|
+/// One Graphviz cubic spline normalized into SVG coordinates. `arrow_start`
+/// and `arrow_end` are optional arrow clipping tips; node contact points live
+/// in `points` when Graphviz routing has arrows disabled.
+pub(all) struct GraphvizSpline {
+  arrow_start : (Double, Double)?
+  arrow_end : (Double, Double)?
+  points : Array[(Double, Double)]
+} derive(Eq, Debug)
+
+///|
 /// One graphviz edge normalized into SVG coordinates.
 pub(all) struct GraphvizEdge {
   index : Int
-  paths : Array[Array[(Double, Double)]]
-  starts : Array[(Double, Double)?]
-  ends : Array[(Double, Double)?]
+  splines : Array[GraphvizSpline]
   label : (Double, Double)?
   head_label : (Double, Double)?
   tail_label : (Double, Double)?
@@ -62,20 +133,8 @@ pub fn graphviz_edges(
   for edge_layout in laid_out.edges {
     guard names.get(edge_layout.edge.id()) is Some(index_text) else { continue }
     let index = @string.parse_int(index_text) catch { _ => continue }
-    let paths = edge_layout.splines.map(spline => {
+    let splines = edge_layout.splines.map(spline => {
       graphviz_path_to_svg(spline, bbox)
-    })
-    let starts = edge_layout.splines.map(spline => {
-      match spline.start {
-        Some(point) => Some(graphviz_point_to_svg(point, bbox))
-        None => None
-      }
-    })
-    let ends = edge_layout.splines.map(spline => {
-      match spline.end {
-        Some(point) => Some(graphviz_point_to_svg(point, bbox))
-        None => None
-      }
     })
     let label = edge_layout.label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
@@ -86,7 +145,7 @@ pub fn graphviz_edges(
     let tail_label = edge_layout.tail_label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
     })
-    edges.push({ index, paths, starts, ends, label, head_label, tail_label })
+    edges.push({ index, splines, label, head_label, tail_label })
   }
   edges
 }
@@ -102,13 +161,21 @@ pub(all) struct GraphvizNote {
 } derive(Eq, Debug)
 
 ///|
+/// Select whether normalized node coordinates identify the center or the
+/// top-left corner of the node rectangle.
+pub(all) enum NodeAnchor {
+  Center
+  TopLeft
+} derive(Eq, Debug)
+
+///|
 /// Extract note nodes whose graphviz names appear in `note_names`. With
 /// `offset` the result is the top-left corner, otherwise the center.
 pub fn graphviz_notes(
   laid_out : @dot_layout.DotLayoutGraph,
   note_names : Map[String, Int],
   bbox : @geom.Rect,
-  offset? : Bool = true,
+  anchor? : NodeAnchor = TopLeft,
 ) -> Array[GraphvizNote] {
   let notes = []
   for node_layout in laid_out.nodes {
@@ -118,18 +185,16 @@ pub fn graphviz_notes(
     let (x, y) = graphviz_point_to_svg(node_layout.pos, bbox)
     notes.push({
       note_index,
-      x: if offset {
-        x - node_layout.width_in * 72.0 / 2.0
-      } else {
-        x
+      x: match anchor {
+        TopLeft => x - inches_to_points(node_layout.width_in) / 2.0
+        Center => x
       },
-      y: if offset {
-        y - node_layout.height_in * 72.0 / 2.0
-      } else {
-        y
+      y: match anchor {
+        TopLeft => y - inches_to_points(node_layout.height_in) / 2.0
+        Center => y
       },
-      width: node_layout.width_in * 72.0,
-      height: node_layout.height_in * 72.0,
+      width: inches_to_points(node_layout.width_in),
+      height: inches_to_points(node_layout.height_in),
     })
   }
   notes

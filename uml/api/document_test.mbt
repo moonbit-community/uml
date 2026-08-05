@@ -19,6 +19,11 @@ test "parse dispatches structured formats by their delimiters" {
 }
 
 ///|
+test "unknown documents raise a parse error" {
+  @test.assert_raise(() => ignore(parse("@startuml\n@enduml")))
+}
+
+///|
 test "parse dispatches activity commands before other heuristics" {
   let source = "@startuml\nstart\n:Run;\nstop\n@enduml"
   @test.assert_eq(parse(source).kind() is Activity, true)

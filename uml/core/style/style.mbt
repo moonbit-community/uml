@@ -119,17 +119,17 @@ pub fn DocumentStyle::property(self : DocumentStyle, key : String) -> String? {
 
 ///|
 pub fn DocumentStyle::canvas_color(self : DocumentStyle) -> String {
-  svg_color(self.background_color, render_defaults().canvas_background)
+  @svg.svg_color(self.background_color, render_defaults().canvas_background)
 }
 
 ///|
 pub fn DocumentStyle::diagram_line_color(self : DocumentStyle) -> String {
-  svg_color(self.line_color, render_defaults().diagram_line)
+  @svg.svg_color(self.line_color, render_defaults().diagram_line)
 }
 
 ///|
 pub fn DocumentStyle::class_background_color(self : DocumentStyle) -> String {
-  svg_color(
+  @svg.svg_color(
     self.property("ClassBackgroundColor"),
     render_defaults().node_background,
   )
@@ -137,12 +137,12 @@ pub fn DocumentStyle::class_background_color(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::class_border_color(self : DocumentStyle) -> String {
-  svg_color(self.property("ClassBorderColor"), self.diagram_line_color())
+  @svg.svg_color(self.property("ClassBorderColor"), self.diagram_line_color())
 }
 
 ///|
 pub fn DocumentStyle::usecase_background_color(self : DocumentStyle) -> String {
-  svg_color(
+  @svg.svg_color(
     self.property("UsecaseBackgroundColor"),
     self.class_background_color(),
   )
@@ -150,12 +150,12 @@ pub fn DocumentStyle::usecase_background_color(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::usecase_border_color(self : DocumentStyle) -> String {
-  svg_color(self.property("UsecaseBorderColor"), self.class_border_color())
+  @svg.svg_color(self.property("UsecaseBorderColor"), self.class_border_color())
 }
 
 ///|
 pub fn DocumentStyle::actor_background_color(self : DocumentStyle) -> String {
-  svg_color(
+  @svg.svg_color(
     self.property("ActorBackgroundColor"),
     self.class_background_color(),
   )
@@ -163,7 +163,7 @@ pub fn DocumentStyle::actor_background_color(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::actor_border_color(self : DocumentStyle) -> String {
-  svg_color(self.property("ActorBorderColor"), self.class_border_color())
+  @svg.svg_color(self.property("ActorBorderColor"), self.class_border_color())
 }
 
 ///|
@@ -180,12 +180,12 @@ pub fn DocumentStyle::actor_style(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::diagram_text_color(self : DocumentStyle) -> String {
-  svg_color(self.property("FontColor"), render_defaults().diagram_text)
+  @svg.svg_color(self.property("FontColor"), render_defaults().diagram_text)
 }
 
 ///|
 fn role_font_color(style : DocumentStyle, key : String) -> String {
-  svg_color(style.property(key), style.diagram_text_color())
+  @svg.svg_color(style.property(key), style.diagram_text_color())
 }
 
 ///|
@@ -198,7 +198,7 @@ fn role_font_size(style : DocumentStyle, key : String, fallback~ : Int) -> Int {
 
 ///|
 fn role_font_family(style : DocumentStyle, key : String) -> String {
-  style.property(key).unwrap_or(font_family(style))
+  style.property(key).unwrap_or(style.font_family())
 }
 
 ///|
@@ -279,7 +279,7 @@ pub fn DocumentStyle::arrow_font_family(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::package_background_color(self : DocumentStyle) -> String {
-  svg_color(
+  @svg.svg_color(
     self.property("PackageBackgroundColor"),
     render_defaults().transparent,
   )
@@ -287,12 +287,12 @@ pub fn DocumentStyle::package_background_color(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::package_border_color(self : DocumentStyle) -> String {
-  svg_color(self.property("PackageBorderColor"), self.class_border_color())
+  @svg.svg_color(self.property("PackageBorderColor"), self.class_border_color())
 }
 
 ///|
 pub fn DocumentStyle::note_background_color(self : DocumentStyle) -> String {
-  svg_color(
+  @svg.svg_color(
     self.property("NoteBackgroundColor"),
     render_defaults().note_background,
   )
@@ -300,14 +300,22 @@ pub fn DocumentStyle::note_background_color(self : DocumentStyle) -> String {
 
 ///|
 pub fn DocumentStyle::note_border_color(self : DocumentStyle) -> String {
-  svg_color(self.property("NoteBorderColor"), self.class_border_color())
+  @svg.svg_color(self.property("NoteBorderColor"), self.class_border_color())
 }
+
+///|
+const SKINPARAM_PREFIX : String = "skinparam "
+
+///|
+const SCALE_PREFIX : String = "scale "
 
 ///|
 pub fn parse_style_directive(line : String) -> StyleDirective? {
   let trimmed = line.trim()
-  if trimmed.to_lower().has_prefix("skinparam ") {
-    return parse_style_property(trimmed[10:].trim().to_owned())
+  if trimmed.to_lower().has_prefix(SKINPARAM_PREFIX) {
+    return parse_style_property(
+      trimmed[SKINPARAM_PREFIX.length():].trim().to_owned(),
+    )
   }
   let lower = trimmed.to_lower()
   if lower == "left to right direction" {
@@ -334,8 +342,8 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     lower == "layout newline" {
     return Some(Property(lower.to_owned(), "true"))
   }
-  if lower.has_prefix("scale ") {
-    return Some(Scale(trimmed[6:].trim().to_owned()))
+  if lower.has_prefix(SCALE_PREFIX) {
+    return Some(Scale(trimmed[SCALE_PREFIX.length():].trim().to_owned()))
   }
   if lower == "rotate" ||
     lower.has_prefix("skin ") ||
@@ -425,32 +433,22 @@ pub fn consume_skinparam_body(
   next_line : () -> String?,
   apply : (StyleDirective) -> Unit,
 ) -> Bool {
-  let mut closed = false
-  while !closed {
-    match next_line() {
-      None => return false
-      Some(line) =>
-        if line.trim() == "}" {
-          closed = true
-        } else {
-          match parse_style_property(line) {
-            Some(directive) => apply(directive)
-            None => ()
-          }
-        }
+  @parse.consume_lines_until(next_line, line => line.trim() == "}", line => {
+    match parse_style_property(line) {
+      Some(directive) => apply(directive)
+      None => ()
     }
-  }
-  true
+  })
 }
 
 ///|
-pub fn font_family(style : DocumentStyle) -> String {
-  style.font_family.unwrap_or("Arial, sans-serif")
+pub fn DocumentStyle::font_family(self : DocumentStyle) -> String {
+  self.font_family.unwrap_or("Arial, sans-serif")
 }
 
 ///|
-pub fn font_size(style : DocumentStyle) -> String {
-  match style.font_size {
+pub fn DocumentStyle::font_size(self : DocumentStyle) -> String {
+  match self.font_size {
     Some(size) if size.has_suffix("px") || size.has_suffix("pt") => size
     Some(size) => "\{size}px"
     None => "13px"
@@ -458,8 +456,11 @@ pub fn font_size(style : DocumentStyle) -> String {
 }
 
 ///|
-pub fn font_size_value(style : DocumentStyle, fallback? : Int = 13) -> Int {
-  match style.font_size {
+pub fn DocumentStyle::font_size_value(
+  self : DocumentStyle,
+  fallback? : Int = 13,
+) -> Int {
+  match self.font_size {
     Some(value) => parse_font_size(value, fallback~)
     None => fallback
   }
@@ -496,8 +497,34 @@ pub fn font_profile_for(family : String) -> @metrics.FontProfile {
 }
 
 ///|
+pub fn DocumentStyle::font_profile(
+  self : DocumentStyle,
+) -> @metrics.FontProfile {
+  font_profile_for(self.font_family())
+}
+
+///|
+/// Compatibility wrapper for the original top-level style API.
+pub fn font_family(style : DocumentStyle) -> String {
+  style.font_family()
+}
+
+///|
+/// Compatibility wrapper for the original top-level style API.
+pub fn font_size(style : DocumentStyle) -> String {
+  style.font_size()
+}
+
+///|
+/// Compatibility wrapper for the original top-level style API.
+pub fn font_size_value(style : DocumentStyle, fallback? : Int = 13) -> Int {
+  style.font_size_value(fallback~)
+}
+
+///|
+/// Compatibility wrapper for the original top-level style API.
 pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
-  font_profile_for(font_family(style))
+  style.font_profile()
 }
 
 ///|
@@ -510,7 +537,7 @@ pub fn DocumentStyle::font_metrics(
   line_height? : Int = 0,
 ) -> @metrics.FontMetrics {
   self.font_metrics_for(
-    font_family(self),
+    self.font_family(),
     font_size~,
     font_weight~,
     font_style~,
@@ -530,7 +557,7 @@ pub fn DocumentStyle::font_metrics_for(
   let resolved_size = if font_size > 0 {
     font_size
   } else {
-    font_size_value(self)
+    self.font_size_value()
   }
   let resolved_line_height = if line_height > 0 {
     line_height
@@ -551,56 +578,4 @@ pub fn DocumentStyle::font_metrics_for(
 /// directly contribute to a diagram model.
 pub fn is_preprocessor_directive(line : String) -> Bool {
   line.trim().has_prefix("!")
-}
-
-///|
-pub fn xml_escape(value : String) -> String {
-  let output = StringBuilder()
-  for char in value {
-    match char {
-      '&' => output.write_string("&amp;")
-      '<' => output.write_string("&lt;")
-      '>' => output.write_string("&gt;")
-      '"' => output.write_string("&quot;")
-      '\'' => output.write_string("&apos;")
-      _ => output.write_char(char)
-    }
-  }
-  output.to_string()
-}
-
-///|
-fn is_hexadecimal(value : String) -> Bool {
-  let value = if value.has_prefix("#") { value[1:].to_owned() } else { value }
-  guard value.length() == 3 || value.length() == 6 || value.length() == 8 else {
-    false
-  }
-  for char in value {
-    guard char.is_ascii_digit() ||
-      ('a' <= char && char <= 'f') ||
-      ('A' <= char && char <= 'F') else {
-      return false
-    }
-  }
-  true
-}
-
-///|
-/// Convert a PlantUML color token to a safe SVG paint value.
-pub fn svg_color(color : String?, fallback : String) -> String {
-  match color {
-    None => fallback
-    Some(value) => {
-      let value = value.trim()
-      if is_hexadecimal(value.to_owned()) {
-        if value.has_prefix("#") {
-          value.to_owned()
-        } else {
-          "#\{value}"
-        }
-      } else {
-        xml_escape(value.to_owned())
-      }
-    }
-  }
 }
