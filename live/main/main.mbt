@@ -58,7 +58,7 @@ fn update(
     FileSelected(file) => (select_source(state, file), @cmd.none)
     SizesChanged(sizes) => ({ ..state, sizes, }, @cmd.none)
     ManifestLoaded(Ok(categories)) =>
-      ({ ..state, categories, }, source_fetch_cmds(emit, categories))
+      ({ ..state, categories, }, fetch_sources_cmd(emit, categories))
     ManifestLoaded(Err(error)) =>
       ({ ..state, load_error: Some(error) }, @cmd.none)
     SourceLoaded(path, Ok(source)) =>
@@ -81,25 +81,6 @@ fn apply_theme(theme : Theme) -> @cmd.Cmd {
       None => ()
     }
   })
-}
-
-///|
-fn source_fetch_cmds(
-  emit : @rabbita.Emit[Msg],
-  categories : Map[String, Array[String]],
-) -> @cmd.Cmd {
-  let cmds : Array[@cmd.Cmd] = []
-  for cat, files in categories {
-    for file in files {
-      let path = "\{cat}/\{file}"
-      cmds.push(
-        @http.get("examples/\{path}").expect_text(result => {
-          emit(SourceLoaded(path, result.map_err(error => "\{error}")))
-        }),
-      )
-    }
-  }
-  @cmd.batch(cmds)
 }
 
 ///|
@@ -232,42 +213,6 @@ fn editor_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
 }
 
 ///|
-/// The paint scheme used for the preview. Every role maps to a CSS variable,
-/// so a single SVG adapts to the active light/dark theme without re-rendering.
-fn theme_color_scheme() -> @style.ColorScheme {
-  @style.ColorScheme::ColorScheme(
-    "var(--uml-text)",
-    "var(--uml-line)",
-    canvas="var(--uml-canvas)",
-    node="var(--uml-node)",
-    note="var(--uml-note)",
-    partition="var(--uml-partition)",
-    participant="var(--uml-participant)",
-    activation="var(--uml-activation)",
-    lifeline="var(--uml-lifeline)",
-    divider="var(--uml-divider)",
-    divider_title="var(--uml-divider-title)",
-    delay="var(--uml-delay)",
-    reference_tab="var(--uml-reference-tab)",
-    page_break="var(--uml-page-break)",
-    transparent="var(--uml-transparent)",
-    spot_abstract="var(--uml-spot-abstract)",
-    spot_interface="var(--uml-spot-interface)",
-    spot_enum="var(--uml-spot-enum)",
-    spot_annotation="var(--uml-spot-annotation)",
-    spot_class="var(--uml-spot-class)",
-    visibility_public_stroke="var(--uml-visibility-public-stroke)",
-    visibility_public_fill="var(--uml-visibility-public-fill)",
-    visibility_private_stroke="var(--uml-visibility-private-stroke)",
-    visibility_private_fill="var(--uml-visibility-private-fill)",
-    visibility_protected_stroke="var(--uml-visibility-protected-stroke)",
-    visibility_protected_fill="var(--uml-visibility-protected-fill)",
-    visibility_package_stroke="var(--uml-visibility-package-stroke)",
-    visibility_package_fill="var(--uml-visibility-package-fill)",
-  )
-}
-
-///|
 fn theme_toggle(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
   let target = state.theme.toggle()
   button(
@@ -294,12 +239,7 @@ fn preview_content(state : AppState) -> Array[Html] {
   } else if state.source == "" {
     [div(class="preview-message", "加载中…")]
   } else {
-    let svg : String = @api.render_svg(
-      state.source,
-      color_scheme=theme_color_scheme(),
-    ) catch {
-      e => "\{e}"
-    }
+    let svg : String = render_source_svg(state.source)
     [div(attrs=@html.Attrs::build().inner_html(svg), "")]
   }
 }
@@ -362,14 +302,7 @@ fn workspace(state : AppState, emit : @rabbita.Emit[Msg]) -> Val[Html] {
 ///|
 fn app() -> Val[Html] {
   let (state, emit) = @rabbita.create_state_with_init(
-    init=fn(emit) {
-      (
-        initial_state(),
-        @http.get("examples-manifest.json").expect_json(result => {
-          emit(ManifestLoaded(result.map_err(error => "\{error}")))
-        }),
-      )
-    },
+    init=fn(emit) { (initial_state(), fetch_manifest_cmd(emit)) },
     update~,
   )
   state.switch_by(state => workspace(state, emit), by=app_state_tag)
