@@ -2,7 +2,7 @@ import {
   "kokic/uml/activity",
   "kokic/uml/entity",
   "kokic/uml/mindmap",
-  "kokic/uml/nonuml",
+  "kokic/uml/structured",
   "kokic/uml/sequence",
   "kokic/uml/state",
   "moonbitlang/core/test",

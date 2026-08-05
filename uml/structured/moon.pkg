@@ -1,6 +1,6 @@
 import {
   "bobzhang/toml",
-  "kokic/uml/metrics",
+  "kokic/uml/core/metrics",
   "moonbitlang/core/array",
   "moonbitlang/core/json",
   "moonbitlang/core/string",

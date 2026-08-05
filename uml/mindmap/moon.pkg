@@ -1,5 +1,5 @@
 import {
-  "kokic/uml/metrics",
+  "kokic/uml/core/metrics",
   "moonbitlang/core/string",
   "moonbitlang/core/test",
   "kokic/uml/core/parse",

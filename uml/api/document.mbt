@@ -9,9 +9,9 @@ pub enum Diagram {
   UseCase(@entity.EntityDiagram)
   State(@state.StateDiagram)
   Mindmap(@mindmap.MindmapDiagram)
-  Json(@nonuml.StructuredDiagram)
-  Yaml(@nonuml.StructuredDiagram)
-  Toml(@nonuml.StructuredDiagram)
+  Json(@structured.StructuredDiagram)
+  Yaml(@structured.StructuredDiagram)
+  Toml(@structured.StructuredDiagram)
 }
 
 ///|
@@ -43,9 +43,12 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 /// per-diagram factory selection. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
   match () {
-    _ if is_json_source(source) => { diagram: Json(@nonuml.parse_json(source)) }
-    _ if is_yaml_source(source) => { diagram: Yaml(@nonuml.parse_yaml(source)) }
-    _ if is_toml_source(source) => { diagram: Toml(@nonuml.parse_toml(source)) }
+    _ if is_json_source(source) =>
+      { diagram: Json(@structured.parse_json(source)) }
+    _ if is_yaml_source(source) =>
+      { diagram: Yaml(@structured.parse_yaml(source)) }
+    _ if is_toml_source(source) =>
+      { diagram: Toml(@structured.parse_toml(source)) }
     _ if is_mindmap_source(source) =>
       { diagram: Mindmap(@mindmap.parse(source)) }
     _ if is_sequence_source(source) =>
