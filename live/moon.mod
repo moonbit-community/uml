@@ -5,6 +5,7 @@ version = "0.1.0"
 import {
   "moonbit-community/rabbita@0.13.1",
   "kokic/uml@0.1.0",
+  "Yoorkin/rui@0.1.0",
 }
 
 readme = "README.md"

@@ -1,6 +1,8 @@
 import {
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
+  "moonbit-community/rabbita/cmd",
+  "Yoorkin/rui",
   "kokic/uml/api",
 }
 
