@@ -29,7 +29,6 @@
   --uml-visibility-package-fill: #4177af;
 
   --app-bg: #f8fafc;
-  --panel-bg: #f1f5f9;
   --editor-bg: #ffffff;
   --preview-bg: #ffffff;
   --text: #1f2937;
@@ -73,7 +72,6 @@
   --uml-visibility-package-fill: #1e3a8a;
 
   --app-bg: #0f172a;
-  --panel-bg: #1e293b;
   --editor-bg: #0f172a;
   --preview-bg: #0f172a;
   --text: #e2e8f0;
@@ -109,10 +107,6 @@ body {
   min-height: 0;
   height: 100%;
   padding: 16px;
-}
-
-.file-panel {
-  background: var(--panel-bg);
 }
 
 .editor-panel {
