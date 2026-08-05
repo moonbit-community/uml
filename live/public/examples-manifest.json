@@ -1,12 +1,10 @@
 {
-  "activity": [
-    "01-basic-flow.uml",
-    "02-conditional-paths.uml",
-    "03-loops.uml",
-    "04-parallel-work.uml",
-    "05-switch-cases.uml",
-    "06-partitions-and-swimlanes.uml",
-    "07-flow-targets.uml"
+  "sequence": [
+    "01-basic.uml",
+    "02-participants.uml",
+    "03-lifecycle-notes.uml",
+    "04-grouping.uml",
+    "05-advanced.uml"
   ],
   "class": [
     "01-basic.uml",
@@ -19,20 +17,12 @@
     "08-banking-domain.uml",
     "09-relation-extremities.uml"
   ],
-  "component": [
+  "usecase": [
     "01-basic.uml",
-    "02-interfaces.uml",
-    "03-containers.uml",
-    "04-metadata-and-notes.uml",
-    "05-relationships.uml"
-  ],
-  "json": [
-    "01-basic.uml",
-    "02-nested-object.uml",
-    "03-primitives.uml",
-    "04-escaped-values.uml",
-    "05-complex-object.uml",
-    "06-font-metrics.uml"
+    "02-include-extend.uml",
+    "03-packages.uml",
+    "04-external-system.uml",
+    "05-business-metadata.uml"
   ],
   "mindmap": [
     "01-basic.uml",
@@ -42,19 +32,48 @@
     "05-org-mode.uml",
     "06-explicit-root.uml"
   ],
+  "yaml": [
+    "01-scalars.uml",
+    "02-nested-collections.uml",
+    "03-multiple-documents.uml",
+    "04-yaml-features.uml"
+  ],
+  "toml": [
+    "01-scalars.uml",
+    "02-nested-tables.uml",
+    "03-array-of-tables.uml",
+    "04-inline-and-boundaries.uml"
+  ],
+  "json": [
+    "01-basic.uml",
+    "02-nested-object.uml",
+    "03-primitives.uml",
+    "04-escaped-values.uml",
+    "05-complex-object.uml",
+    "06-font-metrics.uml"
+  ],
+  "activity": [
+    "01-basic-flow.uml",
+    "02-conditional-paths.uml",
+    "03-loops.uml",
+    "04-parallel-work.uml",
+    "05-switch-cases.uml",
+    "06-partitions-and-swimlanes.uml",
+    "07-flow-targets.uml"
+  ],
+  "component": [
+    "01-basic.uml",
+    "02-interfaces.uml",
+    "03-containers.uml",
+    "04-metadata-and-notes.uml",
+    "05-relationships.uml"
+  ],
   "object": [
     "01-objects-and-slots.uml",
     "02-links-and-roles.uml",
     "03-map-ports.uml",
     "04-json-values.uml",
     "05-notes-and-presentation.uml"
-  ],
-  "sequence": [
-    "01-basic.uml",
-    "02-participants.uml",
-    "03-lifecycle-notes.uml",
-    "04-grouping.uml",
-    "05-advanced.uml"
   ],
   "state": [
     "01-basic-lifecycle.uml",
@@ -66,24 +85,5 @@
     "07-notes-and-metadata.uml",
     "08-frame-and-aliases.uml",
     "09-reverse-and-decorated-transitions.uml"
-  ],
-  "toml": [
-    "01-scalars.uml",
-    "02-nested-tables.uml",
-    "03-array-of-tables.uml",
-    "04-inline-and-boundaries.uml"
-  ],
-  "usecase": [
-    "01-basic.uml",
-    "02-include-extend.uml",
-    "03-packages.uml",
-    "04-external-system.uml",
-    "05-business-metadata.uml"
-  ],
-  "yaml": [
-    "01-scalars.uml",
-    "02-nested-collections.uml",
-    "03-multiple-documents.uml",
-    "04-yaml-features.uml"
   ]
 }
