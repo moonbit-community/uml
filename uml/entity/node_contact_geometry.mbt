@@ -15,6 +15,30 @@ fn GraphvizLayout::node(
 }
 
 ///|
+fn GraphvizNodeLayout::relation_contact_side(
+  self : GraphvizNodeLayout,
+  point : (Double, Double),
+) -> RelationContactSide {
+  let left = self.x - self.width / 2.0
+  let right = self.x + self.width / 2.0
+  let top = self.y - self.height / 2.0
+  let bottom = self.y + self.height / 2.0
+  let candidates = [
+    ((point.0 - left).abs(), ContactWest),
+    ((point.0 - right).abs(), ContactEast),
+    ((point.1 - top).abs(), ContactNorth),
+    ((point.1 - bottom).abs(), ContactSouth),
+  ]
+  let mut closest = candidates[0]
+  for candidate in candidates[1:] {
+    if candidate.0 < closest.0 {
+      closest = candidate
+    }
+  }
+  closest.1
+}
+
+///|
 fn point_distance_squared(
   first : (Double, Double),
   second : (Double, Double),

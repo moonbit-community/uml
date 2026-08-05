@@ -263,16 +263,3 @@ fn usecase_relation_endpoint(
 }
 
 ///|
-fn relation_marker(end : RelationEnd) -> String? {
-  match end {
-    NotNavigable | DoubleLine => Some("bar")
-    CircleEnd | CircleConnect | CircleLine | CircleCrowfoot => Some("circle")
-    FilledCircle => Some("circle-filled")
-    Square => Some("square")
-    Plus => Some("plus")
-    Crowfoot | LineCrowfoot => Some("crowfoot")
-    _ => None
-  }
-}
-
-///|

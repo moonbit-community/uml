@@ -109,6 +109,12 @@ test "class declarations and dotted arrows select the class parser" {
 }
 
 ///|
+test "explicit class declarations win over triangle-arrow sequence substrings" {
+  let source = "@startuml\nclass A\nclass B\nA -->> B\n@enduml"
+  @test.assert_eq(parse(source).kind() is Class, true)
+}
+
+///|
 test "render_svg renders every diagram family" {
   let sources = [
     "@startjson\n{\"items\":[1,2]}\n@endjson", "@startyaml\nservice:\n  port: 8080\n@endyaml",

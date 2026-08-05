@@ -194,6 +194,9 @@ pub fn is_sequence_source(input : String) -> Bool {
   let lines = meaningful_source_lines(input)
   !lines.any(has_component_declaration) &&
   !lines.any(has_usecase_declaration) &&
+  !lines.any(line => {
+    is_class_declaration(line) && !is_ambiguous_participant_declaration(line)
+  }) &&
   (
     lines.any(is_sequence_command) ||
     lines.any(has_sequence_only_message_arrow) ||

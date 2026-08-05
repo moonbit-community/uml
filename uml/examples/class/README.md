@@ -14,3 +14,4 @@ one with `moon run . examples/class/<fixture>.uml`.
 | `06-visibility-and-style` | Member filtering, layout direction, skin parameters, and targetless notes |
 | `07-association-class` | Association-class endpoint pairs and labelled association links |
 | `08-banking-domain` | A rich multi-class domain: 9 classes/enums/interfaces, 48 members, visibility, and 6 cardinality links |
+| `09-relation-extremities` | Explicit SIMPLEST geometry for triangle, half-arrow, circle, crowfoot, bar, parenthesis, and extends-like endpoints |

@@ -2,6 +2,33 @@
 const RELATION_GEOMETRY_TEST_EPSILON : Double = 0.0001
 
 ///|
+fn test_relation_decoration_lengths() -> Array[(RelationEnd, Double)] {
+  [
+    (RelationEnd::Arrow, ARROW_DECORATION_LENGTH),
+    (RelationEnd::Extension, TRIANGLE_DECORATION_LENGTH),
+    (RelationEnd::CompositionEnd, DIAMOND_DECORATION_LENGTH),
+    (RelationEnd::AggregationEnd, DIAMOND_DECORATION_LENGTH),
+    (RelationEnd::NotNavigable, NOT_NAVIGABLE_DECORATION_LENGTH),
+    (RelationEnd::Redefines, TRIANGLE_DECORATION_LENGTH),
+    (RelationEnd::DefinedBy, TRIANGLE_DECORATION_LENGTH),
+    (RelationEnd::Crowfoot, CROWFOOT_DECORATION_LENGTH),
+    (RelationEnd::CircleCrowfoot, CIRCLE_CROWFOOT_DECORATION_LENGTH),
+    (RelationEnd::CircleLine, CIRCLE_LINE_DECORATION_LENGTH),
+    (RelationEnd::DoubleLine, CROWFOOT_DECORATION_LENGTH),
+    (RelationEnd::LineCrowfoot, CROWFOOT_DECORATION_LENGTH),
+    (RelationEnd::TriangleArrow, TRIANGLE_ARROW_DECORATION_LENGTH),
+    (RelationEnd::CircleEnd, CIRCLE_DECORATION_LENGTH),
+    (RelationEnd::FilledCircle, CIRCLE_DECORATION_LENGTH),
+    (RelationEnd::CircleConnect, CIRCLE_CONNECT_DECORATION_LENGTH),
+    (RelationEnd::Parenthesis, PARENTHESIS_DECORATION_LENGTH),
+    (RelationEnd::Square, SQUARE_DECORATION_LENGTH),
+    (RelationEnd::Plus, PLUS_DECORATION_LENGTH),
+    (RelationEnd::HalfArrowUp, HALF_ARROW_DECORATION_LENGTH),
+    (RelationEnd::HalfArrowDown, HALF_ARROW_DECORATION_LENGTH),
+  ]
+}
+
+///|
 fn test_relation_points_near(
   first : (Double, Double),
   second : (Double, Double),
@@ -133,6 +160,69 @@ test "relation parser and endpoint classifier share one decoration vocabulary" {
   for entry in right_relation_decorations {
     @test.assert_eq(right_relation_end("--" + entry.0), entry.1)
   }
+}
+
+///|
+test "Java extremity fixture parses every remaining endpoint syntax" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|left to right direction
+      #|A1 -->> B1 #blue
+      #|A2 --\\ B2 #blue
+      #|A3 --// B3 #blue
+      #|A4 --0 B4 #blue
+      #|A5 --@ B5 #blue
+      #|A6 --+ B6 #blue
+      #|A7 --# B7 #blue
+      #|A8 --{ B8 #blue
+      #|A9 --o{ B9 #blue
+      #|A10 --|{ B10 #blue
+      #|A11 --o| B11 #blue
+      #|A12 --|| B12 #blue
+      #|A13 --x B13 #blue
+      #|A14 --( B14 #blue
+      #|A15 --(0 B15 #blue
+      #|A16 --||> B16 #blue
+      #|A17 --:|> B17 #blue
+      #|@enduml
+      #|
+    ),
+  )
+  let expected = [
+    RelationEnd::TriangleArrow,
+    RelationEnd::HalfArrowUp,
+    RelationEnd::HalfArrowDown,
+    RelationEnd::CircleEnd,
+    RelationEnd::FilledCircle,
+    RelationEnd::Plus,
+    RelationEnd::Square,
+    RelationEnd::Crowfoot,
+    RelationEnd::CircleCrowfoot,
+    RelationEnd::LineCrowfoot,
+    RelationEnd::CircleLine,
+    RelationEnd::DoubleLine,
+    RelationEnd::NotNavigable,
+    RelationEnd::Parenthesis,
+    RelationEnd::CircleConnect,
+    RelationEnd::Redefines,
+    RelationEnd::DefinedBy,
+  ]
+  @test.assert_eq(diagram.relations.length(), expected.length())
+  for index, end in expected {
+    @test.assert_eq(diagram.relations[index].right_end, end)
+  }
+  let svg = diagram.render_svg()
+  let decorations = svg.split("class=\"relation-decoration\"").count()
+  let colored = svg.split("style=\"stroke:blue;stroke-width:").count()
+  @test.assert_eq(decorations, colored)
+  @test.assert_eq(svg.contains("<line "), true)
+  @test.assert_eq(svg.contains("<circle "), true)
+  @test.assert_eq(svg.contains("<rect "), true)
+  @test.assert_eq(svg.contains(" A "), true)
+  @test.assert_eq(svg.contains("<marker"), false)
+  @test.assert_eq(svg.contains("marker-start="), false)
+  @test.assert_eq(svg.contains("marker-end="), false)
 }
 
 ///|
@@ -897,8 +987,9 @@ test "routed relations preserve endpoint decorations and cardinalities" {
   )
   let svg = diagram.render_svg()
   @test.assert_eq(svg.contains("class=\"relation-decoration\""), true)
-  @test.assert_eq(svg.contains("marker path,marker circle,marker rect"), true)
-  @test.assert_eq(svg.contains("marker-start=\"url(#triangle)\""), false)
+  @test.assert_eq(svg.contains("<marker"), false)
+  @test.assert_eq(svg.contains("marker-start="), false)
+  @test.assert_eq(svg.contains("marker-end="), false)
   @test.assert_eq(svg.contains(">1</text>"), true)
   @test.assert_eq(svg.contains(">many</text>"), true)
   @test.assert_eq(svg.contains("stroke-dasharray:6 4"), true)
@@ -912,20 +1003,22 @@ test "relation endpoint decorations inherit each relation color" {
   @test.assert_eq(svg.contains("style=\"stroke:blue;"), true)
   @test.assert_eq(
     svg.contains(
-      "class=\"relation-decoration\" fill=\"blue\" style=\"stroke:blue\"",
+      "class=\"relation-decoration\" fill=\"blue\" style=\"stroke:blue;stroke-width:",
     ),
     true,
   )
 }
 
 ///|
-test "hollow inheritance arrows retain a visible outline" {
-  let svg = parse("@startuml\nParent <|-- Child\n@enduml").render_svg()
+test "hollow inheritance arrows use the canvas background and retain an outline" {
+  let svg = parse(
+    "@startuml\nskinparam BackgroundColor #102030\nParent <|-- Child\n@enduml",
+  ).render_svg()
   @test.assert_eq(
-    svg.contains("class=\"relation-decoration\" fill=\"none\""),
+    svg.contains("class=\"relation-decoration\" fill=\"#102030\""),
     true,
   )
-  @test.assert_eq(svg.contains("style=\"stroke:#181818\""), true)
+  @test.assert_eq(svg.contains("style=\"stroke:#181818;stroke-width:"), true)
 }
 
 ///|
@@ -1064,35 +1157,123 @@ test "long start decorations drop one complete short Bezier" {
 }
 
 ///|
-test "visible relation paths meet decoration interiors without moving tips" {
+test "all relation decorations shorten straight paths by their domain length" {
   let endpoint = (0.0, 0.0)
-  let adjacent = (30.0, 0.0)
-  for
-    end in [
-      RelationEnd::Arrow,
-      RelationEnd::Extension,
-      RelationEnd::CompositionEnd,
-      RelationEnd::AggregationEnd,
-    ] {
+  let adjacent = (100.0, 0.0)
+  @test.assert_eq(RelationEnd::Plain.decoration_length(), 0.0)
+  for entry in test_relation_decoration_lengths() {
+    let (end, expected_length) = entry
+    @test.assert_eq(end.decoration_length(), expected_length)
     let geometry = end.decoration_geometry(endpoint, adjacent).unwrap()
+    @test.assert_eq(geometry.primitives.length() > 0, true)
     let visible = move_relation_spline_start(
       [endpoint, adjacent],
-      end.decoration_length(),
+      expected_length,
     )
-    let interior_contact = match end {
-      Extension =>
-        (
-          (geometry.points[1].0 + geometry.points[2].0) / 2.0,
-          (geometry.points[1].1 + geometry.points[2].1) / 2.0,
-        )
-      _ => geometry.points[2]
-    }
-    @test.assert_eq(geometry.points[0], endpoint)
     @test.assert_eq(
-      test_relation_points_near(visible[0], interior_contact),
+      test_relation_points_near(visible[0], (expected_length, endpoint.1)),
       true,
     )
   }
+}
+
+///|
+test "relation decoration geometry covers every PlantUML primitive category" {
+  let mut saw_polygon = false
+  let mut saw_segment = false
+  let mut saw_circle = false
+  let mut saw_square = false
+  let mut saw_arc = false
+  for entry in test_relation_decoration_lengths() {
+    let geometry = entry.0
+      .decoration_geometry((0.0, 0.0), (100.0, 0.0))
+      .unwrap()
+    for primitive in geometry.primitives {
+      match primitive.shape {
+        DecorationPolygon(_) => saw_polygon = true
+        DecorationSegment(_, _) => saw_segment = true
+        DecorationCircle(_, _) => saw_circle = true
+        DecorationSquare(_, _) => saw_square = true
+        DecorationArc(_) => saw_arc = true
+      }
+    }
+  }
+  @test.assert_eq(saw_polygon, true)
+  @test.assert_eq(saw_segment, true)
+  @test.assert_eq(saw_circle, true)
+  @test.assert_eq(saw_square, true)
+  @test.assert_eq(saw_arc, true)
+}
+
+///|
+test "every explicit decoration primitive inherits its relation color" {
+  let output = StringBuilder()
+  for entry in test_relation_decoration_lengths() {
+    append_relation_decoration(
+      output,
+      entry.0,
+      (0.0, 0.0),
+      (100.0, 0.0),
+      "blue",
+      "#ffffff",
+    )
+  }
+  let svg = output.to_string()
+  let decorations = svg.split("class=\"relation-decoration\"").count()
+  let colored = svg.split("style=\"stroke:blue;stroke-width:").count()
+  @test.assert_eq(decorations, colored)
+  @test.assert_eq(
+    decorations > test_relation_decoration_lengths().length(),
+    true,
+  )
+  @test.assert_eq(svg.contains("<line "), true)
+  @test.assert_eq(svg.contains("<circle "), true)
+  @test.assert_eq(svg.contains("<rect "), true)
+  @test.assert_eq(svg.contains(" A "), true)
+  @test.assert_eq(svg.contains("<marker"), false)
+  @test.assert_eq(svg.contains("marker-start="), false)
+  @test.assert_eq(svg.contains("marker-end="), false)
+}
+
+///|
+test "crowfoot contact sides follow the nearest node boundary" {
+  let node : GraphvizNodeLayout = {
+    code: "node",
+    x: 50.0,
+    y: 50.0,
+    width: 40.0,
+    height: 20.0,
+  }
+  @test.assert_eq(
+    node.relation_contact_side((node.x - node.width / 2.0, node.y))
+    is ContactWest,
+    true,
+  )
+  @test.assert_eq(
+    node.relation_contact_side((node.x + node.width / 2.0, node.y))
+    is ContactEast,
+    true,
+  )
+  @test.assert_eq(
+    node.relation_contact_side((node.x, node.y - node.height / 2.0))
+    is ContactNorth,
+    true,
+  )
+  @test.assert_eq(
+    node.relation_contact_side((node.x, node.y + node.height / 2.0))
+    is ContactSouth,
+    true,
+  )
+  let endpoint = (10.0, 20.0)
+  let wing = (30.0, 40.0)
+  @test.assert_eq(
+    relation_crowfoot_wing(wing, endpoint, Some(ContactWest)).0,
+    endpoint.0,
+  )
+  @test.assert_eq(
+    relation_crowfoot_wing(wing, endpoint, Some(ContactNorth)).1,
+    endpoint.1,
+  )
 }
 
 ///|

@@ -50,7 +50,7 @@ let right_relation_decorations : Array[(String, RelationEnd)] = [
   ("(", Parenthesis),
   ("#", Square),
   ("+", Plus),
-  ("\\", HalfArrowUp),
+  ("\\\\", HalfArrowUp),
   ("//", HalfArrowDown),
 ]
 

@@ -716,7 +716,9 @@ test "preserves relation endpoint decorations" {
   @test.assert_eq(diagram.relations[2].line_style, Some("dashed"))
   let svg = diagram.render_svg()
   @test.assert_eq(svg.contains("class=\"relation-decoration\""), true)
-  @test.assert_eq(svg.contains("fill=\"none\""), true)
+  @test.assert_eq(svg.contains("<marker"), false)
+  @test.assert_eq(svg.contains("marker-start="), false)
+  @test.assert_eq(svg.contains("marker-end="), false)
 }
 
 ///|

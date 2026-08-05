@@ -1,24 +1,69 @@
 ///|
+fn relation_decoration_fill(
+  fill : RelationDecorationFill,
+  color : String,
+  background : String,
+) -> String {
+  match fill {
+    NoDecorationFill => "none"
+    LineDecorationFill => color
+    BackgroundDecorationFill => background
+  }
+}
+
+///|
+fn append_relation_decoration_primitive(
+  output : StringBuilder,
+  primitive : RelationDecorationPrimitive,
+  color : String,
+  background : String,
+) -> Unit {
+  let fill = relation_decoration_fill(primitive.fill, color, background)
+  let style =
+    $| style="stroke:\{color};stroke-width:\{primitive.stroke_width}"
+  match primitive.shape {
+    DecorationPolygon(points) => {
+      guard points.length() > 0 else { return }
+      output <+
+        $|<path d="M \{points[0].0} \{points[0].1}
+      for index in 1..<points.length() {
+        output <+
+          $| L \{points[index].0} \{points[index].1}
+      }
+      output <+
+        $| z" class="relation-decoration" fill="\{fill}"\{style}/>
+    }
+    DecorationSegment(start, end) =>
+      output <+
+        $|<line x1="\{start.0}" y1="\{start.1}" x2="\{end.0}" y2="\{end.1}" class="relation-decoration" fill="none"\{style}/>
+    DecorationCircle(center, radius) =>
+      output <+
+        $|<circle cx="\{center.0}" cy="\{center.1}" r="\{radius}" class="relation-decoration" fill="\{fill}"\{style}/>
+    DecorationSquare(center, radius) =>
+      output <+
+        $|<rect x="\{center.0 - radius}" y="\{center.1 - radius}" width="\{radius * 2.0}" height="\{radius * 2.0}" class="relation-decoration" fill="\{fill}"\{style}/>
+    DecorationArc(arc) =>
+      output <+
+        $|<path d="M \{arc.start.0} \{arc.start.1} A \{arc.radius} \{arc.radius} 0 \{if arc.large_arc { 1 } else { 0 }} \{if arc.sweep { 1 } else { 0 }} \{arc.end.0} \{arc.end.1}" class="relation-decoration" fill="\{fill}"\{style}/>
+  }
+}
+
+///|
 fn append_relation_decoration(
   output : StringBuilder,
   end : RelationEnd,
   endpoint : (Double, Double),
   adjacent : (Double, Double),
   color : String,
+  background : String,
+  side? : RelationContactSide? = None,
 ) -> Unit {
-  guard end.decoration_geometry(endpoint, adjacent) is Some(geometry) else {
+  guard end.decoration_geometry(endpoint, adjacent, side~) is Some(geometry) else {
     return
   }
-  guard geometry.points.length() > 0 else { return }
-  output <+
-    $|<path d="M \{geometry.points[0].0} \{geometry.points[0].1}
-  for index in 1..<geometry.points.length() {
-    output <+
-      $| L \{geometry.points[index].0} \{geometry.points[index].1}
+  for primitive in geometry.primitives {
+    append_relation_decoration_primitive(output, primitive, color, background)
   }
-  let fill = if geometry.filled { color } else { "none" }
-  output <+
-    $| z" class="relation-decoration" fill="\{fill}" style="stroke:\{color}"/>
 }
 
 ///|
@@ -53,6 +98,7 @@ fn append_relation(
     relation.color,
     diagram.style.diagram_line_color(),
   )
+  let background_color = diagram.style.canvas_color()
   let label_font_size = if usecase {
     diagram.style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE)
   } else {
@@ -73,14 +119,6 @@ fn append_relation(
   )
   let style =
     $| style="stroke:\{relation_color};\{relation_style}"
-  let marker_start = match relation_marker(relation.left_end) {
-    Some(marker) => " marker-start=\"url(#\{marker})\""
-    None => ""
-  }
-  let marker_end = match relation_marker(relation.right_end) {
-    Some(marker) => " marker-end=\"url(#\{marker})\""
-    None => ""
-  }
   let mut drew_spline = false
   match layout.graphviz {
     Some(graphviz) if !(usecase &&
@@ -111,24 +149,34 @@ fn append_relation(
               $|<path d="
             output.write_string(@svg.spline_path_data(visible_path))
             output <+
-              $|" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
+              $|" class="relation"\{style}\{dash}/>
             if first_index == Some(spline_index) {
+              let side = graphviz
+                .node(relation.left)
+                .map(node => node.relation_contact_side(path[0]))
               append_relation_decoration(
                 output,
                 relation.left_end,
                 path[0],
                 path[1],
                 relation_color,
+                background_color,
+                side~,
               )
             }
             if last_index == Some(spline_index) {
               let last = path.length() - 1
+              let side = graphviz
+                .node(relation.right)
+                .map(node => node.relation_contact_side(path[last]))
               append_relation_decoration(
                 output,
                 relation.right_end,
                 path[last],
                 path[last - 1],
                 relation_color,
+                background_color,
+                side~,
               )
             }
           }
@@ -143,13 +191,14 @@ fn append_relation(
       relation.right_end.decoration_length(),
     )
     output <+
-      $|<line x1="\{visible_line[0].0}" y1="\{visible_line[0].1}" x2="\{visible_line[1].0}" y2="\{visible_line[1].1}" class="relation"\{style}\{dash}\{marker_start}\{marker_end}/>
+      $|<line x1="\{visible_line[0].0}" y1="\{visible_line[0].1}" x2="\{visible_line[1].0}" y2="\{visible_line[1].1}" class="relation"\{style}\{dash}/>
     append_relation_decoration(
       output,
       relation.left_end,
       (x1.to_double(), y1.to_double()),
       (x2.to_double(), y2.to_double()),
       relation_color,
+      background_color,
     )
     append_relation_decoration(
       output,
@@ -157,6 +206,7 @@ fn append_relation(
       (x2.to_double(), y2.to_double()),
       (x1.to_double(), y1.to_double()),
       relation_color,
+      background_color,
     )
   }
   match relation_label_layout.label {
