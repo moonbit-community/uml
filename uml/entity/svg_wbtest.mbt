@@ -127,7 +127,29 @@ test "use-case layout uses ellipse and actor geometry before Graphviz" {
 ///|
 test "entity family skinparams resolve through shared defaults" {
   let diagram = parse(
-    "@startuml\nskinparam ClassBackgroundColor #123456\nskinparam ClassBorderColor #654321\nskinparam PackageBackgroundColor #abcdef\nskinparam UsecaseBackgroundColor #456789\nskinparam ActorBorderColor #987654\nskinparam actorStyle awesome\nskinparam UsecaseFontColor #abc123\nskinparam ActorFontColor #def456\nskinparam UsecaseFontSize 16\nskinparam ActorFontSize 12pt\nskinparam UsecaseFontName Courier\nskinparam ActorFontName Times New Roman\nskinparam ClassStereotypeFontColor #123abc\nskinparam ClassStereotypeFontSize 17\nskinparam ClassStereotypeFontName Georgia\nskinparam ArrowFontColor #abcd12\nskinparam ArrowFontSize 15\nskinparam ArrowFontName Mono\nclass A\n@enduml",
+    (
+      #|@startuml
+      #|skinparam ClassBackgroundColor #123456
+      #|skinparam ClassBorderColor #654321
+      #|skinparam PackageBackgroundColor #abcdef
+      #|skinparam UsecaseBackgroundColor #456789
+      #|skinparam ActorBorderColor #987654
+      #|skinparam actorStyle awesome
+      #|skinparam UsecaseFontColor #abc123
+      #|skinparam ActorFontColor #def456
+      #|skinparam UsecaseFontSize 16
+      #|skinparam ActorFontSize 12pt
+      #|skinparam UsecaseFontName Courier
+      #|skinparam ActorFontName Times New Roman
+      #|skinparam ClassStereotypeFontColor #123abc
+      #|skinparam ClassStereotypeFontSize 17
+      #|skinparam ClassStereotypeFontName Georgia
+      #|skinparam ArrowFontColor #abcd12
+      #|skinparam ArrowFontSize 15
+      #|skinparam ArrowFontName Mono
+      #|class A
+      #|@enduml
+    ),
   )
   let style = diagram.style
   @test.assert_eq(class_background_color(style), "#123456")
