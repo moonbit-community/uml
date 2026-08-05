@@ -12,6 +12,7 @@ fn append_svg_preamble(
   let small_font_size = (base_font_size - 2).max(1)
   let line_color = style.diagram_line_color()
   let text_color = style.diagram_text_color()
+  let defaults = style.defaults()
   output <+
     $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Sequence diagram">
   let defs =
@@ -31,13 +32,13 @@ fn append_svg_preamble(
     $|.participant-icon{fill:none;stroke:\{line_color};stroke-width:1.1}
     $|.participant-box-group{fill-opacity:.16;stroke:\{line_color};stroke-width:1.1}
     $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:\{text_color}}
-    $|.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}
-    $|.activation{fill:\{@style.render_defaults().sequence_activation_background}}
+    $|.lifeline{stroke:\{defaults.lifeline};stroke-width:1;stroke-dasharray:5 5}
+    $|.activation{fill:\{defaults.activation}}
     $|.message,.cross,.destroy{fill:none;stroke:\{line_color};stroke-width:1.3}
     $|.message.dotted{stroke-dasharray:5 4}
     $|.arrow-fill{fill:\{line_color}}
     $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:1.5}
-    $|.endpoint{fill:#fff;stroke:\{line_color};stroke-width:1.2}
+    $|.endpoint{fill:\{background};stroke:\{line_color};stroke-width:1.2}
     $|.message-label,.reference-label,.delay-label{fill:\{text_color};font-size:\{body_font_size}px}
     $|.note-label{fill:\{text_color};font-size:\{base_font_size}px}
     $|.note,.note-fold{stroke:\{line_color};stroke-width:.5}
@@ -47,18 +48,18 @@ fn append_svg_preamble(
     $|.group-branch{stroke:none}
     $|.group-header{stroke:\{line_color};stroke-width:1.1}
     $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:\{text_color}}
-    $|.note{fill:\{@style.render_defaults().note_background}}
+    $|.note{fill:\{defaults.note}}
     $|.hex-note{stroke-dasharray:2 1}
     $|.box-note{rx:0}
-    $|.divider{stroke:#777;stroke-width:1}
-    $|.divider-title{fill:#f6f6f6}
+    $|.divider{stroke:\{defaults.divider};stroke-width:1}
+    $|.divider-title{fill:\{defaults.divider_title}}
     $|.divider-label{font-size:\{body_font_size}px;font-weight:bold}
-    $|.delay{stroke:#777;stroke-dasharray:3 3}
-    $|.reference{fill:#fff;stroke:\{line_color};stroke-width:1.2}
-    $|.reference-tab{fill:#eee;stroke:\{line_color};stroke-width:1.2}
+    $|.delay{stroke:\{defaults.delay};stroke-dasharray:3 3}
+    $|.reference{fill:\{background};stroke:\{line_color};stroke-width:1.2}
+    $|.reference-tab{fill:\{defaults.reference_tab};stroke:\{line_color};stroke-width:1.2}
     $|.reference-tab-label{fill:\{text_color};font-size:\{body_font_size}px;font-weight:bold}
     $|.group-separator{stroke:\{line_color};stroke-dasharray:4 3}
-    $|.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
+    $|.page-break{stroke:\{defaults.page_break};stroke-width:1.2;stroke-dasharray:8 4}
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{stroke-width:2}
     $|</style>
@@ -72,7 +73,11 @@ fn append_svg_preamble(
 /// headers determine horizontal constraints, events reserve vertical space,
 /// and group, lifeline, activation, and message layers are then painted in
 /// that order.
-pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
+pub fn SequenceDiagram::render_svg(
+  self : SequenceDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   let layout = self.layout()
   let output = StringBuilder()
   append_svg_preamble(output, layout, self.style)
@@ -112,6 +117,9 @@ pub fn SequenceDiagram::render_svg(self : SequenceDiagram) -> String {
 
 ///|
 /// Parse PlantUML sequence-diagram text and render it as standalone SVG.
-pub fn render_sequence_svg(input : String) -> String raise @parse.ParseError {
-  parse(input).render_svg()
+pub fn render_sequence_svg(
+  input : String,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String raise @parse.ParseError {
+  parse(input).render_svg(color_scheme~)
 }

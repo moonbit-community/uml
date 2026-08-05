@@ -39,9 +39,9 @@ test "font name skinparams preserve families with spaces" {
 ///|
 test "document color resolution uses shared render defaults and skinparams" {
   let style = DocumentStyle::empty()
-  let defaults = render_defaults()
-  @test.assert_eq(style.canvas_color(), defaults.canvas_background)
-  @test.assert_eq(style.diagram_line_color(), defaults.diagram_line)
+  let defaults = ColorScheme::default()
+  @test.assert_eq(style.canvas_color(), defaults.canvas)
+  @test.assert_eq(style.diagram_line_color(), defaults.line)
 
   style.apply(BackgroundColor("#012345"))
   style.apply(LineColor("#654321"))
@@ -52,19 +52,16 @@ test "document color resolution uses shared render defaults and skinparams" {
 ///|
 test "generic skinparam resolvers use shared defaults and fallbacks" {
   let style = DocumentStyle::empty()
-  let defaults = render_defaults()
+  let defaults = ColorScheme::default()
   @test.assert_eq(
-    style.property_color("ClassBackgroundColor", defaults.node_background),
-    defaults.node_background,
+    style.property_color("ClassBackgroundColor", defaults.node),
+    defaults.node,
   )
   @test.assert_eq(
-    style.property_color("NoteBackgroundColor", defaults.note_background),
-    defaults.note_background,
+    style.property_color("NoteBackgroundColor", defaults.note),
+    defaults.note,
   )
-  @test.assert_eq(
-    style.property_font_color("UsecaseFontColor"),
-    defaults.diagram_text,
-  )
+  @test.assert_eq(style.property_font_color("UsecaseFontColor"), defaults.text)
   @test.assert_eq(style.property_font_size("UsecaseFontSize", fallback=14), 14)
   @test.assert_eq(
     style.property_font_family("UsecaseFontName"),
@@ -76,7 +73,7 @@ test "generic skinparam resolvers use shared defaults and fallbacks" {
   style.apply(Property("UsecaseFontSize", "16"))
   style.apply(Property("UsecaseFontName", "Courier"))
   @test.assert_eq(
-    style.property_color("ClassBackgroundColor", defaults.node_background),
+    style.property_color("ClassBackgroundColor", defaults.node),
     "#123456",
   )
   @test.assert_eq(style.property_font_color("UsecaseFontColor"), "#abc123")

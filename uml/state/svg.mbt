@@ -10,11 +10,10 @@ const STATE_THIN_STROKE_WIDTH : String = "0.5"
 const STATE_FINAL_STROKE_WIDTH : String = "2"
 
 ///|
-fn state_fill(state : StateNode) -> String {
+fn state_fill(state : StateNode, defaults : @style.ColorScheme) -> String {
   match state.kind {
-    Initial | Final | History | DeepHistory | Synchronization =>
-      @style.render_defaults().diagram_line
-    _ => @svg.svg_color(state.color, @style.render_defaults().node_background)
+    Initial | Final | History | DeepHistory | Synchronization => defaults.line
+    _ => @svg.svg_color(state.color, defaults.node)
   }
 }
 
@@ -106,7 +105,7 @@ fn append_state_node(
         y.to_string() +
         " Z",
       ),
-      ("fill", state_fill(state)),
+      ("fill", state_fill(state, diagram.style.defaults())),
     ])
     output.empty("rect", attributes=[
       ("x", x.to_string()),
@@ -142,7 +141,7 @@ fn append_state_node(
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", state_fill(state)),
+        ("fill", state_fill(state, diagram.style.defaults())),
       ])
     Final => {
       let radius = width.min(height) / 2.0
@@ -158,7 +157,7 @@ fn append_state_node(
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (radius - 5.0).max(1.0).to_string()),
-        ("fill", state_fill(state)),
+        ("fill", state_fill(state, diagram.style.defaults())),
       ])
     }
     History | DeepHistory => {
@@ -166,7 +165,7 @@ fn append_state_node(
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", @style.render_defaults().canvas_background),
+        ("fill", diagram.style.defaults().canvas),
         ("stroke", diagram.style.diagram_line_color()),
       ])
       append_state_label(
@@ -187,7 +186,7 @@ fn append_state_node(
         ("y", (center_y - height / 2.0).to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
-        ("fill", state_fill(state)),
+        ("fill", state_fill(state, diagram.style.defaults())),
       ])
     Choice => {
       output.empty("path", attributes=[
@@ -211,7 +210,7 @@ fn append_state_node(
           center_y.to_string() +
           " Z",
         ),
-        ("fill", state_fill(state)),
+        ("fill", state_fill(state, diagram.style.defaults())),
         ("stroke", diagram.style.diagram_line_color()),
       ])
       append_state_label(
@@ -235,7 +234,7 @@ fn append_state_node(
         ("width", width.to_string()),
         ("height", height.to_string()),
         ("rx", STATE_CORNER_RADIUS.to_string()),
-        ("fill", state_fill(state)),
+        ("fill", state_fill(state, diagram.style.defaults())),
         ("stroke", diagram.style.diagram_line_color()),
         ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
@@ -336,8 +335,8 @@ fn append_state_note(
     ("y", layout.y.to_string()),
     ("width", layout.width.to_string()),
     ("height", layout.height.to_string()),
-    ("fill", @style.render_defaults().note_background),
-    ("stroke", @style.render_defaults().diagram_line),
+    ("fill", diagram.style.defaults().note),
+    ("stroke", diagram.style.defaults().line),
   ])
   append_state_label(
     output,
@@ -350,7 +349,11 @@ fn append_state_note(
 }
 
 ///|
-pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
+pub fn StateDiagram::render_svg(
+  self : StateDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   let layout = Some(self.layout()) catch { _ => None }
   let width = layout.map_or(1.0, value => value.width).ceil().to_int().max(1)
   let height = layout.map_or(1.0, value => value.height).ceil().to_int().max(1)
@@ -365,7 +368,12 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
   ])
   output.open("defs")
   output.raw(
-    @svg.arrow_marker_markup("state-arrow", marker_width=6.0, marker_height=6.0),
+    @svg.arrow_marker_markup(
+      "state-arrow",
+      marker_width=6.0,
+      marker_height=6.0,
+      path_fill=self.style.diagram_line_color(),
+    ),
   )
   output.close()
   output.open("style")
@@ -417,6 +425,9 @@ pub fn StateDiagram::render_svg(self : StateDiagram) -> String {
 }
 
 ///|
-pub fn render_state_svg(input : String) -> String raise @parse.ParseError {
-  parse(input).render_svg()
+pub fn render_state_svg(
+  input : String,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String raise @parse.ParseError {
+  parse(input).render_svg(color_scheme~)
 }

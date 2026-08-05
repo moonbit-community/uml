@@ -1,19 +1,16 @@
 ///|
-fn svg_color(color : String?) -> String {
-  @svg.svg_color(
-    color,
-    @style.render_defaults().sequence_participant_background,
-  )
+fn svg_color(color : String?, defaults : @style.ColorScheme) -> String {
+  @svg.svg_color(color, defaults.participant)
 }
 
 ///|
-fn activation_color(color : String?) -> String {
-  @svg.svg_color(color, @style.render_defaults().sequence_activation_background)
+fn activation_color(color : String?, defaults : @style.ColorScheme) -> String {
+  @svg.svg_color(color, defaults.activation)
 }
 
 ///|
-fn note_color(color : String?) -> String {
-  @svg.svg_color(color, @style.render_defaults().note_background)
+fn note_color(color : String?, defaults : @style.ColorScheme) -> String {
+  @svg.svg_color(color, defaults.note)
 }
 
 ///|
@@ -36,6 +33,7 @@ fn append_text(
   y : Int,
   text : String,
   class_name : String,
+  defaults : @style.ColorScheme,
   anchor? : String = "middle",
   line_height? : Int = 15,
 ) -> Unit {
@@ -44,11 +42,7 @@ fn append_text(
       x.to_double(),
       y.to_double(),
       text,
-      [
-        ("text-anchor", anchor),
-        ("fill", @style.render_defaults().diagram_text),
-        ("class", class_name),
-      ],
+      [("text-anchor", anchor), ("fill", defaults.text), ("class", class_name)],
       line_height=line_height.to_double(),
       anchor=Baseline,
     ),

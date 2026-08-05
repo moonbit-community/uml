@@ -174,17 +174,14 @@ test "entity family skinparams resolve through shared defaults" {
 
 ///|
 test "entity family color fallbacks chain from class colors" {
-  let defaults = @style.render_defaults()
+  let defaults = @style.ColorScheme::default()
   let plain = parse("@startuml\nclass A\n@enduml")
-  @test.assert_eq(class_background_color(plain.style), defaults.node_background)
-  @test.assert_eq(note_background_color(plain.style), defaults.note_background)
-  @test.assert_eq(
-    usecase_background_color(plain.style),
-    defaults.node_background,
-  )
-  @test.assert_eq(actor_background_color(plain.style), defaults.node_background)
-  @test.assert_eq(class_border_color(plain.style), defaults.diagram_line)
-  @test.assert_eq(note_border_color(plain.style), defaults.diagram_line)
+  @test.assert_eq(class_background_color(plain.style), defaults.node)
+  @test.assert_eq(note_background_color(plain.style), defaults.note)
+  @test.assert_eq(usecase_background_color(plain.style), defaults.node)
+  @test.assert_eq(actor_background_color(plain.style), defaults.node)
+  @test.assert_eq(class_border_color(plain.style), defaults.line)
+  @test.assert_eq(note_border_color(plain.style), defaults.line)
 }
 
 ///|

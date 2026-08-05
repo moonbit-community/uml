@@ -13,37 +13,9 @@ pub struct DocumentStyle {
   mut legend : String?
   mut header : String?
   mut footer : String?
+  color_scheme : ColorScheme
   properties : Map[String, String]
 } derive(Eq, Debug)
-
-///|
-/// Shared PlantUML-like paint defaults used by every SVG renderer.
-pub struct RenderDefaults {
-  canvas_background : String
-  diagram_line : String
-  diagram_text : String
-  node_background : String
-  sequence_participant_background : String
-  sequence_activation_background : String
-  partition_background : String
-  note_background : String
-  transparent : String
-} derive(Eq, Debug)
-
-///|
-pub fn render_defaults() -> RenderDefaults {
-  {
-    canvas_background: "#FFFFFF",
-    diagram_line: "#181818",
-    diagram_text: "#000000",
-    node_background: "#F1F1F1",
-    sequence_participant_background: "#E2E2F0",
-    sequence_activation_background: "#FFFFFF",
-    partition_background: "none",
-    note_background: "#FEFFDD",
-    transparent: "none",
-  }
-}
 
 ///|
 pub(all) enum Direction {
@@ -80,8 +52,23 @@ pub fn DocumentStyle::empty() -> DocumentStyle {
     legend: None,
     header: None,
     footer: None,
+    color_scheme: ColorScheme::default(),
     properties: Map([]),
   }
+}
+
+///|
+pub fn DocumentStyle::with_color_scheme(
+  self : DocumentStyle,
+  scheme : ColorScheme,
+) -> DocumentStyle {
+  { ..self, color_scheme: scheme }
+}
+
+///|
+/// The effective default palette with the document's color scheme applied.
+pub fn DocumentStyle::defaults(self : DocumentStyle) -> ColorScheme {
+  self.color_scheme
 }
 
 ///|
@@ -119,12 +106,12 @@ pub fn DocumentStyle::property(self : DocumentStyle, key : String) -> String? {
 
 ///|
 pub fn DocumentStyle::canvas_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.background_color, render_defaults().canvas_background)
+  @svg.svg_color(self.background_color, self.defaults().canvas)
 }
 
 ///|
 pub fn DocumentStyle::diagram_line_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.line_color, render_defaults().diagram_line)
+  @svg.svg_color(self.line_color, self.defaults().line)
 }
 
 ///|
@@ -139,7 +126,7 @@ pub fn DocumentStyle::property_color(
 
 ///|
 pub fn DocumentStyle::diagram_text_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("FontColor"), render_defaults().diagram_text)
+  @svg.svg_color(self.property("FontColor"), self.defaults().text)
 }
 
 ///|

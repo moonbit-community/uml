@@ -45,14 +45,14 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       $|<g class="group" data-keyword="\{group.keyword.label()}">
     if !group.parallel {
       output <+
-        $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="\{body_class}" fill="\{svg_color(group.color)}"/>
+        $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="\{body_class}" fill="\{svg_color(group.color, layout.defaults)}"/>
     }
     for branch_index, branch in group.branches {
       match branch.color {
         Some(color) => {
           let branch_height = (branch.end_y - branch.start_y).max(1)
           output <+
-            $|<rect x="\{x}" y="\{branch.start_y}" width="\{width}" height="\{branch_height}" class="group-branch" fill="\{svg_color(Some(color))}"/>
+            $|<rect x="\{x}" y="\{branch.start_y}" width="\{width}" height="\{branch_height}" class="group-branch" fill="\{svg_color(Some(color), layout.defaults)}"/>
         }
         None => ()
       }
@@ -73,6 +73,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
               branch.start_y + 12,
               "[\{label}]",
               "group-label",
+              layout.defaults,
               anchor="start",
               line_height=layout.text_metrics.body_bold.line_height,
             )
@@ -90,13 +91,14 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
       ).width +
       38).max(54)
       output <+
-        $|<path d="M\{x} \{group.start_y}h\{header_width}v22h-8l-5 5-5-5h-\{header_width - 18}z" class="group-header" fill="\{svg_color(group.header_color)}"/>
+        $|<path d="M\{x} \{group.start_y}h\{header_width}v22h-8l-5 5-5-5h-\{header_width - 18}z" class="group-header" fill="\{svg_color(group.header_color, layout.defaults)}"/>
       append_text(
         output,
         x + 8,
         group.start_y + 16,
         label,
         "group-label",
+        layout.defaults,
         anchor="start",
         line_height=layout.text_metrics.body_bold.line_height,
       )
@@ -170,7 +172,7 @@ fn append_activations(output : StringBuilder, layout : DiagramLayout) -> Unit {
     let x = participant.center_x - width / 2 + activation.depth * 8
     let height = (activation.end_y - activation.start_y).max(12)
     output <+
-      $|<rect x="\{x}" y="\{activation.start_y}" width="\{width}" height="\{height}" class="activation" fill="\{activation_color(activation.color)}"/>
+      $|<rect x="\{x}" y="\{activation.start_y}" width="\{width}" height="\{height}" class="activation" fill="\{activation_color(activation.color, layout.defaults)}"/>
   }
 }
 
@@ -293,6 +295,7 @@ fn append_message(
       end_y + 13,
       label,
       "message-label",
+      layout.defaults,
       anchor="start",
       line_height=layout.text_metrics.body.line_height,
     )
@@ -320,6 +323,7 @@ fn append_message(
       start_y.min(end_y) - 6,
       label,
       "message-label",
+      layout.defaults,
       anchor="start",
       line_height=layout.text_metrics.body.line_height,
     )
@@ -389,6 +393,7 @@ fn append_exo_message(
     y - 6,
     label,
     "message-label",
+    layout.defaults,
     anchor="start",
     line_height=layout.text_metrics.body.line_height,
   )
@@ -411,7 +416,7 @@ fn append_note(
     Hexagonal => "note hex-note"
     Box => "note box-note"
   }
-  let fill = note_color(note.color)
+  let fill = note_color(note.color, layout.defaults)
   match note.note_style {
     NodeNormal => {
       let fold_x = x + component.width - component.fold
@@ -434,6 +439,7 @@ fn append_note(
     y + component.text_y,
     note.text,
     "note-label",
+    layout.defaults,
     anchor="start",
     line_height=layout.text_metrics.note.line_height,
   )
@@ -458,6 +464,7 @@ fn append_divider(
     y + 5,
     divider.title,
     "divider-label",
+    layout.defaults,
     line_height=layout.text_metrics.body_bold.line_height,
   )
 }
@@ -479,6 +486,7 @@ fn append_delay(
         y - 5,
         label,
         "delay-label",
+        layout.defaults,
         line_height=layout.text_metrics.body.line_height,
       )
     None => ()
@@ -511,6 +519,7 @@ fn append_reference(
     placement.y + 16,
     "ref",
     "reference-tab-label",
+    layout.defaults,
     anchor="start",
     line_height=layout.text_metrics.body_bold.line_height,
   )
@@ -520,6 +529,7 @@ fn append_reference(
     placement.y + placement.height - 7,
     reference.label.unwrap_or(""),
     "reference-label",
+    layout.defaults,
     line_height=layout.text_metrics.body.line_height,
   )
 }
@@ -583,6 +593,7 @@ fn append_return(
     y - 6,
     label,
     "message-label",
+    layout.defaults,
     line_height=layout.text_metrics.body.line_height,
   )
 }
@@ -624,6 +635,7 @@ fn append_event(
             placement.y + 14,
             title,
             "page-label",
+            layout.defaults,
             line_height=layout.text_metrics.body_italic.line_height,
           )
         None => ()

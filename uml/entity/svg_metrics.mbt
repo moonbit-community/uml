@@ -1,11 +1,14 @@
 ///|
-fn Entity::spot(self : Entity) -> (String, String) {
+fn Entity::spot(
+  self : Entity,
+  defaults : @style.ColorScheme,
+) -> (String, String) {
   match self.kind {
-    AbstractClass => ("A", "#A9DCDF")
-    Interface => ("I", "#B4A7E5")
-    Enum => ("E", "#EB937F")
-    Annotation => ("@", "#E3664A")
-    _ => ("C", "#ADD1B2")
+    AbstractClass => ("A", defaults.spot_abstract)
+    Interface => ("I", defaults.spot_interface)
+    Enum => ("E", defaults.spot_enum)
+    Annotation => ("@", defaults.spot_annotation)
+    _ => ("C", defaults.spot_class)
   }
 }
 
@@ -30,16 +33,25 @@ fn Member::member_text_x(self : Member) -> Int {
 }
 
 ///|
-fn Member::visibility_icon(self : Member, x : Int, baseline_y : Int) -> String {
+fn Member::visibility_icon(
+  self : Member,
+  x : Int,
+  baseline_y : Int,
+  defaults : @style.ColorScheme,
+) -> String {
   if self.visibility is Unknown {
     return ""
   }
   let (color, method_fill) = match self.visibility {
-    Public => ("#038048", "#84BE84")
-    Private => ("#C82930", "#F24D5C")
-    Protected => ("#B38D22", "#FFFF44")
-    Package => ("#1963A0", "#4177AF")
-    Unknown => (@style.render_defaults().diagram_text, "#84BE84")
+    Public =>
+      (defaults.visibility_public_stroke, defaults.visibility_public_fill)
+    Private =>
+      (defaults.visibility_private_stroke, defaults.visibility_private_fill)
+    Protected =>
+      (defaults.visibility_protected_stroke, defaults.visibility_protected_fill)
+    Package =>
+      (defaults.visibility_package_stroke, defaults.visibility_package_fill)
+    Unknown => (defaults.text, defaults.visibility_public_fill)
   }
   let fill = if self.is_method { method_fill } else { "none" }
   let center_y = baseline_y - 4

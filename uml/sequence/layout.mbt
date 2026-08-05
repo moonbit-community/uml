@@ -139,6 +139,7 @@ fn initial_participant_layout(
     layouts.push({
       participant,
       text_metrics,
+      defaults: diagram.style.defaults(),
       index,
       center_x: 0,
       width,
@@ -733,6 +734,7 @@ fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
     body_top: participant_header_height + vertical_margin,
     body_bottom,
     text_metrics,
+    defaults: self.style.defaults(),
   }
   let (min_x, max_x) = layout.content_horizontal_bounds(self.events)
   let shift = (horizontal_margin - min_x).max(0)

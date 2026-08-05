@@ -50,6 +50,7 @@ fn SequenceTextMetrics::new(
 priv struct ParticipantLayout {
   participant : Participant
   text_metrics : SequenceTextMetrics
+  defaults : @style.ColorScheme
   index : Int
   center_x : Int
   width : Int
@@ -118,6 +119,7 @@ priv struct DiagramLayout {
   body_top : Int
   body_bottom : Int
   text_metrics : SequenceTextMetrics
+  defaults : @style.ColorScheme
 }
 
 ///|

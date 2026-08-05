@@ -6,7 +6,7 @@ fn append_participant(
   is_tail : Bool,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
-  let fill = svg_color(layout.participant.color)
+  let fill = svg_color(layout.participant.color, layout.defaults)
   match layout.participant.url {
     Some(url) =>
       output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
@@ -28,6 +28,7 @@ fn append_participant(
         y + 23,
         layout.participant.display,
         "participant-label",
+        layout.defaults,
         line_height=layout.text_metrics.participant.line_height,
       )
     }
@@ -60,6 +61,7 @@ fn append_vertical_participant(
     label_y,
     layout.participant.display,
     "participant-label",
+    layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
   )
 }
@@ -81,6 +83,7 @@ fn append_queue_participant(
     y + 18,
     layout.participant.display,
     "participant-label",
+    layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
   )
 }
@@ -103,6 +106,7 @@ fn append_collections_participant(
     y + 27,
     layout.participant.display,
     "participant-label",
+    layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
   )
 }
@@ -190,7 +194,7 @@ fn append_participant_box(
   let y = 4 + depth * (first.text_metrics.small_bold.line_height + 5)
   let height = (diagram_layout.height - y - 5).max(22)
   output <+
-    $|<rect x="\{left}" y="\{y}" width="\{right - left}" height="\{height}" class="participant-box-group" fill="\{svg_color(box.color)}"/>
+    $|<rect x="\{left}" y="\{y}" width="\{right - left}" height="\{height}" class="participant-box-group" fill="\{svg_color(box.color, diagram_layout.defaults)}"/>
   match box.label {
     Some(label) =>
       append_text(
@@ -199,6 +203,7 @@ fn append_participant_box(
         y + 13,
         label,
         "participant-box-label",
+        diagram_layout.defaults,
         anchor="start",
         line_height=first.text_metrics.small_bold.line_height,
       )

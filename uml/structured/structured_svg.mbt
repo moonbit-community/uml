@@ -43,9 +43,6 @@ const STRUCTURED_SIBLING_GAP : Int = 8
 const STRUCTURED_CANVAS_PADDING : Int = 10
 
 ///|
-const STRUCTURED_LINE_COLOR : String = "#000000"
-
-///|
 fn StructuredValueDisplay::measurement_text(
   self : StructuredValueDisplay,
 ) -> String {
@@ -365,26 +362,32 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 ///|
 pub fn StructuredDiagram::render_json_svg(
   diagram : StructuredDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  diagram.render_svg()
+  diagram.render_svg(color_scheme~)
 }
 
 ///|
 pub fn StructuredDiagram::render_yaml_svg(
   diagram : StructuredDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  diagram.render_svg()
+  diagram.render_svg(color_scheme~)
 }
 
 ///|
 pub fn StructuredDiagram::render_toml_svg(
   diagram : StructuredDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  diagram.render_svg()
+  diagram.render_svg(color_scheme~)
 }
 
 ///|
-pub fn StructuredDiagram::render_svg(diagram : StructuredDiagram) -> String {
+pub fn StructuredDiagram::render_svg(
+  diagram : StructuredDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
   let (initial_root, _) = diagram.root.place(
     STRUCTURED_CANVAS_PADDING,
     STRUCTURED_CANVAS_PADDING,
@@ -400,23 +403,23 @@ pub fn StructuredDiagram::render_svg(diagram : StructuredDiagram) -> String {
   output <+
     "  width=\"\{width}\" height=\"\{height}\" viewBox=\"0 0 \{width} \{height}\"\n"
   output <+ "  role=\"img\" aria-label=\"\{diagram.format.aria_label()}\">\n"
-  let defaults = @style.render_defaults()
+  let defaults = color_scheme
   output.write_string("<style>\n")
   output <+
-    "svg { font-family: sans-serif; font-size: \{STRUCTURED_FONT_SIZE}px; background: \{defaults.canvas_background} }\n"
+    "svg { font-family: sans-serif; font-size: \{STRUCTURED_FONT_SIZE}px; background: \{defaults.canvas} }\n"
   output.write_string(
     (
-      $|.structured-node rect { fill: \{defaults.node_background}; stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1.5 }
-      $|.structured-node line { stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1 }
-      $|.structured-node text { fill: \{STRUCTURED_LINE_COLOR} }
+      $|.structured-node rect { fill: \{defaults.node}; stroke: \{defaults.text}; stroke-width: 1.5 }
+      $|.structured-node line { stroke: \{defaults.text}; stroke-width: 1 }
+      $|.structured-node text { fill: \{defaults.text} }
     ),
   )
   output.write_char('\n')
   output <+ ".structured-key { font-weight: \{STRUCTURED_KEY_FONT_WEIGHT} }\n"
   output.write_string(
     (
-      $|.structured-edge { fill: none; stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1; stroke-dasharray: 3,3 }
-      $|.structured-arrow, .structured-spot { fill: \{STRUCTURED_LINE_COLOR}; stroke: \{STRUCTURED_LINE_COLOR}; stroke-width: 1 }
+      $|.structured-edge { fill: none; stroke: \{defaults.text}; stroke-width: 1; stroke-dasharray: 3,3 }
+      $|.structured-arrow, .structured-spot { fill: \{defaults.text}; stroke: \{defaults.text}; stroke-width: 1 }
       $|</style>
     ),
   )

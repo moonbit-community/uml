@@ -84,6 +84,10 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
 /// with Graphviz positions while retaining this entity and relation painter.
 /// The diagram family selects the symbol set: class/object/component diagrams
 /// draw class nodes, while use-case diagrams draw actors and ellipses.
-pub fn EntityDiagram::render_svg(self : EntityDiagram) -> String {
+pub fn EntityDiagram::render_svg(
+  self : EntityDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   self.render_svg_with_mode()
 }

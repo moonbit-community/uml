@@ -68,7 +68,7 @@ fn append_entity(
     AbstractClass | Interface => " font-style=\"italic\""
     _ => ""
   }
-  let (spot_text, spot_fill) = entity.spot()
+  let (spot_text, spot_fill) = entity.spot(diagram.style.defaults())
   let placement = header.placement(width)
   output <+
     $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/>
@@ -98,7 +98,7 @@ fn append_entity(
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y)}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, diagram.style.defaults())}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
     }
     section_y += section_height
   }

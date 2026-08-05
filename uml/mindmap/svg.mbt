@@ -97,21 +97,16 @@ fn append_mindmap_node(
     Box => "box"
     Boxless => "boxless"
   }
+  let defaults = diagram.style.defaults()
   let fill = @svg.svg_color(
     match idea.background_color {
       Some(color) => Some(color)
       None => node_style.background_color
     },
-    @style.render_defaults().node_background,
+    defaults.node,
   )
-  let line_color = @svg.svg_color(
-    node_style.line_color,
-    @style.render_defaults().diagram_line,
-  )
-  let font_color = @svg.svg_color(
-    node_style.font_color,
-    @style.render_defaults().diagram_text,
-  )
+  let line_color = @svg.svg_color(node_style.line_color, defaults.line)
+  let font_color = @svg.svg_color(node_style.font_color, defaults.text)
   let line_thickness = match node_style.line_thickness {
     Some(value) => value.to_string()
     None => "1.5"
@@ -153,7 +148,11 @@ fn append_mindmap_node(
 
 ///|
 /// Render a parsed mindmap as an SVG document.
-pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
+pub fn MindmapDiagram::render_svg(
+  self : MindmapDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   let layout = self.layout()
   let output = @svg.XmlWriter::new()
   let background = self.style.canvas_color()
@@ -164,7 +163,7 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
       Some(color) => Some(color)
       None => self.style.line_color
     },
-    @style.render_defaults().diagram_line,
+    self.style.defaults().line,
   )
   let arrow_thickness = self.mindmap_style.arrow.line_thickness.unwrap_or(1)
   output.open("svg", attributes=[
@@ -196,6 +195,9 @@ pub fn MindmapDiagram::render_svg(self : MindmapDiagram) -> String {
 }
 
 ///|
-pub fn render_mindmap_svg(input : String) -> String raise @parse.ParseError {
-  parse(input).render_svg()
+pub fn render_mindmap_svg(
+  input : String,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String raise @parse.ParseError {
+  parse(input).render_svg(color_scheme~)
 }

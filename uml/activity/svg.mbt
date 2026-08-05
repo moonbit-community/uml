@@ -229,11 +229,15 @@ fn append_node(
 
 ///|
 /// Render a parsed activity diagram with the built-in, non-Graphviz layout.
-pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
+pub fn ActivityDiagram::render_svg(
+  self : ActivityDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   let layout = self.layout()
   let output = @svg.XmlWriter::new()
   let font_metrics = self.style.font_metrics()
-  let defaults = @style.render_defaults()
+  let defaults = self.style.defaults()
   let line = self.style.diagram_line_color()
   let text = self.style.diagram_text_color()
   output.open("svg", attributes=[
@@ -257,17 +261,17 @@ pub fn ActivityDiagram::render_svg(self : ActivityDiagram) -> String {
     ";stroke-width:1.5}.activity-label{fill:" +
     text +
     "}.activity-partition,.activity-swimlane{fill:" +
-    defaults.partition_background +
+    defaults.partition +
     ";stroke:" +
     line +
     ";stroke-width:1.5}.activity-swimlane{stroke-dasharray:4 3}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
     line +
     "}.activity-stop-outer,.activity-action,.activity-decision{fill:" +
-    defaults.node_background +
+    defaults.node +
     ";stroke:" +
     line +
     ";stroke-width:1.5}.activity-note{fill:" +
-    defaults.note_background +
+    defaults.note +
     ";stroke:" +
     line +
     ";stroke-width:1.5}",
