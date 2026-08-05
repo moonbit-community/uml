@@ -65,8 +65,8 @@ fn append_mindmap_node(
   let font_size = diagram.node_font_size(node.idea_index)
   let font_metrics = diagram.style.font_metrics(font_size~)
   let node_style = diagram.node_style(node.idea_index)
-  let padding_x = node_style.padding_x.unwrap_or(12)
-  let padding_y = node_style.padding_y.unwrap_or(10)
+  let padding_x = node_style.padding_x.unwrap_or(MINDMAP_DEFAULT_PADDING_X)
+  let padding_y = node_style.padding_y.unwrap_or(MINDMAP_DEFAULT_PADDING_Y)
   let (text_x, anchor) = match node_style.alignment.unwrap_or(Center) {
     Left => (node.x + padding_x, "start")
     Right => (node.x + node.width - padding_x, "end")

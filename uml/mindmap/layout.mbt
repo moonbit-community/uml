@@ -155,8 +155,8 @@ fn MindmapDiagram::node_base_size(
   let node_style = self.node_style(index)
   match idea.shape {
     Box => {
-      let padding_x = node_style.padding_x.unwrap_or(10)
-      let padding_y = node_style.padding_y.unwrap_or(10)
+      let padding_x = node_style.padding_x.unwrap_or(MINDMAP_DEFAULT_PADDING_X)
+      let padding_y = node_style.padding_y.unwrap_or(MINDMAP_DEFAULT_PADDING_Y)
       let width = (metrics.width + padding_x * 2).max(
         node_style.minimum_width.unwrap_or(0),
       )
@@ -195,14 +195,16 @@ fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
 fn MindmapDiagram::node_thickness(self : MindmapDiagram, index : Int) -> Int {
   let (_, height) = self.node_size(index)
   let style = self.node_style(index)
-  height + style.margin_top.unwrap_or(10) + style.margin_bottom.unwrap_or(10)
+  height +
+  style.margin_top.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
+  style.margin_bottom.unwrap_or(MINDMAP_DEFAULT_MARGIN)
 }
 
 ///|
 fn MindmapDiagram::branch_gap(self : MindmapDiagram, index : Int) -> Int {
   let node_style = self.node_style(index)
-  node_style.margin_left.unwrap_or(10) +
-  node_style.margin_right.unwrap_or(10) +
+  node_style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
+  node_style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
   MINDMAP_BRANCH_GAP
 }
 
@@ -324,9 +326,10 @@ fn MindmapDiagram::finger_tee(
   } else {
     {
       thickness1: thickness,
-      elongation1: width + node_style.margin_left.unwrap_or(10),
+      elongation1: width +
+      node_style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN),
       thickness2: packed.height,
-      elongation2: node_style.margin_right.unwrap_or(10) +
+      elongation2: node_style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
       MINDMAP_BRANCH_GAP +
       packed.width,
     }
@@ -349,9 +352,9 @@ fn MindmapDiagram::hidden_finger_tee(
   )
   {
     thickness1: 0,
-    elongation1: node_style.margin_left.unwrap_or(10),
+    elongation1: node_style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN),
     thickness2: packed.height,
-    elongation2: node_style.margin_right.unwrap_or(10) +
+    elongation2: node_style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
     MINDMAP_BRANCH_GAP +
     packed.width,
   }

@@ -61,15 +61,24 @@ fn MindmapNodeStyle::empty() -> MindmapNodeStyle {
 }
 
 ///|
+const MINDMAP_DEFAULT_PADDING_X : Int = 12
+
+///|
+const MINDMAP_DEFAULT_PADDING_Y : Int = 10
+
+///|
+const MINDMAP_DEFAULT_MARGIN : Int = 10
+
+///|
 fn MindmapNodeStyle::defaults() -> MindmapNodeStyle {
   {
     ..MindmapNodeStyle::empty(),
-    padding_x: Some(12),
-    padding_y: Some(10),
-    margin_left: Some(10),
-    margin_right: Some(10),
-    margin_top: Some(10),
-    margin_bottom: Some(10),
+    padding_x: Some(MINDMAP_DEFAULT_PADDING_X),
+    padding_y: Some(MINDMAP_DEFAULT_PADDING_Y),
+    margin_left: Some(MINDMAP_DEFAULT_MARGIN),
+    margin_right: Some(MINDMAP_DEFAULT_MARGIN),
+    margin_top: Some(MINDMAP_DEFAULT_MARGIN),
+    margin_bottom: Some(MINDMAP_DEFAULT_MARGIN),
     font_size: None,
     line_thickness: None,
     round_corner: None,
