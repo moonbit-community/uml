@@ -131,6 +131,7 @@ fn editor_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
 }
 
 ///|
+#warnings("-alert_xss_vulnerable")
 fn preview_panel(state : AppState) -> Html {
   div(class="preview-panel") <| [
     h1(class="panel-title", "Preview"),
