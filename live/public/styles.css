@@ -70,6 +70,22 @@ body {
   background: #2563eb;
 }
 
+.file-category {
+  margin-top: 12px;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.file-placeholder {
+  padding: 8px 10px;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
 .editor,
 .preview {
   flex: 1;
@@ -100,4 +116,10 @@ body {
   white-space: pre-wrap;
   color: #0f172a;
   background: #ffffff;
+}
+
+.preview-message {
+  padding: 8px;
+  color: #94a3b8;
+  font-size: 0.875rem;
 }

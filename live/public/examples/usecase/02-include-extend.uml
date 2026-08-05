@@ -1,0 +1,10 @@
+@startuml
+left to right direction
+
+:Visitor:
+usecase "Sign in" as SignIn
+usecase "Reset password" as ResetPassword
+
+:Visitor: --> SignIn
+ResetPassword .> SignIn : <<extend>>
+@enduml

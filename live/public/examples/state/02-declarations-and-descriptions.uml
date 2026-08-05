@@ -1,0 +1,6 @@
+@startuml
+state "Awaiting payment" as Awaiting #lightyellow : customer may cancel
+state Processing <<choice>> #lightblue
+
+Awaiting --> Processing : payment received
+@enduml

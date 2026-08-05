@@ -1,0 +1,8 @@
+@startuml
+component "Inventory service" as Inventory <<backend>> [[https://example.com/inventory]] #lightblue
+database InventoryStore #lightyellow
+Inventory --> InventoryStore : persists
+note right of Inventory
+  Owns stock reservations.
+end note
+@enduml

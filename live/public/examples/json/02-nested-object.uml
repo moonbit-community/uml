@@ -1,0 +1,15 @@
+@startjson
+{
+  "project": {
+    "name": "documentation",
+    "settings": {
+      "language": "zh-CN",
+      "draft": false
+    }
+  },
+  "owner": {
+    "id": 7,
+    "name": "Ada"
+  }
+}
+@endjson

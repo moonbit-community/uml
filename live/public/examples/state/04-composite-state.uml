@@ -1,0 +1,12 @@
+@startuml
+[*] --> Session
+
+state "Active session" as Session {
+  [*] --> Connected
+  Connected --> Suspended : network lost
+  Suspended --> Connected : network restored
+  Connected --> [*] : sign out
+}
+
+Session --> [*]
+@enduml

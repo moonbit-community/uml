@@ -1,0 +1,10 @@
+@starttoml
+title = "service-catalog"
+version = 3
+enabled = true
+ratio = 0.875
+max_int = 9223372036854775807
+created = 2026-07-24T12:30:00Z
+local_date = 2026-07-24
+local_time = 12:30:00
+@endtoml

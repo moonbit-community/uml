@@ -9,6 +9,8 @@ enum Msg {
   EditorChanged(String)
   FileSelected(String)
   SizesChanged(Array[Int])
+  ManifestLoaded(Result[Map[String, Array[String]], String])
+  SourceLoaded(String, Result[String, String])
 }
 
 ///|
@@ -16,52 +18,92 @@ struct AppState {
   active_file : String
   source : String
   sizes : Array[Int]
+  categories : Map[String, Array[String]]
+  sources : Map[String, String]
+  load_error : String?
 } derive(Eq)
 
 ///|
-fn default_source(file : String) -> String {
-  match file {
-    "class.uml" =>
-      (
-        #|@startuml
-        #|class User {
-        #|  +name: String
-        #|  +login()
-        #|}
-        #|class Session
-        #|User --> Session
-        #|@enduml
-      )
-    "activity.uml" =>
-      (
-        #|@startuml
-        #|start
-        #|:Receive request;
-        #|if (Valid?) then (yes)
-        #|  :Process request;
-        #|else (no)
-        #|  :Return error;
-        #|endif
-        #|stop
-        #|@enduml
-      )
-    _ =>
-      (
-        #|@startuml
-        #|Alice -> Bob: Request
-        #|Bob --> Alice: Response
-        #|@enduml
-      )
+fn update(
+  emit : @rabbita.Emit[Msg],
+  msg : Msg,
+  state : AppState,
+) -> (AppState, @cmd.Cmd) {
+  match msg {
+    EditorChanged(value) => ({ ..state, source: value }, @cmd.none)
+    FileSelected(file) => (select_source(state, file), @cmd.none)
+    SizesChanged(sizes) => ({ ..state, sizes, }, @cmd.none)
+    ManifestLoaded(Ok(categories)) =>
+      ({ ..state, categories, }, source_fetch_cmds(emit, categories))
+    ManifestLoaded(Err(error)) =>
+      ({ ..state, load_error: Some(error) }, @cmd.none)
+    SourceLoaded(path, Ok(source)) =>
+      (apply_source(state, path, source), @cmd.none)
+    SourceLoaded(path, Err(_)) => (apply_source(state, path, ""), @cmd.none)
   }
 }
 
 ///|
-fn update(msg : Msg, state : AppState) -> AppState {
-  match msg {
-    EditorChanged(value) => { ..state, source: value }
-    FileSelected(file) =>
-      { ..state, active_file: file, source: default_source(file) }
-    SizesChanged(sizes) => { ..state, sizes, }
+fn source_fetch_cmds(
+  emit : @rabbita.Emit[Msg],
+  categories : Map[String, Array[String]],
+) -> @cmd.Cmd {
+  let cmds : Array[@cmd.Cmd] = []
+  for cat, files in categories {
+    for file in files {
+      let path = "\{cat}/\{file}"
+      cmds.push(
+        @http.get("examples/\{path}").expect_text(result => {
+          emit(SourceLoaded(path, result.map_err(error => "\{error}")))
+        }),
+      )
+    }
+  }
+  @cmd.batch(cmds)
+}
+
+///|
+fn select_source(state : AppState, path : String) -> AppState {
+  { ..state, active_file: path, source: state.sources.get(path).unwrap_or("") }
+}
+
+///|
+fn example_count(categories : Map[String, Array[String]]) -> Int {
+  let mut total = 0
+  for _, files in categories {
+    total += files.length()
+  }
+  total
+}
+
+///|
+fn first_path(categories : Map[String, Array[String]]) -> String? {
+  for cat, files in categories {
+    if files.length() > 0 {
+      return Some("\{cat}/\{files[0]}")
+    }
+  }
+  None
+}
+
+///|
+fn apply_source(state : AppState, path : String, source : String) -> AppState {
+  state.sources[path] = source
+  if path == state.active_file {
+    { ..state, source, }
+  } else if state.active_file == "" &&
+    state.sources.length() == example_count(state.categories) {
+    match first_path(state.categories) {
+      Some(first) =>
+        {
+          ..state,
+          active_file: first,
+          source: state.sources.get(first).unwrap_or(""),
+        }
+      None => state
+    }
+  } else {
+    state
   }
 }
 
@@ -83,37 +125,52 @@ fn workspace_max_sizes() -> Array[Int] {
 ///|
 fn initial_state() -> AppState {
   {
-    active_file: "sequence.uml",
-    source: default_source("sequence.uml"),
+    active_file: "",
+    source: "",
     sizes: workspace_default_sizes(),
+    categories: Map([]),
+    sources: Map([]),
+    load_error: None,
   }
 }
 
 ///|
 fn app_state_tag(state : AppState) -> String {
-  "\{state.active_file}|\{state.source}"
+  "\{state.active_file}|\{state.source}|\{state.categories.length()}|\{state.load_error.unwrap_or("")}"
 }
 
 ///|
 fn file_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
-  let file_item = fn(file : String) -> Html {
+  let file_item = fn(cat : String, file : String) -> Html {
+    let path = "\{cat}/\{file}"
     li(
-      class=if state.active_file == file {
+      class=if state.active_file == path {
         "file-item active"
       } else {
         "file-item"
       },
-      on_click=emit(FileSelected(file)),
+      on_click=emit(FileSelected(path)),
       file,
     )
   }
   div(class="file-panel") <| [
     h1(class="panel-title", "Files"),
-    ul(class="file-list") <| [
-      file_item("sequence.uml"),
-      file_item("class.uml"),
-      file_item("activity.uml"),
-    ],
+    if state.load_error is Some(_) {
+      div(class="file-placeholder", "加载失败")
+    } else if state.categories.is_empty() {
+      div(class="file-placeholder", "加载中…")
+    } else {
+      ul(class="file-list") <| ({
+        let items : Array[Html] = []
+        for cat, files in state.categories {
+          items.push(li(class="file-category", cat))
+          for file in files {
+            items.push(file_item(cat, file))
+          }
+        }
+        items
+      })
+    },
   ]
 }
 
@@ -132,13 +189,22 @@ fn editor_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
 
 ///|
 #warnings("-alert_xss_vulnerable")
+fn preview_content(state : AppState) -> Array[Html] {
+  if state.load_error is Some(error) {
+    [div(class="preview-message", error)]
+  } else if state.source == "" {
+    [div(class="preview-message", "加载中…")]
+  } else {
+    let svg : String = @api.render_svg(state.source) catch { e => "\{e}" }
+    [div(attrs=@html.Attrs::build().inner_html(svg), "")]
+  }
+}
+
+///|
 fn preview_panel(state : AppState) -> Html {
   div(class="preview-panel") <| [
     h1(class="panel-title", "Preview"),
-    div(class="preview") <| ({
-      let svg : String = @api.render_svg(state.source) catch { e => "\{e}" }
-      [div(attrs=@html.Attrs::build().inner_html(svg), "")]
-    }),
+    div(class="preview") <| preview_content(state),
   ]
 }
 
@@ -191,7 +257,17 @@ fn workspace(state : AppState, emit : @rabbita.Emit[Msg]) -> Val[Html] {
 
 ///|
 fn app() -> Val[Html] {
-  let (state, emit) = @rabbita.create_pure_state(initial_state(), update~)
+  let (state, emit) = @rabbita.create_state_with_init(
+    init=fn(emit) {
+      (
+        initial_state(),
+        @http.get("examples-manifest.json").expect_json(result => {
+          emit(ManifestLoaded(result.map_err(error => "\{error}")))
+        }),
+      )
+    },
+    update~,
+  )
   state.switch_by(state => workspace(state, emit), by=app_state_tag)
 }
 

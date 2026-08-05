@@ -1,0 +1,11 @@
+@startuml
+component Browser
+component Gateway
+component Search
+component Events
+
+Browser -right-> Gateway : request
+Gateway ..> Search : lookup
+Gateway --> Events : publishes
+Events <-- Search : consumes
+@enduml

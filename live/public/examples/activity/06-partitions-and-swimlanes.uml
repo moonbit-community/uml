@@ -1,0 +1,19 @@
+@startuml
+|Customer|
+start
+:Submit order;
+
+|Store|
+partition Fulfilment {
+  :Validate order;
+  :Reserve inventory;
+}
+
+|Customer|
+:Receive confirmation;
+note right
+  Confirmation is sent only
+  after inventory is reserved.
+end note
+stop
+@enduml

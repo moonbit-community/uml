@@ -1,0 +1,54 @@
+@startuml
+left to right direction
+class A1
+class B1
+A1 -->> B1
+class A2
+class B2
+A2 --\\ B2
+class A3
+class B3
+A3 --// B3
+class A4
+class B4
+A4 --0 B4
+class A5
+class B5
+A5 --@ B5
+class A6
+class B6
+A6 --+ B6
+class A7
+class B7
+A7 --# B7
+class A8
+class B8
+A8 --{ B8
+class A9
+class B9
+A9 --o{ B9
+class A10
+class B10
+A10 --|{ B10
+class A11
+class B11
+A11 --o| B11
+class A12
+class B12
+A12 --|| B12
+class A13
+class B13
+A13 --x B13
+class A14
+class B14
+A14 --( B14
+class A15
+class B15
+A15 --(0 B15
+class A16
+class B16
+A16 --||> B16
+class A17
+class B17
+A17 --:|> B17
+@enduml

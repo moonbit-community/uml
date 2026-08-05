@@ -1,0 +1,11 @@
+@startuml
+left to right direction
+allowmixing
+
+actor Customer
+usecase "Pay order" as PayOrder
+component [Payment provider] as PaymentProvider
+
+Customer --> PayOrder
+PayOrder --> PaymentProvider : authorize
+@enduml
