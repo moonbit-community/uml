@@ -14,7 +14,7 @@ fn append_packages(
         let group = diagram.packages[package_layout.package_index]
         let fill = @svg.svg_color(
           group.color,
-          diagram.style.package_background_color(),
+          package_background_color(diagram.style),
         )
         let tab_width = text_metrics.regular.measure(group.display).width.to_double() +
           18.0
@@ -22,7 +22,7 @@ fn append_packages(
         let y = package_layout.y
         let right = x + package_layout.width
         let bottom = y + package_layout.height
-        let border_color = diagram.style.package_border_color()
+        let border_color = package_border_color(diagram.style)
         output <+
           $|<g class="package">
           $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
@@ -56,13 +56,10 @@ fn append_entity(
   let header = entity.header_layout(text_metrics)
   let body = entity.body_layout(text_metrics)
   let row_height = text_metrics.row_height()
-  let fill = @svg.svg_color(
-    entity.color,
-    diagram.style.class_background_color(),
-  )
+  let fill = @svg.svg_color(entity.color, class_background_color(diagram.style))
   let stroke = @svg.svg_color(
     entity.line_color,
-    diagram.style.class_border_color(),
+    class_border_color(diagram.style),
   )
   let stroke_style = @svg.stroke_style(entity.line_style)
   let line_attributes =
@@ -84,7 +81,7 @@ fn append_entity(
   match (header.stereotype, placement.stereotype_position) {
     (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
       output <+
-        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="class-stereotype" fill="\{diagram.style.class_stereotype_font_color()}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
+        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="class-stereotype" fill="\{class_stereotype_font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
     _ => ()
   }
   output <+
@@ -122,25 +119,19 @@ fn append_usecase_entity(
   let (background, border) = match entity.kind {
     Usecase | BusinessUsecase =>
       (
-        diagram.style.usecase_background_color(),
-        diagram.style.usecase_border_color(),
+        usecase_background_color(diagram.style),
+        usecase_border_color(diagram.style),
       )
     Actor | BusinessActor =>
-      (
-        diagram.style.actor_background_color(),
-        diagram.style.actor_border_color(),
-      )
+      (actor_background_color(diagram.style), actor_border_color(diagram.style))
     _ =>
-      (
-        diagram.style.class_background_color(),
-        diagram.style.class_border_color(),
-      )
+      (class_background_color(diagram.style), class_border_color(diagram.style))
   }
   let fill = @svg.svg_color(entity.color, background)
   let stroke = @svg.svg_color(entity.line_color, border)
   let text_color = match entity.kind {
-    Usecase | BusinessUsecase => diagram.style.usecase_font_color()
-    Actor | BusinessActor => diagram.style.actor_font_color()
+    Usecase | BusinessUsecase => usecase_font_color(diagram.style)
+    Actor | BusinessActor => actor_font_color(diagram.style)
     _ => diagram.style.diagram_text_color()
   }
   let line_attributes = @svg.stroke_style(entity.line_style)

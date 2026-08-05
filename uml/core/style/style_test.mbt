@@ -42,45 +42,46 @@ test "document color resolution uses shared render defaults and skinparams" {
   let defaults = render_defaults()
   @test.assert_eq(style.canvas_color(), defaults.canvas_background)
   @test.assert_eq(style.diagram_line_color(), defaults.diagram_line)
-  @test.assert_eq(style.class_background_color(), defaults.node_background)
-  @test.assert_eq(style.note_background_color(), defaults.note_background)
+
+  style.apply(BackgroundColor("#012345"))
+  style.apply(LineColor("#654321"))
+  @test.assert_eq(style.canvas_color(), "#012345")
+  @test.assert_eq(style.diagram_line_color(), "#654321")
+}
+
+///|
+test "generic skinparam resolvers use shared defaults and fallbacks" {
+  let style = DocumentStyle::empty()
+  let defaults = render_defaults()
+  @test.assert_eq(
+    style.property_color("ClassBackgroundColor", defaults.node_background),
+    defaults.node_background,
+  )
+  @test.assert_eq(
+    style.property_color("NoteBackgroundColor", defaults.note_background),
+    defaults.note_background,
+  )
+  @test.assert_eq(
+    style.property_font_color("UsecaseFontColor"),
+    defaults.diagram_text,
+  )
+  @test.assert_eq(style.property_font_size("UsecaseFontSize", fallback=14), 14)
+  @test.assert_eq(
+    style.property_font_family("UsecaseFontName"),
+    style.font_family(),
+  )
 
   style.apply(Property("ClassBackgroundColor", "#123456"))
-  style.apply(Property("ClassBorderColor", "#654321"))
-  style.apply(Property("PackageBackgroundColor", "#abcdef"))
-  style.apply(Property("UsecaseBackgroundColor", "#456789"))
-  style.apply(Property("ActorBorderColor", "#987654"))
-  style.apply(Property("actorStyle", "awesome"))
   style.apply(Property("UsecaseFontColor", "#abc123"))
-  style.apply(Property("ActorFontColor", "#def456"))
   style.apply(Property("UsecaseFontSize", "16"))
-  style.apply(Property("ActorFontSize", "12pt"))
   style.apply(Property("UsecaseFontName", "Courier"))
-  style.apply(Property("ActorFontName", "Times New Roman"))
-  style.apply(Property("ClassStereotypeFontColor", "#123abc"))
-  style.apply(Property("ClassStereotypeFontSize", "17"))
-  style.apply(Property("ClassStereotypeFontName", "Georgia"))
-  style.apply(Property("ArrowFontColor", "#abcd12"))
-  style.apply(Property("ArrowFontSize", "15"))
-  style.apply(Property("ArrowFontName", "Courier New"))
-  @test.assert_eq(style.class_background_color(), "#123456")
-  @test.assert_eq(style.class_border_color(), "#654321")
-  @test.assert_eq(style.package_background_color(), "#abcdef")
-  @test.assert_eq(style.usecase_background_color(), "#456789")
-  @test.assert_eq(style.actor_border_color(), "#987654")
-  @test.assert_eq(style.actor_style(), "awesome")
-  @test.assert_eq(style.usecase_font_color(), "#abc123")
-  @test.assert_eq(style.actor_font_color(), "#def456")
-  @test.assert_eq(style.usecase_font_size(fallback=14), 16)
-  @test.assert_eq(style.actor_font_size(fallback=14), 16)
-  @test.assert_eq(style.usecase_font_family(), "Courier")
-  @test.assert_eq(style.actor_font_family(), "Times New Roman")
-  @test.assert_eq(style.class_stereotype_font_color(), "#123abc")
-  @test.assert_eq(style.class_stereotype_font_size(fallback=12), 17)
-  @test.assert_eq(style.class_stereotype_font_family(), "Georgia")
-  @test.assert_eq(style.arrow_font_color(), "#abcd12")
-  @test.assert_eq(style.arrow_font_size(fallback=13), 15)
-  @test.assert_eq(style.arrow_font_family(), "Courier New")
+  @test.assert_eq(
+    style.property_color("ClassBackgroundColor", defaults.node_background),
+    "#123456",
+  )
+  @test.assert_eq(style.property_font_color("UsecaseFontColor"), "#abc123")
+  @test.assert_eq(style.property_font_size("UsecaseFontSize", fallback=14), 16)
+  @test.assert_eq(style.property_font_family("UsecaseFontName"), "Courier")
 }
 
 ///|

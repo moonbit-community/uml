@@ -125,6 +125,47 @@ test "use-case layout uses ellipse and actor geometry before Graphviz" {
 }
 
 ///|
+test "entity family skinparams resolve through shared defaults" {
+  let diagram = parse(
+    "@startuml\nskinparam ClassBackgroundColor #123456\nskinparam ClassBorderColor #654321\nskinparam PackageBackgroundColor #abcdef\nskinparam UsecaseBackgroundColor #456789\nskinparam ActorBorderColor #987654\nskinparam actorStyle awesome\nskinparam UsecaseFontColor #abc123\nskinparam ActorFontColor #def456\nskinparam UsecaseFontSize 16\nskinparam ActorFontSize 12pt\nskinparam UsecaseFontName Courier\nskinparam ActorFontName Times New Roman\nskinparam ClassStereotypeFontColor #123abc\nskinparam ClassStereotypeFontSize 17\nskinparam ClassStereotypeFontName Georgia\nskinparam ArrowFontColor #abcd12\nskinparam ArrowFontSize 15\nskinparam ArrowFontName Mono\nclass A\n@enduml",
+  )
+  let style = diagram.style
+  @test.assert_eq(class_background_color(style), "#123456")
+  @test.assert_eq(class_border_color(style), "#654321")
+  @test.assert_eq(package_background_color(style), "#abcdef")
+  @test.assert_eq(usecase_background_color(style), "#456789")
+  @test.assert_eq(actor_border_color(style), "#987654")
+  @test.assert_eq(actor_style(style), "awesome")
+  @test.assert_eq(usecase_font_color(style), "#abc123")
+  @test.assert_eq(actor_font_color(style), "#def456")
+  @test.assert_eq(usecase_font_size(style, fallback=14), 16)
+  @test.assert_eq(actor_font_size(style, fallback=14), 16)
+  @test.assert_eq(usecase_font_family(style), "Courier")
+  @test.assert_eq(actor_font_family(style), "Times New Roman")
+  @test.assert_eq(class_stereotype_font_color(style), "#123abc")
+  @test.assert_eq(class_stereotype_font_size(style, fallback=12), 17)
+  @test.assert_eq(class_stereotype_font_family(style), "Georgia")
+  @test.assert_eq(arrow_font_color(style), "#abcd12")
+  @test.assert_eq(arrow_font_size(style, fallback=13), 15)
+  @test.assert_eq(arrow_font_family(style), "Mono")
+}
+
+///|
+test "entity family color fallbacks chain from class colors" {
+  let defaults = @style.render_defaults()
+  let plain = parse("@startuml\nclass A\n@enduml")
+  @test.assert_eq(class_background_color(plain.style), defaults.node_background)
+  @test.assert_eq(note_background_color(plain.style), defaults.note_background)
+  @test.assert_eq(
+    usecase_background_color(plain.style),
+    defaults.node_background,
+  )
+  @test.assert_eq(actor_background_color(plain.style), defaults.node_background)
+  @test.assert_eq(class_border_color(plain.style), defaults.diagram_line)
+  @test.assert_eq(note_border_color(plain.style), defaults.diagram_line)
+}
+
+///|
 test "use-case ellipse geometry grows with its text footprint" {
   let compact = text_block_in_ellipse_geometry(20, 10)
   let wide = text_block_in_ellipse_geometry(80, 10)
@@ -295,7 +336,7 @@ test "actor styles select matching geometry and SVG symbols" {
     ClassTextMetrics::new(hollow.style),
     UseCaseDiagram,
   )
-  @test.assert_eq(awesome.style.actor_style(), "awesome")
+  @test.assert_eq(actor_style(awesome.style), "awesome")
   @test.assert_eq(awesome_geometry.width > stickman_geometry.width, true)
   @test.assert_eq(hollow_geometry.height < stickman_geometry.height, true)
   @test.assert_eq(
@@ -414,7 +455,7 @@ test "link notes use PlantUML folded polygons with one shared fill" {
   )
   let fill = @svg.svg_color(
     diagram.notes[0].color,
-    diagram.style.note_background_color(),
+    note_background_color(diagram.style),
   )
   let svg = diagram.render_svg()
   guard @parse.find_literal(svg, "<g class=\"class-note\"") is Some(group_start) else {

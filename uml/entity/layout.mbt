@@ -178,7 +178,7 @@ fn EntityDiagram::graphviz_layout(
     cluster.set_attr("penwidth", "1.5")
     cluster.set_attr(
       "color",
-      @svg.svg_color(group.color, self.style.package_border_color()),
+      @svg.svg_color(group.color, package_border_color(self.style)),
     )
     let protection_after = cluster.subgraph(name="\{cluster_name}p1")
     protection_after.set_attr("label", "")
@@ -241,12 +241,12 @@ fn EntityDiagram::graphviz_layout(
       }
       edge.set_attr("label", label)
       let label_font_size = if usecase {
-        self.style.arrow_font_size(fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)
+        arrow_font_size(self.style, fallback=PLANTUML_RELATION_LABEL_FONT_SIZE)
       } else {
         text_metrics.relation_label_regular.font_size
       }
       let label_font_name = if usecase {
-        self.style.arrow_font_family()
+        arrow_font_family(self.style)
       } else {
         self.style.font_family()
       }

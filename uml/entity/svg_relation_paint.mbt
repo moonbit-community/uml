@@ -100,17 +100,17 @@ fn append_relation(
   )
   let background_color = diagram.style.canvas_color()
   let label_font_size = if usecase {
-    diagram.style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE)
+    arrow_font_size(diagram.style, fallback=USECASE_RELATION_LABEL_FONT_SIZE)
   } else {
     text_metrics.relation_label_regular.font_size
   }
   let label_font_family = if usecase {
-    diagram.style.arrow_font_family()
+    arrow_font_family(diagram.style)
   } else {
     diagram.style.font_family()
   }
   let label_color = if usecase {
-    diagram.style.arrow_font_color()
+    arrow_font_color(diagram.style)
   } else {
     diagram.style.diagram_text_color()
   }

@@ -430,12 +430,13 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
   } else {
     style.font_size_value()
   }
-  let usecase_font_size = style.usecase_font_size(fallback=font_size)
-  let actor_font_size = style.actor_font_size(fallback=font_size)
-  let usecase_font_family = style.usecase_font_family()
-  let actor_font_family = style.actor_font_family()
-  let class_stereotype_font_family = style.class_stereotype_font_family()
-  let class_stereotype_font_size = style.class_stereotype_font_size(
+  let usecase_font_size = usecase_font_size(style, fallback=font_size)
+  let actor_font_size = actor_font_size(style, fallback=font_size)
+  let usecase_font_family = usecase_font_family(style)
+  let actor_font_family = actor_font_family(style)
+  let class_stereotype_font_family = class_stereotype_font_family(style)
+  let class_stereotype_font_size = class_stereotype_font_size(
+    style,
     fallback=CLASS_STEREOTYPE_FONT_SIZE,
   )
   {
@@ -473,11 +474,14 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
     relation_end_regular: style.font_metrics(font_size=RELATION_END_FONT_SIZE),
     relation_end_font_family: style.font_family(),
     arrow_regular: style.font_metrics_for(
-      style.arrow_font_family(),
-      font_size=style.arrow_font_size(fallback=USECASE_RELATION_LABEL_FONT_SIZE),
+      arrow_font_family(style),
+      font_size=arrow_font_size(
+        style,
+        fallback=USECASE_RELATION_LABEL_FONT_SIZE,
+      ),
     ),
     note: style.font_metrics(font_size=NOTE_FONT_SIZE),
-    actor_style: style.actor_style(),
+    actor_style: actor_style(style),
   }
 }
 

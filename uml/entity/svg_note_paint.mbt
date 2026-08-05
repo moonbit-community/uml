@@ -203,7 +203,7 @@ fn append_notes(
         let y = note_layout.y - note_layout.height / 2.0
         let fill = @svg.svg_color(
           note.color,
-          diagram.style.note_background_color(),
+          note_background_color(diagram.style),
         )
         let mut path = normal_note_path(note_layout)
         let corner_path = note_corner_path(note_layout)
@@ -234,7 +234,7 @@ fn append_notes(
           }
         }
         output <+
-          $|<g class="class-note" style="stroke:\{diagram.style.note_border_color()}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
+          $|<g class="class-note" style="stroke:\{note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
         for line_index, line in note.text.split("\n") {
           output <+
             $|<text x="\{x + NOTE_LEFT_PADDING.to_double()}" y="\{y + NOTE_VERTICAL_PADDING.to_double() + text_metrics.note.ascent.to_double() + line_index.to_double() * text_metrics.note.line_height.to_double()}" class="note-text">\{@svg.xml_escape(line.to_owned())}</text>

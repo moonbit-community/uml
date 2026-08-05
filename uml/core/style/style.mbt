@@ -128,54 +128,13 @@ pub fn DocumentStyle::diagram_line_color(self : DocumentStyle) -> String {
 }
 
 ///|
-pub fn DocumentStyle::class_background_color(self : DocumentStyle) -> String {
-  @svg.svg_color(
-    self.property("ClassBackgroundColor"),
-    render_defaults().node_background,
-  )
-}
-
-///|
-pub fn DocumentStyle::class_border_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("ClassBorderColor"), self.diagram_line_color())
-}
-
-///|
-pub fn DocumentStyle::usecase_background_color(self : DocumentStyle) -> String {
-  @svg.svg_color(
-    self.property("UsecaseBackgroundColor"),
-    self.class_background_color(),
-  )
-}
-
-///|
-pub fn DocumentStyle::usecase_border_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("UsecaseBorderColor"), self.class_border_color())
-}
-
-///|
-pub fn DocumentStyle::actor_background_color(self : DocumentStyle) -> String {
-  @svg.svg_color(
-    self.property("ActorBackgroundColor"),
-    self.class_background_color(),
-  )
-}
-
-///|
-pub fn DocumentStyle::actor_border_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("ActorBorderColor"), self.class_border_color())
-}
-
-///|
-pub fn DocumentStyle::actor_style(self : DocumentStyle) -> String {
-  self
-  .property("ActorStyle")
-  .unwrap_or(
-    self
-    .property("actorStyle")
-    .unwrap_or(self.property("actorstyle").unwrap_or("stickman")),
-  )
-  .to_lower()
+/// Resolves a skinparam color property with a shared fallback.
+pub fn DocumentStyle::property_color(
+  self : DocumentStyle,
+  key : String,
+  fallback : String,
+) -> String {
+  @svg.svg_color(self.property(key), fallback)
 }
 
 ///|
@@ -184,123 +143,35 @@ pub fn DocumentStyle::diagram_text_color(self : DocumentStyle) -> String {
 }
 
 ///|
-fn role_font_color(style : DocumentStyle, key : String) -> String {
-  @svg.svg_color(style.property(key), style.diagram_text_color())
+/// Resolves a skinparam font color property, falling back to diagram text.
+pub fn DocumentStyle::property_font_color(
+  self : DocumentStyle,
+  key : String,
+) -> String {
+  self.property_color(key, self.diagram_text_color())
 }
 
 ///|
-fn role_font_size(style : DocumentStyle, key : String, fallback~ : Int) -> Int {
-  match style.property(key) {
+/// Resolves a skinparam font size property with a fallback.
+pub fn DocumentStyle::property_font_size(
+  self : DocumentStyle,
+  key : String,
+  fallback~ : Int,
+) -> Int {
+  match self.property(key) {
     Some(value) => parse_font_size(value, fallback~)
     None => fallback
   }
 }
 
 ///|
-fn role_font_family(style : DocumentStyle, key : String) -> String {
-  style.property(key).unwrap_or(style.font_family())
-}
-
-///|
-pub fn DocumentStyle::usecase_font_color(self : DocumentStyle) -> String {
-  role_font_color(self, "UsecaseFontColor")
-}
-
-///|
-pub fn DocumentStyle::actor_font_color(self : DocumentStyle) -> String {
-  role_font_color(self, "ActorFontColor")
-}
-
-///|
-pub fn DocumentStyle::usecase_font_size(
+/// Resolves a skinparam font family property, falling back to the document
+/// font family.
+pub fn DocumentStyle::property_font_family(
   self : DocumentStyle,
-  fallback~ : Int,
-) -> Int {
-  role_font_size(self, "UsecaseFontSize", fallback~)
-}
-
-///|
-pub fn DocumentStyle::actor_font_size(
-  self : DocumentStyle,
-  fallback~ : Int,
-) -> Int {
-  role_font_size(self, "ActorFontSize", fallback~)
-}
-
-///|
-pub fn DocumentStyle::usecase_font_family(self : DocumentStyle) -> String {
-  role_font_family(self, "UsecaseFontName")
-}
-
-///|
-pub fn DocumentStyle::actor_font_family(self : DocumentStyle) -> String {
-  role_font_family(self, "ActorFontName")
-}
-
-///|
-pub fn DocumentStyle::class_stereotype_font_color(
-  self : DocumentStyle,
+  key : String,
 ) -> String {
-  role_font_color(self, "ClassStereotypeFontColor")
-}
-
-///|
-pub fn DocumentStyle::class_stereotype_font_size(
-  self : DocumentStyle,
-  fallback~ : Int,
-) -> Int {
-  role_font_size(self, "ClassStereotypeFontSize", fallback~)
-}
-
-///|
-pub fn DocumentStyle::class_stereotype_font_family(
-  self : DocumentStyle,
-) -> String {
-  role_font_family(self, "ClassStereotypeFontName")
-}
-
-///|
-pub fn DocumentStyle::arrow_font_color(self : DocumentStyle) -> String {
-  role_font_color(self, "ArrowFontColor")
-}
-
-///|
-pub fn DocumentStyle::arrow_font_size(
-  self : DocumentStyle,
-  fallback~ : Int,
-) -> Int {
-  role_font_size(self, "ArrowFontSize", fallback~)
-}
-
-///|
-pub fn DocumentStyle::arrow_font_family(self : DocumentStyle) -> String {
-  role_font_family(self, "ArrowFontName")
-}
-
-///|
-pub fn DocumentStyle::package_background_color(self : DocumentStyle) -> String {
-  @svg.svg_color(
-    self.property("PackageBackgroundColor"),
-    render_defaults().transparent,
-  )
-}
-
-///|
-pub fn DocumentStyle::package_border_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("PackageBorderColor"), self.class_border_color())
-}
-
-///|
-pub fn DocumentStyle::note_background_color(self : DocumentStyle) -> String {
-  @svg.svg_color(
-    self.property("NoteBackgroundColor"),
-    render_defaults().note_background,
-  )
-}
-
-///|
-pub fn DocumentStyle::note_border_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("NoteBorderColor"), self.class_border_color())
+  self.property(key).unwrap_or(self.font_family())
 }
 
 ///|
