@@ -1,4 +1,63 @@
 ///|
+const RELATION_GEOMETRY_TEST_EPSILON : Double = 0.0001
+
+///|
+fn test_relation_points_near(
+  first : (Double, Double),
+  second : (Double, Double),
+) -> Bool {
+  relation_point_distance_squared(first, second) <=
+  RELATION_GEOMETRY_TEST_EPSILON * RELATION_GEOMETRY_TEST_EPSILON
+}
+
+///|
+fn test_relation_vectors_near(
+  first_start : (Double, Double),
+  first_end : (Double, Double),
+  second_start : (Double, Double),
+  second_end : (Double, Double),
+) -> Bool {
+  test_relation_points_near(
+    (first_end.0 - first_start.0, first_end.1 - first_start.1),
+    (second_end.0 - second_start.0, second_end.1 - second_start.1),
+  )
+}
+
+///|
+fn test_relation_point_on_box_boundary(
+  point : (Double, Double),
+  node : GraphvizNodeLayout,
+) -> Bool {
+  let left = node.x - node.width / 2.0
+  let right = node.x + node.width / 2.0
+  let top = node.y - node.height / 2.0
+  let bottom = node.y + node.height / 2.0
+  let inside_x = point.0 >= left - RELATION_GEOMETRY_TEST_EPSILON &&
+    point.0 <= right + RELATION_GEOMETRY_TEST_EPSILON
+  let inside_y = point.1 >= top - RELATION_GEOMETRY_TEST_EPSILON &&
+    point.1 <= bottom + RELATION_GEOMETRY_TEST_EPSILON
+  let on_vertical = (point.0 - left).abs() <= RELATION_GEOMETRY_TEST_EPSILON ||
+    (point.0 - right).abs() <= RELATION_GEOMETRY_TEST_EPSILON
+  let on_horizontal = (point.1 - top).abs() <= RELATION_GEOMETRY_TEST_EPSILON ||
+    (point.1 - bottom).abs() <= RELATION_GEOMETRY_TEST_EPSILON
+  inside_x && inside_y && (on_vertical || on_horizontal)
+}
+
+///|
+fn test_relation_point_on_ellipse_boundary(
+  point : (Double, Double),
+  node : GraphvizNodeLayout,
+) -> Bool {
+  let radius_x = node.width / 2.0
+  let radius_y = node.height / 2.0
+  let dx = point.0 - node.x
+  let dy = point.1 - node.y
+  let normalized = dx * dx / (radius_x * radius_x) +
+    dy * dy / (radius_y * radius_y)
+  (normalized - 1.0).abs() <= RELATION_GEOMETRY_TEST_EPSILON
+}
+
+///|
 fn test_relation_text_box_intersects_paths(
   text_box : RelationTextBox,
   paths : Array[Array[(Double, Double)]],
@@ -888,4 +947,178 @@ test "class relation lines stop before endpoint decorations" {
     shortened[shortened.length() - 1].0 - shortened[shortened.length() - 2].0,
     path[path.length() - 1].0 - path[path.length() - 2].0,
   )
+}
+
+///|
+test "normalized class relations contact both node boundaries" {
+  let diagram = parse(
+    "@startuml\nclass Source\nclass Target\nSource --> Target\n@enduml",
+  )
+  let layout = diagram.graphviz_layout(ClassTextMetrics::new(diagram.style))
+  let source = layout.node("Source").unwrap()
+  let target = layout.node("Target").unwrap()
+  let edge = layout.edges[0]
+  let start = relation_edge_endpoint(edge, true).unwrap()
+  let end = relation_edge_endpoint(edge, false).unwrap()
+  @test.assert_eq(test_relation_point_on_box_boundary(start, source), true)
+  @test.assert_eq(test_relation_point_on_box_boundary(end, target), true)
+}
+
+///|
+test "normalized use-case relations contact the ellipse boundary" {
+  let diagram = parse(
+    "@startuml\n:Customer: --> (Place order)\n@enduml",
+    family=UseCaseDiagram,
+  )
+  let layout = diagram.graphviz_layout(ClassTextMetrics::new(diagram.style))
+  let actor = layout.node("Customer").unwrap()
+  let usecase = layout.node("Place order").unwrap()
+  let edge = layout.edges[0]
+  let start = relation_edge_endpoint(edge, true).unwrap()
+  let end = relation_edge_endpoint(edge, false).unwrap()
+  @test.assert_eq(test_relation_point_on_box_boundary(start, actor), true)
+  @test.assert_eq(test_relation_point_on_ellipse_boundary(end, usecase), true)
+}
+
+///|
+test "relation orientation follows semantic nodes and reverses arrow tips" {
+  let left = (0.0, 0.0)
+  let right = (100.0, 0.0)
+  let edge : @graphviz.GraphvizEdge = {
+    index: 0,
+    splines: [
+      {
+        arrow_start: Some(right),
+        arrow_end: Some(left),
+        points: [right, (75.0, 0.0), (25.0, 0.0), left],
+      },
+    ],
+    label: None,
+    head_label: None,
+    tail_label: None,
+  }
+  let oriented = orient_relation_edge(edge, left, right)
+  @test.assert_eq(oriented.splines[0].arrow_start, Some(left))
+  @test.assert_eq(oriented.splines[0].arrow_end, Some(right))
+  @test.assert_eq(oriented.splines[0].points[0], left)
+  @test.assert_eq(oriented.splines[0].points.last(), Some(right))
+}
+
+///|
+test "relation decoration shortening preserves curved endpoint tangents" {
+  let path = [
+    (0.0, 0.0),
+    (0.0, 10.0),
+    (10.0, 20.0),
+    (20.0, 20.0),
+    (30.0, 20.0),
+    (40.0, 10.0),
+    (40.0, 0.0),
+  ]
+  let shortened = shorten_relation_spline(
+    path,
+    RelationEnd::Arrow.decoration_length(),
+    RelationEnd::CompositionEnd.decoration_length(),
+  )
+  let last = path.length() - 1
+  let shortened_last = shortened.length() - 1
+  @test.assert_eq(
+    test_relation_vectors_near(path[0], path[1], shortened[0], shortened[1]),
+    true,
+  )
+  @test.assert_eq(
+    test_relation_vectors_near(
+      path[last - 1],
+      path[last],
+      shortened[shortened_last - 1],
+      shortened[shortened_last],
+    ),
+    true,
+  )
+  @test.assert_eq(shortened[0].1 > path[0].1, true)
+  @test.assert_eq(shortened[shortened_last].1 > path[last].1, true)
+}
+
+///|
+test "long start decorations drop one complete short Bezier" {
+  let path = [
+    (0.0, 0.0),
+    (0.0, 1.0),
+    (1.0, 2.0),
+    (2.0, 0.0),
+    (10.0, 0.0),
+    (20.0, 0.0),
+    (30.0, 0.0),
+  ]
+  let moved = move_relation_spline_start(
+    path,
+    RelationEnd::Extension.decoration_length(),
+  )
+  @test.assert_eq(moved.length(), path.length() - 3)
+  @test.assert_eq(
+    test_relation_vectors_near(path[3], path[4], moved[0], moved[1]),
+    true,
+  )
+  @test.assert_eq(moved[0].0, path[0].0)
+  @test.assert_eq(moved[0].1 > path[0].1, true)
+}
+
+///|
+test "visible relation paths meet decoration interiors without moving tips" {
+  let endpoint = (0.0, 0.0)
+  let adjacent = (30.0, 0.0)
+  for
+    end in [
+      RelationEnd::Arrow,
+      RelationEnd::Extension,
+      RelationEnd::CompositionEnd,
+      RelationEnd::AggregationEnd,
+    ] {
+    let geometry = end.decoration_geometry(endpoint, adjacent).unwrap()
+    let visible = move_relation_spline_start(
+      [endpoint, adjacent],
+      end.decoration_length(),
+    )
+    let interior_contact = match end {
+      Extension =>
+        (
+          (geometry.points[1].0 + geometry.points[2].0) / 2.0,
+          (geometry.points[1].1 + geometry.points[2].1) / 2.0,
+        )
+      _ => geometry.points[2]
+    }
+    @test.assert_eq(geometry.points[0], endpoint)
+    @test.assert_eq(
+      test_relation_points_near(visible[0], interior_contact),
+      true,
+    )
+  }
+}
+
+///|
+test "relation edge decorations use only outer nonempty splines" {
+  let empty : @graphviz.GraphvizSpline = {
+    arrow_start: None,
+    arrow_end: None,
+    points: [],
+  }
+  let first : @graphviz.GraphvizSpline = {
+    arrow_start: None,
+    arrow_end: None,
+    points: [(0.0, 0.0), (1.0, 0.0)],
+  }
+  let last : @graphviz.GraphvizSpline = {
+    arrow_start: None,
+    arrow_end: None,
+    points: [(2.0, 0.0), (3.0, 0.0)],
+  }
+  let edge : @graphviz.GraphvizEdge = {
+    index: 0,
+    splines: [empty, first, empty, last, empty],
+    label: None,
+    head_label: None,
+    tail_label: None,
+  }
+  @test.assert_eq(relation_edge_first_spline_index(edge), Some(1))
+  @test.assert_eq(relation_edge_last_spline_index(edge), Some(3))
 }
