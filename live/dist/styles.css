@@ -11,12 +11,11 @@ body {
 }
 
 #app {
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .workspace {
   --rui-border: #d1d5db;
-  min-height: 100vh;
 }
 
 .file-panel,
@@ -80,7 +79,7 @@ body {
   padding: 12px;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
-  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875rem;
   line-height: 1.6;
 }
@@ -101,10 +100,4 @@ body {
   white-space: pre-wrap;
   color: #0f172a;
   background: #ffffff;
-}
-
-@media (max-width: 640px) {
-  .workspace {
-    min-height: 100vh;
-  }
 }
