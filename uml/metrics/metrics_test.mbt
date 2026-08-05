@@ -6,7 +6,7 @@ test "font metrics expose defaulted tuning parameters" {
     width_scale=110,
     letter_spacing=1,
   )
-  let measured = measure_text_with("AA", metrics)
+  let measured = metrics.measure("AA")
   @test.assert_eq(measured.width > 0, true)
   @test.assert_eq(measured.height, 22)
 }
@@ -21,13 +21,12 @@ test "bold font metrics widen glyph advances" {
     bold_width_scale=100,
   )
   @test.assert_eq(
-    measure_text_with("downloads", bold).width >
-    measure_text_with("downloads", regular).width,
+    bold.measure("downloads").width > regular.measure("downloads").width,
     true,
   )
   @test.assert_eq(
-    measure_text_with("downloads", unexpanded_bold).width,
-    measure_text_with("downloads", regular).width,
+    unexpanded_bold.measure("downloads").width,
+    regular.measure("downloads").width,
   )
 }
 
@@ -35,12 +34,12 @@ test "bold font metrics widen glyph advances" {
 test "combining marks do not widen text" {
   let metrics = FontMetrics::from_defaults(letter_spacing=2)
   @test.assert_eq(
-    measure_text_with("e\u{0301}e", metrics).width,
-    measure_text_with("ee", metrics).width,
+    metrics.measure("e\u{0301}e").width,
+    metrics.measure("ee").width,
   )
   @test.assert_eq(
-    measure_text_with("e\u{fe0f}", metrics).width,
-    measure_text_with("e", metrics).width,
+    metrics.measure("e\u{fe0f}").width,
+    metrics.measure("e").width,
   )
 }
 
@@ -50,21 +49,20 @@ test "font profiles and italic style affect advances" {
   let serif = FontMetrics::from_defaults(profile=Serif)
   let monospace = FontMetrics::from_defaults(profile=Monospace)
   let italic = FontMetrics::from_defaults(style=Italic)
-  @test.assert_eq(measure_text_with("Hello", serif).width > 0, true)
+  @test.assert_eq(serif.measure("Hello").width > 0, true)
   @test.assert_eq(
-    measure_text_with("WWW", monospace).width,
-    measure_text_with("iii", monospace).width,
+    monospace.measure("WWW").width,
+    monospace.measure("iii").width,
   )
   @test.assert_eq(
-    measure_text_with("Hello", italic).width >
-    measure_text_with("Hello", sans).width,
+    italic.measure("Hello").width > sans.measure("Hello").width,
     true,
   )
-  @test.assert_eq(measure_text_with("Hello", italic).ink_left > 0, true)
-  @test.assert_eq(measure_text_with("", italic).width >= 0, true)
+  @test.assert_eq(italic.measure("Hello").ink_left > 0, true)
+  @test.assert_eq(italic.measure("").width >= 0, true)
   @test.assert_eq(
-    measure_text_with("AV", monospace).advance_width,
-    measure_text_with("AA", monospace).advance_width,
+    monospace.measure("AV").advance_width,
+    monospace.measure("AA").advance_width,
   )
 }
 
@@ -73,33 +71,24 @@ test "kerning tabs and word spacing participate in measurement" {
   let metrics = FontMetrics::default()
   let unkerned = FontMetrics::from_defaults(kerning_scale=0)
   @test.assert_eq(
-    measure_text_with("AV", metrics).width <
-    measure_text_with("AV", unkerned).width,
+    metrics.measure("AV").width < unkerned.measure("AV").width,
     true,
   )
-  @test.assert_eq(measure_text_with("\t", metrics).width > 0, true)
+  @test.assert_eq(metrics.measure("\t").width > 0, true)
   @test.assert_eq(
-    measure_text_with("a a", FontMetrics::from_defaults(word_spacing=2)).width,
-    measure_text_with("a a", metrics).width + 2,
+    FontMetrics::from_defaults(word_spacing=2).measure("a a").width,
+    metrics.measure("a a").width + 2,
   )
 }
 
 ///|
 test "numeric runs reserve enough sans-serif width" {
   let metrics = FontMetrics::from_defaults(font_size=14)
-  @test.assert_eq(
-    measure_text_with("1", metrics).width <
-    measure_text_with("8", metrics).width,
-    true,
-  )
+  @test.assert_eq(metrics.measure("1").width < metrics.measure("8").width, true)
   let serif = FontMetrics::from_defaults(profile=Serif, font_size=14)
+  @test.assert_eq(serif.measure("1").width < serif.measure("8").width, true)
   @test.assert_eq(
-    measure_text_with("1", serif).width < measure_text_with("8", serif).width,
-    true,
-  )
-  @test.assert_eq(
-    measure_text_with("0123456789", metrics).width >
-    measure_text_with("abcdefghij", metrics).width,
+    metrics.measure("0123456789").width > metrics.measure("abcdefghij").width,
     true,
   )
 }
@@ -116,19 +105,15 @@ test "character class width scales are configurable" {
     wide_width_scale=100,
   )
   @test.assert_eq(
-    measure_text_with("ABCDEFGHIJKLMNOPQRSTUVWXYZ", calibrated).width >
-    measure_text_with("ABCDEFGHIJKLMNOPQRSTUVWXYZ", neutral).width,
+    calibrated.measure("ABCDEFGHIJKLMNOPQRSTUVWXYZ").width >
+    neutral.measure("ABCDEFGHIJKLMNOPQRSTUVWXYZ").width,
     true,
   )
   @test.assert_eq(
-    measure_text_with("0123456789", calibrated).width <
-    measure_text_with("0123456789", neutral).width,
+    calibrated.measure("0123456789").width < neutral.measure("0123456789").width,
     true,
   )
-  @test.assert_eq(
-    measure_text_with("中文字体度量", calibrated).width > 0,
-    true,
-  )
+  @test.assert_eq(calibrated.measure("中文字体度量").width > 0, true)
 }
 
 ///|
@@ -140,7 +125,7 @@ test "text metrics expose vertical font bounds" {
     descent=4,
     line_gap=4,
   )
-  let measured = measure_text_with("text", metrics)
+  let measured = metrics.measure("text")
   @test.assert_eq(measured.height, 20)
   @test.assert_eq(measured.ascent, 12)
   @test.assert_eq(measured.descent, 4)

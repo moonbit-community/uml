@@ -828,10 +828,7 @@ test "relation layout preserves measured boxes and final content bounds" {
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
   let label = relation_layout.label.unwrap()
-  let measured = @metrics.measure_text_with(
-    "manages",
-    metrics.relation_label_regular,
-  )
+  let measured = metrics.relation_label_regular.measure("manages")
   @test.assert_eq(label.width, measured.width.to_double())
   @test.assert_eq(label.height, measured.height.to_double())
   @test.assert_eq(label.baseline, label.y + measured.baseline.to_double())

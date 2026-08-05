@@ -265,7 +265,8 @@ fn FontMetrics::kerning(self : FontMetrics, left : Char, right : Char) -> Float 
 }
 
 ///|
-pub fn measure_text_with(text : String, metrics : FontMetrics) -> TextMetrics {
+/// Measure text with this font profile.
+pub fn FontMetrics::measure(self : FontMetrics, text : String) -> TextMetrics {
   let lines = text.split("\n").to_array()
   let measure_line = (line : StringView) => {
     let (_, advance, glyph_count) = line.fold(init=(None, 0.0F, 0), (
@@ -274,19 +275,20 @@ pub fn measure_text_with(text : String, metrics : FontMetrics) -> TextMetrics {
     ) => {
       let (previous, advance, glyph_count) = state
       let char_advance = if char == '\t' {
-        let tab_width = (metrics.char_advance(' ') *
-        Float::from_int(metrics.tab_size)).max(1.0F)
+        let tab_width = (self.char_advance(' ') * Float::from_int(self.tab_size)).max(
+          1.0F,
+        )
         tab_width - Float::mod(advance, tab_width)
       } else {
-        metrics.char_advance(char) +
+        self.char_advance(char) +
         (if char == ' ' {
-          Float::from_int(metrics.word_spacing) * 1000.0F
+          Float::from_int(self.word_spacing) * 1000.0F
         } else {
           0.0
         })
       }
       let pair_adjustment = previous.map_or(0.0F, left => {
-        metrics.kerning(left, char)
+        self.kerning(left, char)
       })
       let next_previous = if char_advance > 0.0F {
         Some(char)
@@ -300,36 +302,24 @@ pub fn measure_text_with(text : String, metrics : FontMetrics) -> TextMetrics {
       )
     })
     advance +
-    Float::from_int((glyph_count - 1).max(0) * metrics.letter_spacing) * 1000.0F
+    Float::from_int((glyph_count - 1).max(0) * self.letter_spacing) * 1000.0F
   }
   let width_units = lines.fold(init=0.0F, (widest, line) => {
     widest.max(measure_line(line))
   })
   let advance_width = width_units.ceil_pixels()
-  let (ink_left, ink_right) = match (metrics.style, advance_width) {
-    (Italic, width) if width > 0 =>
-      (metrics.italic_overhang, metrics.italic_overhang)
+  let (ink_left, ink_right) = match (self.style, advance_width) {
+    (Italic, width) if width > 0 => (self.italic_overhang, self.italic_overhang)
     _ => (0, 0)
   }
   {
     width: advance_width + ink_left + ink_right,
     advance_width,
-    height: lines.length().max(1) * metrics.line_height,
-    ascent: metrics.ascent,
-    descent: metrics.descent,
-    baseline: metrics.ascent,
+    height: lines.length().max(1) * self.line_height,
+    ascent: self.ascent,
+    descent: self.descent,
+    baseline: self.ascent,
     ink_left,
     ink_right,
   }
-}
-
-///|
-/// Measure text with this font profile.
-pub fn FontMetrics::measure(self : FontMetrics, text : String) -> TextMetrics {
-  measure_text_with(text, self)
-}
-
-///|
-pub fn measure_text(text : String, line_height? : Int = 15) -> TextMetrics {
-  FontMetrics::from_defaults(line_height~).measure(text)
 }
