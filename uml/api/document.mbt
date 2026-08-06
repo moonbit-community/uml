@@ -20,6 +20,29 @@ pub struct Document {
 }
 
 ///|
+/// Render a parsed diagram family to SVG.
+///
+/// This is the single boundary between document parsing and diagram-specific
+/// rendering. Each family still owns its parser, layout, and SVG painter; the
+/// API only dispatches after parsing has selected the family.
+pub fn Diagram::render_svg(
+  self : Diagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible? : Bool = false,
+) -> String raise {
+  match self {
+    Sequence(diagram) => diagram.render_svg(color_scheme~)
+    Activity(diagram) => diagram.render_svg(color_scheme~)
+    Class(diagram) | Object(diagram) | Component(diagram) | UseCase(diagram) =>
+      diagram.render_svg(color_scheme~, class_member_collapsible~)
+    State(diagram) => diagram.render_svg(color_scheme~)
+    Mindmap(diagram) => diagram.render_svg(color_scheme~)
+    Json(diagram) | Yaml(diagram) | Toml(diagram) =>
+      diagram.render_svg(color_scheme~)
+  }
+}
+
+///|
 pub fn Document::kind(self : Document) -> DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence

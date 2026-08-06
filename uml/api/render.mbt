@@ -5,16 +5,7 @@ pub fn Document::render_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise {
-  match self.diagram {
-    Sequence(diagram) => diagram.render_svg(color_scheme~)
-    Activity(diagram) => diagram.render_svg(color_scheme~)
-    Class(diagram) | Object(diagram) | Component(diagram) | UseCase(diagram) =>
-      diagram.render_svg(color_scheme~, class_member_collapsible~)
-    State(diagram) => diagram.render_svg(color_scheme~)
-    Mindmap(diagram) => diagram.render_svg(color_scheme~)
-    Json(diagram) | Yaml(diagram) | Toml(diagram) =>
-      diagram.render_svg(color_scheme~)
-  }
+  self.diagram.render_svg(color_scheme~, class_member_collapsible~)
 }
 
 ///|

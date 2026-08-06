@@ -12,6 +12,13 @@ test "explicit default theme preserves SVG output" {
 }
 
 ///|
+test "document rendering delegates through the parsed diagram boundary" {
+  let source = "@startuml\nparticipant Alice\nAlice -> Bob : hello\n@enduml"
+  let document = parse(source)
+  @test.assert_eq(document.render_svg(), document.diagram.render_svg())
+}
+
+///|
 test "one theme exposes family-owned sequence and entity roles" {
   let scheme = @style.ColorScheme::ColorScheme(
     "theme-text",
