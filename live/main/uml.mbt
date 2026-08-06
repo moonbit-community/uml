@@ -69,7 +69,11 @@ fn theme_color_scheme() -> @style.ColorScheme {
 /// Render a source to a standalone SVG with the theme-aware color scheme,
 /// stringifying any parse or render error for display in the preview pane.
 fn render_source_svg(source : String) -> String {
-  @api.render_svg(source, color_scheme=theme_color_scheme()) catch {
+  @api.render_svg(
+    source,
+    color_scheme=theme_color_scheme(),
+    class_member_collapsible=true,
+  ) catch {
     e => "\{e}"
   }
 }
