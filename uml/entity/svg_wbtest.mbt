@@ -1341,25 +1341,27 @@ test "crowfoot contact sides follow the nearest node boundary" {
     height: 20.0,
   }
   @test.assert_eq(
-    node.relation_contact_side((node.x - node.width / 2.0, node.y))
+    node.relation_contact_side(point(node.x - node.width / 2.0, node.y))
     is ContactWest,
     true,
   )
   @test.assert_eq(
-    node.relation_contact_side((node.x + node.width / 2.0, node.y))
+    node.relation_contact_side(point(node.x + node.width / 2.0, node.y))
     is ContactEast,
     true,
   )
   @test.assert_eq(
-    node.relation_contact_side((node.x, node.y - node.height / 2.0))
+    node.relation_contact_side(point(node.x, node.y - node.height / 2.0))
     is ContactNorth,
     true,
   )
   @test.assert_eq(
-    node.relation_contact_side((node.x, node.y + node.height / 2.0))
+    node.relation_contact_side(point(node.x, node.y + node.height / 2.0))
     is ContactSouth,
     true,
   )
+  let contact = node.contact(point(node.x, node.y))
+  @test.assert_eq(contact.point.x == node.x && contact.point.y == node.y, true)
   let endpoint = (10.0, 20.0)
   let wing = (30.0, 40.0)
   @test.assert_eq(
@@ -1370,6 +1372,36 @@ test "crowfoot contact sides follow the nearest node boundary" {
     relation_crowfoot_wing(wing, endpoint, Some(ContactNorth)).1,
     endpoint.1,
   )
+}
+
+///|
+test "typed node geometry preserves clipping invariants" {
+  let bounds = rect(point(40.0, 30.0), 24.0, 16.0)
+  let clipped = clip_ray_to_rect(
+    bounds.center,
+    point(bounds.center.x + bounds.width, bounds.center.y),
+    bounds,
+  )
+  @test.assert_eq(
+    clipped.x == bounds.center.x + bounds.width / 2.0 &&
+    clipped.y >= bounds.center.y - bounds.height / 2.0 &&
+    clipped.y <= bounds.center.y + bounds.height / 2.0,
+    true,
+  )
+  let ellipse = clip_ray_to_ellipse(
+    bounds.center,
+    point(bounds.center.x + bounds.width, bounds.center.y),
+    bounds,
+  )
+  let normalized = (ellipse.x - bounds.center.x) *
+    (ellipse.x - bounds.center.x) /
+    (bounds.width / 2.0 * (bounds.width / 2.0)) +
+    (ellipse.y - bounds.center.y) *
+    (ellipse.y - bounds.center.y) /
+    (bounds.height / 2.0 * (bounds.height / 2.0))
+  @test.assert_eq((normalized - 1.0).abs() < 0.001, true)
+  let round_trip = point_from_pair(ellipse.pair())
+  @test.assert_eq(round_trip.x == ellipse.x && round_trip.y == ellipse.y, true)
 }
 
 ///|

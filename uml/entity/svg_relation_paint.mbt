@@ -151,13 +151,17 @@ fn append_relation(
             output <+
               $|" class="relation"\{style}\{dash}/>
             if first_index == Some(spline_index) {
-              let side = graphviz
+              let contact = graphviz
                 .node(relation.left)
-                .map(node => node.relation_contact_side(path[0]))
+                .map(node => node.contact(point_from_pair(path[0])))
+              let side = contact.map(value => value.side)
+              let endpoint = contact
+                .map(value => value.point.pair())
+                .unwrap_or(path[0])
               append_relation_decoration(
                 output,
                 relation.left_end,
-                path[0],
+                endpoint,
                 path[1],
                 relation_color,
                 background_color,
@@ -166,13 +170,17 @@ fn append_relation(
             }
             if last_index == Some(spline_index) {
               let last = path.length() - 1
-              let side = graphviz
+              let contact = graphviz
                 .node(relation.right)
-                .map(node => node.relation_contact_side(path[last]))
+                .map(node => node.contact(point_from_pair(path[last])))
+              let side = contact.map(value => value.side)
+              let endpoint = contact
+                .map(value => value.point.pair())
+                .unwrap_or(path[last])
               append_relation_decoration(
                 output,
                 relation.right_end,
-                path[last],
+                endpoint,
                 path[last - 1],
                 relation_color,
                 background_color,

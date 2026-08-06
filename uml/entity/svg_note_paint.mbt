@@ -41,7 +41,7 @@ fn note_opale_attachment(
   target : GraphvizNodeLayout,
   target_shape : NodeShape,
 ) -> NoteOpaleAttachment? {
-  let center = (note.x, note.y)
+  let center = point(note.x, note.y)
   for spline in edge.splines {
     let path = spline.points
     guard path.length() > 0 else { continue }
@@ -62,23 +62,25 @@ fn note_opale_attachment(
       None => if path.length() > 1 { path[path.length() - 2] } else { first }
     }
     let (raw_note_point, note_adjacent, raw_target_point, target_adjacent) = if point_distance_squared(
-        first, center,
+        point_from_pair(first),
+        center,
       ) <=
-      point_distance_squared(last, center) {
+      point_distance_squared(point_from_pair(last), center) {
       (first, first_adjacent, last, last_adjacent)
     } else {
       (last, last_adjacent, first, first_adjacent)
     }
     let note_point = clip_ray_to_rect(
-      raw_note_point,
-      note_adjacent,
-      center,
-      note.width,
-      note.height,
-    )
+      point_from_pair(raw_note_point),
+      point_from_pair(note_adjacent),
+      rect(center, note.width, note.height),
+    ).pair()
     let target_point = clip_ray_to_node(
-      raw_target_point, target_adjacent, target, target_shape,
-    )
+      point_from_pair(raw_target_point),
+      point_from_pair(target_adjacent),
+      target,
+      target_shape,
+    ).pair()
     let left = note.x - note.width / 2.0
     let right = note.x + note.width / 2.0
     let top = note.y - note.height / 2.0

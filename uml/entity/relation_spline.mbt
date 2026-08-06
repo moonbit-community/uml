@@ -139,11 +139,11 @@ fn repair_relation_contacts(
     (right_node.x, right_node.y)
   }
   let start = clip_ray_to_node(
-    first.points[0],
-    first_adjacent,
+    point_from_pair(first.points[0]),
+    point_from_pair(first_adjacent),
     left_node,
     left_shape,
-  )
+  ).pair()
   splines[first_index] = move_spline_start_to(first, start)
   let last = splines[last_index]
   let last_point = last.points.length() - 1
@@ -153,11 +153,11 @@ fn repair_relation_contacts(
     (left_node.x, left_node.y)
   }
   let end = clip_ray_to_node(
-    last.points[last_point],
-    last_adjacent,
+    point_from_pair(last.points[last_point]),
+    point_from_pair(last_adjacent),
     right_node,
     right_shape,
-  )
+  ).pair()
   splines[last_index] = move_spline_end_to(last, end)
   { ..edge, splines, }
 }

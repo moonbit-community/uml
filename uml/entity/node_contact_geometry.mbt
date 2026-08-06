@@ -2,6 +2,48 @@
 const NOTE_GEOMETRY_EPSILON : Double = 0.0001
 
 ///|
+/// A point in the SVG coordinate space used by entity relations and notes.
+priv struct Point {
+  x : Double
+  y : Double
+}
+
+///|
+/// An axis-aligned rectangle in SVG coordinate space.
+priv struct Rect {
+  center : Point
+  width : Double
+  height : Double
+}
+
+///|
+/// A node boundary contact point, retaining its semantic node side.
+priv struct NodeContact {
+  point : Point
+  side : RelationContactSide
+}
+
+///|
+fn point(x : Double, y : Double) -> Point {
+  { x, y }
+}
+
+///|
+fn point_from_pair(value : (Double, Double)) -> Point {
+  point(value.0, value.1)
+}
+
+///|
+fn Point::pair(self : Point) -> (Double, Double) {
+  (self.x, self.y)
+}
+
+///|
+fn rect(center : Point, width : Double, height : Double) -> Rect {
+  { center, width, height }
+}
+
+///|
 fn GraphvizLayout::node(
   self : GraphvizLayout,
   code : String,
@@ -17,17 +59,17 @@ fn GraphvizLayout::node(
 ///|
 fn GraphvizNodeLayout::relation_contact_side(
   self : GraphvizNodeLayout,
-  point : (Double, Double),
+  point : Point,
 ) -> RelationContactSide {
   let left = self.x - self.width / 2.0
   let right = self.x + self.width / 2.0
   let top = self.y - self.height / 2.0
   let bottom = self.y + self.height / 2.0
   let candidates = [
-    ((point.0 - left).abs(), ContactWest),
-    ((point.0 - right).abs(), ContactEast),
-    ((point.1 - top).abs(), ContactNorth),
-    ((point.1 - bottom).abs(), ContactSouth),
+    ((point.x - left).abs(), ContactWest),
+    ((point.x - right).abs(), ContactEast),
+    ((point.y - top).abs(), ContactNorth),
+    ((point.y - bottom).abs(), ContactSouth),
   ]
   let mut closest = candidates[0]
   for candidate in candidates[1:] {
@@ -39,12 +81,17 @@ fn GraphvizNodeLayout::relation_contact_side(
 }
 
 ///|
-fn point_distance_squared(
-  first : (Double, Double),
-  second : (Double, Double),
-) -> Double {
-  let dx = first.0 - second.0
-  let dy = first.1 - second.1
+fn GraphvizNodeLayout::contact(
+  self : GraphvizNodeLayout,
+  point : Point,
+) -> NodeContact {
+  { point, side: self.relation_contact_side(point) }
+}
+
+///|
+fn point_distance_squared(first : Point, second : Point) -> Double {
+  let dx = first.x - second.x
+  let dy = first.y - second.y
   dx * dx + dy * dy
 }
 
@@ -59,32 +106,26 @@ fn keep_nearest_nonnegative(current : Double?, candidate : Double) -> Double? {
 }
 
 ///|
-fn clip_ray_to_rect(
-  endpoint : (Double, Double),
-  adjacent : (Double, Double),
-  center : (Double, Double),
-  width : Double,
-  height : Double,
-) -> (Double, Double) {
-  let left = center.0 - width / 2.0
-  let right = center.0 + width / 2.0
-  let top = center.1 - height / 2.0
-  let bottom = center.1 + height / 2.0
-  let inside = endpoint.0 >= left - NOTE_GEOMETRY_EPSILON &&
-    endpoint.0 <= right + NOTE_GEOMETRY_EPSILON &&
-    endpoint.1 >= top - NOTE_GEOMETRY_EPSILON &&
-    endpoint.1 <= bottom + NOTE_GEOMETRY_EPSILON
+fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point {
+  let left = bounds.center.x - bounds.width / 2.0
+  let right = bounds.center.x + bounds.width / 2.0
+  let top = bounds.center.y - bounds.height / 2.0
+  let bottom = bounds.center.y + bounds.height / 2.0
+  let inside = endpoint.x >= left - NOTE_GEOMETRY_EPSILON &&
+    endpoint.x <= right + NOTE_GEOMETRY_EPSILON &&
+    endpoint.y >= top - NOTE_GEOMETRY_EPSILON &&
+    endpoint.y <= bottom + NOTE_GEOMETRY_EPSILON
   let (dx, dy) = if inside {
-    (adjacent.0 - endpoint.0, adjacent.1 - endpoint.1)
+    (adjacent.x - endpoint.x, adjacent.y - endpoint.y)
   } else {
-    (endpoint.0 - adjacent.0, endpoint.1 - adjacent.1)
+    (endpoint.x - adjacent.x, endpoint.y - adjacent.y)
   }
   guard dx != 0.0 || dy != 0.0 else { return endpoint }
   let mut best : Double? = None
   if dx != 0.0 {
     for side in [left, right] {
-      let t = (side - endpoint.0) / dx
-      let y = endpoint.1 + t * dy
+      let t = (side - endpoint.x) / dx
+      let y = endpoint.y + t * dy
       if y >= top - NOTE_GEOMETRY_EPSILON && y <= bottom + NOTE_GEOMETRY_EPSILON {
         best = keep_nearest_nonnegative(best, t)
       }
@@ -92,39 +133,37 @@ fn clip_ray_to_rect(
   }
   if dy != 0.0 {
     for side in [top, bottom] {
-      let t = (side - endpoint.1) / dy
-      let x = endpoint.0 + t * dx
+      let t = (side - endpoint.y) / dy
+      let x = endpoint.x + t * dx
       if x >= left - NOTE_GEOMETRY_EPSILON && x <= right + NOTE_GEOMETRY_EPSILON {
         best = keep_nearest_nonnegative(best, t)
       }
     }
   }
   match best {
-    Some(t) => (endpoint.0 + t * dx, endpoint.1 + t * dy)
+    Some(t) => point(endpoint.x + t * dx, endpoint.y + t * dy)
     None => endpoint
   }
 }
 
 ///|
 fn clip_ray_to_ellipse(
-  endpoint : (Double, Double),
-  adjacent : (Double, Double),
-  center : (Double, Double),
-  width : Double,
-  height : Double,
-) -> (Double, Double) {
-  let radius_x = width / 2.0
-  let radius_y = height / 2.0
+  endpoint : Point,
+  adjacent : Point,
+  bounds : Rect,
+) -> Point {
+  let radius_x = bounds.width / 2.0
+  let radius_y = bounds.height / 2.0
   guard radius_x > 0.0 && radius_y > 0.0 else { return endpoint }
-  let px = endpoint.0 - center.0
-  let py = endpoint.1 - center.1
+  let px = endpoint.x - bounds.center.x
+  let py = endpoint.y - bounds.center.y
   let normalized = px * px / (radius_x * radius_x) +
     py * py / (radius_y * radius_y)
   let inside = normalized <= 1.0 + NOTE_GEOMETRY_EPSILON
   let (dx, dy) = if inside {
-    (adjacent.0 - endpoint.0, adjacent.1 - endpoint.1)
+    (adjacent.x - endpoint.x, adjacent.y - endpoint.y)
   } else {
-    (endpoint.0 - adjacent.0, endpoint.1 - adjacent.1)
+    (endpoint.x - adjacent.x, endpoint.y - adjacent.y)
   }
   let a = dx * dx / (radius_x * radius_x) + dy * dy / (radius_y * radius_y)
   guard a > 0.0 else { return endpoint }
@@ -143,34 +182,21 @@ fn clip_ray_to_ellipse(
     second,
   )
   match best {
-    Some(t) => (endpoint.0 + t * dx, endpoint.1 + t * dy)
+    Some(t) => point(endpoint.x + t * dx, endpoint.y + t * dy)
     None => endpoint
   }
 }
 
 ///|
 fn clip_ray_to_node(
-  endpoint : (Double, Double),
-  adjacent : (Double, Double),
+  endpoint : Point,
+  adjacent : Point,
   node : GraphvizNodeLayout,
   shape : NodeShape,
-) -> (Double, Double) {
+) -> Point {
+  let bounds = rect(point(node.x, node.y), node.width, node.height)
   match shape {
-    Box =>
-      clip_ray_to_rect(
-        endpoint,
-        adjacent,
-        (node.x, node.y),
-        node.width,
-        node.height,
-      )
-    Ellipse =>
-      clip_ray_to_ellipse(
-        endpoint,
-        adjacent,
-        (node.x, node.y),
-        node.width,
-        node.height,
-      )
+    Box => clip_ray_to_rect(endpoint, adjacent, bounds)
+    Ellipse => clip_ray_to_ellipse(endpoint, adjacent, bounds)
   }
 }
