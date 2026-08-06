@@ -34,13 +34,9 @@ fn append_packages(
 }
 
 ///|
-
-///|
 fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
   24 + index / self.columns * self.cell_height
 }
-
-///|
 
 ///|
 fn append_entity(

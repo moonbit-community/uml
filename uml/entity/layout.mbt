@@ -147,8 +147,6 @@ fn Relation::graphviz_minlen(self : Relation) -> Int {
 }
 
 ///|
-
-///|
 /// Build and execute the in-process Graphviz DOT layout.
 fn EntityDiagram::graphviz_layout(
   self : EntityDiagram,

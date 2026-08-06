@@ -221,8 +221,6 @@ fn relation_endpoints(
 }
 
 ///|
-
-///|
 fn entity_index(diagram : EntityDiagram, code : String) -> Int? {
   for index, entity in diagram.entities {
     if entity.qualified_code == code {
