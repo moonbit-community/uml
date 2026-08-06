@@ -36,10 +36,46 @@ pub fn spline_path_data(points : Array[(Double, Double)]) -> String {
 }
 
 ///|
+/// The shared PlantUML border width used by node, relation, endpoint, and
+/// reference outlines across diagram families.
+const STANDARD_BORDER_STROKE_WIDTH : String = "1.2"
+
+///|
+pub fn standard_border_stroke_width() -> String {
+  STANDARD_BORDER_STROKE_WIDTH
+}
+
+///|
+/// The emphasized outline width shared by primary edges and arrows.
+const EMPHASIZED_STROKE_WIDTH : String = "1.5"
+
+///|
+pub fn emphasized_stroke_width() -> String {
+  EMPHASIZED_STROKE_WIDTH
+}
+
+///|
+/// The dash pattern used by structural separators.
+const SEPARATOR_DASH_PATTERN : String = "4 3"
+
+///|
+pub fn separator_dash_pattern() -> String {
+  SEPARATOR_DASH_PATTERN
+}
+
+///|
+const DASHED_LINE_PATTERN : String = "6 4"
+
+///|
+pub fn dashed_line_pattern() -> String {
+  DASHED_LINE_PATTERN
+}
+
+///|
 /// Map a PlantUML line style token to SVG presentation attributes.
 pub fn line_style_attributes(line_style : String?) -> Array[(String, String)] {
   match line_style {
-    Some("dashed") => [("stroke-dasharray", "6 4")]
+    Some("dashed") => [("stroke-dasharray", DASHED_LINE_PATTERN)]
     Some("dotted") => [("stroke-dasharray", "2 3")]
     Some("bold") => [("stroke-width", "2.5")]
     _ => []
@@ -60,7 +96,7 @@ pub fn line_style_attributes_markup(line_style : String?) -> String {
 /// stroke width (empty means no stroke attribute).
 pub fn stroke_style(
   line_style : String?,
-  default_width? : String = "1.2",
+  default_width? : String = STANDARD_BORDER_STROKE_WIDTH,
 ) -> String {
   match line_style_attributes(line_style) {
     [(name, value)] => "\{name}:\{value}"

@@ -380,9 +380,13 @@ pub fn StateDiagram::render_svg(
   output.raw(
     ".state-transition{stroke:" +
     self.style.diagram_line_color() +
-    ";stroke-width:1.5}.state-region-separator{stroke:" +
+    ";stroke-width:" +
+    @svg.emphasized_stroke_width() +
+    "}.state-region-separator{stroke:" +
     self.style.diagram_line_color() +
-    ";stroke-width:1.2}.state-label{font-family:" +
+    ";stroke-width:" +
+    @svg.standard_border_stroke_width() +
+    "}.state-label{font-family:" +
     self.style.font_family() +
     ";font-size:" +
     self.style.font_size() +

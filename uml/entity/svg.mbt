@@ -41,11 +41,11 @@ fn EntityDiagram::render_svg_with_mode(
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
-    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:1.2}
-    $|.class-node foreignObject line{stroke-width:1.2;fill:none}
-    $|.class-node foreignObject rect{stroke-width:1.2}
+    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
+    $|.class-node foreignObject line{stroke-width:\{@svg.standard_border_stroke_width()};fill:none}
+    $|.class-node foreignObject rect{stroke-width:\{@svg.standard_border_stroke_width()}}
     $|.class-node:has(details:not([open])) > rect{stroke:transparent !important}
-    $|.relation{stroke:\{line_color};stroke-width:1.2}
+    $|.relation{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
     $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
     $|.class-node > line,.relation{fill:none}
     $|.class-title{fill:\{text_color}}
@@ -59,7 +59,7 @@ fn EntityDiagram::render_svg_with_mode(
   output.write_string(relations_style)
 
   let style_note =
-    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:1.2}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:1.2}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
+    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
   output.write_string(style_note)
   append_packages(output, self, text_metrics, layout)
   if usecase {

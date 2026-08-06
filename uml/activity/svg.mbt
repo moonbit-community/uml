@@ -258,23 +258,33 @@ pub fn ActivityDiagram::render_svg(
     self.style.canvas_color() +
     "}.activity-edge{fill:none;stroke:" +
     line +
-    ";stroke-width:1.5}.activity-label{fill:" +
+    ";stroke-width:" +
+    @svg.emphasized_stroke_width() +
+    "}.activity-label{fill:" +
     text +
     "}.activity-partition,.activity-swimlane{fill:" +
     defaults.partition +
     ";stroke:" +
     line +
-    ";stroke-width:1.5}.activity-swimlane{stroke-dasharray:4 3}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
+    ";stroke-width:" +
+    @svg.emphasized_stroke_width() +
+    "}.activity-swimlane{stroke-dasharray:" +
+    @svg.separator_dash_pattern() +
+    "}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
     line +
     "}.activity-stop-outer,.activity-action,.activity-decision{fill:" +
     defaults.node +
     ";stroke:" +
     line +
-    ";stroke-width:1.5}.activity-note{fill:" +
+    ";stroke-width:" +
+    @svg.emphasized_stroke_width() +
+    "}.activity-note{fill:" +
     defaults.note +
     ";stroke:" +
     line +
-    ";stroke-width:1.5}",
+    ";stroke-width:" +
+    @svg.emphasized_stroke_width() +
+    "}",
   )
   output.close()
   output.open("defs")
