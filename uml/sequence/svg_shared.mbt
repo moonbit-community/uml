@@ -1,15 +1,18 @@
 ///|
-fn svg_color(color : String?, defaults : @style.ColorScheme) -> String {
+fn svg_color(color : String?, defaults : @style.SequenceColors) -> String {
   @svg.svg_color(color, defaults.participant)
 }
 
 ///|
-fn activation_color(color : String?, defaults : @style.ColorScheme) -> String {
+fn activation_color(
+  color : String?,
+  defaults : @style.SequenceColors,
+) -> String {
   @svg.svg_color(color, defaults.activation)
 }
 
 ///|
-fn note_color(color : String?, defaults : @style.ColorScheme) -> String {
+fn note_color(color : String?, defaults : @style.SequenceColors) -> String {
   @svg.svg_color(color, defaults.note)
 }
 
@@ -33,7 +36,7 @@ fn append_text(
   y : Int,
   text : String,
   class_name : String,
-  defaults : @style.ColorScheme,
+  defaults : @style.SequenceColors,
   anchor? : String = "middle",
   line_height? : Int = 15,
 ) -> Unit {

@@ -1,6 +1,9 @@
 ///|
 fn class_background_color(style : @style.DocumentStyle) -> String {
-  style.property_color("ClassBackgroundColor", style.defaults().node)
+  style.property_color(
+    "ClassBackgroundColor",
+    style.defaults().entity_colors().node,
+  )
 }
 
 ///|
@@ -105,7 +108,10 @@ fn arrow_font_family(style : @style.DocumentStyle) -> String {
 
 ///|
 fn package_background_color(style : @style.DocumentStyle) -> String {
-  style.property_color("PackageBackgroundColor", style.defaults().transparent)
+  style.property_color(
+    "PackageBackgroundColor",
+    style.defaults().entity_colors().transparent,
+  )
 }
 
 ///|
@@ -115,7 +121,10 @@ fn package_border_color(style : @style.DocumentStyle) -> String {
 
 ///|
 fn note_background_color(style : @style.DocumentStyle) -> String {
-  style.property_color("NoteBackgroundColor", style.defaults().note)
+  style.property_color(
+    "NoteBackgroundColor",
+    style.defaults().entity_colors().note,
+  )
 }
 
 ///|

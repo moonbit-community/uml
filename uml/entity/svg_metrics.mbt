@@ -1,7 +1,7 @@
 ///|
 fn Entity::spot(
   self : Entity,
-  defaults : @style.ColorScheme,
+  defaults : @style.EntityColors,
 ) -> (String, String) {
   match self.kind {
     AbstractClass => ("A", defaults.spot_abstract)
@@ -37,7 +37,7 @@ fn Member::visibility_icon(
   self : Member,
   x : Int,
   baseline_y : Int,
-  defaults : @style.ColorScheme,
+  defaults : @style.EntityColors,
 ) -> String {
   if self.visibility is Unknown {
     return ""

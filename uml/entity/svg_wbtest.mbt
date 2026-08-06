@@ -780,6 +780,32 @@ test "class SVG consumes colors resolved by document style" {
 }
 
 ///|
+test "entity painter consumes entity theme roles before local overrides" {
+  let source = "@startuml\nclass User {\n- secret\n}\n@enduml"
+  let themed = parse(source).render_svg(
+    color_scheme=@style.ColorScheme::ColorScheme(
+      "theme-text",
+      "theme-line",
+      node="theme-node",
+      visibility_private_stroke="theme-private-stroke",
+      visibility_private_fill="theme-private-fill",
+    ),
+  )
+  @test.assert_eq(themed.contains("fill=\"theme-node\""), true)
+  @test.assert_eq(themed.contains("theme-private-stroke"), true)
+  let overridden = parse(
+    "@startuml\nskinparam ClassBackgroundColor local-node\nclass User\n@enduml",
+  ).render_svg(
+    color_scheme=@style.ColorScheme::ColorScheme(
+      "theme-text",
+      "theme-line",
+      node="theme-node",
+    ),
+  )
+  @test.assert_eq(overridden.contains("fill=\"local-node\""), true)
+}
+
+///|
 test "graphviz receives dimensions from each class header and body" {
   let diagram = parse(
     "@startuml\nclass Short\nclass VeryLongClassDisplayName {\n+ attribute : Int\n+ operation()\n}\nShort --> VeryLongClassDisplayName\n@enduml",

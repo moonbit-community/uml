@@ -69,7 +69,8 @@ fn append_entity(
     AbstractClass | Interface => " font-style=\"italic\""
     _ => ""
   }
-  let (spot_text, spot_fill) = entity.spot(diagram.style.defaults())
+  let entity_colors = diagram.style.defaults().entity_colors()
+  let (spot_text, spot_fill) = entity.spot(entity_colors)
   let placement = header.placement(width)
   let rect_height = if class_member_collapsible {
     header.height
@@ -110,7 +111,7 @@ fn append_entity(
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, diagram.style.defaults())}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
     }
     section_y += section_height
   }

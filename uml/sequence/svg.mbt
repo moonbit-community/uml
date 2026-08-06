@@ -12,7 +12,7 @@ fn append_svg_preamble(
   let small_font_size = (base_font_size - 2).max(1)
   let line_color = style.diagram_line_color()
   let text_color = style.diagram_text_color()
-  let defaults = style.defaults()
+  let defaults = style.defaults().sequence_colors()
   output <+
     $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Sequence diagram">
   let defs =

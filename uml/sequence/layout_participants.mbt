@@ -139,7 +139,7 @@ fn initial_participant_layout(
     layouts.push({
       participant,
       text_metrics,
-      defaults: diagram.style.defaults(),
+      defaults: diagram.style.defaults().sequence_colors(),
       index,
       center_x: 0,
       width,

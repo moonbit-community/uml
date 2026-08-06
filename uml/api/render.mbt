@@ -21,9 +21,10 @@ pub fn Document::render_svg(
 /// Parse a PlantUML source with the document heuristics and render the
 /// selected diagram family to SVG.
 ///
-/// `color_scheme` overrides the default paint palette: `text` and `line` are
+/// `color_scheme` is the cross-diagram theme boundary. `text` and `line` are
 /// required (the ink colors that become unreadable in a dark theme), and every
-/// other role may be a CSS variable or a literal color.
+/// other role may be a CSS variable or a literal color. Diagram renderers own
+/// skinparam precedence and the mapping from their role group to SVG elements.
 ///
 /// When `class_member_collapsible` is set, class-diagram members (fields and
 /// methods) are wrapped in a `<foreignObject>`/`<details>` disclosure so they

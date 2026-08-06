@@ -1,5 +1,10 @@
 ///|
 /// Common PlantUML document-level style state.
+///
+/// This type preserves document directives and offers generic property, color,
+/// and font resolution. Diagram-family role mapping belongs to the relevant
+/// painter; `ColorScheme` is stored here only as the selected cross-diagram
+/// theme.
 pub struct DocumentStyle {
   mut background_color : String?
   mut theme : String?
@@ -58,6 +63,7 @@ pub fn DocumentStyle::empty() -> DocumentStyle {
 }
 
 ///|
+/// Returns a copy of the style using the selected cross-diagram theme.
 pub fn DocumentStyle::with_color_scheme(
   self : DocumentStyle,
   scheme : ColorScheme,
@@ -66,7 +72,10 @@ pub fn DocumentStyle::with_color_scheme(
 }
 
 ///|
-/// The effective default palette with the document's color scheme applied.
+/// The effective cross-diagram theme selected for this document.
+///
+/// Renderers should project family-specific roles with `sequence_colors` or
+/// `entity_colors` before painting.
 pub fn DocumentStyle::defaults(self : DocumentStyle) -> ColorScheme {
   self.color_scheme
 }

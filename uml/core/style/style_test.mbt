@@ -82,6 +82,26 @@ test "generic skinparam resolvers use shared defaults and fallbacks" {
 }
 
 ///|
+test "theme projections keep family roles outside document style" {
+  let scheme = ColorScheme::ColorScheme(
+    "theme-text",
+    "theme-line",
+    participant="theme-participant",
+    activation="theme-activation",
+    visibility_private_stroke="theme-private-stroke",
+    visibility_private_fill="theme-private-fill",
+  )
+  let sequence = scheme.sequence_colors()
+  let entity = scheme.entity_colors()
+  @test.assert_eq(sequence.text, "theme-text")
+  @test.assert_eq(sequence.participant, "theme-participant")
+  @test.assert_eq(sequence.activation, "theme-activation")
+  @test.assert_eq(entity.text, "theme-text")
+  @test.assert_eq(entity.visibility_private_stroke, "theme-private-stroke")
+  @test.assert_eq(entity.visibility_private_fill, "theme-private-fill")
+}
+
+///|
 test "distinguishes legend alignment headers from single-line legends" {
   @test.assert_eq(parse_style_directive("legend top left"), None)
   @test.assert_eq(

@@ -16,6 +16,22 @@ test "render SVG escapes labels and emits participant lifelines" {
 }
 
 ///|
+test "sequence painter consumes its theme roles while document overrides win" {
+  let svg = render_sequence_svg(
+    "@startuml\nskinparam ArrowColor skinparam-line\nparticipant Alice\nparticipant Bob\nAlice -> Bob : hello\n@enduml",
+    color_scheme=@style.ColorScheme::ColorScheme(
+      "theme-text",
+      "theme-line",
+      participant="theme-participant",
+      lifeline="theme-lifeline",
+    ),
+  )
+  @test.assert_eq(svg.contains("theme-participant"), true)
+  @test.assert_eq(svg.contains("theme-lifeline"), true)
+  @test.assert_eq(svg.contains("skinparam-line"), true)
+}
+
+///|
 test "references render a ref tab and centered body label" {
   let svg = render_sequence_svg(
     "@startuml\nAlice -> Bob : request\nref over Alice, Bob : external API call\n@enduml",
