@@ -711,6 +711,45 @@ test "class SVG draws field and method partitions from the layout model" {
 }
 
 ///|
+test "class_member_collapsible wraps members in a details disclosure" {
+  let source = "@startuml\nclass User {\n+ id : Int\n+ login()\n}\n@enduml"
+  let plain = parse(source).render_svg()
+  let collapsible = parse(source).render_svg(class_member_collapsible=true)
+  @test.assert_eq(plain.contains("<foreignObject"), false)
+  @test.assert_eq(collapsible.contains("<foreignObject"), true)
+  @test.assert_eq(collapsible.contains("pointer-events=\"all\""), true)
+  @test.assert_eq(collapsible.contains("<details "), true)
+  @test.assert_eq(collapsible.contains("<summary "), true)
+  @test.assert_eq(collapsible.contains(">...</summary>"), false)
+  @test.assert_eq(collapsible.contains("</summary>"), true)
+  @test.assert_eq(collapsible.contains("position:absolute"), true)
+  @test.assert_eq(
+    collapsible.contains(".class-node:has(details:not([open])) > rect"),
+    true,
+  )
+  @test.assert_eq(collapsible.contains(">id : Int</text>"), true)
+  @test.assert_eq(collapsible.contains(">login()</text>"), true)
+}
+
+///|
+test "class_member_collapsible shrinks the node rect to the header" {
+  let source = "@startuml\nclass User {\n+ id : Int\n+ login()\n}\n@enduml"
+  let diagram = parse(source)
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let entity = diagram.entities[0]
+  let header = entity.header_layout(metrics)
+  let body = entity.body_layout(metrics)
+  let body_height = body.fields_height + body.methods_height
+  let full_height = entity.height(metrics)
+  let plain = diagram.render_svg()
+  let collapsible = diagram.render_svg(class_member_collapsible=true)
+  @test.assert_eq(collapsible.contains("height=\"\{header.height}\""), true)
+  @test.assert_eq(collapsible.contains("height=\"\{body_height}\""), true)
+  @test.assert_eq(plain.contains("height=\"\{header.height}\""), false)
+  @test.assert_eq(plain.contains("height=\"\{full_height}\""), true)
+}
+
+///|
 test "class SVG uses PlantUML spots, visibility icons, and package tabs" {
   let diagram = parse(
     "@startuml\npackage domain {\nabstract class Abstract\nclass Concrete {\n+ visible\n- hidden\n+ run()\n}\ninterface Contract\n}\n@enduml",

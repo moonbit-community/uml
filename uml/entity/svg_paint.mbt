@@ -50,6 +50,7 @@ fn append_entity(
   index : Int,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
+  class_member_collapsible : Bool,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
@@ -70,8 +71,13 @@ fn append_entity(
   }
   let (spot_text, spot_fill) = entity.spot(diagram.style.defaults())
   let placement = header.placement(width)
+  let rect_height = if class_member_collapsible {
+    header.height
+  } else {
+    height
+  }
   output <+
-    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/>
+    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
   match placement.circle_center {
     Some((circle_cx, circle_cy)) =>
       output <+
@@ -86,6 +92,12 @@ fn append_entity(
   }
   output <+
     $|<text x="\{x + placement.title_x}" y="\{y + placement.title_baseline}" class="class-title"\{title_style}>\{@svg.xml_escape(entity.display)}</text>
+  let member_top = y + header.height
+  let body_height = body.fields_height + body.methods_height
+  if class_member_collapsible {
+    output <+
+      $|<foreignObject x="\{x}" y="\{y}" width="\{width}" height="\{height}" pointer-events="all"><details xmlns="http://www.w3.org/1999/xhtml" style="position:relative"><summary style="position:absolute;top:0;left:0;right:0;height:\{header.height}px;list-style:none"></summary><svg xmlns="http://www.w3.org/2000/svg" viewBox="\{x} \{y} \{width} \{height}" width="\{width}" height="\{height}"><rect x="\{x}" y="\{member_top}" width="\{width}" height="\{body_height}" fill="\{fill}"\{line_attributes}/>
+  }
   let mut section_y = y + header.height
   for section_index, section in [body.fields, body.methods] {
     let section_height = if section_index == 0 {
@@ -102,6 +114,9 @@ fn append_entity(
     }
     section_y += section_height
   }
+  if class_member_collapsible {
+    output.write_string("</svg></details></foreignObject>\n")
+  }
   output.write_string("</g>\n")
 }
 
@@ -113,6 +128,7 @@ fn append_usecase_entity(
   index : Int,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
+  class_member_collapsible : Bool,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
@@ -138,7 +154,9 @@ fn append_usecase_entity(
   match entity.kind {
     Usecase | BusinessUsecase | Actor | BusinessActor | Component => ()
     _ => {
-      append_entity(output, diagram, entity, index, text_metrics, layout)
+      append_entity(
+        output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
+      )
       return
     }
   }

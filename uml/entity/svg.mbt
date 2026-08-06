@@ -1,6 +1,13 @@
 ///|
-fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
+fn EntityDiagram::render_svg_with_mode(
+  self : EntityDiagram,
+  class_member_collapsible : Bool,
+) -> String {
   let usecase = self.family.is_usecase()
+  let collapsible = match self.family {
+    ClassDiagram => class_member_collapsible
+    _ => false
+  }
   let background = self.style.canvas_color()
   let font_family = self.style.font_family()
   let font_size = self.style.font_size()
@@ -35,6 +42,9 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
     $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:1.2}
+    $|.class-node foreignObject line{stroke-width:1.2;fill:none}
+    $|.class-node foreignObject rect{stroke-width:1.2}
+    $|.class-node:has(details:not([open])) > rect{stroke:transparent !important}
     $|.relation{stroke:\{line_color};stroke-width:1.2}
     $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
     $|.class-node > line,.relation{fill:none}
@@ -54,7 +64,9 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
   append_packages(output, self, text_metrics, layout)
   if usecase {
     for index, entity in self.entities {
-      append_usecase_entity(output, self, entity, index, text_metrics, layout)
+      append_usecase_entity(
+        output, self, entity, index, text_metrics, layout, collapsible,
+      )
     }
     for relation_index, relation in self.relations {
       append_relation(
@@ -68,7 +80,9 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
       )
     }
     for index, entity in self.entities {
-      append_entity(output, self, entity, index, text_metrics, layout)
+      append_entity(
+        output, self, entity, index, text_metrics, layout, collapsible,
+      )
     }
   }
   append_notes(output, self, text_metrics, layout)
@@ -84,10 +98,15 @@ fn EntityDiagram::render_svg_with_mode(self : EntityDiagram) -> String {
 /// with Graphviz positions while retaining this entity and relation painter.
 /// The diagram family selects the symbol set: class/object/component diagrams
 /// draw class nodes, while use-case diagrams draw actors and ellipses.
+///
+/// When `class_member_collapsible` is set, class-diagram members (fields and
+/// methods) are wrapped in a `<foreignObject>`/`<details>` disclosure so they
+/// can be collapsed in the browser. Other diagram families ignore the flag.
 pub fn EntityDiagram::render_svg(
   self : EntityDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible? : Bool = false,
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
-  self.render_svg_with_mode()
+  self.render_svg_with_mode(class_member_collapsible)
 }
