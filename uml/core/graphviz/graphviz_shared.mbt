@@ -58,6 +58,28 @@ pub fn layout_dot(
 }
 
 ///|
+/// Run a Graphviz layout with the shared recovery policy used by UML diagram
+/// families. Unsupported Graphviz features may use a domain-provided fallback;
+/// invalid graphs and unsupported layouts without a fallback remain visible to
+/// the caller.
+pub fn[T] layout_or_fallback(
+  layout : () -> T raise @dot_layout.DotLayoutError,
+  fallback : (() -> T)?,
+) -> T raise @dot_layout.DotLayoutError {
+  try layout() catch {
+    @dot_layout.DotLayoutError::UnsupportedFeature(message~) =>
+      match fallback {
+        Some(fallback) => fallback()
+        None => raise @dot_layout.DotLayoutError::UnsupportedFeature(message~)
+      }
+    @dot_layout.DotLayoutError::InvalidGraph(message~) =>
+      raise @dot_layout.DotLayoutError::InvalidGraph(message~)
+  } noraise {
+    value => value
+  }
+}
+
+///|
 /// Normalize a graphviz point (inches, y-up) into SVG coordinates (y-down).
 pub fn graphviz_point_to_svg(
   point : @geom.Point,

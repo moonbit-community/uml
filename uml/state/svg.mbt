@@ -352,11 +352,11 @@ fn append_state_note(
 pub fn StateDiagram::render_svg(
   self : StateDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String {
+) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
-  let layout = Some(self.layout()) catch { _ => None }
-  let width = layout.map_or(1.0, value => value.width).ceil().to_int().max(1)
-  let height = layout.map_or(1.0, value => value.height).ceil().to_int().max(1)
+  let layout = @graphviz.layout_or_fallback(() => self.layout(), None)
+  let width = layout.width.ceil().to_int().max(1)
+  let height = layout.height.ceil().to_int().max(1)
   let output = @svg.XmlWriter::new()
   output.open("svg", attributes=[
     ("xmlns", "http://www.w3.org/2000/svg"),
@@ -407,22 +407,17 @@ pub fn StateDiagram::render_svg(
     "}",
   )
   output.close()
-  match layout {
-    Some(layout) => {
-      for edge in layout.edges {
-        append_state_edge(output, self, edge)
-      }
-      for region in layout.regions {
-        append_state_region_separator(output, region)
-      }
-      for node in layout.nodes {
-        append_state_node(output, self, node)
-      }
-      for note in layout.notes {
-        append_state_note(output, self, note)
-      }
-    }
-    None => ()
+  for edge in layout.edges {
+    append_state_edge(output, self, edge)
+  }
+  for region in layout.regions {
+    append_state_region_separator(output, region)
+  }
+  for node in layout.nodes {
+    append_state_node(output, self, node)
+  }
+  for note in layout.notes {
+    append_state_note(output, self, note)
   }
   output.close()
   output.to_string()
@@ -432,6 +427,6 @@ pub fn StateDiagram::render_svg(
 pub fn render_state_svg(
   input : String,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String raise @parse.ParseError {
+) -> String raise {
   parse(input).render_svg(color_scheme~)
 }

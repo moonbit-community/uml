@@ -4,7 +4,7 @@ pub fn Document::render_svg(
   self : Document,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
-) -> String {
+) -> String raise {
   match self.diagram {
     Sequence(diagram) => diagram.render_svg(color_scheme~)
     Activity(diagram) => diagram.render_svg(color_scheme~)

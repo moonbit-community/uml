@@ -2,7 +2,7 @@
 fn EntityDiagram::render_svg_with_mode(
   self : EntityDiagram,
   class_member_collapsible : Bool,
-) -> String {
+) -> String raise @dot_layout.DotLayoutError {
   let usecase = self.family.is_usecase()
   let collapsible = match self.family {
     ClassDiagram => class_member_collapsible
@@ -15,9 +15,9 @@ fn EntityDiagram::render_svg_with_mode(
   let text_color = self.style.diagram_text_color()
   let text_metrics = ClassTextMetrics::new(self.style)
   let fallback_layout = self.layout(text_metrics)
-  let graphviz = Some(self.graphviz_layout(text_metrics)) catch { _ => None }
-  let layout = match graphviz {
-    Some(graphviz) =>
+  let layout = @graphviz.layout_or_fallback(
+    () => {
+      let graphviz = self.graphviz_layout(text_metrics)
       {
         columns: fallback_layout.columns,
         cell_width: fallback_layout.cell_width,
@@ -25,8 +25,9 @@ fn EntityDiagram::render_svg_with_mode(
         width: fallback_layout.width,
         graphviz: Some(graphviz),
       }
-    None => fallback_layout
-  }
+    },
+    Some(() => fallback_layout),
+  )
   let bounds = layout.content_bounds(self, text_metrics)
   let content_width = (bounds.max_x - bounds.min_x).ceil().to_int()
   let content_height = (bounds.max_y - bounds.min_y).ceil().to_int()
@@ -106,7 +107,7 @@ pub fn EntityDiagram::render_svg(
   self : EntityDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
-) -> String {
+) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   self.render_svg_with_mode(class_member_collapsible)
 }
