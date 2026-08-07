@@ -28,6 +28,19 @@ fn state_border_color(style : @style.DocumentStyle) -> String {
 }
 
 ///|
+fn composite_state_background_color(
+  state : StateNode,
+  style : @style.DocumentStyle,
+) -> String {
+  state_background_color(state, style)
+}
+
+///|
+fn composite_state_border_color(style : @style.DocumentStyle) -> String {
+  state_border_color(style)
+}
+
+///|
 fn state_font_color(style : @style.DocumentStyle) -> String {
   style.property_font_color("StateFontColor")
 }
@@ -106,6 +119,9 @@ fn append_state_node(
   let center_x = x + width / 2.0
   let center_y = y + height / 2.0
   let composite = diagram.has_children(state.code)
+  let empty_description = state.kind == Normal &&
+    !state.has_description() &&
+    diagram.hide_empty_description()
   output.open("g", attributes=[
     (
       "class",
@@ -116,6 +132,18 @@ fn append_state_node(
       },
     ),
     ("data-code", state.code),
+    (
+      "data-shape",
+      if composite {
+        "composite"
+      } else if empty_description {
+        "empty"
+      } else if state.kind == Normal {
+        "compartment"
+      } else {
+        "pseudo"
+      },
+    ),
   ])
   if composite {
     let corner = STATE_CORNER_RADIUS
@@ -161,7 +189,7 @@ fn append_state_node(
         y.to_string() +
         " Z",
       ),
-      ("fill", state_background_color(state, diagram.style)),
+      ("fill", composite_state_background_color(state, diagram.style)),
     ])
     output.empty("rect", attributes=[
       ("x", x.to_string()),
@@ -170,7 +198,7 @@ fn append_state_node(
       ("height", height.to_string()),
       ("rx", corner.to_string()),
       ("fill", "none"),
-      ("stroke", state_border_color(diagram.style)),
+      ("stroke", composite_state_border_color(diagram.style)),
       ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     output.empty("line", attributes=[
@@ -178,7 +206,7 @@ fn append_state_node(
       ("y1", header_bottom.to_string()),
       ("x2", (x + width).to_string()),
       ("y2", header_bottom.to_string()),
-      ("stroke", state_border_color(diagram.style)),
+      ("stroke", composite_state_border_color(diagram.style)),
       ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     append_state_label(
@@ -281,7 +309,6 @@ fn append_state_node(
       )
     }
     Normal => {
-      let description = state.description.unwrap_or("")
       output.empty("rect", attributes=[
         ("x", x.to_string()),
         ("y", y.to_string()),
@@ -292,31 +319,48 @@ fn append_state_node(
         ("stroke", state_border_color(diagram.style)),
         ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
-      output.empty("line", attributes=[
-        ("x1", x.to_string()),
-        ("y1", (y + STATE_HEADER_HEIGHT).to_string()),
-        ("x2", (x + width).to_string()),
-        ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
-        ("stroke", state_border_color(diagram.style)),
-        ("stroke-width", STATE_THIN_STROKE_WIDTH),
-      ])
-      append_state_label(
-        output,
-        state.display,
-        center_x,
-        y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
-        "state-label",
-        state_font_metrics(diagram.style),
-      )
-      if description.length() > 0 {
+      if empty_description {
         append_state_label(
           output,
-          description,
+          state.display,
           center_x,
-          y + STATE_HEADER_HEIGHT + (height - STATE_HEADER_HEIGHT) / 2.0 + 4.0,
-          "state-description-label",
-          state_description_font_metrics(diagram.style),
+          center_y + 4.0,
+          "state-label",
+          state_font_metrics(diagram.style),
         )
+      } else {
+        output.empty("line", attributes=[
+          ("x1", x.to_string()),
+          ("y1", (y + STATE_HEADER_HEIGHT).to_string()),
+          ("x2", (x + width).to_string()),
+          ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
+          ("class", "state-compartment-separator"),
+          ("stroke", state_border_color(diagram.style)),
+          ("stroke-width", STATE_THIN_STROKE_WIDTH),
+        ])
+        append_state_label(
+          output,
+          state.display,
+          center_x,
+          y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
+          "state-label",
+          state_font_metrics(diagram.style),
+        )
+        match state.description {
+          Some(description) if description.length() > 0 =>
+            append_state_label(
+              output,
+              description,
+              center_x,
+              y +
+              STATE_HEADER_HEIGHT +
+              (height - STATE_HEADER_HEIGHT) / 2.0 +
+              4.0,
+              "state-description-label",
+              state_description_font_metrics(diagram.style),
+            )
+          _ => ()
+        }
       }
     }
   }

@@ -127,6 +127,41 @@ test "state name and description use their independent font skinparams" {
 }
 
 ///|
+test "empty descriptions choose the PlantUML shape selected by the directive" {
+  let shown = render_state_svg("@startuml\nstate Empty\n@enduml")
+  @test.assert_eq(shown.contains("data-shape=\"compartment\""), true)
+  @test.assert_eq(shown.contains("class=\"state-compartment-separator\""), true)
+  @test.assert_eq(shown.contains("class=\"state-description-label\""), false)
+
+  let hidden = render_state_svg(
+    "@startuml\nhide empty description\nstate Empty\n@enduml",
+  )
+  @test.assert_eq(hidden.contains("data-shape=\"empty\""), true)
+  @test.assert_eq(
+    hidden.contains("class=\"state-compartment-separator\""),
+    false,
+  )
+  @test.assert_eq(hidden.contains("class=\"state-label\""), true)
+
+  let restored = render_state_svg(
+    "@startuml\nhide empty description\nshow empty description\nstate Empty\n@enduml",
+  )
+  @test.assert_eq(restored.contains("data-shape=\"compartment\""), true)
+  @test.assert_eq(
+    restored.contains("class=\"state-compartment-separator\""),
+    true,
+  )
+}
+
+///|
+test "description state keeps a separate body label and compartment" {
+  let svg = render_state_svg("@startuml\nstate Ready : connected\n@enduml")
+  @test.assert_eq(svg.contains("data-shape=\"compartment\""), true)
+  @test.assert_eq(svg.contains("class=\"state-compartment-separator\""), true)
+  @test.assert_eq(svg.contains("class=\"state-description-label\""), true)
+}
+
+///|
 test "preserves declaration stereotypes and frame aliases in scope" {
   let diagram = parse(
     "@startuml\nstate Decision <<choice>>\nframe \"Order flow\" as Flow {\nstate Paid\n}\n@enduml",

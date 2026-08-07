@@ -203,8 +203,16 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
   if lower == "top to bottom direction" {
     return Some(Direction(TopToBottom))
   }
-  if lower == "hide empty description" {
-    return Some(Property("hide empty description", "true"))
+  if lower == "hide empty description" || lower == "show empty description" {
+    return Some(
+      Property(
+        "hide empty description",
+        {
+          guard lower == "hide empty description" else { "false" }
+          "true"
+        },
+      ),
+    )
   }
   if lower.has_prefix("set namespace_separator ") ||
     lower.has_prefix("set namespaceseparator ") {

@@ -126,3 +126,19 @@ test "distinguishes legend alignment headers from single-line legends" {
     Some(TextBlock("header", "Report")),
   )
 }
+
+///|
+test "empty description visibility directives preserve their latest value" {
+  @test.assert_eq(
+    parse_style_directive("hide empty description"),
+    Some(Property("hide empty description", "true")),
+  )
+  @test.assert_eq(
+    parse_style_directive("show empty description"),
+    Some(Property("hide empty description", "false")),
+  )
+  let style = DocumentStyle::empty()
+  style.apply(Property("hide empty description", "true"))
+  style.apply(Property("hide empty description", "false"))
+  @test.assert_eq(style.property("hide empty description"), Some("false"))
+}

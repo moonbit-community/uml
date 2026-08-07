@@ -32,6 +32,14 @@ pub struct StateNode {
 } derive(Eq, Debug)
 
 ///|
+fn StateNode::has_description(self : StateNode) -> Bool {
+  match self.description {
+    Some(text) => text.length() > 0
+    None => false
+  }
+}
+
+///|
 pub struct StateTransition {
   source : String
   target : String
@@ -75,6 +83,11 @@ pub struct StateDiagram {
   regions : Array[StateRegion]
   style : @style.DocumentStyle
 } derive(Eq, Debug)
+
+///|
+fn StateDiagram::hide_empty_description(self : StateDiagram) -> Bool {
+  self.style.property("hide empty description") == Some("true")
+}
 
 ///|
 pub fn StateDiagram::state(self : StateDiagram, code : String) -> StateNode? {

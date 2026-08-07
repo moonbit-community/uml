@@ -73,10 +73,22 @@ const STATE_HEADER_HEIGHT : Double = 26.0
 const STATE_REGION_GAP : Double = 18.0
 
 ///|
-const STATE_NODE_MIN_WIDTH : Double = 72.0
+const STATE_EMPTY_NODE_MIN_WIDTH : Double = 50.0
 
 ///|
-const STATE_NODE_MIN_HEIGHT : Double = 46.0
+const STATE_EMPTY_NODE_MIN_HEIGHT : Double = 40.0
+
+///|
+const STATE_COMPARTMENT_MIN_WIDTH : Double = 50.0
+
+///|
+const STATE_COMPARTMENT_MIN_HEIGHT : Double = 50.0
+
+///|
+const STATE_EMPTY_NODE_PADDING : Double = 10.0
+
+///|
+const STATE_COMPARTMENT_PADDING : Double = 20.0
 
 ///|
 const STATE_SYNC_WIDTH : Double = 96.0
@@ -356,24 +368,35 @@ fn state_note_size(
 ///|
 fn StateNode::leaf_size(
   self : StateNode,
-  metrics : @metrics.FontMetrics,
+  name_metrics : @metrics.FontMetrics,
+  description_metrics : @metrics.FontMetrics,
+  hide_empty_description : Bool,
 ) -> (Double, Double) {
   match self.kind {
     Initial | Final | History | DeepHistory | Choice =>
       (STATE_TERMINAL_SIZE, STATE_TERMINAL_SIZE)
     Synchronization => (STATE_SYNC_WIDTH, STATE_SYNC_HEIGHT)
     Normal => {
-      let description = self.description.unwrap_or("")
-      let text = if description.length() == 0 {
-        self.display
+      let name = state_text_size(self.display, name_metrics)
+      if !self.has_description() && hide_empty_description {
+        (
+          (name.0 + STATE_EMPTY_NODE_PADDING).max(STATE_EMPTY_NODE_MIN_WIDTH),
+          (name.1 + STATE_EMPTY_NODE_PADDING).max(STATE_EMPTY_NODE_MIN_HEIGHT),
+        )
       } else {
-        self.display + "\n" + description
+        let description = match self.description {
+          Some(text) => state_text_size(text, description_metrics)
+          None => (0.0, 0.0)
+        }
+        (
+          (name.0.max(description.0) + STATE_COMPARTMENT_PADDING).max(
+            STATE_COMPARTMENT_MIN_WIDTH,
+          ),
+          (name.1 + description.1 + STATE_COMPARTMENT_PADDING).max(
+            STATE_COMPARTMENT_MIN_HEIGHT,
+          ),
+        )
       }
-      let (width, height) = state_text_size(text, metrics)
-      (
-        (width + 28.0).max(STATE_NODE_MIN_WIDTH),
-        (height + 20.0).max(STATE_NODE_MIN_HEIGHT),
-      )
     }
   }
 }
@@ -382,10 +405,11 @@ fn StateNode::leaf_size(
 fn StateDiagram::composite_fragment(
   self : StateDiagram,
   state : StateNode,
-  metrics : @metrics.FontMetrics,
+  name_metrics : @metrics.FontMetrics,
+  description_metrics : @metrics.FontMetrics,
 ) -> StateFragment? raise @dot_layout.DotLayoutError {
   guard self.has_children(state.code) else { return None }
-  Some(self.layout_composite_state(state, metrics))
+  Some(self.layout_composite_state(state, name_metrics, description_metrics))
 }
 
 ///|
@@ -393,7 +417,8 @@ fn StateDiagram::visible_nodes_for_scope(
   self : StateDiagram,
   scope : String?,
   region_index : Int,
-  metrics : @metrics.FontMetrics,
+  name_metrics : @metrics.FontMetrics,
+  description_metrics : @metrics.FontMetrics,
 ) -> Array[StateVisibleNode] raise @dot_layout.DotLayoutError {
   let output : Array[StateVisibleNode] = []
   for state in self.states {
@@ -401,7 +426,9 @@ fn StateDiagram::visible_nodes_for_scope(
     guard region_index < 0 || state.region_index == region_index else {
       continue
     }
-    let child = self.composite_fragment(state, metrics)
+    let child = self.composite_fragment(
+      state, name_metrics, description_metrics,
+    )
     output.push({ state, child })
   }
   output
@@ -433,9 +460,12 @@ fn StateDiagram::layout_scope(
   self : StateDiagram,
   scope : String?,
   region_index : Int,
-  metrics : @metrics.FontMetrics,
+  name_metrics : @metrics.FontMetrics,
+  description_metrics : @metrics.FontMetrics,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
-  let visible_nodes = self.visible_nodes_for_scope(scope, region_index, metrics)
+  let visible_nodes = self.visible_nodes_for_scope(
+    scope, region_index, name_metrics, description_metrics,
+  )
   let graph = @graphviz.new_directed_graph("state", self.style)
   let node_names : Map[String, String] = Map([])
   for index, visible in visible_nodes {
@@ -446,11 +476,20 @@ fn StateDiagram::layout_scope(
       Some(child) =>
         (
           (child.width + STATE_INTERNAL_PADDING * 2.0).max(
-            visible.state.leaf_size(metrics).0,
+            visible.state.leaf_size(
+              name_metrics,
+              description_metrics,
+              self.hide_empty_description(),
+            ).0,
           ),
           child.height + STATE_HEADER_HEIGHT + STATE_INTERNAL_PADDING,
         )
-      None => visible.state.leaf_size(metrics)
+      None =>
+        visible.state.leaf_size(
+          name_metrics,
+          description_metrics,
+          self.hide_empty_description(),
+        )
     }
     @graphviz.set_fixed_node_size(node, width, height)
   }
@@ -492,7 +531,7 @@ fn StateDiagram::layout_scope(
     let name = @graphviz.graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
-    let (width, height) = state_note_size(note, metrics)
+    let (width, height) = state_note_size(note, name_metrics)
     @graphviz.set_fixed_node_size(node, width, height, shape="note")
     match self.note_anchor(note, scope) {
       Some(anchor) =>
@@ -647,15 +686,28 @@ fn stack_region_fragments(
 fn StateDiagram::layout_composite_state(
   self : StateDiagram,
   state : StateNode,
-  metrics : @metrics.FontMetrics,
+  name_metrics : @metrics.FontMetrics,
+  description_metrics : @metrics.FontMetrics,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
   let regions = self.regions_for(state.code)
   if regions.is_empty() {
-    return self.layout_scope(Some(state.code), -1, metrics)
+    return self.layout_scope(
+      Some(state.code),
+      -1,
+      name_metrics,
+      description_metrics,
+    )
   }
   let fragments : Array[StateFragment] = []
   for region in regions {
-    fragments.push(self.layout_scope(Some(state.code), region.index, metrics))
+    fragments.push(
+      self.layout_scope(
+        Some(state.code),
+        region.index,
+        name_metrics,
+        description_metrics,
+      ),
+    )
   }
   stack_region_fragments(state.code, regions, fragments)
 }
@@ -664,8 +716,9 @@ fn StateDiagram::layout_composite_state(
 pub fn StateDiagram::layout(
   self : StateDiagram,
 ) -> StateLayout raise @dot_layout.DotLayoutError {
-  let metrics = self.style.font_metrics(font_size=14)
-  let fragment = self.layout_scope(None, -1, metrics)
+  let name_metrics = state_font_metrics(self.style)
+  let description_metrics = state_description_font_metrics(self.style)
+  let fragment = self.layout_scope(None, -1, name_metrics, description_metrics)
   {
     width: fragment.width + STATE_CANVAS_PADDING * 2.0,
     height: fragment.height + STATE_CANVAS_PADDING * 2.0,
