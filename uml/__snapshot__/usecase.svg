@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="533" height="194" viewBox="-6 -6 533 194" role="img" aria-label="Use case diagram"><style>
+svg{font-family:Arial, sans-serif;font-size:13px;background:none}
+.class-node > rect,.class-node > line{stroke:#181818;stroke-width:1.2}
+.class-node foreignObject line{stroke-width:1.2;fill:none}
+.class-node foreignObject rect{stroke-width:1.2}
+.class-node:has(details:not([open])) > rect{stroke:transparent !important}
+.relation{stroke:#181818;stroke-width:1.2}
+.relation-decoration{stroke-width:1;stroke-linejoin:miter}
+.class-node > line,.relation{fill:none}
+.class-title{fill:#000000}
+.class-stereotype{fill:#000000;font-style:italic}
+.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#000000}
+.usecase-title{fill:#000000;text-anchor:middle}
+.usecase-stereotype{fill:#000000;text-anchor:middle;font-style:italic}
+.member,.relation-label{fill:#000000}
+.relation-label{text-anchor:middle;font-size:13px}
+</style><style>.package path,.package line{stroke:#181818;stroke-width:1.2}.package-title{fill:#000000;font-weight:bold}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#000000;font-size:13px}</style><g class="actor-node" data-code="Customer"><circle cx="124" cy="9" r="8" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><path d="M 124 17 L 124 43 M 111 27 L 137 27 M 124 43 L 111 62 M 124 43 L 137 62" fill="none" stroke="#181818" style="stroke-width:1.2"/><text x="124" y="72" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Customer</text></g>
+<g class="usecase-node" data-code="Browse catalog"><ellipse cx="72" cy="156" rx="72" ry="17" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><text x="72" y="160" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Browse catalog</text></g>
+<g class="usecase-node" data-code="Place order"><ellipse cx="240" cy="156" rx="61" ry="15" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><text x="240" y="160" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Place order</text></g>
+<g class="actor-node" data-code="Sales clerk"><circle cx="443" cy="9" r="8" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><path d="M 443 17 L 443 43 M 430 27 L 456 27 M 443 43 L 430 62 M 443 43 L 456 62" fill="none" stroke="#181818" style="stroke-width:1.2"/><text x="443" y="72" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Sales clerk</text></g>
+<g class="usecase-node" data-code="Approve order"><ellipse cx="443" cy="155" rx="68" ry="16" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><text x="443" y="159" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Approve order</text></g>
+<path d="M 107.48695652173913 78 C 98.03155108016065 98.51644576946273 88.63884913390459 118.89683678492399 81.42595722349151 134.54745130751846" class="relation" style="stroke:#181818;"/><path d="M 79.3331706793067 139.0884032430138 L 86.73294800723565 132.58891899447 L 81.42595722349151 134.54745130751846 L 79.46742491044307 129.24046052377432 z" class="relation-decoration" fill="#181818" style="stroke:#181818;stroke-width:1"/><path d="M 156 70.73275862068965 C 178.94169330596924 93.47667870850398 206.3525158777014 120.65120108565223 223.6836308595633 137.83290990387738" class="relation" style="stroke:#181818;"/><path d="M 227.23443683568962 141.3531054836578 L 223.65914254248656 132.176108659152 L 223.6836308595633 137.83290990387738 L 218.02682961483788 137.85739822095414 z" class="relation-decoration" fill="#181818" style="stroke:#181818;stroke-width:1"/><path d="M 444 78 C 444 98.77780176652595 444 118.37311518040019 444 134.00043956043964" class="relation" style="stroke:#181818;"/><path d="M 444 139.00043956043964 L 448 130.00043956043964 L 444 134.00043956043964 L 440 130.00043956043964 z" class="relation-decoration" fill="#181818" style="stroke:#181818;stroke-width:1"/><line x1="302" y1="156" x2="370.00046906515416" y2="155.06848672513487" class="relation" style="stroke:#181818;" stroke-dasharray="6 4"/><path d="M 375 155 L 365.94605493716966 151.12365135736613 L 370.00046906515416 155.06848672513487 L 366.0556336973854 159.12290085311943 z" class="relation-decoration" fill="#181818" style="stroke:#181818;stroke-width:1"/><text x="339" y="147.7" class="relation-label" fill="#000000" font-family="Arial, sans-serif" font-size="13">include</text></svg>

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="408" height="425" viewBox="0 0 408 425" role="img" aria-label="Sequence diagram"><defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/></marker>
+<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
+<marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
+<marker id="open-arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10" class="arrow-open"/></marker>
+</defs><style>
+svg{font-family:Arial, sans-serif;font-size:13px;background:none}
+.participant rect,.activation,.note,.divider-title{stroke:#181818;stroke-width:1.2}
+.participant-label{font-size:13px;font-weight:bold;fill:#000000}
+.participant-icon{fill:none;stroke:#181818;stroke-width:1.1}
+.participant-box-group{fill-opacity:.16;stroke:#181818;stroke-width:1.1}
+.participant-box-label{font-size:11px;font-weight:bold;fill:#000000}
+.lifeline{stroke:#777;stroke-width:1;stroke-dasharray:5 5}
+.activation{fill:#FFFFFF}
+.message,.cross,.destroy{fill:none;stroke:#181818;stroke-width:1.3}
+.message.dotted{stroke-dasharray:5 4}
+.arrow-fill{fill:#181818}
+.arrow-open{fill:none;stroke:#181818;stroke-width:1.5}
+.endpoint{fill:none;stroke:#181818;stroke-width:1.2}
+.message-label,.reference-label,.delay-label{fill:#000000;font-size:12px}
+.note-label{fill:#000000;font-size:13px}
+.note,.note-fold{stroke:#181818;stroke-width:.5}
+.partial-arrow{fill:#181818}
+.group-body{fill-opacity:.18;stroke:#181818;stroke-width:1.1}
+.group-body-colored,.group-branch{fill-opacity:1}
+.group-branch{stroke:none}
+.group-header{stroke:#181818;stroke-width:1.1}
+.group-label{font-size:12px;font-weight:bold;fill:#000000}
+.note{fill:#FEFFDD}
+.hex-note{stroke-dasharray:2 1}
+.box-note{rx:0}
+.divider{stroke:#777;stroke-width:1}
+.divider-title{fill:#f6f6f6}
+.divider-label{font-size:12px;font-weight:bold}
+.delay{stroke:#777;stroke-dasharray:3 3}
+.reference{fill:none;stroke:#181818;stroke-width:1.2}
+.reference-tab{fill:#eee;stroke:#181818;stroke-width:1.2}
+.reference-tab-label{fill:#000000;font-size:12px;font-weight:bold}
+.group-separator{stroke:#181818;stroke-dasharray:4 3}
+.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
+.page-label{font-size:12px;font-style:italic}
+.destroy{stroke-width:2}
+</style><rect x="0" y="0" width="408" height="425" fill="none"/><g class="group" data-keyword="alt"><rect x="5" y="169" width="207" height="130" class="group-body" fill="#E2E2F0"/><line x1="5" y1="227" x2="212" y2="227" class="group-separator"/><text x="13" y="239" text-anchor="start" fill="#000000" class="group-label"><tspan x="13" dy="0">[invalid credentials]</tspan></text>
+<path d="M5 169h151v22h-8l-5 5-5-5h-133z" class="group-header" fill="#E2E2F0"/><text x="13" y="185" text-anchor="start" fill="#000000" class="group-label"><tspan x="13" dy="0">alt [token granted]</tspan></text>
+</g>
+<g class="participant actor" data-code="User"><circle cx="37" cy="14" r="8" class="participant-icon"/><line x1="37" y1="22" x2="37" y2="49" class="participant-icon"/><line x1="24" y1="30" x2="50" y2="30" class="participant-icon"/><line x1="37" y1="49" x2="24" y2="64" class="participant-icon"/><line x1="37" y1="49" x2="50" y2="64" class="participant-icon"/><text x="37" y="78" text-anchor="middle" fill="#000000" class="participant-label"><tspan x="37" dy="0">User</tspan></text>
+</g>
+<g class="participant participant-box" data-code="App"><rect x="130" y="45" width="72" height="36" rx="2" fill="#E2E2F0"/><text x="166" y="68" text-anchor="middle" fill="#000000" class="participant-label"><tspan x="166" dy="0">Web App</tspan></text>
+</g>
+<g class="participant participant-box" data-code="Auth"><rect x="239" y="45" width="98" height="36" rx="2" fill="#E2E2F0"/><text x="288" y="68" text-anchor="middle" fill="#000000" class="participant-label"><tspan x="288" dy="0">Auth Service</tspan></text>
+</g>
+<line x1="37" y1="81" x2="37" y2="334" class="lifeline"/><line x1="166" y1="81" x2="166" y2="334" class="lifeline"/><line x1="288" y1="81" x2="288" y2="334" class="lifeline"/><rect x="283" y="136" width="10" height="33" class="activation" fill="#FFFFFF"/><line x1="37" y1="107" x2="166" y2="107" class="message" marker-end="url(#arrow)"/><text x="44" y="101" text-anchor="start" fill="#000000" class="message-label"><tspan x="44" dy="0">1 sign in</tspan></text>
+<line x1="166" y1="136" x2="288" y2="136" class="message" marker-end="url(#arrow)"/><text x="173" y="130" text-anchor="start" fill="#000000" class="message-label"><tspan x="173" dy="0">2 POST /token</tspan></text>
+<line x1="288" y1="165" x2="166" y2="165" class="message dotted" marker-end="url(#arrow)"/><text x="209" y="159" text-anchor="start" fill="#000000" class="message-label"><tspan x="209" dy="0">3 access token</tspan></text>
+<line x1="166" y1="216" x2="37" y2="216" class="message dotted" marker-end="url(#arrow)"/><text x="66" y="210" text-anchor="start" fill="#000000" class="message-label"><tspan x="66" dy="0">4 welcome page</tspan></text>
+<line x1="166" y1="274" x2="37" y2="274" class="message dotted" marker-end="url(#arrow)"/><text x="66" y="268" text-anchor="start" fill="#000000" class="message-label"><tspan x="66" dy="0">5 error message</tspan></text>
+<path d="M288,299 L288,324 L403,324 L403,309 L393,299 Z" class="note" fill="#FEFFDD" /><path d="M393,299 L393,309 L403,309" class="note-fold" fill="none" /><text x="294" y="317" text-anchor="start" fill="#000000" class="note-label"><tspan x="294" dy="0">stateless issuer</tspan></text>
+<g class="participant actor" data-code="User"><circle cx="37" cy="368" r="8" class="participant-icon"/><line x1="37" y1="376" x2="37" y2="403" class="participant-icon"/><line x1="24" y1="384" x2="50" y2="384" class="participant-icon"/><line x1="37" y1="403" x2="24" y2="418" class="participant-icon"/><line x1="37" y1="403" x2="50" y2="418" class="participant-icon"/><text x="37" y="356" text-anchor="middle" fill="#000000" class="participant-label"><tspan x="37" dy="0">User</tspan></text>
+</g>
+<g class="participant participant-box" data-code="App"><rect x="130" y="343" width="72" height="36" rx="2" fill="#E2E2F0"/><text x="166" y="366" text-anchor="middle" fill="#000000" class="participant-label"><tspan x="166" dy="0">Web App</tspan></text>
+</g>
+<g class="participant participant-box" data-code="Auth"><rect x="239" y="343" width="98" height="36" rx="2" fill="#E2E2F0"/><text x="288" y="366" text-anchor="middle" fill="#000000" class="participant-label"><tspan x="288" dy="0">Auth Service</tspan></text>
+</g>
+</svg>

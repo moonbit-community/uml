@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+  width="379" height="133" viewBox="0 0 379 133"
+  role="img" aria-label="YAML diagram">
+<style>
+svg { font-family: sans-serif; font-size: 14px; background: none }
+.structured-node rect { fill: #F1F1F1; stroke: #000000; stroke-width: 1.5 }
+.structured-node line { stroke: #000000; stroke-width: 1 }
+.structured-node text { fill: #000000 }
+.structured-key { font-weight: 700 }
+.structured-edge { fill: none; stroke: #000000; stroke-width: 1; stroke-dasharray: 3,3 }
+.structured-arrow, .structured-spot { fill: #000000; stroke: #000000; stroke-width: 1 }
+</style>
+<path class="structured-edge"
+  d="M 158 81 C 171 81, 187 41, 200 41"/>
+<path class="structured-arrow"
+  d="M 200 44 L 202 41 L 200 38 L 208 41 z"/>
+<circle class="structured-spot" cx="158" cy="81" r="3"/>
+<path class="structured-edge"
+  d="M 158 102 C 171 102, 187 102, 200 102"/>
+<path class="structured-arrow"
+  d="M 200 105 L 202 102 L 200 99 L 208 102 z"/>
+<circle class="structured-spot" cx="158" cy="102" r="3"/>
+<g class="structured-node">
+<rect
+  x="10" y="29" width="160"
+  height="84" rx="5" ry="5"/>
+<text x="15" y="45" class="structured-key"><tspan x="15" dy="0">name</tspan></text>
+<line x1="84" y1="29" x2="84" y2="50"/>
+<text x="89" y="45"><tspan x="89" dy="0">uml</tspan></text>
+<line
+  x1="10" y1="50"
+  x2="170" y2="50"/>
+<text x="15" y="66" class="structured-key"><tspan x="15" dy="0">license</tspan></text>
+<line x1="84" y1="50" x2="84" y2="71"/>
+<text x="89" y="66"><tspan x="89" dy="0">Apache-2.0</tspan></text>
+<line
+  x1="10" y1="71"
+  x2="170" y2="71"/>
+<text x="15" y="87" class="structured-key"><tspan x="15" dy="0">diagrams</tspan></text>
+<line x1="84" y1="71" x2="84" y2="92"/>
+<text x="89" y="87">&#160;&#160;&#160;</text>
+<line
+  x1="10" y1="92"
+  x2="170" y2="92"/>
+<text x="15" y="108" class="structured-key"><tspan x="15" dy="0">render</tspan></text>
+<line x1="84" y1="92" x2="84" y2="113"/>
+<text x="89" y="108">&#160;&#160;&#160;</text>
+</g>
+<g class="structured-node">
+<rect
+  x="208" y="10" width="71"
+  height="63" rx="5" ry="5"/>
+<text x="213" y="26"><tspan x="213" dy="0">sequence</tspan></text>
+<line
+  x1="208" y1="31"
+  x2="279" y2="31"/>
+<text x="213" y="47"><tspan x="213" dy="0">class</tspan></text>
+<line
+  x1="208" y1="52"
+  x2="279" y2="52"/>
+<text x="213" y="68"><tspan x="213" dy="0">mindmap</tspan></text>
+</g>
+<g class="structured-node">
+<rect
+  x="208" y="81" width="161"
+  height="42" rx="5" ry="5"/>
+<text x="213" y="97" class="structured-key"><tspan x="213" dy="0">backend</tspan></text>
+<line x1="294" y1="81" x2="294" y2="102"/>
+<text x="299" y="97"><tspan x="299" dy="0">svg</tspan></text>
+<line
+  x1="208" y1="102"
+  x2="369" y2="102"/>
+<text x="213" y="118" class="structured-key"><tspan x="213" dy="0">compatible</tspan></text>
+<line x1="294" y1="102" x2="294" y2="123"/>
+<text x="299" y="118"><tspan x="299" dy="0">PlantUML</tspan></text>
+</g>
+</svg>

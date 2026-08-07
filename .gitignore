@@ -7,4 +7,6 @@ target/
 *.mbti
 *.dot
 *.svg
+!__snapshot__/*.svg
+!**/__snapshot__/*.svg
 AGENTS.md
