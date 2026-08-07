@@ -7,7 +7,60 @@ const STATE_CORNER_RADIUS : Double = 12.5
 const STATE_THIN_STROKE_WIDTH : String = "0.5"
 
 ///|
-const STATE_FINAL_STROKE_WIDTH : String = "2"
+const STATE_TERMINAL_STROKE_WIDTH : String = "1"
+
+///|
+fn initial_background_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ActivityStartColor", style.defaults().line)
+}
+
+///|
+fn terminal_border_color(style : @style.DocumentStyle) -> String {
+  style.defaults().line
+}
+
+///|
+fn final_border_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ActivityEndColor", style.defaults().line)
+}
+
+///|
+fn diamond_background_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ActivityDiamondBackgroundColor", style.defaults().node)
+}
+
+///|
+fn diamond_border_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ActivityDiamondBorderColor", style.defaults().line)
+}
+
+///|
+fn diamond_font_color(style : @style.DocumentStyle) -> String {
+  style.property_font_color("ActivityDiamondFontColor")
+}
+
+///|
+fn diamond_font_family(style : @style.DocumentStyle) -> String {
+  style.property_font_family("ActivityDiamondFontName")
+}
+
+///|
+fn diamond_font_size(style : @style.DocumentStyle) -> Int {
+  style.property_font_size("ActivityDiamondFontSize", fallback=14)
+}
+
+///|
+fn diamond_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
+  style.font_metrics_for(
+    diamond_font_family(style),
+    font_size=diamond_font_size(style),
+  )
+}
+
+///|
+fn synchronization_background_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ActivityBarColor", style.defaults().line)
+}
 
 ///|
 /// Resolve normal-state paint with PlantUML's inline-color precedence.
@@ -223,35 +276,51 @@ fn append_state_node(
   match state.kind {
     Initial =>
       output.empty("circle", attributes=[
+        ("class", "state-initial"),
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", diagram.style.defaults().line),
+        ("fill", initial_background_color(diagram.style)),
+        ("stroke", terminal_border_color(diagram.style)),
+        ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
       ])
     Final => {
       let radius = width.min(height) / 2.0
       output.empty("circle", attributes=[
+        ("class", "state-final-outer"),
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", radius.to_string()),
         ("fill", "none"),
-        ("stroke", diagram.style.diagram_line_color()),
-        ("stroke-width", STATE_FINAL_STROKE_WIDTH),
+        ("stroke", final_border_color(diagram.style)),
+        ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
       ])
       output.empty("circle", attributes=[
+        ("class", "state-final-inner"),
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (radius - 5.0).max(1.0).to_string()),
-        ("fill", diagram.style.defaults().line),
+        ("fill", terminal_border_color(diagram.style)),
+        ("stroke", final_border_color(diagram.style)),
+        ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
       ])
     }
     History | DeepHistory => {
       output.empty("circle", attributes=[
+        (
+          "class",
+          if state.kind == DeepHistory {
+            "state-deep-history"
+          } else {
+            "state-history"
+          },
+        ),
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", diagram.style.defaults().canvas),
-        ("stroke", diagram.style.diagram_line_color()),
+        ("fill", diamond_background_color(diagram.style)),
+        ("stroke", diamond_border_color(diagram.style)),
+        ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
       append_state_label(
         output,
@@ -263,19 +332,22 @@ fn append_state_node(
         center_x,
         center_y + 5.0,
         "state-pseudostate-label",
-        diagram.style.font_metrics(font_size=14),
+        diamond_font_metrics(diagram.style),
       )
     }
     Synchronization =>
       output.empty("rect", attributes=[
+        ("class", "state-synchronization"),
         ("x", x.to_string()),
         ("y", (center_y - height / 2.0).to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
-        ("fill", diagram.style.defaults().line),
+        ("fill", synchronization_background_color(diagram.style)),
+        ("stroke", "none"),
       ])
-    Choice => {
+    Choice =>
       output.empty("path", attributes=[
+        ("class", "state-choice"),
         (
           "d",
           "M " +
@@ -296,18 +368,10 @@ fn append_state_node(
           center_y.to_string() +
           " Z",
         ),
-        ("fill", @svg.svg_color(state.color, diagram.style.defaults().node)),
-        ("stroke", diagram.style.diagram_line_color()),
+        ("fill", diamond_background_color(diagram.style)),
+        ("stroke", diamond_border_color(diagram.style)),
+        ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
-      append_state_label(
-        output,
-        state.display,
-        center_x,
-        center_y + 5.0,
-        "state-label",
-        diagram.style.font_metrics(font_size=14),
-      )
-    }
     Normal => {
       output.empty("rect", attributes=[
         ("x", x.to_string()),
@@ -510,11 +574,11 @@ pub fn StateDiagram::render_svg(
     "px;fill:" +
     state_description_font_color(self.style) +
     "}.state-pseudostate-label{font-family:" +
-    self.style.font_family() +
+    diamond_font_family(self.style) +
     ";font-size:" +
-    @svg.auxiliary_label_font_size() +
-    ";fill:" +
-    self.style.diagram_text_color() +
+    diamond_font_size(self.style).to_string() +
+    "px;fill:" +
+    diamond_font_color(self.style) +
     "}.state-transition-label{font-family:" +
     self.style.font_family() +
     ";font-size:" +

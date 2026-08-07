@@ -66,12 +66,75 @@ test "state auxiliary labels share their SVG font-size token" {
 }
 
 ///|
-test "state pseudo-state borders inherit the shared diagram line color" {
+test "state pseudo-states keep their own circle border style" {
   let svg = render_state_svg(
     "@startuml\nskinparam ArrowColor #123456\n[*] --> Done\nDone --> [*]\n@enduml",
   )
+  @test.assert_eq(svg.contains("class=\"state-initial\""), true)
+  @test.assert_eq(svg.contains("class=\"state-final-outer\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#181818\""), true)
   @test.assert_eq(svg.contains("stroke=\"#123456\""), true)
-  @test.assert_eq(svg.contains("stroke=\"#181818\""), false)
+}
+
+///|
+test "state terminal circles consume their dedicated activity colors" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam ActivityStartColor #110000\nskinparam ActivityEndColor #220000\n[*] --> Done\nDone --> [*]\n@enduml",
+  )
+  @test.assert_eq(svg.contains("class=\"state-initial\""), true)
+  @test.assert_eq(svg.contains("fill=\"#110000\""), true)
+  @test.assert_eq(svg.contains("class=\"state-final-outer\""), true)
+  @test.assert_eq(svg.contains("class=\"state-final-inner\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#220000\""), true)
+}
+
+///|
+test "history and choice share the official diamond style roles" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam ActivityDiamondBackgroundColor #330000\nskinparam ActivityDiamondBorderColor #440000\nskinparam ActivityDiamondFontColor #550000\nskinparam ActivityDiamondFontName Courier New\nskinparam ActivityDiamondFontSize 17\n[*] --> Ready\nReady --> [H]\n[H] --> [H*]\nstate Decision <<choice>>\n[H*] --> Decision\n@enduml",
+  )
+  @test.assert_eq(svg.contains("class=\"state-history\""), true)
+  @test.assert_eq(svg.contains("class=\"state-deep-history\""), true)
+  @test.assert_eq(svg.contains("class=\"state-choice\""), true)
+  @test.assert_eq(svg.contains("fill=\"#330000\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#440000\""), true)
+  @test.assert_eq(
+    svg.contains(
+      ".state-pseudostate-label{font-family:Courier New;font-size:17px;fill:#550000}",
+    ),
+    true,
+  )
+  @test.assert_eq(svg.contains(">Decision</tspan>"), false)
+}
+
+///|
+test "synchronization bars consume the activity bar background" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam ActivityBarColor #660000\n[*] --> Ready\nReady --> ==join==\n@enduml",
+  )
+  @test.assert_eq(svg.contains("class=\"state-synchronization\""), true)
+  @test.assert_eq(svg.contains("fill=\"#660000\""), true)
+  @test.assert_eq(svg.contains("stroke=\"none\""), true)
+}
+
+///|
+test "pseudo-state style roles fall back to dark theme colors" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "theme-text",
+    "theme-line",
+    canvas="theme-canvas",
+    node="theme-node",
+  )
+  let svg = render_state_svg(
+    "@startuml\n[*] --> Ready\nReady --> [H]\n[H] --> ==join==\n==join== --> [*]\n@enduml",
+    color_scheme=scheme,
+  )
+  @test.assert_eq(svg.contains("class=\"state-initial\""), true)
+  @test.assert_eq(svg.contains("class=\"state-history\""), true)
+  @test.assert_eq(svg.contains("class=\"state-synchronization\""), true)
+  @test.assert_eq(svg.contains("fill=\"theme-line\""), true)
+  @test.assert_eq(svg.contains("fill=\"theme-node\""), true)
+  @test.assert_eq(svg.contains("fill=\"theme-canvas\""), false)
 }
 
 ///|
