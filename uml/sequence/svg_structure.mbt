@@ -76,6 +76,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
               layout.defaults,
               anchor="start",
               line_height=layout.text_metrics.body_bold.line_height,
+              font_metrics=Some(layout.text_metrics.body_bold),
             )
           None => ()
         }
@@ -101,6 +102,7 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
         layout.defaults,
         anchor="start",
         line_height=layout.text_metrics.body_bold.line_height,
+        font_metrics=Some(layout.text_metrics.body_bold),
       )
     }
     output.write_string("</g>\n")

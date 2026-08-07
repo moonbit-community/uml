@@ -30,6 +30,7 @@ fn append_participant(
         "participant-label",
         layout.defaults,
         line_height=layout.text_metrics.participant.line_height,
+        font_metrics=Some(layout.text_metrics.participant),
       )
     }
   }
@@ -63,6 +64,7 @@ fn append_vertical_participant(
     "participant-label",
     layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
+    font_metrics=Some(layout.text_metrics.participant),
   )
 }
 
@@ -85,6 +87,7 @@ fn append_queue_participant(
     "participant-label",
     layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
+    font_metrics=Some(layout.text_metrics.participant),
   )
 }
 
@@ -108,6 +111,7 @@ fn append_collections_participant(
     "participant-label",
     layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
+    font_metrics=Some(layout.text_metrics.participant),
   )
 }
 
@@ -206,6 +210,7 @@ fn append_participant_box(
         diagram_layout.defaults,
         anchor="start",
         line_height=first.text_metrics.small_bold.line_height,
+        font_metrics=Some(first.text_metrics.small_bold),
       )
     None => ()
   }

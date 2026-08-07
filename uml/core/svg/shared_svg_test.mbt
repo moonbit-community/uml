@@ -40,3 +40,46 @@ test "sequence dash roles have distinct shared sources" {
     }
   }
 }
+
+///|
+test "multiline text serializes layout advances as complete XML attributes" {
+  let metrics = @metrics.FontMetrics::from_defaults(font_size=16)
+  let line = "wide label"
+  let measured = metrics.measure(line)
+  let svg = @svg.multiline_text_markup(
+    0.0,
+    12.0,
+    line + "\nX",
+    [],
+    line_height=metrics.line_height.to_double(),
+    text_metrics=Some(metrics),
+  )
+  @test.assert_eq(
+    svg,
+    "<text x=\"0\" y=\"" +
+    (12.0 - metrics.line_height.to_double() / 2.0).to_string() +
+    "\"><tspan x=\"0\" dy=\"0\" textLength=\"" +
+    measured.advance_width.to_string() +
+    "\" lengthAdjust=\"spacing\">" +
+    line +
+    "</tspan><tspan x=\"0\" dy=\"" +
+    metrics.line_height.to_double().to_string() +
+    "\">X</tspan></text>",
+  )
+}
+
+///|
+test "single-line text serializes layout advances as complete XML attributes" {
+  let metrics = @metrics.FontMetrics::from_defaults(font_size=16)
+  let text = "state name"
+  let measured = metrics.measure(text)
+  let svg = @svg.text_markup(0.0, 0.0, text, [], metrics)
+  @test.assert_eq(
+    svg,
+    "<text x=\"0\" y=\"0\" textLength=\"" +
+    measured.advance_width.to_string() +
+    "\" lengthAdjust=\"spacing\">" +
+    text +
+    "</text>",
+  )
+}

@@ -120,6 +120,7 @@ fn append_message(
       layout.defaults,
       anchor="start",
       line_height=layout.text_metrics.body.line_height,
+      font_metrics=Some(layout.text_metrics.body),
     )
   } else {
     let start_x = from.center_x
@@ -148,6 +149,7 @@ fn append_message(
       layout.defaults,
       anchor="start",
       line_height=layout.text_metrics.body.line_height,
+      font_metrics=Some(layout.text_metrics.body),
     )
   }
   if message.arrow_config.circle_start {
@@ -218,6 +220,7 @@ fn append_exo_message(
     layout.defaults,
     anchor="start",
     line_height=layout.text_metrics.body.line_height,
+    font_metrics=Some(layout.text_metrics.body),
   )
 }
 

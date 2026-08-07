@@ -83,11 +83,11 @@ pub fn FontMetrics::from_defaults(
   descent? : Int = 0,
   line_gap? : Int = 0,
   width_scale? : Int = 100,
-  uppercase_width_scale? : Int = 108,
+  uppercase_width_scale? : Int = 100,
   lowercase_width_scale? : Int = 100,
-  digit_width_scale? : Int = 93,
-  punctuation_width_scale? : Int = 102,
-  wide_width_scale? : Int = 93,
+  digit_width_scale? : Int = 100,
+  punctuation_width_scale? : Int = 100,
+  wide_width_scale? : Int = 100,
   emoji_width_scale? : Int = 100,
   font_stretch? : Int = 100,
   bold_width_scale? : Int = 110,
@@ -142,14 +142,14 @@ pub fn FontMetrics::from_defaults(
   }
   {
     ..metrics,
-    space_width: metrics.scaled_advance(4.0, ' ').ceil_pixels(),
-    narrow_width: metrics.scaled_advance(3.0, 'i').ceil_pixels(),
-    normal_width: metrics.scaled_advance(7.0, 'a').ceil_pixels(),
-    wide_width: metrics.scaled_advance(11.0, 'm').ceil_pixels(),
-    uppercase_width: metrics.scaled_advance(8.0, 'A').ceil_pixels(),
+    space_width: metrics.char_advance(' ').ceil_pixels(),
+    narrow_width: metrics.char_advance('i').ceil_pixels(),
+    normal_width: metrics.char_advance('a').ceil_pixels(),
+    wide_width: metrics.char_advance('m').ceil_pixels(),
+    uppercase_width: metrics.char_advance('A').ceil_pixels(),
     digit_width: metrics.char_advance('0').ceil_pixels(),
-    cjk_width: metrics.scaled_advance(14.0, '\u{4e00}').ceil_pixels(),
-    emoji_width: metrics.scaled_advance(14.0, '\u{1f600}').ceil_pixels(),
+    cjk_width: metrics.char_advance('\u{4e00}').ceil_pixels(),
+    emoji_width: metrics.char_advance('\u{1f600}').ceil_pixels(),
   }
 }
 
@@ -193,6 +193,49 @@ fn FontMetrics::scaled_advance(
   let advance = advance * Float::from_int(self.profile_scale()) / 1000.0F
   let advance = advance * Float::from_int(weight_scale) / 100.0F
   advance * Float::from_int(style_scale) / 100.0
+}
+
+///|
+/// Return the deterministic PlantUML table advance in fixed-point units.
+/// The Java width table is generated at size 16 and stores tenths of a point.
+fn FontMetrics::table_advance(self : FontMetrics, char : Char) -> Float? {
+  guard self.profile == Sans else { None }
+  let code_point = char.to_int()
+  guard code_point < 0xFFFF else { Some(160.0F) }
+  let block = code_point >> 8
+  guard block < plantuml_sans_serif_widths.length() else { Some(130.0F) }
+  let widths = plantuml_sans_serif_widths[block]
+  let value = unicode_block_width(widths, code_point & 0xFF)
+  Some(
+    Float::from_int(value) * 100.0F * Float::from_int(self.font_size) / 16.0F,
+  )
+}
+
+///|
+/// Match PlantUML's UnicodeBlock representation: one-value blocks are
+/// constant, full blocks are direct lookup tables, and shorter blocks store
+/// `(count, value)` RLE pairs.
+fn unicode_block_width(widths : Array[Int], low_byte : Int) -> Int {
+  if widths.length() == 1 {
+    widths[0]
+  } else if widths.length() == 256 {
+    widths[low_byte]
+  } else {
+    let mut cursor = 0
+    let mut decoded_index = 0
+    let mut value = 0
+    while cursor < widths.length() {
+      let count = widths[cursor]
+      let next_value = widths[cursor + 1]
+      if low_byte < decoded_index + count {
+        value = next_value
+        break
+      }
+      decoded_index += count
+      cursor += 2
+    }
+    value
+  }
 }
 
 ///|
@@ -245,7 +288,24 @@ fn FontMetrics::base_char_width(self : FontMetrics, char : Char) -> Float {
 
 ///|
 fn FontMetrics::char_advance(self : FontMetrics, char : Char) -> Float {
-  self.scaled_advance(self.base_char_width(char), char)
+  match self.table_advance(char) {
+    Some(advance) => {
+      let advance = advance * Float::from_int(self.width_scale) / 100.0F
+      let advance = advance *
+        Float::from_int(self.glyph_width_scale(char)) /
+        100.0F
+      let advance = advance * Float::from_int(self.font_stretch) / 100.0F
+      let weight_progress = (self.font_weight - 400).clamp(min=0, max=500)
+      let weight_scale = 100 +
+        (self.bold_width_scale - 100) * weight_progress / 300
+      let advance = advance * Float::from_int(weight_scale) / 100.0F
+      match self.style {
+        Normal => advance
+        Italic => advance * Float::from_int(self.italic_width_scale) / 100.0F
+      }
+    }
+    None => self.scaled_advance(self.base_char_width(char), char)
+  }
 }
 
 ///|
@@ -287,9 +347,11 @@ pub fn FontMetrics::measure(self : FontMetrics, text : String) -> TextMetrics {
           0.0
         })
       }
-      let pair_adjustment = previous.map_or(0.0F, left => {
-        self.kerning(left, char)
-      })
+      let pair_adjustment = if self.profile == Sans {
+        0.0F
+      } else {
+        previous.map_or(0.0F, left => self.kerning(left, char))
+      }
       let next_previous = if char_advance > 0.0F {
         Some(char)
       } else {

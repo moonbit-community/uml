@@ -39,7 +39,14 @@ fn append_text(
   defaults : @style.SequenceColors,
   anchor? : String = "middle",
   line_height? : Int = 15,
+  font_metrics? : @metrics.FontMetrics? = None,
 ) -> Unit {
+  let text_metrics = font_metrics.unwrap_or(
+    @metrics.FontMetrics::from_defaults(
+      font_size=(line_height - 2).max(1),
+      line_height~,
+    ),
+  )
   output.write_string(
     @svg.multiline_text_markup(
       x.to_double(),
@@ -48,6 +55,7 @@ fn append_text(
       [("text-anchor", anchor), ("fill", defaults.text), ("class", class_name)],
       line_height=line_height.to_double(),
       anchor=Baseline,
+      text_metrics=Some(text_metrics),
     ),
   )
   output.write_string("\n")

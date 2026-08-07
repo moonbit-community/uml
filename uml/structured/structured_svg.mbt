@@ -83,6 +83,10 @@ fn append_multiline_text(
   text : String,
   class? : String,
 ) -> Unit {
+  let text_metrics = @metrics.FontMetrics::from_defaults(
+    font_size=STRUCTURED_FONT_SIZE,
+    line_height=STRUCTURED_LINE_HEIGHT,
+  )
   let attributes = match class {
     Some(class) => [("class", class)]
     None => []
@@ -95,6 +99,7 @@ fn append_multiline_text(
       attributes,
       line_height=STRUCTURED_LINE_HEIGHT.to_double(),
       anchor=Baseline,
+      text_metrics=Some(text_metrics),
     ),
   )
   output.write_string("\n")

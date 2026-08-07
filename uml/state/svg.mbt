@@ -24,6 +24,7 @@ fn append_state_label(
   x : Double,
   y : Double,
   class_name : String,
+  text_metrics : @metrics.FontMetrics,
 ) -> Unit {
   output.raw(
     @svg.multiline_text_markup(
@@ -32,6 +33,7 @@ fn append_state_label(
       text,
       [("text-anchor", "middle"), ("class", class_name)],
       line_height=16.0,
+      text_metrics=Some(text_metrics),
     ),
   )
 }
@@ -131,6 +133,7 @@ fn append_state_node(
       center_x,
       y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
       "state-label",
+      diagram.style.font_metrics(font_size=14),
     )
     output.close()
     return
@@ -178,6 +181,7 @@ fn append_state_node(
         center_x,
         center_y + 5.0,
         "state-pseudostate-label",
+        diagram.style.font_metrics(font_size=14),
       )
     }
     Synchronization =>
@@ -219,6 +223,7 @@ fn append_state_node(
         center_x,
         center_y + 5.0,
         "state-label",
+        diagram.style.font_metrics(font_size=14),
       )
     }
     Normal => {
@@ -252,6 +257,7 @@ fn append_state_node(
         center_x,
         y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
         "state-label",
+        diagram.style.font_metrics(font_size=14),
       )
     }
   }
@@ -287,6 +293,7 @@ fn append_state_edge(
         position.0,
         position.1 - 5.0,
         "state-transition-label",
+        diagram.style.font_metrics(font_size=14),
       )
     _ => ()
   }
@@ -344,6 +351,7 @@ fn append_state_note(
     layout.x + layout.width / 2.0,
     layout.y + layout.height / 2.0 + 5.0,
     "state-note-label",
+    diagram.style.font_metrics(font_size=14),
   )
   output.close()
 }

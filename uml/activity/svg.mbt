@@ -15,28 +15,16 @@ fn append_label(
   label : String,
   font_metrics : @metrics.FontMetrics,
 ) -> Unit {
-  let lines = label.split("\n").map(StringView::to_owned).to_array()
-  let first_baseline = y - (lines.length() - 1) * font_metrics.line_height / 2
-  output.open("text", attributes=[
-    ("x", x.to_string()),
-    ("y", first_baseline.to_string()),
-    ("text-anchor", "middle"),
-    ("class", "activity-label"),
-  ])
-  for index, line in lines {
-    output.text("tspan", line, attributes=[
-      ("x", x.to_string()),
-      (
-        "dy",
-        if index == 0 {
-          "0"
-        } else {
-          font_metrics.line_height.to_string()
-        },
-      ),
-    ])
-  }
-  output.close()
+  output.raw(
+    @svg.multiline_text_markup(
+      x.to_double(),
+      y.to_double(),
+      label,
+      [("text-anchor", "middle"), ("class", "activity-label")],
+      line_height=font_metrics.line_height.to_double(),
+      text_metrics=Some(font_metrics),
+    ),
+  )
 }
 
 ///|

@@ -238,8 +238,20 @@ fn append_notes(
         output <+
           $|<g class="class-note" style="stroke:\{note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
         for line_index, line in note.text.split("\n") {
-          output <+
-            $|<text x="\{x + NOTE_LEFT_PADDING.to_double()}" y="\{y + NOTE_VERTICAL_PADDING.to_double() + text_metrics.note.ascent.to_double() + line_index.to_double() * text_metrics.note.line_height.to_double()}" class="note-text">\{@svg.xml_escape(line.to_owned())}</text>
+          let line_text = line.to_owned()
+          output.write_string(
+            @svg.text_markup(
+              x + NOTE_LEFT_PADDING.to_double(),
+              y +
+              NOTE_VERTICAL_PADDING.to_double() +
+              text_metrics.note.ascent.to_double() +
+              line_index.to_double() * text_metrics.note.line_height.to_double(),
+              line_text,
+              [("class", "note-text")],
+              text_metrics.note,
+            ),
+          )
+          output.write_char('\n')
         }
       }
     None => ()

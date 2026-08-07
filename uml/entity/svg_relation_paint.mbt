@@ -227,20 +227,44 @@ fn append_relation(
       } else {
         text_box.x
       }
-      let anchor_style = if usecase {
-        ""
-      } else {
-        " style=\"text-anchor:start\""
-      }
-      output <+
-        $|<text x="\{x}" y="\{text_box.baseline}" class="relation-label" fill="\{label_color}" font-family="\{@svg.xml_escape(label_font_family)}" font-size="\{label_font_size}"\{anchor_style}>\{@svg.xml_escape(text_box.text)}</text>
+      let attributes = [
+        ("class", "relation-label"),
+        ("fill", label_color),
+        ("font-family", label_font_family),
+        ("font-size", label_font_size.to_string()),
+        ..if !usecase {
+          [("text-anchor", "start")]
+        },
+      ]
+      output.write_string(
+        @svg.text_markup(
+          x,
+          text_box.baseline,
+          text_box.text,
+          attributes,
+          text_metrics.relation_label_regular,
+        ),
+      )
+      output.write_char('\n')
     }
     None => ()
   }
   let end_label_font_size = text_metrics.relation_end_regular.font_size
   let end_label_font_family = text_metrics.relation_end_font_family
   for text_box in relation_label_layout.end_boxes() {
-    output <+
-      $|<text x="\{text_box.x}" y="\{text_box.baseline}" class="relation-end-label" font-family="\{@svg.xml_escape(end_label_font_family)}" font-size="\{end_label_font_size}">\{@svg.xml_escape(text_box.text)}</text>
+    output.write_string(
+      @svg.text_markup(
+        text_box.x,
+        text_box.baseline,
+        text_box.text,
+        [
+          ("class", "relation-end-label"),
+          ("font-family", end_label_font_family),
+          ("font-size", end_label_font_size.to_string()),
+        ],
+        text_metrics.relation_end_regular,
+      ),
+    )
+    output.write_char('\n')
   }
 }

@@ -8,6 +8,7 @@ fn append_mindmap_text(
   anchor : String,
   fill : String,
   font_size : Int,
+  text_metrics : @metrics.FontMetrics,
 ) -> Unit {
   output.open("text", attributes=[
     ("x", x.to_string()),
@@ -20,12 +21,23 @@ fn append_mindmap_text(
   label
   .split("\n")
   .eachi((index, line) => {
+    let text = line.to_owned()
+    let measured = text_metrics.measure(text)
     let dy = if index == 0 { 0 } else { line_height }
-    output.open("tspan", attributes=[
-      ("x", x.to_string()),
-      ("dy", dy.to_string()),
-    ])
-    parse_mindmap_text_line(line.to_owned()).each(span => {
+    output.open(
+      "tspan",
+      attributes=[
+        ("x", x.to_string()),
+        ("dy", dy.to_string()),
+        ..if text.length() > 1 && measured.advance_width > 0 {
+          [
+            ("textLength", measured.advance_width.to_string()),
+            ("lengthAdjust", "spacing"),
+          ]
+        },
+      ],
+    )
+    parse_mindmap_text_line(text).each(span => {
       let attributes = [
         ..if span.strike {
           [("text-decoration", "line-through")]
@@ -142,6 +154,7 @@ fn append_mindmap_node(
     anchor,
     font_color,
     font_size,
+    font_metrics,
   )
   output.close()
 }

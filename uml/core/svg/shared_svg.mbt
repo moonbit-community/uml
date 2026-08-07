@@ -223,6 +223,7 @@ pub fn multiline_text_markup(
   attributes : Array[(String, String)],
   line_height~ : Double,
   anchor? : MultilineTextAnchor = Center,
+  text_metrics? : @metrics.FontMetrics? = None,
 ) -> String {
   let lines = text.split("\n").map(StringView::to_owned).to_array()
   let baseline = match anchor {
@@ -237,8 +238,44 @@ pub fn multiline_text_markup(
   output.write_string(">")
   for index, line in lines {
     let dy = if index == 0 { 0.0 } else { line_height }
-    output <+ "<tspan x=\"\{x}\" dy=\"\{dy}\">\{xml_escape(line)}</tspan>"
+    let width_attributes = match text_metrics {
+      Some(metrics) => {
+        let measured = metrics.measure(line)
+        if line.length() > 1 && measured.advance_width > 0 {
+          " textLength=\"\{measured.advance_width}\" lengthAdjust=\"spacing\""
+        } else {
+          ""
+        }
+      }
+      None => ""
+    }
+    output <+
+      "<tspan x=\"\{x}\" dy=\"\{dy}\"\{width_attributes}>\{xml_escape(line)}</tspan>"
   }
   output.write_string("</text>")
+  output.to_string()
+}
+
+///|
+/// Serialize one SVG text node using the same advance used by layout.
+pub fn text_markup(
+  x : Double,
+  y : Double,
+  text : String,
+  attributes : Array[(String, String)],
+  text_metrics : @metrics.FontMetrics,
+) -> String {
+  let measured = text_metrics.measure(text)
+  let output = StringBuilder()
+  output.write_string("<text x=\"\{x}\" y=\"\{y}\"")
+  for attribute in attributes {
+    output.write_string(" \{attribute.0}=\"\{xml_escape(attribute.1)}\"")
+  }
+  if text.length() > 1 && measured.advance_width > 0 {
+    output.write_string(
+      " textLength=\"\{measured.advance_width}\" lengthAdjust=\"spacing\"",
+    )
+  }
+  output <+ ">\{xml_escape(text)}</text>"
   output.to_string()
 }
