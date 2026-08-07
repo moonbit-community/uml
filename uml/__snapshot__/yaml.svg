@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg"
-  width="379" height="133" viewBox="0 0 379 133"
+  width="371" height="133" viewBox="0 0 371 133"
   role="img" aria-label="YAML diagram">
 <style>
 svg { font-family: sans-serif; font-size: 14px; background: none }
@@ -11,67 +11,67 @@ svg { font-family: sans-serif; font-size: 14px; background: none }
 .structured-arrow, .structured-spot { fill: #000000; stroke: #000000; stroke-width: 1 }
 </style>
 <path class="structured-edge"
-  d="M 158 81 C 171 81, 187 41, 200 41"/>
+  d="M 154 81 C 167 81, 183 41, 196 41"/>
 <path class="structured-arrow"
-  d="M 200 44 L 202 41 L 200 38 L 208 41 z"/>
-<circle class="structured-spot" cx="158" cy="81" r="3"/>
+  d="M 196 44 L 198 41 L 196 38 L 204 41 z"/>
+<circle class="structured-spot" cx="154" cy="81" r="3"/>
 <path class="structured-edge"
-  d="M 158 102 C 171 102, 187 102, 200 102"/>
+  d="M 154 102 C 167 102, 183 102, 196 102"/>
 <path class="structured-arrow"
-  d="M 200 105 L 202 102 L 200 99 L 208 102 z"/>
-<circle class="structured-spot" cx="158" cy="102" r="3"/>
+  d="M 196 105 L 198 102 L 196 99 L 204 102 z"/>
+<circle class="structured-spot" cx="154" cy="102" r="3"/>
 <g class="structured-node">
 <rect
-  x="10" y="29" width="160"
+  x="10" y="29" width="156"
   height="84" rx="5" ry="5"/>
-<text x="15" y="45" class="structured-key"><tspan x="15" dy="0">name</tspan></text>
+<text x="15" y="45" class="structured-key"><tspan x="15" dy="0" textLength="35" lengthAdjust="spacing">name</tspan></text>
 <line x1="84" y1="29" x2="84" y2="50"/>
-<text x="89" y="45"><tspan x="89" dy="0">uml</tspan></text>
+<text x="89" y="45"><tspan x="89" dy="0" textLength="23" lengthAdjust="spacing">uml</tspan></text>
 <line
   x1="10" y1="50"
-  x2="170" y2="50"/>
-<text x="15" y="66" class="structured-key"><tspan x="15" dy="0">license</tspan></text>
+  x2="166" y2="50"/>
+<text x="15" y="66" class="structured-key"><tspan x="15" dy="0" textLength="44" lengthAdjust="spacing">license</tspan></text>
 <line x1="84" y1="50" x2="84" y2="71"/>
-<text x="89" y="66"><tspan x="89" dy="0">Apache-2.0</tspan></text>
+<text x="89" y="66"><tspan x="89" dy="0" textLength="72" lengthAdjust="spacing">Apache-2.0</tspan></text>
 <line
   x1="10" y1="71"
-  x2="170" y2="71"/>
-<text x="15" y="87" class="structured-key"><tspan x="15" dy="0">diagrams</tspan></text>
+  x2="166" y2="71"/>
+<text x="15" y="87" class="structured-key"><tspan x="15" dy="0" textLength="58" lengthAdjust="spacing">diagrams</tspan></text>
 <line x1="84" y1="71" x2="84" y2="92"/>
 <text x="89" y="87">&#160;&#160;&#160;</text>
 <line
   x1="10" y1="92"
-  x2="170" y2="92"/>
-<text x="15" y="108" class="structured-key"><tspan x="15" dy="0">render</tspan></text>
+  x2="166" y2="92"/>
+<text x="15" y="108" class="structured-key"><tspan x="15" dy="0" textLength="41" lengthAdjust="spacing">render</tspan></text>
 <line x1="84" y1="92" x2="84" y2="113"/>
 <text x="89" y="108">&#160;&#160;&#160;</text>
 </g>
 <g class="structured-node">
 <rect
-  x="208" y="10" width="71"
+  x="204" y="10" width="71"
   height="63" rx="5" ry="5"/>
-<text x="213" y="26"><tspan x="213" dy="0">sequence</tspan></text>
+<text x="209" y="26"><tspan x="209" dy="0" textLength="61" lengthAdjust="spacing">sequence</tspan></text>
 <line
-  x1="208" y1="31"
-  x2="279" y2="31"/>
-<text x="213" y="47"><tspan x="213" dy="0">class</tspan></text>
+  x1="204" y1="31"
+  x2="275" y2="31"/>
+<text x="209" y="47"><tspan x="209" dy="0" textLength="32" lengthAdjust="spacing">class</tspan></text>
 <line
-  x1="208" y1="52"
-  x2="279" y2="52"/>
-<text x="213" y="68"><tspan x="213" dy="0">mindmap</tspan></text>
+  x1="204" y1="52"
+  x2="275" y2="52"/>
+<text x="209" y="68"><tspan x="209" dy="0" textLength="58" lengthAdjust="spacing">mindmap</tspan></text>
 </g>
 <g class="structured-node">
 <rect
-  x="208" y="81" width="161"
+  x="204" y="81" width="157"
   height="42" rx="5" ry="5"/>
-<text x="213" y="97" class="structured-key"><tspan x="213" dy="0">backend</tspan></text>
-<line x1="294" y1="81" x2="294" y2="102"/>
-<text x="299" y="97"><tspan x="299" dy="0">svg</tspan></text>
+<text x="209" y="97" class="structured-key"><tspan x="209" dy="0" textLength="53" lengthAdjust="spacing">backend</tspan></text>
+<line x1="289" y1="81" x2="289" y2="102"/>
+<text x="294" y="97"><tspan x="294" dy="0" textLength="22" lengthAdjust="spacing">svg</tspan></text>
 <line
-  x1="208" y1="102"
-  x2="369" y2="102"/>
-<text x="213" y="118" class="structured-key"><tspan x="213" dy="0">compatible</tspan></text>
-<line x1="294" y1="102" x2="294" y2="123"/>
-<text x="299" y="118"><tspan x="299" dy="0">PlantUML</tspan></text>
+  x1="204" y1="102"
+  x2="361" y2="102"/>
+<text x="209" y="118" class="structured-key"><tspan x="209" dy="0" textLength="68" lengthAdjust="spacing">compatible</tspan></text>
+<line x1="289" y1="102" x2="289" y2="123"/>
+<text x="294" y="118"><tspan x="294" dy="0" textLength="62" lengthAdjust="spacing">PlantUML</tspan></text>
 </g>
 </svg>
