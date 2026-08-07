@@ -1,0 +1,46 @@
+# Publishes workspace modules to mooncakes.io when their moon.mod version is
+# ahead of the registry. Each namespace is gated on its own repository secret
+# (mooncakes tokens are per-account): steps without a configured token skip
+# with a notice instead of failing, so kokic/uml and moonbit-community/uml_cli
+# can be released independently.
+name: publish
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "uml/moon.mod"
+      - "uml_cli/moon.mod"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "publish"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install moonbit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      # The library must go first: uml_cli resolves kokic/uml from the
+      # registry at publish time.
+      - name: publish kokic/uml
+        env:
+          MOONCAKES_USERNAME: kokic
+          MOONCAKES_TOKEN: ${{ secrets.MOONCAKES_TOKEN_KOKIC }}
+        run: .github/scripts/publish-if-new.sh uml kokic/uml
+
+      - name: publish moonbit-community/uml_cli
+        env:
+          MOONCAKES_USERNAME: moonbit-community
+          MOONCAKES_TOKEN: ${{ secrets.MOONCAKES_TOKEN_COMMUNITY }}
+        run: .github/scripts/publish-if-new.sh uml_cli moonbit-community/uml_cli
