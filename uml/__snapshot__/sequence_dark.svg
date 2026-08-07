@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="277" height="207" viewBox="0 0 277 207" role="img" aria-label="Sequence diagram"><defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/></marker>
+<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
+<marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
+<marker id="open-arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10" class="arrow-open"/></marker>
+</defs><style>
+svg{font-family:Arial, sans-serif;font-size:13px;background:#0d1117}
+.participant rect,.activation,.note,.divider-title{stroke:#8b949e;stroke-width:1.2}
+.participant-label{font-size:13px;font-weight:bold;fill:#e6edf3}
+.participant-icon{fill:none;stroke:#8b949e;stroke-width:1.1}
+.participant-box-group{fill-opacity:.16;stroke:#8b949e;stroke-width:1.1}
+.participant-box-label{font-size:11px;font-weight:bold;fill:#e6edf3}
+.lifeline{stroke:#30363d;stroke-width:1;stroke-dasharray:5 5}
+.activation{fill:#21262d}
+.message,.cross,.destroy{fill:none;stroke:#8b949e;stroke-width:1.3}
+.message.dotted{stroke-dasharray:5 4}
+.arrow-fill{fill:#8b949e}
+.arrow-open{fill:none;stroke:#8b949e;stroke-width:1.5}
+.endpoint{fill:#0d1117;stroke:#8b949e;stroke-width:1.2}
+.message-label,.reference-label,.delay-label{fill:#e6edf3;font-size:12px}
+.note-label{fill:#e6edf3;font-size:13px}
+.note,.note-fold{stroke:#8b949e;stroke-width:.5}
+.partial-arrow{fill:#8b949e}
+.group-body{fill-opacity:.18;stroke:#8b949e;stroke-width:1.1}
+.group-body-colored,.group-branch{fill-opacity:1}
+.group-branch{stroke:none}
+.group-header{stroke:#8b949e;stroke-width:1.1}
+.group-label{font-size:12px;font-weight:bold;fill:#e6edf3}
+.note{fill:#2d2a1f}
+.hex-note{stroke-dasharray:2 1}
+.box-note{rx:0}
+.divider{stroke:#777;stroke-width:1}
+.divider-title{fill:#f6f6f6}
+.divider-label{font-size:12px;font-weight:bold}
+.delay{stroke:#777;stroke-dasharray:3 3}
+.reference{fill:#0d1117;stroke:#8b949e;stroke-width:1.2}
+.reference-tab{fill:#eee;stroke:#8b949e;stroke-width:1.2}
+.reference-tab-label{fill:#e6edf3;font-size:12px;font-weight:bold}
+.group-separator{stroke:#8b949e;stroke-dasharray:4 3}
+.page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
+.page-label{font-size:12px;font-style:italic}
+.destroy{stroke-width:2}
+</style><rect x="0" y="0" width="277" height="207" fill="#0d1117"/><g class="participant participant-box" data-code="App"><rect x="5" y="5" width="72" height="36" rx="2" fill="#161b22"/><text x="41" y="28" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="41" dy="0">Web App</tspan></text>
+</g>
+<g class="participant participant-box" data-code="Auth"><rect x="103" y="5" width="98" height="36" rx="2" fill="#161b22"/><text x="152" y="28" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="152" dy="0">Auth Service</tspan></text>
+</g>
+<line x1="41" y1="41" x2="41" y2="156" class="lifeline"/><line x1="152" y1="41" x2="152" y2="156" class="lifeline"/><rect x="147" y="67" width="10" height="54" class="activation" fill="#21262d"/><line x1="41" y1="67" x2="152" y2="67" class="message" marker-end="url(#arrow)"/><text x="48" y="61" text-anchor="start" fill="#e6edf3" class="message-label"><tspan x="48" dy="0">POST /token</tspan></text>
+<line x1="152" y1="96" x2="41" y2="96" class="message dotted" marker-end="url(#arrow)"/><text x="84" y="90" text-anchor="start" fill="#e6edf3" class="message-label"><tspan x="84" dy="0">access token</tspan></text>
+<path d="M157,121 L157,146 L272,146 L272,131 L262,121 Z" class="note" fill="#2d2a1f" /><path d="M262,121 L262,131 L272,131" class="note-fold" fill="none" /><text x="163" y="139" text-anchor="start" fill="#e6edf3" class="note-label"><tspan x="163" dy="0">stateless issuer</tspan></text>
+<g class="participant participant-box" data-code="App"><rect x="5" y="165" width="72" height="36" rx="2" fill="#161b22"/><text x="41" y="188" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="41" dy="0">Web App</tspan></text>
+</g>
+<g class="participant participant-box" data-code="Auth"><rect x="103" y="165" width="98" height="36" rx="2" fill="#161b22"/><text x="152" y="188" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="152" dy="0">Auth Service</tspan></text>
+</g>
+</svg>
