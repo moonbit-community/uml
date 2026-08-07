@@ -279,7 +279,7 @@ test "Java extremity fixture parses every remaining endpoint syntax" {
   }
   let svg = diagram.render_svg()
   let decorations = svg.split("class=\"relation-decoration\"").count()
-  let colored = svg.split("style=\"stroke:blue;stroke-width:").count()
+  let colored = svg.split("style=\"stroke:#0000FF;stroke-width:").count()
   @test.assert_eq(decorations, colored)
   @test.assert_eq(svg.contains("<line "), true)
   @test.assert_eq(svg.contains("<circle "), true)
@@ -1127,10 +1127,10 @@ test "relation endpoint decorations inherit each relation color" {
   let svg = parse(
     "@startuml\nclass Source\nclass Target\nSource --> Target #blue\n@enduml",
   ).render_svg()
-  @test.assert_eq(svg.contains("style=\"stroke:blue;"), true)
+  @test.assert_eq(svg.contains("style=\"stroke:#0000FF;"), true)
   @test.assert_eq(
     svg.contains(
-      "class=\"relation-decoration\" fill=\"blue\" style=\"stroke:blue;stroke-width:",
+      "class=\"relation-decoration\" fill=\"#0000FF\" style=\"stroke:#0000FF;stroke-width:",
     ),
     true,
   )

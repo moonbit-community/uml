@@ -10,11 +10,65 @@ const STATE_THIN_STROKE_WIDTH : String = "0.5"
 const STATE_FINAL_STROKE_WIDTH : String = "2"
 
 ///|
-fn state_fill(state : StateNode, defaults : @style.ColorScheme) -> String {
-  match state.kind {
-    Initial | Final | History | DeepHistory | Synchronization => defaults.line
-    _ => @svg.svg_color(state.color, defaults.node)
-  }
+/// Resolve normal-state paint with PlantUML's inline-color precedence.
+fn state_background_color(
+  state : StateNode,
+  style : @style.DocumentStyle,
+) -> String {
+  let fallback = style.property_color(
+    "StateBackgroundColor",
+    style.defaults().node,
+  )
+  @svg.svg_color(state.color, fallback)
+}
+
+///|
+fn state_border_color(style : @style.DocumentStyle) -> String {
+  style.property_color("StateBorderColor", style.diagram_line_color())
+}
+
+///|
+fn state_font_color(style : @style.DocumentStyle) -> String {
+  style.property_font_color("StateFontColor")
+}
+
+///|
+fn state_font_family(style : @style.DocumentStyle) -> String {
+  style.property_font_family("StateFontName")
+}
+
+///|
+fn state_font_size(style : @style.DocumentStyle) -> Int {
+  style.property_font_size("StateFontSize", fallback=14)
+}
+
+///|
+fn state_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
+  let family = state_font_family(style)
+  style.font_metrics_for(family, font_size=state_font_size(style))
+}
+
+///|
+fn state_description_font_color(style : @style.DocumentStyle) -> String {
+  style.property_font_color("StateAttributeFontColor")
+}
+
+///|
+fn state_description_font_family(style : @style.DocumentStyle) -> String {
+  style.property_font_family("StateAttributeFontName")
+}
+
+///|
+fn state_description_font_size(style : @style.DocumentStyle) -> Int {
+  style.property_font_size("StateAttributeFontSize", fallback=14)
+}
+
+///|
+fn state_description_font_metrics(
+  style : @style.DocumentStyle,
+) -> @metrics.FontMetrics {
+  let family = state_description_font_family(style)
+  style.font_metrics_for(family, font_size=state_description_font_size(style))
 }
 
 ///|
@@ -107,7 +161,7 @@ fn append_state_node(
         y.to_string() +
         " Z",
       ),
-      ("fill", state_fill(state, diagram.style.defaults())),
+      ("fill", state_background_color(state, diagram.style)),
     ])
     output.empty("rect", attributes=[
       ("x", x.to_string()),
@@ -116,7 +170,7 @@ fn append_state_node(
       ("height", height.to_string()),
       ("rx", corner.to_string()),
       ("fill", "none"),
-      ("stroke", diagram.style.diagram_line_color()),
+      ("stroke", state_border_color(diagram.style)),
       ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     output.empty("line", attributes=[
@@ -124,7 +178,7 @@ fn append_state_node(
       ("y1", header_bottom.to_string()),
       ("x2", (x + width).to_string()),
       ("y2", header_bottom.to_string()),
-      ("stroke", diagram.style.diagram_line_color()),
+      ("stroke", state_border_color(diagram.style)),
       ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     append_state_label(
@@ -133,7 +187,7 @@ fn append_state_node(
       center_x,
       y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
       "state-label",
-      diagram.style.font_metrics(font_size=14),
+      state_font_metrics(diagram.style),
     )
     output.close()
     return
@@ -144,7 +198,7 @@ fn append_state_node(
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", state_fill(state, diagram.style.defaults())),
+        ("fill", diagram.style.defaults().line),
       ])
     Final => {
       let radius = width.min(height) / 2.0
@@ -160,7 +214,7 @@ fn append_state_node(
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
         ("r", (radius - 5.0).max(1.0).to_string()),
-        ("fill", state_fill(state, diagram.style.defaults())),
+        ("fill", diagram.style.defaults().line),
       ])
     }
     History | DeepHistory => {
@@ -190,7 +244,7 @@ fn append_state_node(
         ("y", (center_y - height / 2.0).to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
-        ("fill", state_fill(state, diagram.style.defaults())),
+        ("fill", diagram.style.defaults().line),
       ])
     Choice => {
       output.empty("path", attributes=[
@@ -214,7 +268,7 @@ fn append_state_node(
           center_y.to_string() +
           " Z",
         ),
-        ("fill", state_fill(state, diagram.style.defaults())),
+        ("fill", @svg.svg_color(state.color, diagram.style.defaults().node)),
         ("stroke", diagram.style.diagram_line_color()),
       ])
       append_state_label(
@@ -228,19 +282,14 @@ fn append_state_node(
     }
     Normal => {
       let description = state.description.unwrap_or("")
-      let text = if description.length() == 0 {
-        state.display
-      } else {
-        state.display + "\n" + description
-      }
       output.empty("rect", attributes=[
         ("x", x.to_string()),
         ("y", y.to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
         ("rx", STATE_CORNER_RADIUS.to_string()),
-        ("fill", state_fill(state, diagram.style.defaults())),
-        ("stroke", diagram.style.diagram_line_color()),
+        ("fill", state_background_color(state, diagram.style)),
+        ("stroke", state_border_color(diagram.style)),
         ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
       output.empty("line", attributes=[
@@ -248,17 +297,27 @@ fn append_state_node(
         ("y1", (y + STATE_HEADER_HEIGHT).to_string()),
         ("x2", (x + width).to_string()),
         ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
-        ("stroke", diagram.style.diagram_line_color()),
+        ("stroke", state_border_color(diagram.style)),
         ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
       append_state_label(
         output,
-        text,
+        state.display,
         center_x,
         y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
         "state-label",
-        diagram.style.font_metrics(font_size=14),
+        state_font_metrics(diagram.style),
       )
+      if description.length() > 0 {
+        append_state_label(
+          output,
+          description,
+          center_x,
+          y + STATE_HEADER_HEIGHT + (height - STATE_HEADER_HEIGHT) / 2.0 + 4.0,
+          "state-description-label",
+          state_description_font_metrics(diagram.style),
+        )
+      }
     }
   }
   output.close()
@@ -395,11 +454,17 @@ pub fn StateDiagram::render_svg(
     ";stroke-width:" +
     @svg.standard_border_stroke_width() +
     "}.state-label{font-family:" +
-    self.style.font_family() +
+    state_font_family(self.style) +
     ";font-size:" +
-    self.style.font_size() +
-    ";fill:" +
-    self.style.diagram_text_color() +
+    state_font_size(self.style).to_string() +
+    "px;fill:" +
+    state_font_color(self.style) +
+    "}.state-description-label{font-family:" +
+    state_description_font_family(self.style) +
+    ";font-size:" +
+    state_description_font_size(self.style).to_string() +
+    "px;fill:" +
+    state_description_font_color(self.style) +
     "}.state-pseudostate-label{font-family:" +
     self.style.font_family() +
     ";font-size:" +

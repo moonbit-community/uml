@@ -75,6 +75,58 @@ test "state pseudo-state borders inherit the shared diagram line color" {
 }
 
 ///|
+test "state background and border skinparams paint normal states" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam stateBackgroundColor #123456\nskinparam STATEBORDERCOLOR #654321\nstate Ready\n@enduml",
+  )
+  @test.assert_eq(svg.contains("fill=\"#123456\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#654321\""), true)
+}
+
+///|
+test "inline state color takes precedence over the state background skinparam" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam StateBackgroundColor #123456\nstate Ready #lightyellow\n@enduml",
+  )
+  @test.assert_eq(svg.contains("fill=\"#FFFFE0\""), true)
+  @test.assert_eq(svg.contains("fill=\"#123456\""), false)
+}
+
+///|
+test "state colors fall back to the selected theme" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "theme-text",
+    "theme-line",
+    node="theme-node",
+  )
+  let svg = render_state_svg(
+    "@startuml\nstate Ready\n@enduml",
+    color_scheme=scheme,
+  )
+  @test.assert_eq(svg.contains("fill=\"theme-node\""), true)
+}
+
+///|
+test "state name and description use their independent font skinparams" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam StateFontName Courier New\nskinparam StateFontSize 17\nskinparam StateFontColor #123456\nskinparam StateAttributeFontName Times New Roman\nskinparam StateAttributeFontSize 15\nskinparam StateAttributeFontColor #654321\nstate Ready : detail\n@enduml",
+  )
+  @test.assert_eq(
+    svg.contains(
+      ".state-label{font-family:Courier New;font-size:17px;fill:#123456}",
+    ),
+    true,
+  )
+  @test.assert_eq(
+    svg.contains(
+      ".state-description-label{font-family:Times New Roman;font-size:15px;fill:#654321}",
+    ),
+    true,
+  )
+  @test.assert_eq(svg.contains("class=\"state-description-label\""), true)
+}
+
+///|
 test "preserves declaration stereotypes and frame aliases in scope" {
   let diagram = parse(
     "@startuml\nstate Decision <<choice>>\nframe \"Order flow\" as Flow {\nstate Paid\n}\n@enduml",

@@ -110,7 +110,19 @@ pub fn DocumentStyle::apply(
 ///|
 /// Returns the value of a preserved skinparam-style property.
 pub fn DocumentStyle::property(self : DocumentStyle, key : String) -> String? {
-  self.properties.get(key)
+  match self.properties.get(key) {
+    Some(value) => Some(value)
+    None => {
+      let entries = self.properties.iter()
+      let mut matching = None
+      while entries.next() is Some((stored_key, value)) {
+        if stored_key.equal_ignore_ascii_case(key) {
+          matching = Some(value)
+        }
+      }
+      matching
+    }
+  }
 }
 
 ///|
@@ -272,12 +284,7 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
   if words.length() >= 2 && words[0].equal_ignore_ascii_case("DefaultFontName") {
     return Some(FontFamily(words[1:].to_owned().join(" ")))
   }
-  if words.length() >= 2 &&
-    (
-      words[0].equal_ignore_ascii_case("UsecaseFontName") ||
-      words[0].equal_ignore_ascii_case("ActorFontName") ||
-      words[0].equal_ignore_ascii_case("ClassStereotypeFontName")
-    ) {
+  if words.length() >= 2 && words[0].to_lower().has_suffix("fontname") {
     return Some(Property(words[0], words[1:].to_owned().join(" ")))
   }
   match words {

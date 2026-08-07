@@ -182,10 +182,7 @@ test "group labels and colors follow PlantUML grouping roles" {
   @test.assert_eq(svg.contains(">custom label</tspan>"), true)
   @test.assert_eq(svg.contains(">group custom label</tspan>"), false)
   @test.assert_eq(svg.contains("class=\"group-body group-body-colored\""), true)
-  @test.assert_eq(
-    svg.contains("class=\"group-branch\" fill=\"mistyrose\""),
-    true,
-  )
+  @test.assert_eq(svg.contains("class=\"group-branch\" fill=\"#FFE4E1\""), true)
 }
 
 ///|

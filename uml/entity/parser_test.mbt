@@ -360,7 +360,7 @@ test "preserves class border styling and stereotype tags" {
   @test.assert_eq(service.line_style, Some("dashed"))
   @test.assert_eq(service.tags, ["backend", "critical"])
   let svg = diagram.render_svg()
-  @test.assert_eq(svg.contains("stroke:red;stroke-dasharray:6 4"), true)
+  @test.assert_eq(svg.contains("stroke:#FF0000;stroke-dasharray:6 4"), true)
 }
 
 ///|

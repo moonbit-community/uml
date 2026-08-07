@@ -34,6 +34,10 @@ test "font name skinparams preserve families with spaces" {
     parse_style_property("ClassStereotypeFontName Times New Roman"),
     Some(Property("ClassStereotypeFontName", "Times New Roman")),
   )
+  @test.assert_eq(
+    parse_style_property("StateFontName Courier New"),
+    Some(Property("StateFontName", "Courier New")),
+  )
 }
 
 ///|
@@ -79,6 +83,15 @@ test "generic skinparam resolvers use shared defaults and fallbacks" {
   @test.assert_eq(style.property_font_color("UsecaseFontColor"), "#abc123")
   @test.assert_eq(style.property_font_size("UsecaseFontSize", fallback=14), 16)
   @test.assert_eq(style.property_font_family("UsecaseFontName"), "Courier")
+}
+
+///|
+test "skinparam properties resolve without regard to property-key casing" {
+  let style = DocumentStyle::empty()
+  style.apply(Property("stateBackgroundColor", "#123456"))
+  style.apply(Property("STATEBORDERCOLOR", "#654321"))
+  @test.assert_eq(style.property("StateBackgroundColor"), Some("#123456"))
+  @test.assert_eq(style.property("StateBorderColor"), Some("#654321"))
 }
 
 ///|
