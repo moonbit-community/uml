@@ -62,22 +62,22 @@ fn note_opale_attachment(
       None => if path.length() > 1 { path[path.length() - 2] } else { first }
     }
     let (raw_note_point, note_adjacent, raw_target_point, target_adjacent) = if point_distance_squared(
-        point_from_pair(first),
+        point(first.x, first.y),
         center,
       ) <=
-      point_distance_squared(point_from_pair(last), center) {
+      point_distance_squared(point(last.x, last.y), center) {
       (first, first_adjacent, last, last_adjacent)
     } else {
       (last, last_adjacent, first, first_adjacent)
     }
     let note_point = clip_ray_to_rect(
-      point_from_pair(raw_note_point),
-      point_from_pair(note_adjacent),
+      point(raw_note_point.x, raw_note_point.y),
+      point(note_adjacent.x, note_adjacent.y),
       rect(center, note.width, note.height),
     ).pair()
     let target_point = clip_ray_to_node(
-      point_from_pair(raw_target_point),
-      point_from_pair(target_adjacent),
+      point(raw_target_point.x, raw_target_point.y),
+      point(target_adjacent.x, target_adjacent.y),
       target,
       target_shape,
     ).pair()

@@ -620,9 +620,9 @@ fn build_relation_label_layouts(
           relation_edge_paths(edge),
           left_center,
           right_center,
-          edge.label,
-          edge.tail_label,
-          edge.head_label,
+          edge.label.map(point => point.pair()),
+          edge.tail_label.map(point => point.pair()),
+          edge.head_label.map(point => point.pair()),
           nodes,
         ),
       )

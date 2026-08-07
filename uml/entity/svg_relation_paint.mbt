@@ -129,11 +129,11 @@ fn append_relation(
           let first_index = relation_edge_first_spline_index(edge)
           let last_index = relation_edge_last_spline_index(edge)
           for spline_index, spline in edge.splines {
-            let path = spline.points
+            let path = spline.points.map(point => point.pair())
             guard path.length() > 1 else { continue }
             drew_spline = true
-            let visible_path = shorten_relation_spline(
-              path,
+            let visible_path = shorten_relation_path(
+              relation_path(path),
               if first_index == Some(spline_index) {
                 relation.left_end.decoration_length()
               } else {
@@ -144,7 +144,7 @@ fn append_relation(
               } else {
                 0.0
               },
-            )
+            ).pairs()
             output <+
               $|<path d="
             output.write_string(@svg.spline_path_data(visible_path))
@@ -193,11 +193,14 @@ fn append_relation(
     _ => ()
   }
   if !drew_spline {
-    let visible_line = shorten_relation_spline(
-      [(x1.to_double(), y1.to_double()), (x2.to_double(), y2.to_double())],
+    let visible_line = shorten_relation_path(
+      relation_path([
+        (x1.to_double(), y1.to_double()),
+        (x2.to_double(), y2.to_double()),
+      ]),
       relation.left_end.decoration_length(),
       relation.right_end.decoration_length(),
-    )
+    ).pairs()
     output <+
       $|<line x1="\{visible_line[0].0}" y1="\{visible_line[0].1}" x2="\{visible_line[1].0}" y2="\{visible_line[1].1}" class="relation"\{style}\{dash}/>
     append_relation_decoration(

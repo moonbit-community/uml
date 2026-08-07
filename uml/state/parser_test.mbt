@@ -54,6 +54,18 @@ test "renders semantic state node and transition labels without coordinates" {
 }
 
 ///|
+test "state auxiliary labels share their SVG font-size token" {
+  let svg = render_state_svg(
+    "@startuml\nstate Ready\n[*] --> Ready : begin\nnote right of Ready\ndetail\nend note\n@enduml",
+  )
+  let font_size = "font-size:" + @svg.auxiliary_label_font_size()
+  @test.assert_eq(svg.contains(".state-pseudostate-label{font-family:"), true)
+  @test.assert_eq(svg.contains(".state-transition-label{font-family:"), true)
+  @test.assert_eq(svg.contains(".state-note-label{font-family:"), true)
+  @test.assert_eq(svg.contains(font_size), true)
+}
+
+///|
 test "state pseudo-state borders inherit the shared diagram line color" {
   let svg = render_state_svg(
     "@startuml\nskinparam ArrowColor #123456\n[*] --> Done\nDone --> [*]\n@enduml",

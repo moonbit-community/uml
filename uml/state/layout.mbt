@@ -536,7 +536,9 @@ fn StateDiagram::layout_scope(
     let node_name = node_layout.node.name()
     for index, visible in visible_nodes {
       guard state_graphviz_node_name(index) == node_name else { continue }
-      let (x, y) = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
+      let point = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
+      let x = point.x
+      let y = point.y
       let width = @graphviz.inches_to_points(node_layout.width_in)
       let height = @graphviz.inches_to_points(node_layout.height_in)
       let node_x = x - width / 2.0
@@ -563,8 +565,8 @@ fn StateDiagram::layout_scope(
   for edge in @graphviz.graphviz_edges(laid_out, transition_names, bbox) {
     output.edges.push({
       transition_index: edge.index,
-      paths: edge.splines.map(spline => spline.points),
-      label: edge.label,
+      paths: edge.splines.map(spline => spline.points.map(point => point.pair())),
+      label: edge.label.map(point => point.pair()),
     })
   }
   for note in @graphviz.graphviz_notes(laid_out, note_names, bbox) {

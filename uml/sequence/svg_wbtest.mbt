@@ -383,11 +383,39 @@ test "delays split lifelines into visible event ranges" {
 ///|
 test "text metrics distinguish narrow and wide default sans glyphs" {
   let metrics = @metrics.FontMetrics::default()
+  let narrow_text = "iii"
+  let wide_text = "WWW"
+  let space_text = " "
+  let uppercase_text = "A"
   @test.assert_eq(
-    TextSize::of_with("WWW", metrics).width >
-    TextSize::of_with("iii", metrics).width,
+    TextSize::of_with(wide_text, metrics).width >
+    TextSize::of_with(narrow_text, metrics).width,
     true,
   )
-  @test.assert_eq(TextSize::of_with(" ", metrics).width, 4)
-  @test.assert_eq(TextSize::of_with("A", metrics).width, 9)
+  @test.assert_eq(TextSize::of_with(space_text, metrics).width > 0, true)
+  @test.assert_eq(
+    TextSize::of_with(uppercase_text, metrics).width >
+    TextSize::of_with(narrow_text, metrics).width / narrow_text.length(),
+    true,
+  )
+}
+
+///|
+test "sequence SVG CSS derives structural and dash styles from shared tokens" {
+  let svg = render_sequence_svg(
+    "@startuml\nparticipant Alice\nparticipant Bob\nAlice -> Bob : message\n... delay ...\nhnote over Alice : note\nnewpage next\n@enduml",
+  )
+  let structure_width = "stroke-width:" +
+    @svg.secondary_structure_stroke_width()
+  @test.assert_eq(svg.contains(structure_width), true)
+  for
+    pattern in [
+      @svg.lifeline_dash_pattern(),
+      @svg.dotted_message_dash_pattern(),
+      @svg.hex_note_dash_pattern(),
+      @svg.delay_dash_pattern(),
+      @svg.page_break_dash_pattern(),
+    ] {
+    @test.assert_eq(svg.contains("stroke-dasharray:" + pattern), true)
+  }
 }

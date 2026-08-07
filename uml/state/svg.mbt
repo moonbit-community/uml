@@ -394,15 +394,21 @@ pub fn StateDiagram::render_svg(
     self.style.diagram_text_color() +
     "}.state-pseudostate-label{font-family:" +
     self.style.font_family() +
-    ";font-size:12px;fill:" +
+    ";font-size:" +
+    @svg.auxiliary_label_font_size() +
+    ";fill:" +
     self.style.diagram_text_color() +
     "}.state-transition-label{font-family:" +
     self.style.font_family() +
-    ";font-size:12px;fill:" +
+    ";font-size:" +
+    @svg.auxiliary_label_font_size() +
+    ";fill:" +
     self.style.diagram_text_color() +
     "}.state-note-label{font-family:" +
     self.style.font_family() +
-    ";font-size:12px;fill:" +
+    ";font-size:" +
+    @svg.auxiliary_label_font_size() +
+    ";fill:" +
     self.style.diagram_text_color() +
     "}",
   )

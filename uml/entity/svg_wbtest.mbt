@@ -2,6 +2,11 @@
 const RELATION_GEOMETRY_TEST_EPSILON : Double = 0.0001
 
 ///|
+fn graphviz_test_point(x : Double, y : Double) -> @graphviz.GraphvizPoint {
+  { x, y }
+}
+
+///|
 fn test_relation_decoration_lengths() -> Array[(RelationEnd, Double)] {
   [
     (RelationEnd::Arrow, ARROW_DECORATION_LENGTH),
@@ -848,7 +853,7 @@ test "graphviz layout includes package clusters and notes" {
   @test.assert_eq(layout.notes.length(), 2)
   @test.assert_eq(layout.packages[0].width > 0.0, true)
   @test.assert_eq(layout.notes[0].width > 0.0, true)
-  @test.assert_eq(layout.notes[1].y > layout.edges[0].label.unwrap().1, true)
+  @test.assert_eq(layout.notes[1].y > layout.edges[0].label.unwrap().y, true)
   let svg = diagram.render_svg()
   @test.assert_eq(svg.contains("class=\"package\""), true)
   @test.assert_eq(svg.contains("class=\"class-note\""), true)
@@ -997,7 +1002,7 @@ test "vertical endpoint labels use the forward positive-angle side" {
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
-  let path = graphviz.edges[0].splines[0].points
+  let path = graphviz.edges[0].splines[0].points.map(point => point.pair())
   let path_start = path[0]
   let path_end = path[path.length() - 1]
   let edge_direction = (path_end.0 - path_start.0, path_end.1 - path_start.1)
@@ -1031,7 +1036,7 @@ test "horizontal endpoint labels use the forward positive-angle side" {
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
-  let path = graphviz.edges[0].splines[0].points
+  let path = graphviz.edges[0].splines[0].points.map(point => point.pair())
   let path_start = path[0]
   let path_end = path[path.length() - 1]
   let edge_direction = (path_end.0 - path_start.0, path_end.1 - path_start.1)
@@ -1066,7 +1071,7 @@ test "relation roles use the opposite side of the endpoint tangent" {
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
   let edge = graphviz.edges[0]
-  let path = edge.splines[0].points
+  let path = edge.splines[0].points.map(point => point.pair())
   let line_start = path[0]
   let line_end = path[path.length() - 1]
   let mostly_vertical = (line_end.1 - line_start.1).abs() >=
@@ -1088,7 +1093,7 @@ test "relation roles follow horizontal endpoint tangents" {
   let metrics = ClassTextMetrics::new(diagram.style)
   let graphviz = diagram.graphviz_layout(metrics)
   let relation_layout = graphviz.relation_labels[0]
-  let path = graphviz.edges[0].splines[0].points
+  let path = graphviz.edges[0].splines[0].points.map(point => point.pair())
   let line_start = path[0]
   let line_end = path[path.length() - 1]
   let mostly_horizontal = (line_end.0 - line_start.0).abs() >
@@ -1197,22 +1202,27 @@ test "normalized use-case relations contact the ellipse boundary" {
 
 ///|
 test "relation orientation follows semantic nodes and reverses arrow tips" {
-  let left = (0.0, 0.0)
-  let right = (100.0, 0.0)
+  let left = graphviz_test_point(0.0, 0.0)
+  let right = graphviz_test_point(100.0, 0.0)
   let edge : @graphviz.GraphvizEdge = {
     index: 0,
     splines: [
       {
         arrow_start: Some(right),
         arrow_end: Some(left),
-        points: [right, (75.0, 0.0), (25.0, 0.0), left],
+        points: [
+          right,
+          graphviz_test_point(75.0, 0.0),
+          graphviz_test_point(25.0, 0.0),
+          left,
+        ],
       },
     ],
     label: None,
     head_label: None,
     tail_label: None,
   }
-  let oriented = orient_relation_edge(edge, left, right)
+  let oriented = orient_relation_edge(edge, left.pair(), right.pair())
   @test.assert_eq(oriented.splines[0].arrow_start, Some(left))
   @test.assert_eq(oriented.splines[0].arrow_end, Some(right))
   @test.assert_eq(oriented.splines[0].points[0], left)
@@ -1252,6 +1262,15 @@ test "relation decoration shortening preserves curved endpoint tangents" {
   )
   @test.assert_eq(shortened[0].1 > path[0].1, true)
   @test.assert_eq(shortened[shortened_last].1 > path[last].1, true)
+}
+
+///|
+test "typed relation paths preserve point identity at the adapter boundary" {
+  let source = [(0.0, 0.0), (10.0, 0.0)]
+  let path = relation_path(source)
+  let unchanged = shorten_relation_path(path, 0.0, 0.0)
+  @test.assert_eq(unchanged.points.length(), source.length())
+  @test.assert_eq(unchanged.pairs(), source)
 }
 
 ///|
@@ -1440,12 +1459,12 @@ test "relation edge decorations use only outer nonempty splines" {
   let first : @graphviz.GraphvizSpline = {
     arrow_start: None,
     arrow_end: None,
-    points: [(0.0, 0.0), (1.0, 0.0)],
+    points: [graphviz_test_point(0.0, 0.0), graphviz_test_point(1.0, 0.0)],
   }
   let last : @graphviz.GraphvizSpline = {
     arrow_start: None,
     arrow_end: None,
-    points: [(2.0, 0.0), (3.0, 0.0)],
+    points: [graphviz_test_point(2.0, 0.0), graphviz_test_point(3.0, 0.0)],
   }
   let edge : @graphviz.GraphvizEdge = {
     index: 0,

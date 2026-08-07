@@ -55,6 +55,26 @@ pub fn emphasized_stroke_width() -> String {
 }
 
 ///|
+/// The width for secondary diagram structures such as participant icons,
+/// enclosing boxes, and group frames.
+const SECONDARY_STRUCTURE_STROKE_WIDTH : String = "1.1"
+
+///|
+pub fn secondary_structure_stroke_width() -> String {
+  SECONDARY_STRUCTURE_STROKE_WIDTH
+}
+
+///|
+/// The size used for auxiliary labels that annotate a diagram rather than a
+/// primary node.
+const AUXILIARY_LABEL_FONT_SIZE : String = "12px"
+
+///|
+pub fn auxiliary_label_font_size() -> String {
+  AUXILIARY_LABEL_FONT_SIZE
+}
+
+///|
 /// The dash pattern used by structural separators.
 const SEPARATOR_DASH_PATTERN : String = "4 3"
 
@@ -72,11 +92,64 @@ pub fn dashed_line_pattern() -> String {
 }
 
 ///|
+const DOTTED_LINE_PATTERN : String = "2 3"
+
+///|
+pub fn dotted_line_pattern() -> String {
+  DOTTED_LINE_PATTERN
+}
+
+///|
+/// The dash pattern used by sequence participant lifelines.
+const LIFELINE_DASH_PATTERN : String = "5 5"
+
+///|
+pub fn lifeline_dash_pattern() -> String {
+  LIFELINE_DASH_PATTERN
+}
+
+///|
+/// The dash pattern used by dotted sequence messages.
+const DOTTED_MESSAGE_DASH_PATTERN : String = "5 4"
+
+///|
+pub fn dotted_message_dash_pattern() -> String {
+  DOTTED_MESSAGE_DASH_PATTERN
+}
+
+///|
+/// The dash pattern used by sequence hexagonal notes.
+const HEX_NOTE_DASH_PATTERN : String = "2 1"
+
+///|
+pub fn hex_note_dash_pattern() -> String {
+  HEX_NOTE_DASH_PATTERN
+}
+
+///|
+/// The dash pattern used by sequence delay separators.
+const DELAY_DASH_PATTERN : String = "3 3"
+
+///|
+pub fn delay_dash_pattern() -> String {
+  DELAY_DASH_PATTERN
+}
+
+///|
+/// The dash pattern used by sequence page breaks.
+const PAGE_BREAK_DASH_PATTERN : String = "8 4"
+
+///|
+pub fn page_break_dash_pattern() -> String {
+  PAGE_BREAK_DASH_PATTERN
+}
+
+///|
 /// Map a PlantUML line style token to SVG presentation attributes.
 pub fn line_style_attributes(line_style : String?) -> Array[(String, String)] {
   match line_style {
     Some("dashed") => [("stroke-dasharray", DASHED_LINE_PATTERN)]
-    Some("dotted") => [("stroke-dasharray", "2 3")]
+    Some("dotted") => [("stroke-dasharray", DOTTED_LINE_PATTERN)]
     Some("bold") => [("stroke-width", "2.5")]
     _ => []
   }

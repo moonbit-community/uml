@@ -1,4 +1,36 @@
 ///|
+/// A relation path represented in the entity geometry domain.
+priv struct RelationPath {
+  points : Array[Point]
+}
+
+///|
+fn relation_path(points : Array[(Double, Double)]) -> RelationPath {
+  { points: points.map(point => { x: point.0, y: point.1 }) }
+}
+
+///|
+fn RelationPath::pairs(self : RelationPath) -> Array[(Double, Double)] {
+  self.points.map(point => point.pair())
+}
+
+///|
+/// Shorten a typed relation path while preserving endpoint tangents.
+fn shorten_relation_path(
+  path : RelationPath,
+  start_length : Double,
+  end_length : Double,
+) -> RelationPath {
+  {
+    points: shorten_relation_spline(path.pairs(), start_length, end_length).map(point => {
+        x: point.0,
+        y: point.1,
+      },
+    ),
+  }
+}
+
+///|
 fn relation_point_distance_squared(
   first : (Double, Double),
   second : (Double, Double),
@@ -16,9 +48,13 @@ fn reverse_relation_spline(
   let mut index = spline.points.length()
   while index > 0 {
     index -= 1
-    points.push(spline.points[index])
+    points.push(spline.points[index].pair())
   }
-  { arrow_start: spline.arrow_end, arrow_end: spline.arrow_start, points }
+  {
+    arrow_start: spline.arrow_end,
+    arrow_end: spline.arrow_start,
+    points: points.map(point => { x: point.0, y: point.1 }),
+  }
 }
 
 ///|
@@ -29,10 +65,10 @@ fn relation_edge_endpoint(
   if start {
     for spline in edge.splines {
       match spline.arrow_start {
-        Some(point) => return Some(point)
+        Some(point) => return Some(point.pair())
         None =>
           match spline.points.get(0) {
-            Some(point) => return Some(point)
+            Some(point) => return Some(point.pair())
             None => ()
           }
       }
@@ -43,10 +79,10 @@ fn relation_edge_endpoint(
       index -= 1
       let spline = edge.splines[index]
       match spline.arrow_end {
-        Some(point) => return Some(point)
+        Some(point) => return Some(point.pair())
         None =>
           match spline.points.last() {
-            Some(point) => return Some(point)
+            Some(point) => return Some(point.pair())
             None => ()
           }
       }
@@ -86,14 +122,14 @@ fn move_spline_start_to(
   endpoint : (Double, Double),
 ) -> @graphviz.GraphvizSpline {
   guard spline.points.length() > 0 else { return spline }
-  let points = spline.points.copy()
+  let points : Array[(Double, Double)] = spline.points.map(point => point.pair())
   let dx = endpoint.0 - points[0].0
   let dy = endpoint.1 - points[0].1
   points[0] = endpoint
   if points.length() > 1 && (points.length() - 1) % 3 == 0 {
     points[1] = (points[1].0 + dx, points[1].1 + dy)
   }
-  { ..spline, points, }
+  { ..spline, points: points.map(point => { x: point.0, y: point.1 }) }
 }
 
 ///|
@@ -102,7 +138,7 @@ fn move_spline_end_to(
   endpoint : (Double, Double),
 ) -> @graphviz.GraphvizSpline {
   guard spline.points.length() > 0 else { return spline }
-  let points = spline.points.copy()
+  let points : Array[(Double, Double)] = spline.points.map(point => point.pair())
   let last = points.length() - 1
   let dx = endpoint.0 - points[last].0
   let dy = endpoint.1 - points[last].1
@@ -110,7 +146,7 @@ fn move_spline_end_to(
   if points.length() > 1 && (points.length() - 1) % 3 == 0 {
     points[last - 1] = (points[last - 1].0 + dx, points[last - 1].1 + dy)
   }
-  { ..spline, points, }
+  { ..spline, points: points.map(point => { x: point.0, y: point.1 }) }
 }
 
 ///|
@@ -136,29 +172,29 @@ fn repair_relation_contacts(
   let first_adjacent = if first.points.length() > 1 {
     first.points[1]
   } else {
-    (right_node.x, right_node.y)
+    { x: right_node.x, y: right_node.y }
   }
   let start = clip_ray_to_node(
-    point_from_pair(first.points[0]),
-    point_from_pair(first_adjacent),
+    point(first.points[0].x, first.points[0].y),
+    point(first_adjacent.x, first_adjacent.y),
     left_node,
     left_shape,
-  ).pair()
-  splines[first_index] = move_spline_start_to(first, start)
+  )
+  splines[first_index] = move_spline_start_to(first, start.pair())
   let last = splines[last_index]
   let last_point = last.points.length() - 1
   let last_adjacent = if last.points.length() > 1 {
     last.points[last_point - 1]
   } else {
-    (left_node.x, left_node.y)
+    { x: left_node.x, y: left_node.y }
   }
   let end = clip_ray_to_node(
-    point_from_pair(last.points[last_point]),
-    point_from_pair(last_adjacent),
+    point(last.points[last_point].x, last.points[last_point].y),
+    point(last_adjacent.x, last_adjacent.y),
     right_node,
     right_shape,
-  ).pair()
-  splines[last_index] = move_spline_end_to(last, end)
+  )
+  splines[last_index] = move_spline_end_to(last, end.pair())
   { ..edge, splines, }
 }
 
@@ -218,7 +254,7 @@ fn normalize_relation_edges(
 fn relation_edge_paths(
   edge : @graphviz.GraphvizEdge,
 ) -> Array[Array[(Double, Double)]] {
-  edge.splines.map(spline => spline.points)
+  edge.splines.map(spline => spline.points.map(point => point.pair()))
 }
 
 ///|
@@ -350,6 +386,7 @@ fn move_relation_spline_end(
 }
 
 ///|
+/// Tuple adapter retained for SVG and test serialization boundaries.
 fn shorten_relation_spline(
   path : Array[(Double, Double)],
   start_length : Double,

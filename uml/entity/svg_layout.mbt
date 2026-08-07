@@ -114,7 +114,8 @@ fn ClassLayout::content_bounds(
       for edge in graphviz.edges {
         for spline in edge.splines {
           for point in spline.points {
-            let (x, y) = point
+            let x = point.x
+            let y = point.y
             bounds = include_point(bounds, x, y)
           }
         }
@@ -122,7 +123,8 @@ fn ClassLayout::content_bounds(
       for edge in graphviz.note_edges {
         for spline in edge.splines {
           for point in spline.points {
-            let (x, y) = point
+            let x = point.x
+            let y = point.y
             bounds = include_point(bounds, x, y)
           }
         }

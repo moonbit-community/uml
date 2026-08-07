@@ -346,7 +346,9 @@ fn EntityDiagram::graphviz_layout(
   let bbox = laid_out.bbox
   let nodes : Array[GraphvizNodeLayout] = []
   for node_layout in laid_out.nodes {
-    let (x, y) = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
+    let point = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
+    let x = point.x
+    let y = point.y
     match graphviz_entity_index(self, node_layout.node.name()) {
       Some(entity_index) => {
         let raw_width = @graphviz.inches_to_points(node_layout.width_in)
@@ -393,10 +395,10 @@ fn EntityDiagram::graphviz_layout(
       guard edge.splines.length() > 0 && edge.splines[0].points.length() > 0 else {
         continue
       }
-      let anchor_x = edge.splines[0].points[0].0
+      let anchor_x = edge.splines[0].points[0].x
       let anchor_y = match edge.label {
-        Some((_, y)) => y
-        None => edge.splines[0].points[0].1
+        Some(point) => point.y
+        None => edge.splines[0].points[0].y
       }
       notes.push({
         note_index,

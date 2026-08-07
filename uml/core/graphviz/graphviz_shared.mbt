@@ -84,8 +84,21 @@ pub fn[T] layout_or_fallback(
 pub fn graphviz_point_to_svg(
   point : @geom.Point,
   bbox : @geom.Rect,
-) -> (Double, Double) {
-  (point.x - bbox.llx, bbox.ury - point.y)
+) -> GraphvizPoint {
+  { x: point.x - bbox.llx, y: bbox.ury - point.y }
+}
+
+///|
+/// A normalized Graphviz point in SVG coordinates.
+pub(all) struct GraphvizPoint {
+  x : Double
+  y : Double
+} derive(Eq, Debug)
+
+///|
+/// Convert a normalized point at the SVG/tuple serialization boundary.
+pub fn GraphvizPoint::pair(self : GraphvizPoint) -> (Double, Double) {
+  (self.x, self.y)
 }
 
 ///|
@@ -128,9 +141,9 @@ pub fn graphviz_note_name(index : Int) -> String {
 /// and `arrow_end` are optional arrow clipping tips; node contact points live
 /// in `points` when Graphviz routing has arrows disabled.
 pub(all) struct GraphvizSpline {
-  arrow_start : (Double, Double)?
-  arrow_end : (Double, Double)?
-  points : Array[(Double, Double)]
+  arrow_start : GraphvizPoint?
+  arrow_end : GraphvizPoint?
+  points : Array[GraphvizPoint]
 } derive(Eq, Debug)
 
 ///|
@@ -138,9 +151,9 @@ pub(all) struct GraphvizSpline {
 pub(all) struct GraphvizEdge {
   index : Int
   splines : Array[GraphvizSpline]
-  label : (Double, Double)?
-  head_label : (Double, Double)?
-  tail_label : (Double, Double)?
+  label : GraphvizPoint?
+  head_label : GraphvizPoint?
+  tail_label : GraphvizPoint?
 } derive(Eq, Debug)
 
 ///|
@@ -204,7 +217,9 @@ pub fn graphviz_notes(
     guard note_names.get(node_layout.node.name()) is Some(note_index) else {
       continue
     }
-    let (x, y) = graphviz_point_to_svg(node_layout.pos, bbox)
+    let point = graphviz_point_to_svg(node_layout.pos, bbox)
+    let x = point.x
+    let y = point.y
     notes.push({
       note_index,
       x: match anchor {

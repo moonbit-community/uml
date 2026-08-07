@@ -1,14 +1,15 @@
 ///|
 test "font metrics expose defaulted tuning parameters" {
+  let configured_line_height = 22
   let metrics = FontMetrics::from_defaults(
     font_size=16,
-    line_height=22,
+    line_height=configured_line_height,
     width_scale=110,
     letter_spacing=1,
   )
   let measured = metrics.measure("AA")
   @test.assert_eq(measured.width > 0, true)
-  @test.assert_eq(measured.height, 22)
+  @test.assert_eq(measured.height, configured_line_height)
 }
 
 ///|
@@ -118,17 +119,20 @@ test "character class width scales are configurable" {
 
 ///|
 test "text metrics expose vertical font bounds" {
+  let configured_line_height = 20
+  let configured_ascent = 12
+  let configured_descent = 4
   let metrics = FontMetrics::from_defaults(
     font_size=16,
-    line_height=20,
-    ascent=12,
-    descent=4,
-    line_gap=4,
+    line_height=configured_line_height,
+    ascent=configured_ascent,
+    descent=configured_descent,
+    line_gap=configured_descent,
   )
   let measured = metrics.measure("text")
-  @test.assert_eq(measured.height, 20)
-  @test.assert_eq(measured.ascent, 12)
-  @test.assert_eq(measured.descent, 4)
-  @test.assert_eq(measured.baseline, 12)
+  @test.assert_eq(measured.height, configured_line_height)
+  @test.assert_eq(measured.ascent, configured_ascent)
+  @test.assert_eq(measured.descent, configured_descent)
+  @test.assert_eq(measured.baseline, configured_ascent)
   @test.assert_eq(measured.advance_width, measured.width)
 }
