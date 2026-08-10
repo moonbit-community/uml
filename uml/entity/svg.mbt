@@ -64,7 +64,7 @@ fn EntityDiagram::render_svg_with_mode(
   })
   if has_object_image {
     let object_style =
-      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
+      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
     output.write_string(object_style)
   }
 

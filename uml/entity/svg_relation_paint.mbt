@@ -84,7 +84,7 @@ fn append_relation(
   let right = diagram.entities[right_index]
   guard !left.is_removed && !right.is_removed else { return }
   let ((x1, y1), (x2, y2)) = relation_endpoints(
-    layout, diagram, left_index, right_index, text_metrics,
+    layout, diagram, relation, left_index, right_index, text_metrics,
   )
   // Dotted arrows render with the dash pattern shared by the dashed line
   // style, matching PlantUML where a dotted arrow draws dash-like segments.

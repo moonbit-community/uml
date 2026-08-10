@@ -80,8 +80,6 @@ fn append_object_like_entity(
   let capability = entity.render_capability()
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let header = entity.object_header_layout(text_metrics)
-  let body = entity.object_like_body_layout(text_metrics, capability)
-  let row_height = text_metrics.row_height()
   let fill = @svg.svg_color(
     entity.color,
     capability.style_role.background_color(diagram.style),
@@ -96,8 +94,6 @@ fn append_object_like_entity(
   let separator_attributes =
     $| style="stroke:\{stroke};stroke-width:\{@svg.standard_border_stroke_width()}"
   let placement = header.placement(width)
-  let text_x = if body.has_visibility { 20 } else { 5 }
-  let entity_colors = diagram.style.defaults().entity_colors()
   output <+
     $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
   match entity.url {
@@ -116,18 +112,70 @@ fn append_object_like_entity(
   }
   output <+
     $|<text x="\{x + placement.0}" y="\{y + placement.1}" class="\{capability.title_class()}" fill="\{capability.style_role.font_color(diagram.style)}">\{@svg.xml_escape(entity.display)}</text><line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
-  let mut body_y = y + header.height
-  for entry in body.entries {
-    if entry.is_separator {
-      body_y += OBJECT_SEPARATOR_HEIGHT
-      output <+
-        $|<line class="object-separator" x1="\{x}" y1="\{body_y}" x2="\{x + width}" y2="\{body_y}"\{separator_attributes}/>
-    } else {
-      let member_y = body_y + row_height + 1
-      output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g><text x="\{x + text_x}" y="\{member_y}" class="object-member member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
-      body_y += row_height
+  match capability.renderer {
+    MapRenderer => {
+      let body = entity.map_body_layout(text_metrics)
+      let text_color = capability.style_role.font_color(diagram.style)
+      for row_index, row in body.rows {
+        let row_y = y + header.height + row.top
+        if row_index > 0 {
+          output <+
+            $|<line class="map-row-separator" x1="\{x}" y1="\{row_y}" x2="\{x + width}" y2="\{row_y}"\{separator_attributes}/>
+        }
+        let svg_port_id = "map-port-" +
+          stable_port_identifier(entity.qualified_code) +
+          "-" +
+          row.port_id
+        output <+
+          $|<g id="\{svg_port_id}" class="map-row\{if row.entry.link_target is Some(_) { " map-link-row" } else { " map-value-row" }}" data-port="\{@svg.xml_escape(row.entry.key)}" data-port-id="\{row.port_id}">
+        let key_metrics = text_metrics.regular.measure(row.key)
+        let key_x = if row.entry.link_target is Some(_) {
+          x + (width - key_metrics.width) / 2
+        } else {
+          x + (body.key_column_width - key_metrics.width) / 2
+        }
+        let key_y = row_y +
+          (row.height - key_metrics.height) / 2 +
+          key_metrics.baseline
+        output <+
+          $|<text x="\{key_x}" y="\{key_y}" class="map-key member" fill="\{text_color}">\{@svg.xml_escape(row.key)}</text>
+        match row.entry.value {
+          Some(value) => {
+            let value_metrics = text_metrics.regular.measure(value)
+            let divider_x = x + body.key_column_width
+            let value_x = divider_x +
+              (body.value_column_width - value_metrics.width) / 2
+            let value_y = row_y +
+              (row.height - value_metrics.height) / 2 +
+              value_metrics.baseline
+            output <+
+              $|<line class="map-column-separator" x1="\{divider_x}" y1="\{row_y}" x2="\{divider_x}" y2="\{row_y + row.height}"\{separator_attributes}/><text x="\{value_x}" y="\{value_y}" class="map-value member" fill="\{text_color}">\{@svg.xml_escape(value)}</text>
+          }
+          None => ()
+        }
+        output.write_string("</g>")
+      }
     }
+    ObjectRenderer | JsonRenderer => {
+      let body = entity.object_like_body_layout(text_metrics, capability)
+      let row_height = text_metrics.row_height()
+      let text_x = if body.has_visibility { 20 } else { 5 }
+      let entity_colors = diagram.style.defaults().entity_colors()
+      let mut body_y = y + header.height
+      for entry in body.entries {
+        if entry.is_separator {
+          body_y += OBJECT_SEPARATOR_HEIGHT
+          output <+
+            $|<line class="object-separator" x1="\{x}" y1="\{body_y}" x2="\{x + width}" y2="\{body_y}"\{separator_attributes}/>
+        } else {
+          let member_y = body_y + row_height + 1
+          output <+
+            $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g><text x="\{x + text_x}" y="\{member_y}" class="object-member member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
+          body_y += row_height
+        }
+      }
+    }
+    _ => panic()
   }
   match entity.url {
     Some(_) => output.write_string("</a>")

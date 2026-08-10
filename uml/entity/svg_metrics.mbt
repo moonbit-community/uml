@@ -127,6 +127,28 @@ priv struct ObjectBodyLayout {
 }
 
 ///|
+/// One ordered map row. `top` is relative to the map body, so SVG painting,
+/// Graphviz ports, and fallback relation endpoints share the same geometry.
+priv struct MapRowLayout {
+  entry : MapEntry
+  key : String
+  top : Int
+  height : Int
+  port_id : String
+}
+
+///|
+/// PlantUML's `TextBlockMap` sizes the two columns independently, then lets
+/// linked rows span the resulting total width.
+priv struct MapBodyLayout {
+  rows : Array[MapRowLayout]
+  key_column_width : Int
+  value_column_width : Int
+  width : Int
+  height : Int
+}
+
+///|
 fn body_section_height(
   entries : Array[Member],
   text_metrics : ClassTextMetrics,
@@ -256,9 +278,140 @@ fn Entity::object_body_layout(
 }
 
 ///|
-/// O3 and O4 replace the empty table/tree branches with their typed row
-/// layouts. Keeping the switch here ensures the body source is selected from
-/// capability metadata instead of reparsing renderer-private strings.
+fn stable_port_identifier(value : String) -> String {
+  let output = StringBuilder::new()
+  output.write_string("p")
+  for char in value {
+    output.write_char('_')
+    output.write_string(char.to_int().to_string(radix=16))
+  }
+  output.to_string()
+}
+
+///|
+fn MapEntry::display_key(self : MapEntry) -> String {
+  let chars = self.key.to_array()
+  guard chars.length() > 0 else { return self.key }
+  match chars[0] {
+    '+' | '-' | '#' | '~' => self.key[1:].trim_start().to_owned()
+    _ => self.key
+  }
+}
+
+///|
+fn MapEntry::port_id(self : MapEntry) -> String {
+  stable_port_identifier(self.key)
+}
+
+///|
+fn Entity::map_body_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> MapBodyLayout {
+  let rows : Array[MapRowLayout] = []
+  let mut key_column_width = 0
+  let mut value_column_width = 0
+  let mut top = 0
+  for entry in self.map_entries {
+    let key = entry.display_key()
+    let key_metrics = text_metrics.regular.measure(key)
+    let key_block_width = key_metrics.width + MAP_CELL_HORIZONTAL_PADDING * 2
+    let (value_block_width, value_height) = match entry.value {
+      Some(value) => {
+        let metrics = text_metrics.regular.measure(value)
+        (
+          metrics.width + MAP_CELL_HORIZONTAL_PADDING * 2,
+          metrics.height + MAP_CELL_VERTICAL_PADDING * 2,
+        )
+      }
+      None => (MAP_LINK_VALUE_DIAMETER, MAP_LINK_VALUE_DIAMETER)
+    }
+    let height = (key_metrics.height + MAP_CELL_VERTICAL_PADDING * 2).max(
+      value_height,
+    )
+    rows.push({ entry, key, top, height, port_id: entry.port_id() })
+    key_column_width = key_column_width.max(key_block_width)
+    value_column_width = value_column_width.max(value_block_width)
+    top += height
+  }
+  {
+    rows,
+    key_column_width,
+    value_column_width,
+    width: key_column_width + value_column_width,
+    height: top,
+  }
+}
+
+///|
+fn MapBodyLayout::row(self : MapBodyLayout, key : String) -> MapRowLayout? {
+  for row in self.rows {
+    if row.entry.key == key {
+      return Some(row)
+    }
+  }
+  None
+}
+
+///|
+fn Entity::graphviz_port(self : Entity, port : String?) -> @cgraph.Port? {
+  guard self.render_capability().ports is MapEntryPorts else { return None }
+  guard port is Some(key) else { return None }
+  guard self.map_entries.any(entry => entry.key == key) else { return None }
+  Some({ name: Some(stable_port_identifier(key)), compass: None })
+}
+
+///|
+/// Graphviz only consumes this invisible HTML table to route named ports. The
+/// custom SVG painter draws the visible table from the same `MapBodyLayout`.
+fn Entity::map_graphviz_port_label(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+  width : Int,
+) -> String {
+  let body = self.map_body_layout(text_metrics)
+  let output = StringBuilder::new()
+  output <+
+    $|<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0"><TR><TD WIDTH="\{width}" HEIGHT="\{self.object_header_layout(text_metrics).height}"></TD></TR>
+  for row in body.rows {
+    output <+
+      $|<TR><TD PORT="\{row.port_id}" WIDTH="\{width}" HEIGHT="\{row.height}"></TD></TR>
+  }
+  output.write_string("</TABLE>>")
+  output.to_string()
+}
+
+///|
+/// Resolve a map entry port in local node coordinates for the non-Graphviz
+/// fallback. Like PlantUML's dynamic record port, a row may attach on either
+/// horizontal side depending on the other endpoint.
+fn Entity::map_port_endpoint(
+  self : Entity,
+  port : String?,
+  text_metrics : ClassTextMetrics,
+  x : Int,
+  y : Int,
+  width : Int,
+  target_x : Int,
+) -> (Int, Int)? {
+  guard self.render_capability().ports is MapEntryPorts else { return None }
+  guard port is Some(key) else { return None }
+  guard self.map_body_layout(text_metrics).row(key) is Some(row) else {
+    return None
+  }
+  let center_x = x + width / 2
+  let port_x = if target_x < center_x { x } else { x + width }
+  let port_y = y +
+    self.object_header_layout(text_metrics).height +
+    row.top +
+    row.height / 2
+  Some((port_x, port_y))
+}
+
+///|
+/// O4 replaces the JSON branch with its typed tree layout. Keeping the switch
+/// here ensures the body source is selected from capability metadata instead
+/// of reparsing renderer-private strings.
 fn Entity::object_like_body_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
@@ -266,7 +419,8 @@ fn Entity::object_like_body_layout(
 ) -> ObjectBodyLayout {
   match capability.body {
     OrderedMembers => self.object_body_layout(text_metrics)
-    MapEntries | JsonData => self.object_body_layout(text_metrics)
+    JsonData => self.object_body_layout(text_metrics)
+    MapEntries => panic()
     ClassCompartments | NoBody => panic()
   }
 }
@@ -520,6 +674,17 @@ const OBJECT_SEPARATOR_HEIGHT : Int = 7
 const OBJECT_ROUND_CORNER : Double = 2.5
 
 ///|
+/// `TextBlockMap` wraps cell text with a 5px horizontal and 2px vertical
+/// margin. Linked entries use its 7px point block for the second column.
+const MAP_CELL_HORIZONTAL_PADDING : Int = 5
+
+///|
+const MAP_CELL_VERTICAL_PADDING : Int = 2
+
+///|
+const MAP_LINK_VALUE_DIAMETER : Int = 7
+
+///|
 const USECASE_BODY_HORIZONTAL_MARGIN : Int = 12
 
 ///|
@@ -723,6 +888,19 @@ fn Entity::object_width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
 }
 
 ///|
+fn Entity::map_width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+  self.object_header_layout(text_metrics).width.max(
+    self.map_body_layout(text_metrics).width,
+  )
+}
+
+///|
+fn Entity::map_height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+  self.object_header_layout(text_metrics).height +
+  self.map_body_layout(text_metrics).height
+}
+
+///|
 fn Entity::usecase_content_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
@@ -898,18 +1076,16 @@ fn Entity::node_geometry(
 ) -> NodeGeometry {
   let capability = self.render_capability()
   match (capability.header, capability.body, capability.renderer) {
-    (
-      ObjectHeader,
-      OrderedMembers
-      | MapEntries
-      | JsonData,
-      ObjectRenderer
-      | MapRenderer
-      | JsonRenderer,
-    ) =>
+    (ObjectHeader, OrderedMembers | JsonData, ObjectRenderer | JsonRenderer) =>
       {
         width: self.object_width(text_metrics),
         height: self.object_height(text_metrics),
+        shape: capability.shape,
+      }
+    (ObjectHeader, MapEntries, MapRenderer) =>
+      {
+        width: self.map_width(text_metrics),
+        height: self.map_height(text_metrics),
         shape: capability.shape,
       }
     (DescriptionHeader, NoBody, UsecaseRenderer) => {

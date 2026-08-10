@@ -201,6 +201,13 @@ fn EntityDiagram::graphviz_layout(
       geometry.height.to_double(),
       shape=capability.graphviz_shape(),
     )
+    if capability.ports is MapEntryPorts {
+      node.set_attr(
+        "label",
+        entity.map_graphviz_port_label(text_metrics, geometry.width),
+      )
+      node.set_attr("margin", "0")
+    }
   }
   let relation_names : Map[Int, String] = Map([])
   for relation_index, relation in self.relations {
@@ -214,11 +221,31 @@ fn EntityDiagram::graphviz_layout(
       let _ = rank.node(node_names[relation.left])
       let _ = rank.node(node_names[relation.right])
     }
-    let edge = graph.edge(
-      graph.node(node_names[relation.left]),
-      graph.node(node_names[relation.right]),
-      name="e\{relation_index}",
-    )
+    let tail_port = self
+      .entity(relation.left)
+      .map(entity => entity.graphviz_port(relation.left_port))
+      .unwrap_or(None)
+    let head_port = self
+      .entity(relation.right)
+      .map(entity => entity.graphviz_port(relation.right_port))
+      .unwrap_or(None)
+    let tail = graph.node(node_names[relation.left])
+    let head = graph.node(node_names[relation.right])
+    let edge = match (tail_port, head_port) {
+      (Some(tail_port), Some(head_port)) =>
+        graph.edge(
+          tail,
+          head,
+          name="e\{relation_index}",
+          tail_port~,
+          head_port~,
+        )
+      (Some(tail_port), None) =>
+        graph.edge(tail, head, name="e\{relation_index}", tail_port~)
+      (None, Some(head_port)) =>
+        graph.edge(tail, head, name="e\{relation_index}", head_port~)
+      (None, None) => graph.edge(tail, head, name="e\{relation_index}")
+    }
     relation_names[edge.id()] = "\{relation_index}"
     edge.set_attr("minlen", "\{relation.graphviz_minlen()}")
     let mut label = relation.label.unwrap_or("")

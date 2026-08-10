@@ -660,7 +660,7 @@ fn fallback_relation_label_layout(
     }
   }
   let ((left_x, left_y), (right_x, right_y)) = relation_endpoints(
-    layout, diagram, left_index, right_index, text_metrics,
+    layout, diagram, relation, left_index, right_index, text_metrics,
   )
   relation_label_layout_from_geometry(
     relation_index,

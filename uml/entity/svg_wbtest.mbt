@@ -848,6 +848,112 @@ test "map and JSON capabilities retain typed AST body sources" {
 }
 
 ///|
+test "map table geometry paints ordered value and linked rows" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|object Customer
+      #|map OrderIndex {
+      #|+ orderId => "order-7"
+      #|customer *--> Customer
+      #|}
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let entity = diagram.entity("OrderIndex").unwrap()
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let header = entity.object_header_layout(metrics)
+  let body = entity.map_body_layout(metrics)
+  let geometry = entity.node_geometry(metrics, ObjectDiagram)
+  let svg = diagram.render_svg()
+  @test.assert_eq(body.rows.length(), 2)
+  @test.assert_eq(body.rows[0].entry.value, Some("\"order-7\""))
+  @test.assert_eq(body.rows[1].key, "customer")
+  @test.assert_eq(body.rows[1].entry.link_target, Some("Customer"))
+  @test.assert_eq(body.rows[0].top < body.rows[1].top, true)
+  @test.assert_eq(body.width <= geometry.width, true)
+  @test.assert_eq(geometry.height, header.height + body.height)
+  @test.assert_eq(
+    entity.graphviz_port(Some("customer")).unwrap().name,
+    Some(body.rows[1].port_id),
+  )
+  @test.assert_eq(svg.contains("class=\"map-row map-value-row\""), true)
+  @test.assert_eq(svg.contains("class=\"map-row map-link-row\""), true)
+  @test.assert_eq(svg.contains("class=\"map-column-separator\""), true)
+  @test.assert_eq(svg.contains("data-port=\"+ orderId\" data-port-id=\""), true)
+  @test.assert_eq(
+    @parse.find_literal(svg, ">orderId</text>").unwrap() <
+    @parse.find_literal(svg, ">customer</text>").unwrap(),
+    true,
+  )
+}
+
+///|
+test "map Graphviz ports attach each relation to its source row boundary" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|object Customer
+      #|object Order
+      #|map OrderIndex {
+      #|id => 42
+      #|customer *--> Customer
+      #|order *--> Order
+      #|}
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let entity = diagram.entity("OrderIndex").unwrap()
+  let header = entity.object_header_layout(metrics)
+  let body = entity.map_body_layout(metrics)
+  let graphviz = diagram.graphviz_layout(metrics)
+  let node = graphviz.node("OrderIndex").unwrap()
+  let node_left = node.x - node.width / 2.0
+  let node_right = node.x + node.width / 2.0
+  let node_top = node.y - node.height / 2.0
+  let mut previous_port_y : Double? = None
+  for relation_index, relation in diagram.relations {
+    guard relation.left_port is Some(port) else {
+      @test.fail("expected map relation port")
+      return
+    }
+    guard body.row(port) is Some(row) else {
+      @test.fail("expected map row")
+      return
+    }
+    let mut endpoint : (Double, Double)? = None
+    for edge in graphviz.edges {
+      guard edge.index == relation_index else { continue }
+      for spline in edge.splines {
+        guard spline.points.length() > 0 else { continue }
+        endpoint = Some(spline.points[0].pair())
+        break
+      }
+    }
+    guard endpoint is Some((port_x, port_y)) else {
+      @test.fail("expected routed map relation")
+      return
+    }
+    let row_top = node_top + header.height.to_double() + row.top.to_double()
+    let row_bottom = row_top + row.height.to_double()
+    @test.assert_eq(port_y >= row_top && port_y <= row_bottom, true)
+    @test.assert_eq(
+      (port_x - node_left).abs() <= NOTE_GEOMETRY_EPSILON ||
+      (port_x - node_right).abs() <= NOTE_GEOMETRY_EPSILON,
+      true,
+    )
+    match previous_port_y {
+      Some(previous) => @test.assert_eq(previous < port_y, true)
+      None => ()
+    }
+    previous_port_y = Some(port_y)
+  }
+}
+
+///|
 test "component family dispatches component images without use-case mode" {
   let diagram = parse(
     "@startuml\ncomponent Gateway\n@enduml",

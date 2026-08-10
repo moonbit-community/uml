@@ -183,6 +183,24 @@ fn Parser::add_map_link(
 }
 
 ///|
+/// `BodierMap` stores entries in a `LinkedHashMap`: replacing a key changes
+/// its value without moving its original row.
+fn Parser::set_map_entry(
+  self : Parser,
+  entity_index : Int,
+  entry : MapEntry,
+) -> Unit {
+  let entries = self.entities[entity_index].map_entries
+  for index, current in entries {
+    if current.key == entry.key {
+      entries[index] = entry
+      return
+    }
+  }
+  entries.push(entry)
+}
+
+///|
 fn Parser::consume_json_body_line(
   self : Parser,
   entity_index : Int,
@@ -235,7 +253,7 @@ fn Parser::consume_entity_body_line(
     guard parse_map_entry_line(line) is Some(syntax) else {
       self.raise_parse_error("map definition should contain key => value")
     }
-    self.entities[entity_index].map_entries.push(syntax.entry)
+    self.set_map_entry(entity_index, syntax.entry)
     match syntax.arrow {
       Some(arrow) => self.add_map_link(entity, syntax.entry, arrow)
       None => ()

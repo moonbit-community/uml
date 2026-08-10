@@ -1037,6 +1037,19 @@ test "parses map entries and linked map ports" {
 }
 
 ///|
+test "map entries replace duplicate keys without changing row order" {
+  let diagram = parse(
+    "@startuml\nmap Values {\nfirst => old\nsecond => kept\nfirst => new\n}\n@enduml",
+  )
+  let entries = diagram.entity("Values").unwrap().map_entries
+  @test.assert_eq(entries.length(), 2)
+  @test.assert_eq(entries[0].key, "first")
+  @test.assert_eq(entries[0].value, Some("new"))
+  @test.assert_eq(entries[1].key, "second")
+  @test.assert_eq(entries[1].value, Some("kept"))
+}
+
+///|
 test "parses multiline and single-line JSON entities" {
   let diagram = parse(
     "@startuml\njson Profile {\n\"name\": \"Ada\",\n\"settings\": {\n  \"active\": true\n}\n}\njson Count 42\njson Flags [true, false]\n@enduml",

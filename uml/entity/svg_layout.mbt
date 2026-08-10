@@ -183,6 +183,7 @@ fn ClassLayout::content_bounds(
 fn relation_endpoints(
   layout : ClassLayout,
   diagram : EntityDiagram,
+  relation : Relation,
   left_index : Int,
   right_index : Int,
   text_metrics : ClassTextMetrics,
@@ -198,7 +199,28 @@ fn relation_endpoints(
   let left_endpoint = diagram.entities[left_index].render_capability().relation_endpoint
   let right_endpoint = diagram.entities[right_index].render_capability().relation_endpoint
   let (x1, y1) = match left_endpoint {
-    ShapeBoundaryEndpoint | PortOrShapeBoundaryEndpoint =>
+    PortOrShapeBoundaryEndpoint =>
+      match
+        diagram.entities[left_index].map_port_endpoint(
+          relation.left_port,
+          text_metrics,
+          left_x,
+          left_y,
+          left_width,
+          right_center.0,
+        ) {
+        Some(endpoint) => endpoint
+        None =>
+          usecase_relation_endpoint(
+            left_x,
+            left_y,
+            left_width,
+            left_height,
+            right_center.0,
+            right_center.1,
+          )
+      }
+    ShapeBoundaryEndpoint =>
       usecase_relation_endpoint(
         left_x,
         left_y,
@@ -210,7 +232,28 @@ fn relation_endpoints(
     CenterEndpoint => left_center
   }
   let (x2, y2) = match right_endpoint {
-    ShapeBoundaryEndpoint | PortOrShapeBoundaryEndpoint =>
+    PortOrShapeBoundaryEndpoint =>
+      match
+        diagram.entities[right_index].map_port_endpoint(
+          relation.right_port,
+          text_metrics,
+          right_x,
+          right_y,
+          right_width,
+          left_center.0,
+        ) {
+        Some(endpoint) => endpoint
+        None =>
+          usecase_relation_endpoint(
+            right_x,
+            right_y,
+            right_width,
+            right_height,
+            left_center.0,
+            left_center.1,
+          )
+      }
+    ShapeBoundaryEndpoint =>
       usecase_relation_endpoint(
         right_x,
         right_y,
