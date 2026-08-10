@@ -10,6 +10,18 @@ const STATE_THIN_STROKE_WIDTH : String = "0.5"
 const STATE_TERMINAL_STROKE_WIDTH : String = "1"
 
 ///|
+const STATE_CROSS_MARKER_DIAMETER : Double = 14.0
+
+///|
+const STATE_CROSS_MARKER_CENTER : Double = STATE_CROSS_MARKER_DIAMETER / 2.0
+
+///|
+const STATE_CROSS_MARKER_PADDING : Double = 1.0
+
+///|
+const STATE_CROSS_MARKER_DIAGONAL : Double = 4.949747468305833
+
+///|
 fn initial_background_color(style : @style.DocumentStyle) -> String {
   style.property_color("ActivityStartColor", style.defaults().line)
 }
@@ -214,6 +226,69 @@ fn note_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
     note_font_family(style),
     font_size=note_font_size(style),
   )
+}
+
+///|
+fn append_state_cross_marker(
+  output : @svg.XmlWriter,
+  style : @style.DocumentStyle,
+) -> Unit {
+  let center = STATE_CROSS_MARKER_CENTER
+  let diagonal = STATE_CROSS_MARKER_DIAGONAL
+  let marker_size = STATE_CROSS_MARKER_DIAMETER +
+    STATE_CROSS_MARKER_PADDING * 2.0
+  output.open("marker", attributes=[
+    ("id", "state-cross-start"),
+    (
+      "viewBox",
+      (-STATE_CROSS_MARKER_PADDING).to_string() +
+      " " +
+      (-STATE_CROSS_MARKER_PADDING).to_string() +
+      " " +
+      marker_size.to_string() +
+      " " +
+      marker_size.to_string(),
+    ),
+    ("refX", center.to_string()),
+    ("refY", center.to_string()),
+    ("markerWidth", marker_size.to_string()),
+    ("markerHeight", marker_size.to_string()),
+    ("markerUnits", "userSpaceOnUse"),
+    ("orient", "auto"),
+  ])
+  output.empty("circle", attributes=[
+    ("cx", center.to_string()),
+    ("cy", center.to_string()),
+    ("r", center.to_string()),
+    ("fill", style.canvas_color()),
+    ("stroke", style.diagram_line_color()),
+    ("stroke-width", @svg.emphasized_stroke_width()),
+  ])
+  output.empty("path", attributes=[
+    (
+      "d",
+      "M " +
+      (center - diagonal).to_string() +
+      " " +
+      (center - diagonal).to_string() +
+      " L " +
+      (center + diagonal).to_string() +
+      " " +
+      (center + diagonal).to_string() +
+      " M " +
+      (center + diagonal).to_string() +
+      " " +
+      (center - diagonal).to_string() +
+      " L " +
+      (center - diagonal).to_string() +
+      " " +
+      (center + diagonal).to_string(),
+    ),
+    ("fill", "none"),
+    ("stroke", style.diagram_line_color()),
+    ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
+  ])
+  output.close()
 }
 
 ///|
@@ -541,6 +616,9 @@ fn append_state_edge(
         ("d", @svg.spline_path_data(path)),
         ("class", "state-transition"),
         ("fill", "none"),
+        ..if transition.has_cross_start {
+          [("marker-start", "url(#state-cross-start)")]
+        },
         ("marker-end", "url(#state-arrow)"),
         ..@svg.line_style_attributes(transition.line_style),
       ],
@@ -645,6 +723,7 @@ pub fn StateDiagram::render_svg(
       path_fill=self.style.diagram_line_color(),
     ),
   )
+  append_state_cross_marker(output, self.style)
   output.close()
   output.open("style")
   output.raw(

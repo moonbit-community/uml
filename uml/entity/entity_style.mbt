@@ -12,6 +12,23 @@ fn class_border_color(style : @style.DocumentStyle) -> String {
 }
 
 ///|
+/// Object diagrams have their own PlantUML skinparam keys.  Falling back to
+/// class colors keeps existing themes compatible when those keys are absent.
+fn object_background_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ObjectBackgroundColor", class_background_color(style))
+}
+
+///|
+fn object_border_color(style : @style.DocumentStyle) -> String {
+  style.property_color("ObjectBorderColor", class_border_color(style))
+}
+
+///|
+fn object_font_color(style : @style.DocumentStyle) -> String {
+  style.property_font_color("ObjectFontColor")
+}
+
+///|
 fn usecase_background_color(style : @style.DocumentStyle) -> String {
   style.property_color("UsecaseBackgroundColor", class_background_color(style))
 }

@@ -58,6 +58,11 @@ fn EntityDiagram::render_svg_with_mode(
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)
+  if self.family is ObjectDiagram {
+    let object_style =
+      $|<style>.object-node > rect,.object-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.object-separator{fill:none}.object-title{fill:\{text_color};text-anchor:middle}.object-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
+    output.write_string(object_style)
+  }
 
   let style_note =
     $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
@@ -81,9 +86,13 @@ fn EntityDiagram::render_svg_with_mode(
       )
     }
     for index, entity in self.entities {
-      append_entity(
-        output, self, entity, index, text_metrics, layout, collapsible,
-      )
+      if self.family is ObjectDiagram && entity.kind is Object {
+        append_object_entity(output, self, entity, index, text_metrics, layout)
+      } else {
+        append_entity(
+          output, self, entity, index, text_metrics, layout, collapsible,
+        )
+      }
     }
   }
   append_notes(output, self, text_metrics, layout)

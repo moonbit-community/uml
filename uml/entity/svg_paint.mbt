@@ -39,6 +39,77 @@ fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
 }
 
 ///|
+/// Paint an ordinary object with PlantUML's single ordered body.  Object
+/// images intentionally do not use the class circled spot or the separate
+/// fields/methods compartments.
+fn append_object_entity(
+  output : StringBuilder,
+  diagram : EntityDiagram,
+  entity : Entity,
+  index : Int,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+) -> Unit {
+  guard !entity.is_hidden && !entity.is_removed else { return }
+  let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+  let header = entity.object_header_layout(text_metrics)
+  let body = entity.object_body_layout(text_metrics)
+  let row_height = text_metrics.row_height()
+  let fill = @svg.svg_color(
+    entity.color,
+    object_background_color(diagram.style),
+  )
+  let stroke = @svg.svg_color(
+    entity.line_color,
+    object_border_color(diagram.style),
+  )
+  let stroke_style = @svg.stroke_style(entity.line_style)
+  let line_attributes =
+    $| style="stroke:\{stroke};\{stroke_style}"
+  let separator_attributes =
+    $| style="stroke:\{stroke};stroke-width:\{@svg.standard_border_stroke_width()}"
+  let placement = header.placement(width)
+  let text_x = if body.has_visibility { 20 } else { 5 }
+  let entity_colors = diagram.style.defaults().entity_colors()
+  output <+
+    $|<g class="object-node" data-code="\{@svg.xml_escape(entity.qualified_code)}">
+  match entity.url {
+    Some(url) =>
+      output <+
+        $|<a href="\{@svg.xml_escape(url)}">
+    None => ()
+  }
+  output <+
+    $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="\{OBJECT_ROUND_CORNER}" ry="\{OBJECT_ROUND_CORNER}" fill="\{fill}" \{line_attributes}/>
+  match (header.stereotype, placement.2) {
+    (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
+      output <+
+        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="object-stereotype" fill="\{object_font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
+    _ => ()
+  }
+  output <+
+    $|<text x="\{x + placement.0}" y="\{y + placement.1}" class="object-title" fill="\{object_font_color(diagram.style)}">\{@svg.xml_escape(entity.display)}</text><line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
+  let mut body_y = y + header.height
+  for entry in body.entries {
+    if entry.is_separator {
+      body_y += OBJECT_SEPARATOR_HEIGHT
+      output <+
+        $|<line class="object-separator" x1="\{x}" y1="\{body_y}" x2="\{x + width}" y2="\{body_y}"\{separator_attributes}/>
+    } else {
+      let member_y = body_y + row_height + 1
+      output <+
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g><text x="\{x + text_x}" y="\{member_y}" class="object-member member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
+      body_y += row_height
+    }
+  }
+  match entity.url {
+    Some(_) => output.write_string("</a>")
+    None => ()
+  }
+  output.write_string("</g>\n")
+}
+
+///|
 fn append_entity(
   output : StringBuilder,
   diagram : EntityDiagram,

@@ -103,6 +103,30 @@ priv struct ClassBodyLayout {
 }
 
 ///|
+/// Object headers have no class spot and keep the stereotype/name as one
+/// centered stack.  Keeping this layout separate prevents class-only header
+/// geometry from leaking into object diagrams.
+priv struct ObjectHeaderLayout {
+  width : Int
+  height : Int
+  title_width : Int
+  title_height : Int
+  stereotype_width : Int
+  stereotype_height : Int
+  stereotype : String?
+}
+
+///|
+/// Object bodies are a single ordered list.  Separators remain in that list
+/// so their position is preserved, while their height is accounted for
+/// independently from member rows.
+priv struct ObjectBodyLayout {
+  entries : Array[Member]
+  height : Int
+  has_visibility : Bool
+}
+
+///|
 fn body_section_height(
   entries : Array[Member],
   text_metrics : ClassTextMetrics,
@@ -158,6 +182,110 @@ fn Entity::header_layout(
     stereotype_height,
     stereotype,
   }
+}
+
+///|
+fn Entity::object_header_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> ObjectHeaderLayout {
+  let title = text_metrics.regular.measure(self.display)
+  let title_width = title.width + OBJECT_TEXT_HORIZONTAL_PADDING * 2
+  let (stereotype, stereotype_width, stereotype_height) = match
+    self.stereotype {
+    Some(value) if !self.stereotype_hidden => {
+      let display = @parse.display_stereotype(value)
+      let metrics = text_metrics.class_stereotype.measure(display)
+      (
+        Some(display),
+        metrics.width + OBJECT_TEXT_HORIZONTAL_PADDING * 2,
+        metrics.height,
+      )
+    }
+    _ => (None, 0, 0)
+  }
+  {
+    width: title_width.max(stereotype_width),
+    height: title.height + stereotype_height + OBJECT_HEADER_VERTICAL_PADDING,
+    title_width,
+    title_height: title.height,
+    stereotype_width,
+    stereotype_height,
+    stereotype,
+  }
+}
+
+///|
+fn Entity::object_body_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> ObjectBodyLayout {
+  let entries : Array[Member] = []
+  let mut member_count = 0
+  let mut separator_count = 0
+  let mut has_visibility = false
+  let mut previous_separator = false
+  for entry in self.members {
+    guard self.entry_visible(entry) else { continue }
+    if entry.is_separator {
+      // PlantUML does not render leading, trailing, or repeated separators as
+      // empty rows.  Filtering them here keeps the SVG and node size aligned.
+      guard member_count > 0 && !previous_separator else { continue }
+      entries.push(entry)
+      separator_count += 1
+      previous_separator = true
+    } else {
+      entries.push(entry)
+      member_count += 1
+      let explicit_visibility = match entry.visibility {
+        Unknown => false
+        _ => true
+      }
+      has_visibility = has_visibility || explicit_visibility
+      previous_separator = false
+    }
+  }
+  let height = if member_count == 0 {
+    OBJECT_EMPTY_BODY_HEIGHT
+  } else {
+    OBJECT_BODY_BOTTOM_PADDING +
+    member_count * text_metrics.row_height() +
+    separator_count * OBJECT_SEPARATOR_HEIGHT
+  }
+  { entries, height, has_visibility }
+}
+
+///|
+fn ObjectHeaderLayout::placement(
+  self : ObjectHeaderLayout,
+  rect_width : Int,
+) -> (Int, Int, (Int, Int)?) {
+  let content_width = self.title_width.max(self.stereotype_width)
+  let content_x = ((rect_width - content_width).to_double() / 2.0)
+    .max(0.0)
+    .round()
+    .to_int()
+  let title_x = content_x +
+    ((content_width - self.title_width).to_double() / 2.0).round().to_int() +
+    OBJECT_TEXT_HORIZONTAL_PADDING
+  let title_baseline = self.stereotype_height +
+    self.title_height -
+    OBJECT_TEXT_BASELINE_BOTTOM_GAP
+  let stereotype_position = match self.stereotype {
+    Some(_) =>
+      Some(
+        (
+          content_x +
+          ((content_width - self.stereotype_width).to_double() / 2.0)
+          .round()
+          .to_int() +
+          OBJECT_TEXT_HORIZONTAL_PADDING,
+          self.stereotype_height - OBJECT_TEXT_BASELINE_BOTTOM_GAP,
+        ),
+      )
+    None => None
+  }
+  (title_x, title_baseline, stereotype_position)
 }
 
 ///|
@@ -271,6 +399,12 @@ fn Entity::height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
 }
 
 ///|
+fn Entity::object_height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+  self.object_header_layout(text_metrics).height +
+  self.object_body_layout(text_metrics).height
+}
+
+///|
 fn Entity::entry_visible(self : Entity, entry : Member) -> Bool {
   !entry.is_hidden &&
   !(entry.is_method && self.methods_hidden) &&
@@ -346,6 +480,28 @@ const CLASS_SPOT_VERTICAL_MARGIN : Int = 5
 
 ///|
 const CLASS_TEXT_BASELINE_BOTTOM_GAP : Int = 3
+
+///|
+/// Object image tokens mirror PlantUML's object style padding and body rows.
+const OBJECT_TEXT_HORIZONTAL_PADDING : Int = 5
+
+///|
+const OBJECT_HEADER_VERTICAL_PADDING : Int = 2
+
+///|
+const OBJECT_TEXT_BASELINE_BOTTOM_GAP : Int = 3
+
+///|
+const OBJECT_BODY_BOTTOM_PADDING : Int = 7
+
+///|
+const OBJECT_EMPTY_BODY_HEIGHT : Int = 16
+
+///|
+const OBJECT_SEPARATOR_HEIGHT : Int = 7
+
+///|
+const OBJECT_ROUND_CORNER : Double = 2.5
 
 ///|
 const USECASE_BODY_HORIZONTAL_MARGIN : Int = 12
@@ -535,6 +691,22 @@ fn Entity::width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
 }
 
 ///|
+fn Entity::object_width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+  let header = self.object_header_layout(text_metrics)
+  let body = self.object_body_layout(text_metrics)
+  let text_x = if body.has_visibility { 20 } else { 5 }
+  let mut width = header.width
+  for entry in body.entries {
+    guard !entry.is_separator else { continue }
+    let text_width = text_metrics.regular.measure(
+        entry.display_without_visibility(),
+      ).width
+    width = width.max(text_width + text_x + OBJECT_TEXT_HORIZONTAL_PADDING)
+  }
+  width
+}
+
+///|
 fn Entity::usecase_content_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
@@ -708,6 +880,13 @@ fn Entity::node_geometry(
   text_metrics : ClassTextMetrics,
   family : EntityFamily,
 ) -> NodeGeometry {
+  if family is ObjectDiagram && self.kind is Object {
+    return {
+      width: self.object_width(text_metrics),
+      height: self.object_height(text_metrics),
+      shape: Box,
+    }
+  }
   guard !family.is_usecase() else {
     match self.kind {
       Usecase | BusinessUsecase => {

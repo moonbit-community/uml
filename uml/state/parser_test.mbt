@@ -294,42 +294,121 @@ fn layout_node(layout : StateLayout, code : String) -> StateNodeLayout {
 }
 
 ///|
+fn layout_edge(layout : StateLayout, transition_index : Int) -> StateEdgeLayout {
+  for edge in layout.edges {
+    if edge.transition_index == transition_index {
+      return edge
+    }
+  }
+  abort("missing state layout edge: " + transition_index.to_string())
+}
+
+///|
+fn StateNodeLayout::contains(
+  self : StateNodeLayout,
+  child : StateNodeLayout,
+) -> Bool {
+  child.x >= self.x &&
+  child.y >= self.y &&
+  child.x + child.width <= self.x + self.width &&
+  child.y + child.height <= self.y + self.height
+}
+
+///|
+fn StateNodeLayout::does_not_overlap(
+  self : StateNodeLayout,
+  other : StateNodeLayout,
+) -> Bool {
+  self.x + self.width <= other.x ||
+  other.x + other.width <= self.x ||
+  self.y + self.height <= other.y ||
+  other.y + other.height <= self.y
+}
+
+///|
+fn StateEdgeLayout::has_drawable_path(self : StateEdgeLayout) -> Bool {
+  self.paths.any(path => {
+    guard path.length() > 1 else { false }
+    path[0] != path[path.length() - 1]
+  })
+}
+
+///|
 test "recursive layout keeps composite contents inside their rendered parent" {
   let diagram = parse(
     "@startuml\nstate Work {\n[*] --> Input\nInput --> Capacity\n}\nWork --> Done\n@enduml",
   )
   let layout = diagram.layout()
   let work = layout_node(layout, "Work")
-  let input = layout_node(layout, "Input")
-  let capacity = layout_node(layout, "Capacity")
-  @test.assert_eq(layout.edges.length(), diagram.transitions.length())
-  @test.assert_eq(input.x >= work.x, true)
-  @test.assert_eq(input.y >= work.y, true)
-  @test.assert_eq(input.x + input.width <= work.x + work.width, true)
-  @test.assert_eq(input.y + input.height <= work.y + work.height, true)
-  @test.assert_eq(capacity.x >= work.x, true)
-  @test.assert_eq(capacity.y >= work.y, true)
-  @test.assert_eq(capacity.x + capacity.width <= work.x + work.width, true)
-  @test.assert_eq(capacity.y + capacity.height <= work.y + work.height, true)
+  for state in diagram.states {
+    guard state.parent == Some("Work") else { continue }
+    @test.assert_eq(work.contains(layout_node(layout, state.code)), true)
+  }
 }
 
 ///|
-test "concurrent regions preserve their separator orientation in layout" {
+test "concurrent regions preserve orientation and never overlap" {
   let diagram = parse(
-    "@startuml\nstate Work {\nstate Input\n||\nstate Capacity\n}\n@enduml",
+    "@startuml\nstate Work {\nstate Input\n--\nstate Capacity\n--\nstate Audit\n}\n@enduml",
   )
   let layout = diagram.layout()
-  let input = layout_node(layout, "Input")
-  let capacity = layout_node(layout, "Capacity")
   @test.assert_eq(
-    layout.regions.any(region => region.separator == Some(Vertical)),
+    layout.regions.any(region => region.separator == Some(Horizontal)),
     true,
   )
-  @test.assert_eq(
-    input.x + input.width <= capacity.x ||
-    capacity.x + capacity.width <= input.x,
-    true,
+  let region_nodes = ["Input", "Capacity", "Audit"].map(code => {
+    layout_node(layout, code)
+  })
+  for index in 0..<region_nodes.length() {
+    for other in (index + 1)..<region_nodes.length() {
+      @test.assert_eq(
+        region_nodes[index].does_not_overlap(region_nodes[other]),
+        true,
+      )
+    }
+  }
+}
+
+///|
+test "fixture transitions retain drawable paths and official decorations" {
+  let diagram = parse(
+    "@startuml\nstate Open\nstate Closed\nstate Archived\nOpen -[dashed]-> Closed : close\nArchived <-[bold]- Closed : archive\nOpen x--> Archived : cancel\n@enduml",
   )
+  let layout = diagram.layout()
+  @test.assert_eq(layout.edges.length(), diagram.transitions.length())
+  for transition_index in 0..<diagram.transitions.length() {
+    @test.assert_eq(
+      layout_edge(layout, transition_index).has_drawable_path(),
+      true,
+    )
+  }
+  let svg = diagram.render_svg()
+  let drawable_path_count = layout.edges.fold(init=0, fn(count, edge) {
+    count + edge.paths.filter(path => path.length() > 1).length()
+  })
+  @test.assert_eq(
+    svg.split("class=\"state-transition\"").count(),
+    drawable_path_count + 1,
+  )
+  @test.assert_eq(
+    svg.split("marker-end=\"url(#state-arrow)\"").count(),
+    drawable_path_count + 1,
+  )
+  let cross_count = diagram.transitions
+    .filter(transition => transition.has_cross_start)
+    .length()
+  @test.assert_eq(
+    svg.split("marker-start=\"url(#state-cross-start)\"").count(),
+    cross_count + 1,
+  )
+  for transition in diagram.transitions {
+    for attribute in @svg.line_style_attributes(transition.line_style) {
+      @test.assert_eq(
+        svg.contains(attribute.0 + "=\"" + attribute.1 + "\""),
+        true,
+      )
+    }
+  }
 }
 
 ///|

@@ -645,6 +645,96 @@ test "class stereotypes participate in header and Graphviz geometry" {
 }
 
 ///|
+test "object geometry uses one ordered body without a class spot" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|object Record <<snapshot>> {
+      #|+ first = 1
+      #|--
+      #|- second = 2
+      #|+ refresh()
+      #|}
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let entity = diagram.entities[0]
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let body = entity.object_body_layout(metrics)
+  let geometry = entity.node_geometry(metrics, ObjectDiagram)
+  let svg = diagram.render_svg()
+  @test.assert_eq(body.entries.length(), 4)
+  @test.assert_eq(body.entries[0].display_without_visibility(), "first = 1")
+  @test.assert_eq(body.entries[1].is_separator, true)
+  @test.assert_eq(body.entries[2].display_without_visibility(), "second = 2")
+  @test.assert_eq(body.entries[3].display_without_visibility(), "refresh()")
+  @test.assert_eq(geometry.shape is Box, true)
+  @test.assert_eq(svg.contains("class=\"object-node\""), true)
+  @test.assert_eq(svg.contains("class=\"class-spot\""), false)
+  @test.assert_eq(svg.contains("class=\"object-separator\""), true)
+  @test.assert_eq(
+    @parse.find_literal(svg, ">first = 1</text>").unwrap() <
+    @parse.find_literal(svg, ">second = 2</text>").unwrap(),
+    true,
+  )
+  @test.assert_eq(
+    @parse.find_literal(svg, ">second = 2</text>").unwrap() <
+    @parse.find_literal(svg, ">refresh()</text>").unwrap(),
+    true,
+  )
+}
+
+///|
+test "hidden object members do not contribute to visible geometry" {
+  let source = "@startuml\nobject Record {\n+ short\n- this_is_a_long_private_value\n+ refresh()\n}\n@enduml"
+  let visible = parse(source, family=ObjectDiagram)
+  let hidden = parse(
+    "@startuml\nhide private fields\nhide object methods\nobject Record {\n+ short\n- this_is_a_long_private_value\n+ refresh()\n}\n@enduml",
+    family=ObjectDiagram,
+  )
+  let visible_metrics = ClassTextMetrics::new(visible.style)
+  let hidden_metrics = ClassTextMetrics::new(hidden.style)
+  let visible_geometry = visible.entities[0].node_geometry(
+    visible_metrics,
+    ObjectDiagram,
+  )
+  let hidden_geometry = hidden.entities[0].node_geometry(
+    hidden_metrics,
+    ObjectDiagram,
+  )
+  let hidden_body = hidden.entities[0].object_body_layout(hidden_metrics)
+  let hidden_svg = hidden.render_svg()
+  @test.assert_eq(hidden_geometry.width < visible_geometry.width, true)
+  @test.assert_eq(hidden_geometry.height < visible_geometry.height, true)
+  @test.assert_eq(hidden_body.entries.length(), 1)
+  @test.assert_eq(hidden_svg.contains("this_is_a_long_private_value"), false)
+  @test.assert_eq(hidden_svg.contains("refresh()"), false)
+  @test.assert_eq(hidden_svg.contains(">short</text>"), true)
+}
+
+///|
+test "object URL and skinparams are consumed by the object painter" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|skinparam ObjectBackgroundColor #123456
+      #|skinparam ObjectBorderColor #654321
+      #|object Record [[https://example.com/record]] {
+      #|value
+      #|}
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"object-node\""), true)
+  @test.assert_eq(svg.contains("href=\"https://example.com/record\""), true)
+  @test.assert_eq(svg.contains("fill=\"#123456\""), true)
+  @test.assert_eq(svg.contains("stroke:#654321"), true)
+}
+
+///|
 test "hide stereotype restores the plain class header" {
   let plain = parse("@startuml\nclass Service\n@enduml")
   let hidden = parse(
