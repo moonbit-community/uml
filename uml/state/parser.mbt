@@ -149,6 +149,7 @@ fn Parser::upsert_state(self : Parser, state : StateNode) -> Unit {
 fn Parser::consume_entity_note(
   self : Parser,
   target : String,
+  color : String?,
 ) -> Unit raise @parse.ParseError {
   guard target.length() > 0 else {
     raise SyntaxError(self.line_number(), "state note needs a target")
@@ -169,7 +170,7 @@ fn Parser::consume_entity_note(
     raise SyntaxError(self.line_number(), "unclosed note")
   }
   self.index = index - 1
-  self.notes.push({ target: StateNote(target), text: text.join("\n") })
+  self.notes.push({ target: StateNote(target), text: text.join("\n"), color })
 }
 
 ///|
@@ -225,17 +226,18 @@ fn Parser::apply_line_syntax(
       })
       true
     }
-    Some(EntityNote(target)) => {
-      self.consume_entity_note(target)
+    Some(EntityNote(note)) => {
+      self.consume_entity_note(note.target, note.color)
       true
     }
-    Some(LinkNote(text)) => {
+    Some(LinkNote(note)) => {
       guard self.transitions.length() > 0 else {
         raise SyntaxError(self.line_number(), "link note without transition")
       }
       self.notes.push({
         target: TransitionNote(self.transitions.length() - 1),
-        text,
+        text: note.text,
+        color: note.color,
       })
       true
     }

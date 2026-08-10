@@ -54,15 +54,17 @@ test "renders semantic state node and transition labels without coordinates" {
 }
 
 ///|
-test "state auxiliary labels share their SVG font-size token" {
+test "state transition and note labels use their respective font roles" {
   let svg = render_state_svg(
     "@startuml\nstate Ready\n[*] --> Ready : begin\nnote right of Ready\ndetail\nend note\n@enduml",
   )
-  let font_size = "font-size:" + @svg.auxiliary_label_font_size()
   @test.assert_eq(svg.contains(".state-pseudostate-label{font-family:"), true)
   @test.assert_eq(svg.contains(".state-transition-label{font-family:"), true)
   @test.assert_eq(svg.contains(".state-note-label{font-family:"), true)
-  @test.assert_eq(svg.contains(font_size), true)
+  @test.assert_eq(
+    svg.contains("font-size:" + @svg.auxiliary_label_font_size()),
+    true,
+  )
 }
 
 ///|
@@ -134,7 +136,8 @@ test "pseudo-state style roles fall back to dark theme colors" {
   @test.assert_eq(svg.contains("class=\"state-synchronization\""), true)
   @test.assert_eq(svg.contains("fill=\"theme-line\""), true)
   @test.assert_eq(svg.contains("fill=\"theme-node\""), true)
-  @test.assert_eq(svg.contains("fill=\"theme-canvas\""), false)
+  @test.assert_eq(svg.contains("class=\"state-canvas\""), true)
+  @test.assert_eq(svg.contains("fill=\"theme-canvas\""), true)
 }
 
 ///|
@@ -250,6 +253,27 @@ test "preserves URL metadata declared on a state" {
 }
 
 ///|
+test "preserves inline colors on state and link notes" {
+  let diagram = parse(
+    "@startuml\nA --> B\nnote right of A #pink\nentity note\nend note\nnote on link #lightblue : link note\n@enduml",
+  )
+  @test.assert_eq(diagram.notes[0].color, Some("pink"))
+  @test.assert_eq(diagram.notes[1].color, Some("lightblue"))
+}
+
+///|
+test "state URL wraps the node and stereotype selects scoped paint" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam StateBackgroundColor #112233\nskinparam StateBackgroundColor<<manual>> #223344\nskinparam StateBorderColor<<manual>> #334455\nstate Review <<manual>> [[https://example.com/review]]\nstate Plain\n@enduml",
+  )
+  @test.assert_eq(svg.contains("data-stereotype=\"&lt;&lt;manual>>\""), true)
+  @test.assert_eq(svg.contains("<a href=\"https://example.com/review\">"), true)
+  @test.assert_eq(svg.contains("fill=\"#223344\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#334455\""), true)
+  @test.assert_eq(svg.contains("fill=\"#112233\""), true)
+}
+
+///|
 test "parsec transition grammar preserves reverse endpoints and line styles" {
   let diagram = parse("@startuml\nArchived <-[bold]- Closed : archive\n@enduml")
   let transition = diagram.transitions[0]
@@ -319,6 +343,36 @@ test "state and link notes participate in layout and SVG output" {
   @test.assert_eq(svg.contains("class=\"state-note\""), true)
   @test.assert_eq(svg.contains(">remember</tspan>"), true)
   @test.assert_eq(svg.contains(">transition detail</tspan>"), true)
+}
+
+///|
+test "canvas and note styles preserve role and inline color precedence" {
+  let svg = render_state_svg(
+    "@startuml\nskinparam BackgroundColor #010203\nskinparam NoteBackgroundColor #112233\nskinparam NoteBorderColor #223344\nskinparam NoteFontName Courier New\nskinparam NoteFontSize 16\nskinparam NoteFontColor #334455\nA --> B\nnote right of A #lightyellow\ninline note\nend note\nnote on link : styled note\n@enduml",
+  )
+  @test.assert_eq(svg.contains("class=\"state-canvas\""), true)
+  @test.assert_eq(svg.contains("fill=\"#010203\""), true)
+  @test.assert_eq(svg.contains("fill=\"#FFFFE0\""), true)
+  @test.assert_eq(svg.contains("fill=\"#112233\""), true)
+  @test.assert_eq(svg.contains("stroke=\"#223344\""), true)
+  @test.assert_eq(
+    svg.contains(
+      ".state-note-label{font-family:Courier New;font-size:16px;fill:#334455}",
+    ),
+    true,
+  )
+}
+
+///|
+test "note font metrics participate in Graphviz node sizing" {
+  let regular = parse(
+      "@startuml\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
+    ).layout().notes[0]
+  let enlarged = parse(
+      "@startuml\nskinparam NoteFontSize 24\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
+    ).layout().notes[0]
+  @test.assert_eq(enlarged.width > regular.width, true)
+  @test.assert_eq(enlarged.height > regular.height, true)
 }
 
 ///|

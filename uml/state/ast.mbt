@@ -72,6 +72,7 @@ pub(all) enum StateNoteTarget {
 pub struct StateNote {
   target : StateNoteTarget
   text : String
+  color : String?
 } derive(Eq, Debug)
 
 ///|

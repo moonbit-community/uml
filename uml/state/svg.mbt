@@ -63,12 +63,40 @@ fn synchronization_background_color(style : @style.DocumentStyle) -> String {
 }
 
 ///|
+fn state_style_property(
+  state : StateNode,
+  style : @style.DocumentStyle,
+  key : String,
+) -> String? {
+  match state.stereotype {
+    Some(stereotype) =>
+      match style.property(key + stereotype) {
+        Some(value) => Some(value)
+        None => style.property(key)
+      }
+    None => style.property(key)
+  }
+}
+
+///|
+fn state_style_color(
+  state : StateNode,
+  style : @style.DocumentStyle,
+  key : String,
+  fallback : String,
+) -> String {
+  @svg.svg_color(state_style_property(state, style, key), fallback)
+}
+
+///|
 /// Resolve normal-state paint with PlantUML's inline-color precedence.
 fn state_background_color(
   state : StateNode,
   style : @style.DocumentStyle,
 ) -> String {
-  let fallback = style.property_color(
+  let fallback = state_style_color(
+    state,
+    style,
     "StateBackgroundColor",
     style.defaults().node,
   )
@@ -76,8 +104,16 @@ fn state_background_color(
 }
 
 ///|
-fn state_border_color(style : @style.DocumentStyle) -> String {
-  style.property_color("StateBorderColor", style.diagram_line_color())
+fn state_border_color(
+  state : StateNode,
+  style : @style.DocumentStyle,
+) -> String {
+  state_style_color(
+    state,
+    style,
+    "StateBorderColor",
+    style.diagram_line_color(),
+  )
 }
 
 ///|
@@ -89,8 +125,11 @@ fn composite_state_background_color(
 }
 
 ///|
-fn composite_state_border_color(style : @style.DocumentStyle) -> String {
-  state_border_color(style)
+fn composite_state_border_color(
+  state : StateNode,
+  style : @style.DocumentStyle,
+) -> String {
+  state_border_color(state, style)
 }
 
 ///|
@@ -138,6 +177,46 @@ fn state_description_font_metrics(
 }
 
 ///|
+fn note_background_color(
+  note : StateNote,
+  style : @style.DocumentStyle,
+) -> String {
+  let fallback = style.property_color(
+    "NoteBackgroundColor",
+    style.defaults().note,
+  )
+  @svg.svg_color(note.color, fallback)
+}
+
+///|
+fn note_border_color(style : @style.DocumentStyle) -> String {
+  style.property_color("NoteBorderColor", style.diagram_line_color())
+}
+
+///|
+fn note_font_color(style : @style.DocumentStyle) -> String {
+  style.property_font_color("NoteFontColor")
+}
+
+///|
+fn note_font_family(style : @style.DocumentStyle) -> String {
+  style.property_font_family("NoteFontName")
+}
+
+///|
+fn note_font_size(style : @style.DocumentStyle) -> Int {
+  style.property_font_size("NoteFontSize", fallback=style.font_size_value())
+}
+
+///|
+fn note_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
+  style.font_metrics_for(
+    note_font_family(style),
+    font_size=note_font_size(style),
+  )
+}
+
+///|
 fn append_state_label(
   output : @svg.XmlWriter,
   text : String,
@@ -152,7 +231,7 @@ fn append_state_label(
       y,
       text,
       [("text-anchor", "middle"), ("class", class_name)],
-      line_height=16.0,
+      line_height=text_metrics.line_height.to_double(),
       text_metrics=Some(text_metrics),
     ),
   )
@@ -175,7 +254,7 @@ fn append_state_node(
   let empty_description = state.kind == Normal &&
     !state.has_description() &&
     diagram.hide_empty_description()
-  output.open("g", attributes=[
+  let group_attributes = [
     (
       "class",
       if composite {
@@ -197,7 +276,16 @@ fn append_state_node(
         "pseudo"
       },
     ),
-  ])
+  ]
+  match state.stereotype {
+    Some(stereotype) => group_attributes.push(("data-stereotype", stereotype))
+    None => ()
+  }
+  output.open("g", attributes=group_attributes)
+  match state.url {
+    Some(url) => output.open("a", attributes=[("href", url)])
+    None => ()
+  }
   if composite {
     let corner = STATE_CORNER_RADIUS
     let header_bottom = y + STATE_HEADER_HEIGHT
@@ -251,7 +339,7 @@ fn append_state_node(
       ("height", height.to_string()),
       ("rx", corner.to_string()),
       ("fill", "none"),
-      ("stroke", composite_state_border_color(diagram.style)),
+      ("stroke", composite_state_border_color(state, diagram.style)),
       ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     output.empty("line", attributes=[
@@ -259,7 +347,7 @@ fn append_state_node(
       ("y1", header_bottom.to_string()),
       ("x2", (x + width).to_string()),
       ("y2", header_bottom.to_string()),
-      ("stroke", composite_state_border_color(diagram.style)),
+      ("stroke", composite_state_border_color(state, diagram.style)),
       ("stroke-width", STATE_THIN_STROKE_WIDTH),
     ])
     append_state_label(
@@ -270,6 +358,9 @@ fn append_state_node(
       "state-label",
       state_font_metrics(diagram.style),
     )
+    if state.url is Some(_) {
+      output.close()
+    }
     output.close()
     return
   }
@@ -380,7 +471,7 @@ fn append_state_node(
         ("height", height.to_string()),
         ("rx", STATE_CORNER_RADIUS.to_string()),
         ("fill", state_background_color(state, diagram.style)),
-        ("stroke", state_border_color(diagram.style)),
+        ("stroke", state_border_color(state, diagram.style)),
         ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
       if empty_description {
@@ -399,7 +490,7 @@ fn append_state_node(
           ("x2", (x + width).to_string()),
           ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
           ("class", "state-compartment-separator"),
-          ("stroke", state_border_color(diagram.style)),
+          ("stroke", state_border_color(state, diagram.style)),
           ("stroke-width", STATE_THIN_STROKE_WIDTH),
         ])
         append_state_label(
@@ -427,6 +518,9 @@ fn append_state_node(
         }
       }
     }
+  }
+  if state.url is Some(_) {
+    output.close()
   }
   output.close()
 }
@@ -509,8 +603,9 @@ fn append_state_note(
     ("y", layout.y.to_string()),
     ("width", layout.width.to_string()),
     ("height", layout.height.to_string()),
-    ("fill", diagram.style.defaults().note),
-    ("stroke", diagram.style.defaults().line),
+    ("fill", note_background_color(note, diagram.style)),
+    ("stroke", note_border_color(diagram.style)),
+    ("stroke-width", STATE_THIN_STROKE_WIDTH),
   ])
   append_state_label(
     output,
@@ -518,7 +613,7 @@ fn append_state_note(
     layout.x + layout.width / 2.0,
     layout.y + layout.height / 2.0 + 5.0,
     "state-note-label",
-    diagram.style.font_metrics(font_size=14),
+    note_font_metrics(diagram.style),
   )
   output.close()
 }
@@ -586,14 +681,23 @@ pub fn StateDiagram::render_svg(
     ";fill:" +
     self.style.diagram_text_color() +
     "}.state-note-label{font-family:" +
-    self.style.font_family() +
+    note_font_family(self.style) +
     ";font-size:" +
-    @svg.auxiliary_label_font_size() +
+    note_font_size(self.style).to_string() +
+    "px" +
     ";fill:" +
-    self.style.diagram_text_color() +
+    note_font_color(self.style) +
     "}",
   )
   output.close()
+  output.empty("rect", attributes=[
+    ("class", "state-canvas"),
+    ("x", "0"),
+    ("y", "0"),
+    ("width", width.to_string()),
+    ("height", height.to_string()),
+    ("fill", self.style.canvas_color()),
+  ])
   for edge in layout.edges {
     append_state_edge(output, self, edge)
   }

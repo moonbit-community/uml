@@ -21,6 +21,18 @@ priv struct StateTransitionSyntax {
 }
 
 ///|
+priv struct StateEntityNoteSyntax {
+  target : String
+  color : String?
+}
+
+///|
+priv struct StateLinkNoteSyntax {
+  text : String
+  color : String?
+}
+
+///|
 priv struct TransitionArrowSyntax {
   direction : TransitionDirection
   line_style : String?
@@ -42,8 +54,8 @@ priv enum StateLineSyntax {
   Declaration(StateDeclarationSyntax)
   Frame(StateDeclarationSyntax)
   Transition(StateTransitionSyntax)
-  EntityNote(String)
-  LinkNote(String)
+  EntityNote(StateEntityNoteSyntax)
+  LinkNote(StateLinkNoteSyntax)
 }
 
 ///|
@@ -358,7 +370,7 @@ fn state_transition_parser() -> @talc.StringParser[StateTransitionSyntax] {
 }
 
 ///|
-fn entity_note_parser() -> @talc.StringParser[String] {
+fn entity_note_parser() -> @talc.StringParser[StateEntityNoteSyntax] {
   @talc.symbol("note")
   .then(
     @talc.choice([
@@ -369,21 +381,29 @@ fn entity_note_parser() -> @talc.StringParser[String] {
     ]),
   )
   .then(@talc.symbol("of"))
-  .then(state_endpoint_parser())
-  .skip(@talc.line_content.optional())
-  .skip(@talc.eof())
+  .then(state_endpoint_parser().lexeme())
+  .bind(target => {
+    @parse.color_value_parser("note color")
+    .lexeme()
+    .optional()
+    .skip(@talc.line_content.optional())
+    .skip(@talc.eof())
+    .map(color => { target, color })
+  })
 }
 
 ///|
-fn link_note_parser() -> @talc.StringParser[String] {
+fn link_note_parser() -> @talc.StringParser[StateLinkNoteSyntax] {
   @talc.symbol("note")
   .then(@talc.symbol("on"))
   .then(@talc.symbol("link"))
-  .skip(@parse.color_value_parser("note color").lexeme().optional())
-  .then(@talc.symbol(":"))
-  .then(@talc.line_content)
-  .skip(@talc.eof())
-  .map(value => value.trim().to_owned())
+  .then(@parse.color_value_parser("note color").lexeme().optional())
+  .bind(color => {
+    @talc.symbol(":")
+    .then(@talc.line_content)
+    .skip(@talc.eof())
+    .map(value => { text: value.trim().to_owned(), color })
+  })
 }
 
 ///|

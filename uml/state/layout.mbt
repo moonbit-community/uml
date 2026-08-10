@@ -525,13 +525,14 @@ fn StateDiagram::layout_scope(
     }
   }
   let note_names : Map[String, Int] = Map([])
+  let note_metrics = note_font_metrics(self.style)
   for note_index, note in self.notes {
     guard self.note_scope(note) == scope else { continue }
     guard self.note_region_index(note, scope) == region_index else { continue }
     let name = @graphviz.graphviz_note_name(note_index)
     note_names[name] = note_index
     let node = graph.node(name)
-    let (width, height) = state_note_size(note, name_metrics)
+    let (width, height) = state_note_size(note, note_metrics)
     @graphviz.set_fixed_node_size(node, width, height, shape="note")
     match self.note_anchor(note, scope) {
       Some(anchor) =>
