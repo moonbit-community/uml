@@ -286,29 +286,19 @@ pub(all) enum EntityFamily {
 /// Whether declarations outside the class grammar may appear without an
 /// explicit `allowmixing` directive.
 pub fn EntityFamily::allow_mixing(self : EntityFamily) -> Bool {
-  match self {
-    ClassDiagram | ObjectDiagram => false
-    ComponentDiagram | UseCaseDiagram => true
-  }
+  self.capability().parser_allow_mixing
 }
 
 ///|
 /// Error text reported when a body block is left open.
 pub fn EntityFamily::unclosed_body_message(self : EntityFamily) -> String {
-  match self {
-    ClassDiagram | ObjectDiagram => "unclosed class body"
-    ComponentDiagram => "unclosed component body"
-    UseCaseDiagram => "unclosed use-case body"
-  }
+  self.capability().unclosed_body_message
 }
 
 ///|
 /// Whether this family renders with PlantUML's use-case symbols.
 pub fn EntityFamily::is_usecase(self : EntityFamily) -> Bool {
-  match self {
-    UseCaseDiagram => true
-    _ => false
-  }
+  self.capability().usecase_relation_style
 }
 
 ///|

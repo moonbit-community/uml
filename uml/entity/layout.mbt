@@ -152,7 +152,8 @@ fn EntityDiagram::graphviz_layout(
   self : EntityDiagram,
   text_metrics : ClassTextMetrics,
 ) -> GraphvizLayout raise @dot_layout.DotLayoutError {
-  let usecase = self.family.is_usecase()
+  let family_capability = self.family.capability()
+  let usecase = family_capability.usecase_relation_style
   let graph = @graphviz.new_directed_graph("class", self.style)
   graph.set_attr("remincross", "true")
   graph.set_attr("searchsize", "500")
@@ -193,14 +194,12 @@ fn EntityDiagram::graphviz_layout(
       None => graph.node(name)
     }
     let geometry = entity.node_geometry(text_metrics, self.family)
+    let capability = entity.render_capability()
     @graphviz.set_fixed_node_size(
       node,
       geometry.width.to_double(),
       geometry.height.to_double(),
-      shape=match geometry.shape {
-        Box => "box"
-        Ellipse => "ellipse"
-      },
+      shape=capability.graphviz_shape(),
     )
   }
   let relation_names : Map[Int, String] = Map([])

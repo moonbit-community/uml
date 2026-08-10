@@ -735,6 +735,131 @@ test "object URL and skinparams are consumed by the object painter" {
 }
 
 ///|
+test "entity family capability owns parser and diagram paint policy" {
+  let class = ClassDiagram.capability()
+  let object = ObjectDiagram.capability()
+  let component = ComponentDiagram.capability()
+  let usecase = UseCaseDiagram.capability()
+  @test.assert_eq(class.parser_allow_mixing, ClassDiagram.allow_mixing())
+  @test.assert_eq(object.parser_allow_mixing, ObjectDiagram.allow_mixing())
+  @test.assert_eq(
+    component.parser_allow_mixing,
+    ComponentDiagram.allow_mixing(),
+  )
+  @test.assert_eq(usecase.parser_allow_mixing, UseCaseDiagram.allow_mixing())
+  @test.assert_eq(class.paint_order is RelationsBeforeEntities, true)
+  @test.assert_eq(object.paint_order is RelationsBeforeEntities, true)
+  @test.assert_eq(component.paint_order is RelationsBeforeEntities, true)
+  @test.assert_eq(usecase.paint_order is EntitiesBeforeRelations, true)
+  @test.assert_eq(class.class_members_collapsible, true)
+  @test.assert_eq(object.class_members_collapsible, false)
+  @test.assert_eq(component.usecase_relation_style, false)
+  @test.assert_eq(usecase.usecase_relation_style, true)
+  @test.assert_eq(class.renders_packages && class.renders_notes, true)
+  @test.assert_eq(object.renders_packages && object.renders_notes, true)
+}
+
+///|
+test "leaf kind selects geometry and painter capability in mixed families" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|allowmixing
+      #|class Model {
+      #|value
+      #|}
+      #|object Snapshot {
+      #|value
+      #|}
+      #|component Adapter
+      #|@enduml
+    ),
+    family=ClassDiagram,
+  )
+  let class_entity = diagram.entity("Model").unwrap()
+  let object_entity = diagram.entity("Snapshot").unwrap()
+  let component_entity = diagram.entity("Adapter").unwrap()
+  let class = class_entity.render_capability()
+  let object = object_entity.render_capability()
+  let component = component_entity.render_capability()
+  @test.assert_eq(class.renderer is ClassRenderer, true)
+  @test.assert_eq(class.header is ClassHeader, true)
+  @test.assert_eq(class.body is ClassCompartments, true)
+  @test.assert_eq(class.spot is ClassSpot, true)
+  @test.assert_eq(class.style_role is ClassStyle, true)
+  @test.assert_eq(object.renderer is ObjectRenderer, true)
+  @test.assert_eq(object.header is ObjectHeader, true)
+  @test.assert_eq(object.body is OrderedMembers, true)
+  @test.assert_eq(object.ports is MemberPorts, true)
+  @test.assert_eq(object.spot is NoSpot, true)
+  @test.assert_eq(object.style_role is ObjectStyle, true)
+  @test.assert_eq(object.relation_endpoint is ShapeBoundaryEndpoint, true)
+  @test.assert_eq(component.renderer is ComponentRenderer, true)
+  @test.assert_eq(component.header is DescriptionHeader, true)
+  @test.assert_eq(component.body is NoBody, true)
+  @test.assert_eq(component.style_role is ComponentStyle, true)
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let same_as_class = { ..class_entity, kind: Object }
+  let class_geometry = class_entity.node_geometry(metrics, ClassDiagram)
+  let object_geometry = same_as_class.node_geometry(metrics, ClassDiagram)
+  @test.assert_eq(
+    class_geometry.width != object_geometry.width ||
+    class_geometry.height != object_geometry.height,
+    true,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"class-node\""), true)
+  @test.assert_eq(svg.contains("class=\"object-node\""), true)
+  @test.assert_eq(svg.contains("class=\"component-node\""), true)
+}
+
+///|
+test "map and JSON capabilities retain typed AST body sources" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|map Values {
+      #|id => 42
+      #|}
+      #|json Profile {
+      #|  "active": true
+      #|}
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let map = diagram.entity("Values").unwrap().render_capability()
+  let json = diagram.entity("Profile").unwrap().render_capability()
+  @test.assert_eq(map.renderer is MapRenderer, true)
+  @test.assert_eq(map.body is MapEntries, true)
+  @test.assert_eq(map.ports is MapEntryPorts, true)
+  @test.assert_eq(map.style_role is MapStyle, true)
+  @test.assert_eq(map.relation_endpoint is PortOrShapeBoundaryEndpoint, true)
+  @test.assert_eq(json.renderer is JsonRenderer, true)
+  @test.assert_eq(json.body is JsonData, true)
+  @test.assert_eq(json.ports is JsonTreePorts, true)
+  @test.assert_eq(json.style_role is JsonStyle, true)
+  @test.assert_eq(map.graphviz_shape(), "box")
+  @test.assert_eq(json.graphviz_shape(), "box")
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"map-node\""), true)
+  @test.assert_eq(svg.contains("class=\"json-node\""), true)
+  @test.assert_eq(svg.contains("class=\"class-spot\""), false)
+}
+
+///|
+test "component family dispatches component images without use-case mode" {
+  let diagram = parse(
+    "@startuml\ncomponent Gateway\n@enduml",
+    family=ComponentDiagram,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("aria-label=\"Component diagram\""), true)
+  @test.assert_eq(svg.contains("class=\"component-node\""), true)
+  @test.assert_eq(svg.contains("class=\"class-node\""), false)
+}
+
+///|
 test "hide stereotype restores the plain class header" {
   let plain = parse("@startuml\nclass Service\n@enduml")
   let hidden = parse(

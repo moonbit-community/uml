@@ -195,29 +195,31 @@ fn relation_endpoints(
   )
   let left_center = (left_x + left_width / 2, left_y + left_height / 2)
   let right_center = (right_x + right_width / 2, right_y + right_height / 2)
-  let (x1, y1) = if diagram.family.is_usecase() {
-    usecase_relation_endpoint(
-      left_x,
-      left_y,
-      left_width,
-      left_height,
-      right_center.0,
-      right_center.1,
-    )
-  } else {
-    left_center
+  let left_endpoint = diagram.entities[left_index].render_capability().relation_endpoint
+  let right_endpoint = diagram.entities[right_index].render_capability().relation_endpoint
+  let (x1, y1) = match left_endpoint {
+    ShapeBoundaryEndpoint | PortOrShapeBoundaryEndpoint =>
+      usecase_relation_endpoint(
+        left_x,
+        left_y,
+        left_width,
+        left_height,
+        right_center.0,
+        right_center.1,
+      )
+    CenterEndpoint => left_center
   }
-  let (x2, y2) = if diagram.family.is_usecase() {
-    usecase_relation_endpoint(
-      right_x,
-      right_y,
-      right_width,
-      right_height,
-      left_center.0,
-      left_center.1,
-    )
-  } else {
-    right_center
+  let (x2, y2) = match right_endpoint {
+    ShapeBoundaryEndpoint | PortOrShapeBoundaryEndpoint =>
+      usecase_relation_endpoint(
+        right_x,
+        right_y,
+        right_width,
+        right_height,
+        left_center.0,
+        left_center.1,
+      )
+    CenterEndpoint => right_center
   }
   ((x1, y1), (x2, y2))
 }

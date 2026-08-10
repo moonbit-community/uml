@@ -39,10 +39,36 @@ fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
 }
 
 ///|
-/// Paint an ordinary object with PlantUML's single ordered body.  Object
-/// images intentionally do not use the class circled spot or the separate
-/// fields/methods compartments.
-fn append_object_entity(
+fn append_entity_image(
+  output : StringBuilder,
+  diagram : EntityDiagram,
+  entity : Entity,
+  index : Int,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+  class_member_collapsible : Bool,
+) -> Unit {
+  match entity.render_capability().renderer {
+    ClassRenderer =>
+      append_entity(
+        output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
+      )
+    ObjectRenderer | MapRenderer | JsonRenderer =>
+      append_object_like_entity(
+        output, diagram, entity, index, text_metrics, layout,
+      )
+    UsecaseRenderer | ActorRenderer | ComponentRenderer =>
+      append_usecase_entity(
+        output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
+      )
+  }
+}
+
+///|
+/// Paint an object-family rectangular image without class-only spot or
+/// compartment semantics. Map rows and JSON trees replace the provisional
+/// empty object-like body in O3 and O4, while keeping this image contract.
+fn append_object_like_entity(
   output : StringBuilder,
   diagram : EntityDiagram,
   entity : Entity,
@@ -51,17 +77,18 @@ fn append_object_entity(
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
+  let capability = entity.render_capability()
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let header = entity.object_header_layout(text_metrics)
-  let body = entity.object_body_layout(text_metrics)
+  let body = entity.object_like_body_layout(text_metrics, capability)
   let row_height = text_metrics.row_height()
   let fill = @svg.svg_color(
     entity.color,
-    object_background_color(diagram.style),
+    capability.style_role.background_color(diagram.style),
   )
   let stroke = @svg.svg_color(
     entity.line_color,
-    object_border_color(diagram.style),
+    capability.style_role.border_color(diagram.style),
   )
   let stroke_style = @svg.stroke_style(entity.line_style)
   let line_attributes =
@@ -72,7 +99,7 @@ fn append_object_entity(
   let text_x = if body.has_visibility { 20 } else { 5 }
   let entity_colors = diagram.style.defaults().entity_colors()
   output <+
-    $|<g class="object-node" data-code="\{@svg.xml_escape(entity.qualified_code)}">
+    $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
   match entity.url {
     Some(url) =>
       output <+
@@ -81,14 +108,14 @@ fn append_object_entity(
   }
   output <+
     $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="\{OBJECT_ROUND_CORNER}" ry="\{OBJECT_ROUND_CORNER}" fill="\{fill}" \{line_attributes}/>
-  match (header.stereotype, placement.2) {
-    (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
+  match (capability.renders_stereotype, header.stereotype, placement.2) {
+    (true, Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
       output <+
-        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="object-stereotype" fill="\{object_font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
+        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="\{capability.stereotype_class()}" fill="\{capability.style_role.font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
     _ => ()
   }
   output <+
-    $|<text x="\{x + placement.0}" y="\{y + placement.1}" class="object-title" fill="\{object_font_color(diagram.style)}">\{@svg.xml_escape(entity.display)}</text><line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
+    $|<text x="\{x + placement.0}" y="\{y + placement.1}" class="\{capability.title_class()}" fill="\{capability.style_role.font_color(diagram.style)}">\{@svg.xml_escape(entity.display)}</text><line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
   let mut body_y = y + header.height
   for entry in body.entries {
     if entry.is_separator {
@@ -146,11 +173,11 @@ fn append_entity(
   }
   output <+
     $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
-  match placement.circle_center {
-    Some((circle_cx, circle_cy)) =>
+  match (entity.render_capability().spot, placement.circle_center) {
+    (ClassSpot, Some((circle_cx, circle_cy))) =>
       output <+
         $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
-    None => ()
+    _ => ()
   }
   match (header.stereotype, placement.stereotype_position) {
     (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
@@ -199,28 +226,20 @@ fn append_usecase_entity(
   class_member_collapsible : Bool,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
+  let capability = entity.render_capability()
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
-  let (background, border) = match entity.kind {
-    Usecase | BusinessUsecase =>
-      (
-        usecase_background_color(diagram.style),
-        usecase_border_color(diagram.style),
-      )
-    Actor | BusinessActor =>
-      (actor_background_color(diagram.style), actor_border_color(diagram.style))
-    _ =>
-      (class_background_color(diagram.style), class_border_color(diagram.style))
-  }
-  let fill = @svg.svg_color(entity.color, background)
-  let stroke = @svg.svg_color(entity.line_color, border)
-  let text_color = match entity.kind {
-    Usecase | BusinessUsecase => usecase_font_color(diagram.style)
-    Actor | BusinessActor => actor_font_color(diagram.style)
-    _ => diagram.style.diagram_text_color()
-  }
+  let fill = @svg.svg_color(
+    entity.color,
+    capability.style_role.background_color(diagram.style),
+  )
+  let stroke = @svg.svg_color(
+    entity.line_color,
+    capability.style_role.border_color(diagram.style),
+  )
+  let text_color = capability.style_role.font_color(diagram.style)
   let line_attributes = @svg.stroke_style(entity.line_style)
-  match entity.kind {
-    Usecase | BusinessUsecase | Actor | BusinessActor | Component => ()
+  match capability.renderer {
+    UsecaseRenderer | ActorRenderer | ComponentRenderer => ()
     _ => {
       append_entity(
         output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
@@ -228,14 +247,8 @@ fn append_usecase_entity(
       return
     }
   }
-  let node_class = match entity.kind {
-    Usecase | BusinessUsecase => "usecase-node"
-    Actor | BusinessActor => "actor-node"
-    Component => "component-node"
-    _ => ""
-  }
   output <+
-    $|<g class="\{node_class}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
+    $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
   match entity.url {
     Some(url) =>
       output <+
@@ -258,7 +271,7 @@ fn append_usecase_entity(
         Some(value) => {
           let metrics = text_metrics.usecase_italic.measure(value)
           output <+
-            $|<text x="\{x + width / 2}" y="\{content_top + metrics.baseline}" class="usecase-stereotype" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_italic.font_size}">\{@svg.xml_escape(value)}</text>
+            $|<text x="\{x + width / 2}" y="\{content_top + metrics.baseline}" class="\{capability.stereotype_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_italic.font_size}">\{@svg.xml_escape(value)}</text>
         }
         None => ()
       }
@@ -270,7 +283,7 @@ fn append_usecase_entity(
         None => content_top + title_metrics.baseline
       }
       output <+
-        $|<text x="\{x + width / 2}" y="\{title_y}" class="usecase-title" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
+        $|<text x="\{x + width / 2}" y="\{title_y}" class="\{capability.title_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
       if entity.kind is BusinessUsecase {
         let (mark_start, mark_end) = usecase_business_mark(x, y, width, height)
         output <+
@@ -296,7 +309,7 @@ fn append_usecase_entity(
         Some(value) => {
           let metrics = text_metrics.actor_italic.measure(value)
           output <+
-            $|<text x="\{center_x}" y="\{y + metrics.baseline}" class="usecase-stereotype" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_italic.font_size}">\{@svg.xml_escape(value)}</text>
+            $|<text x="\{center_x}" y="\{y + metrics.baseline}" class="\{capability.stereotype_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_italic.font_size}">\{@svg.xml_escape(value)}</text>
         }
         None => ()
       }
@@ -316,7 +329,7 @@ fn append_usecase_entity(
           $|<circle cx="\{center_x}" cy="\{figure_top + 9}" r="8" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x} \{figure_top + 17} L \{center_x} \{figure_top + 43} M \{center_x - 13} \{figure_top + 27} L \{center_x + 13} \{figure_top + 27} M \{center_x} \{figure_top + 43} L \{center_x - 13} \{figure_top + figure_height} M \{center_x} \{figure_top + 43} L \{center_x + 13} \{figure_top + figure_height}" fill="none" stroke="\{stroke}" style="\{line_attributes}"/>
       }
       output <+
-        $|<text x="\{center_x}" y="\{label_y}" class="usecase-title" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
+        $|<text x="\{center_x}" y="\{label_y}" class="\{capability.title_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
       if entity.kind is BusinessActor && figure_width == ACTOR_FIGURE_WIDTH {
         let (mark_start, mark_end) = actor_business_mark(
           center_x,
@@ -335,7 +348,7 @@ fn append_usecase_entity(
       let first_mark_y = tab_y + COMPONENT_TAB_MARK_TOP_OFFSET
       let second_mark_y = first_mark_y + COMPONENT_TAB_MARK_GAP
       output <+
-        $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + width / 2}" y="\{y + (height + title.height) / 2 - 2}" class="usecase-title" fill="\{text_color}">\{@svg.xml_escape(entity.display)}</text>
+        $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + width / 2}" y="\{y + (height + title.height) / 2 - 2}" class="\{capability.title_class()}" fill="\{text_color}">\{@svg.xml_escape(entity.display)}</text>
     }
     _ => ()
   }

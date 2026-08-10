@@ -256,6 +256,22 @@ fn Entity::object_body_layout(
 }
 
 ///|
+/// O3 and O4 replace the empty table/tree branches with their typed row
+/// layouts. Keeping the switch here ensures the body source is selected from
+/// capability metadata instead of reparsing renderer-private strings.
+fn Entity::object_like_body_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+  capability : EntityRenderCapability,
+) -> ObjectBodyLayout {
+  match capability.body {
+    OrderedMembers => self.object_body_layout(text_metrics)
+    MapEntries | JsonData => self.object_body_layout(text_metrics)
+    ClassCompartments | NoBody => panic()
+  }
+}
+
+///|
 fn ObjectHeaderLayout::placement(
   self : ObjectHeaderLayout,
   rect_width : Int,
@@ -878,42 +894,45 @@ fn Entity::component_geometry(
 fn Entity::node_geometry(
   self : Entity,
   text_metrics : ClassTextMetrics,
-  family : EntityFamily,
+  _family : EntityFamily,
 ) -> NodeGeometry {
-  if family is ObjectDiagram && self.kind is Object {
-    return {
-      width: self.object_width(text_metrics),
-      height: self.object_height(text_metrics),
-      shape: Box,
-    }
-  }
-  guard !family.is_usecase() else {
-    match self.kind {
-      Usecase | BusinessUsecase => {
-        let (content_width, content_height, _) = self.usecase_content_layout(
-          text_metrics,
-        )
-        let (width, height) = text_block_in_ellipse_geometry(
-          content_width, content_height,
-        )
-        { width, height, shape: Ellipse }
+  let capability = self.render_capability()
+  match (capability.header, capability.body, capability.renderer) {
+    (
+      ObjectHeader,
+      OrderedMembers
+      | MapEntries
+      | JsonData,
+      ObjectRenderer
+      | MapRenderer
+      | JsonRenderer,
+    ) =>
+      {
+        width: self.object_width(text_metrics),
+        height: self.object_height(text_metrics),
+        shape: capability.shape,
       }
-      Actor | BusinessActor => {
-        let (width, height, _) = self.actor_content_layout(text_metrics)
-        { width, height, shape: Box }
-      }
-      Component => self.component_geometry(text_metrics)
-      _ =>
-        {
-          width: self.width(text_metrics),
-          height: self.height(text_metrics),
-          shape: Box,
-        }
+    (DescriptionHeader, NoBody, UsecaseRenderer) => {
+      let (content_width, content_height, _) = self.usecase_content_layout(
+        text_metrics,
+      )
+      let (width, height) = text_block_in_ellipse_geometry(
+        content_width, content_height,
+      )
+      { width, height, shape: capability.shape }
     }
-  }
-  {
-    width: self.width(text_metrics),
-    height: self.height(text_metrics),
-    shape: Box,
+    (DescriptionHeader, NoBody, ActorRenderer) => {
+      let (width, height, _) = self.actor_content_layout(text_metrics)
+      { width, height, shape: capability.shape }
+    }
+    (DescriptionHeader, NoBody, ComponentRenderer) =>
+      self.component_geometry(text_metrics)
+    (ClassHeader, ClassCompartments, ClassRenderer) =>
+      {
+        width: self.width(text_metrics),
+        height: self.height(text_metrics),
+        shape: capability.shape,
+      }
+    _ => panic()
   }
 }

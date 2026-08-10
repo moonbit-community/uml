@@ -3,11 +3,10 @@ fn EntityDiagram::render_svg_with_mode(
   self : EntityDiagram,
   class_member_collapsible : Bool,
 ) -> String raise @dot_layout.DotLayoutError {
-  let usecase = self.family.is_usecase()
-  let collapsible = match self.family {
-    ClassDiagram => class_member_collapsible
-    _ => false
-  }
+  let family_capability = self.family.capability()
+  let usecase = family_capability.usecase_relation_style
+  let collapsible = family_capability.class_members_collapsible &&
+    class_member_collapsible
   let background = self.style.canvas_color()
   let font_family = self.style.font_family()
   let font_size = self.style.font_size()
@@ -36,9 +35,8 @@ fn EntityDiagram::render_svg_with_mode(
   let view_box_x = bounds.min_x - SVG_MARGIN_LEFT.to_double()
   let view_box_y = bounds.min_y - SVG_MARGIN_TOP.to_double()
   let output = StringBuilder()
-  let diagram_label = if usecase { "Use case diagram" } else { "Class diagram" }
   output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{diagram_label}">
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{family_capability.aria_label}">
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
@@ -58,44 +56,53 @@ fn EntityDiagram::render_svg_with_mode(
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)
-  if self.family is ObjectDiagram {
+  let has_object_image = self.entities.any(entity => {
+    match entity.render_capability().renderer {
+      ObjectRenderer | MapRenderer | JsonRenderer => true
+      _ => false
+    }
+  })
+  if has_object_image {
     let object_style =
-      $|<style>.object-node > rect,.object-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.object-separator{fill:none}.object-title{fill:\{text_color};text-anchor:middle}.object-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
+      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
     output.write_string(object_style)
   }
 
   let style_note =
     $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
   output.write_string(style_note)
-  append_packages(output, self, text_metrics, layout)
-  if usecase {
-    for index, entity in self.entities {
-      append_usecase_entity(
-        output, self, entity, index, text_metrics, layout, collapsible,
-      )
+  if family_capability.renders_packages {
+    append_packages(output, self, text_metrics, layout)
+  }
+  match family_capability.paint_order {
+    EntitiesBeforeRelations => {
+      for index, entity in self.entities {
+        append_entity_image(
+          output, self, entity, index, text_metrics, layout, collapsible,
+        )
+      }
+      for relation_index, relation in self.relations {
+        append_relation(
+          output, self, relation_index, relation, text_metrics, layout,
+        )
+      }
     }
-    for relation_index, relation in self.relations {
-      append_relation(
-        output, self, relation_index, relation, text_metrics, layout,
-      )
-    }
-  } else {
-    for relation_index, relation in self.relations {
-      append_relation(
-        output, self, relation_index, relation, text_metrics, layout,
-      )
-    }
-    for index, entity in self.entities {
-      if self.family is ObjectDiagram && entity.kind is Object {
-        append_object_entity(output, self, entity, index, text_metrics, layout)
-      } else {
-        append_entity(
+    RelationsBeforeEntities => {
+      for relation_index, relation in self.relations {
+        append_relation(
+          output, self, relation_index, relation, text_metrics, layout,
+        )
+      }
+      for index, entity in self.entities {
+        append_entity_image(
           output, self, entity, index, text_metrics, layout, collapsible,
         )
       }
     }
   }
-  append_notes(output, self, text_metrics, layout)
+  if family_capability.renders_notes {
+    append_notes(output, self, text_metrics, layout)
+  }
   output.write_string("</svg>\n")
   output.to_string()
 }
@@ -106,8 +113,8 @@ fn EntityDiagram::render_svg_with_mode(
 /// Node placement is deterministic so parsing and rendering can be used without
 /// an external process. The graph-layout adapter will replace these coordinates
 /// with Graphviz positions while retaining this entity and relation painter.
-/// The diagram family selects the symbol set: class/object/component diagrams
-/// draw class nodes, while use-case diagrams draw actors and ellipses.
+/// Diagram-family capabilities select parser and paint-order policy, while the
+/// entity kind selects its PlantUML image, geometry and SVG style role.
 ///
 /// When `class_member_collapsible` is set, class-diagram members (fields and
 /// methods) are wrapped in a `<foreignObject>`/`<details>` disclosure so they
