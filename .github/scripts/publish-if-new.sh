@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 # Publish the workspace module in directory $1 (registry name $2) unless the
-# version in its moon.mod is already on mooncakes.io. Requires
-# MOONCAKES_USERNAME and MOONCAKES_TOKEN; skips with a notice when the token
-# is absent so each namespace can be gated on its own repository secret.
+# version in its moon.mod is already on mooncakes.io. When publishing is
+# needed, MOONCAKES_CREDENTIALS must contain a complete credentials.json.
 set -euo pipefail
 
 dir="$1"
 module="$2"
-
-if [ -z "${MOONCAKES_TOKEN:-}" ]; then
-  echo "::notice::MOONCAKES_TOKEN for $module is not configured; skipping publish"
-  exit 0
-fi
 
 version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$dir/moon.mod")
 if [ -z "$version" ]; then
@@ -24,15 +18,29 @@ fi
 # resolution.
 moon update
 index="$HOME/.moon/registry/index/user/$module.index"
-if [ -f "$index" ] && grep -q "\"version\": \"$version\"" "$index"; then
-  echo "$module@$version is already on mooncakes.io; nothing to publish"
-  exit 0
+if [ -f "$index" ]; then
+  published=$(jq -sr --arg version "$version" 'any(.[]; .version == $version)' "$index")
+  if [ "$published" = "true" ]; then
+    echo "$module@$version is already on mooncakes.io; nothing to publish"
+    exit 0
+  fi
+fi
+
+if [ -z "${MOONCAKES_CREDENTIALS:-}" ]; then
+  echo "::error::credentials for $module are not configured"
+  exit 1
 fi
 
 mkdir -p "$HOME/.moon"
-printf '{"username": "%s", "token": "%s"}\n' \
-  "$MOONCAKES_USERNAME" "$MOONCAKES_TOKEN" > "$HOME/.moon/credentials.json"
-trap 'rm -f "$HOME/.moon/credentials.json"' EXIT
+credentials_file="$HOME/.moon/credentials.json"
+umask 077
+printf '%s\n' "$MOONCAKES_CREDENTIALS" > "$credentials_file"
+trap 'rm -f "$credentials_file"' EXIT
+if ! jq -e '(.token | type == "string") and (.token | length > 0)' \
+  "$credentials_file" > /dev/null; then
+  echo "::error::credentials for $module are not valid credentials JSON"
+  exit 1
+fi
 
 echo "publishing $module@$version"
 moon -C "$dir" publish

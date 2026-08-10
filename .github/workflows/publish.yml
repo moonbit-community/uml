@@ -1,8 +1,6 @@
 # Publishes workspace modules to mooncakes.io when their moon.mod version is
-# ahead of the registry. Each namespace is gated on its own repository secret
-# (mooncakes tokens are per-account): steps without a configured token skip
-# with a notice instead of failing, so kokic/uml and moonbit-community/uml_cli
-# can be released independently.
+# ahead of the registry. Credentials are required only when the corresponding
+# version has not already been published.
 name: publish
 
 on:
@@ -11,6 +9,8 @@ on:
     paths:
       - "uml/moon.mod"
       - "uml_cli/moon.mod"
+      - ".github/scripts/publish-if-new.sh"
+      - ".github/workflows/publish.yml"
   workflow_dispatch:
 
 permissions:
@@ -25,22 +25,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: install moonbit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
+      - name: post install
+        run: |
+          moon version --all
+          moon update
+
+      - name: prepublish check
+        run: |
+          bash .github/scripts/publish-if-new_test.sh
+          moon check
+          moon test
+          moon -C uml_cli cram test --release tests/cram
+
       # The library must go first: uml_cli resolves kokic/uml from the
       # registry at publish time.
       - name: publish kokic/uml
         env:
-          MOONCAKES_USERNAME: kokic
-          MOONCAKES_TOKEN: ${{ secrets.MOONCAKES_TOKEN_KOKIC }}
+          MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_KOKIC_CREDENTIALS }}
         run: .github/scripts/publish-if-new.sh uml kokic/uml
+
+      # Validate outside moon.work so the CLI resolves exactly the version
+      # that its published manifest names, rather than the local workspace copy.
+      - name: verify published uml dependency
+        run: |
+          cli_dir=$(mktemp -d "$RUNNER_TEMP/uml-cli-release.XXXXXX")
+          cp -R uml_cli/. "$cli_dir/"
+          moon update
+          moon -C "$cli_dir" check
+          moon -C "$cli_dir" cram test --release tests/cram
 
       - name: publish moonbit-community/uml_cli
         env:
-          MOONCAKES_USERNAME: moonbit-community
-          MOONCAKES_TOKEN: ${{ secrets.MOONCAKES_TOKEN_COMMUNITY }}
+          MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
         run: .github/scripts/publish-if-new.sh uml_cli moonbit-community/uml_cli
