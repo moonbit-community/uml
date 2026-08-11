@@ -11,28 +11,21 @@ priv struct RawIdea {
 
 ///|
 fn marker_end(line : String) -> Int {
-  let chars = line.to_array()
-  let mut index = 0
-  while index < chars.length() && (chars[index] == ' ' || chars[index] == '\t') {
-    index += 1
-  }
-  while index < chars.length() &&
-        (
-          chars[index] == '*' ||
-          chars[index] == '#' ||
-          chars[index] == '+' ||
-          chars[index] == '-'
-        ) {
-    index += 1
-  }
-  index
+  let cursor = @parse.Cursor::new(line)
+  ignore(cursor.skip_inline_whitespace())
+  ignore(
+    cursor.skip_while(char => {
+      char == '*' || char == '#' || char == '+' || char == '-'
+    }),
+  )
+  cursor.offset()
 }
 
 ///|
 fn marker_is_valid(marker : String) -> Bool {
-  let chars = marker.to_array()
+  let cursor = @parse.Cursor::new(marker)
   let mut found = false
-  for char in chars {
+  while cursor.advance() is Some(char) {
     if char == '*' || char == '#' || char == '+' || char == '-' {
       found = true
     } else if char != ' ' && char != '\t' {
@@ -44,7 +37,14 @@ fn marker_is_valid(marker : String) -> Bool {
 
 ///|
 fn marker_count(marker : String) -> Int {
-  marker.to_array().filter(char => char == '*' || char == '#').length()
+  let cursor = @parse.Cursor::new(marker)
+  let mut count = 0
+  while cursor.advance() is Some(char) {
+    if char == '*' || char == '#' {
+      count += 1
+    }
+  }
+  count
 }
 
 ///|
@@ -91,16 +91,17 @@ fn parse_raw_idea(line : String) -> RawIdea? {
   guard marker_is_valid(marker) else { return None }
   let remainder = line[end:].to_owned()
   let (color, shape, label) = parse_color_and_shape(remainder)
-  let chars = marker.to_array()
-  let is_org = chars.any(char => char == '*' || char == '#')
-  let is_plus = chars.any(char => char == '+' || char == '-')
+  let is_org = marker.contains("*") || marker.contains("#")
+  let is_plus = marker.contains("+") || marker.contains("-")
   guard is_org != is_plus else { return None }
   if is_plus {
-    let level = chars.filter(char => char == '+' || char == '-').length() - 1
+    let cursor = @parse.Cursor::new(marker)
+    ignore(cursor.skip_inline_whitespace())
+    let level = cursor.skip_while(char => char == '+' || char == '-') - 1
     return Some({
       marker,
       level,
-      direction: Some(if chars.any(char => char == '-') { Left } else { Right }),
+      direction: Some(if marker.contains("-") { Left } else { Right }),
       shape,
       background_color: color,
       label,

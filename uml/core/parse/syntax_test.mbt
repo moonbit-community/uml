@@ -16,6 +16,10 @@ test "shared PlantUML syntax helpers respect quoted text" {
     strip_line_comment("class A [[https://example.com/o'clock"),
     "class A [[https://example.com/o'clock",
   )
+  @test.assert_eq(
+    strip_line_comment_preserving_indent("  ** Child ' comment"),
+    "  ** Child",
+  )
   @test.assert_eq(split_unquoted("A, \"B, C\", D", ','), [
     "A", " \"B, C\"", " D",
   ])
@@ -114,6 +118,8 @@ test "finds literals only outside quoted text" {
   )
   @test.assert_eq(find_literal("角色::端口", "::"), Some(2))
   @test.assert_eq(find_literal("abc", ""), Some(0))
+  @test.assert_eq(unquoted_delimiter_delta("{\"key\": \"}\"}", '{', '}'), 0)
+  @test.assert_eq(unquoted_delimiter_delta("{\"key\": {", '{', '}'), 2)
 }
 
 ///|

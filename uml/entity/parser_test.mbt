@@ -1067,7 +1067,7 @@ test "parses multiline and single-line JSON entities" {
 }
 
 ///|
-test "parsec brace grammar ignores braces inside JSON strings" {
+test "shared brace scanner ignores braces inside JSON strings" {
   let diagram = parse(
     "@startuml\njson Template {\n\"pattern\": \"{user}/{id}\"\n}\n@enduml",
   )

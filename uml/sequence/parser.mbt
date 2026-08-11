@@ -11,8 +11,8 @@ fn ParseCtx::consume_style_directive(
     self.source.skip_line()
     let closed = @style.consume_skinparam_body(
       fn() {
-        guard !self.source.eof() else { return None }
-        Some(@parse.strip_line_comment(self.source.collect_line()))
+        guard !self.source.is_eof() else { return None }
+        Some(@parse.strip_line_comment(self.source.take_line()))
       },
       fn(directive) { self.style.apply(directive) },
     )
@@ -50,7 +50,7 @@ fn diagram_options(events : Array[Event]) -> DiagramOptions {
 }
 
 ///|
-fn skip_ignored_line(source : Source) -> Bool {
+fn skip_ignored_line(source : @parse.Cursor) -> Bool {
   let line = source.current_line().trim()
   if line.length() == 0 || line.has_prefix("'") {
     source.skip_line()
@@ -71,7 +71,7 @@ fn skip_ignored_line(source : Source) -> Bool {
 pub fn parse(input : String) -> SequenceDiagram raise @parse.ParseError {
   let ctx = ParseCtx::new(input)
 
-  while !ctx.source.eof() {
+  while !ctx.source.is_eof() {
     guard !skip_ignored_line(ctx.source) else { continue }
     let raw_line = ctx.source.current_line()
     let line = @parse.strip_line_comment(raw_line)

@@ -158,17 +158,3 @@ fn reference_line_parser() -> @talc.StringParser[ReferenceLineSyntax] {
   })
   .skip(@talc.eof())
 }
-
-///|
-fn Source::take_block_text(
-  self : Source,
-  terminator : (String) -> Bool,
-) -> String? {
-  @parse.collect_lines_until(
-    fn() {
-      guard !self.eof() else { return None }
-      Some(self.collect_line())
-    },
-    line => terminator(line.trim().to_lower().to_owned()),
-  ).map(lines => lines.join("\n"))
-}

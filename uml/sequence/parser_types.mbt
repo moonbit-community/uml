@@ -25,7 +25,7 @@ priv struct DressingResult {
 
 ///|
 priv struct ParseCtx {
-  source : Source
+  source : @parse.Cursor
   participants : Map[String, Participant]
   events : Array[Event]
   box_stack : Array[ParticipantBox]
@@ -40,7 +40,7 @@ priv struct ParseCtx {
 ///|
 fn ParseCtx::new(input : String) -> ParseCtx {
   {
-    source: Source::new(@parse.preprocess(input)),
+    source: @parse.Cursor::new(@parse.preprocess(input)),
     participants: Map([]),
     events: [],
     box_stack: [],

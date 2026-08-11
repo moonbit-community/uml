@@ -8,6 +8,20 @@ priv enum SequenceLineSyntax {
 }
 
 ///|
+fn take_block_text(
+  source : @parse.Cursor,
+  terminator : (String) -> Bool,
+) -> String? {
+  @parse.collect_lines_until(
+    fn() {
+      guard !source.is_eof() else { return None }
+      Some(source.take_line())
+    },
+    line => terminator(line.trim().to_lower().to_owned()),
+  ).map(lines => lines.join("\n"))
+}
+
+///|
 fn title_line_parser() -> @talc.StringParser[SequenceLineSyntax] {
   keyword_parser("title")
   .then(line_rest_parser("title"))
@@ -54,7 +68,7 @@ fn ParseCtx::apply_note_syntax(
     Inline(text) => text
     Multiline =>
       match
-        self.source.take_block_text(line => {
+        take_block_text(self.source, line => {
           line == "end note" ||
           line == "endnote" ||
           line == "end hnote" ||
@@ -89,7 +103,7 @@ fn ParseCtx::apply_reference_syntax(
     Inline(text) => @parse.normalize_label(text)
     Multiline =>
       match
-        self.source.take_block_text(line => {
+        take_block_text(self.source, line => {
           line == "end ref" || line == "endref"
         }) {
         Some(text) => Some(text)
@@ -123,7 +137,7 @@ fn ParseCtx::apply_line_syntax(
     ParsedTitle(text) => {
       self.source.skip_line()
       if text is Multiline &&
-        self.source.take_block_text(line => line == "end title") is None {
+        take_block_text(self.source, line => line == "end title") is None {
         self.source.raise_parse_error("unclosed title")
       }
     }

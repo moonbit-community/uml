@@ -90,17 +90,10 @@ fn Parser::consume_multiline_element(
   self.index += 1
   while self.index < self.lines.length() {
     let line = @parse.strip_line_comment(self.lines[self.index])
-    let chars = line.to_array()
-    let mut closing = None
-    for index in 0..<chars.length() {
-      if chars[index] == header.terminator {
-        closing = Some(index)
-        break
-      }
-    }
-    match closing {
+    let cursor = @parse.Cursor::new(line)
+    match @parse.find_literal(line, header.terminator.to_string()) {
       Some(index) => {
-        let tail = line[0:index].to_owned()
+        let tail = cursor.slice(0, index)
         if display.to_string().length() > 0 && tail.length() > 0 {
           display.write_char('\n')
         }
@@ -314,29 +307,6 @@ fn linked_map_arrow_parser() -> @talc.StringParser[(String, String)] {
 }
 
 ///|
-fn brace_delta_parser() -> @talc.StringParser[Int] {
-  let quoted_part = @talc.char('\\')
-    .then(@talc.satisfy("escaped JSON character", _ => true))
-    .or(@talc.none_of("\""))
-  let quoted = @talc.char('"')
-    .then(quoted_part.many())
-    .skip(@talc.char('"').optional())
-    .map(_ => 0)
-  let token = quoted
-    .attempt()
-    .or(@talc.char('{').map(_ => 1))
-    .or(@talc.char('}').map(_ => -1))
-    .or(@talc.satisfy("JSON character", _ => true).map(_ => 0))
-  token
-  .many()
-  .skip(@talc.eof())
-  .map(tokens => tokens.fold(init=0, (sum, value) => sum + value))
-}
-
-///|
 fn parse_brace_delta(line : String) -> Int {
-  match brace_delta_parser().parse(@talc.Input::new(line)) {
-    Ok(delta) => delta
-    Err(_) => 0
-  }
+  @parse.unquoted_delimiter_delta(line, '{', '}')
 }
