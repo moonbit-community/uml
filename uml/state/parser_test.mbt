@@ -284,6 +284,62 @@ test "parsec transition grammar preserves reverse endpoints and line styles" {
 }
 
 ///|
+test "transition arrow splits hyphens and styles around the direction" {
+  let diagram = parse(
+    "@startuml\nA -[dashed]left-> B\nC -up-> D\nE x-[bold]-> F\n@enduml",
+  )
+  let transitions = diagram.transitions
+  @test.assert_eq(transitions[0].direction, Leftward)
+  @test.assert_eq(transitions[0].line_style, Some("dashed"))
+  @test.assert_eq(transitions[1].direction, Upward)
+  @test.assert_eq(transitions[2].line_style, Some("bold"))
+  @test.assert_eq(transitions[2].has_cross_start, true)
+}
+
+///|
+test "reverse arrow keeps reversed endpoints and a bare cross marker" {
+  let diagram = parse("@startuml\nA <-left- B\nC <-x D\nE o<-- F\n@enduml")
+  let transitions = diagram.transitions
+  @test.assert_eq(transitions[0].source, "B")
+  @test.assert_eq(transitions[0].target, "A")
+  @test.assert_eq(transitions[0].direction, Leftward)
+  @test.assert_eq(transitions[1].source, "D")
+  @test.assert_eq(transitions[1].target, "C")
+  @test.assert_eq(transitions[1].line_style, None)
+  @test.assert_eq(transitions[2].source, "F")
+  @test.assert_eq(transitions[2].target, "E")
+}
+
+///|
+test "compact group openers and the begin keyword open composite states" {
+  let diagram = parse(
+    "@startuml\nstate Work{\nstate A\n}\nstate Flow begin\nstate B\nend state\n@enduml",
+  )
+  @test.assert_eq(diagram.state("A").unwrap().parent, Some("Work"))
+  @test.assert_eq(diagram.state("B").unwrap().parent, Some("Flow"))
+}
+
+///|
+test "synchronization endpoints consume surrounding spaces in transitions" {
+  let diagram = parse("@startuml\n[*] --> ==join==\n==join== --> Done\n@enduml")
+  @test.assert_eq(diagram.transitions.length(), 2)
+  @test.assert_eq(
+    diagram.state("__synchronization_join").unwrap().kind,
+    Synchronization,
+  )
+}
+
+///|
+test "quoted identifiers and escaped quotes stay single tokens" {
+  let diagram = parse(
+    "@startuml\nstate \"A \\\"quoted\\\"\" as Q\n\"A \\\"quoted\\\"\" --> Q\n@enduml",
+  )
+  let state = diagram.state("Q").unwrap()
+  @test.assert_eq(state.display, "A \\\"quoted\\\"")
+  @test.assert_eq(diagram.transitions.length(), 1)
+}
+
+///|
 fn layout_node(layout : StateLayout, code : String) -> StateNodeLayout {
   for node in layout.nodes {
     if node.code == code {

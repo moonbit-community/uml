@@ -38,3 +38,16 @@ test "scanner preserves quoted and delimited syntax fragments" {
   )
   @test.assert_eq(cursor.is_eof(), true)
 }
+
+///|
+test "strict quoted value requires a closing quote" {
+  let cursor = Cursor::new("\"A\\\" B\" tail")
+  @test.assert_eq(cursor.take_quoted_value(), Some("A\\\" B"))
+  @test.assert_eq(cursor.skip_inline_whitespace(), 1)
+  @test.assert_eq(cursor.remaining(), "tail")
+
+  let unclosed = Cursor::new("\"A\\\" B")
+  @test.assert_eq(unclosed.take_quoted_value(), None)
+  @test.assert_eq(unclosed.is_eof(), false)
+  @test.assert_eq(unclosed.remaining(), "\"A\\\" B")
+}

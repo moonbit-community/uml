@@ -1,5 +1,4 @@
 import {
-  "kokic/talcparsec" @talc,
   "kokic/uml/core/metrics",
   "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/geom",

@@ -33,6 +33,27 @@ pub fn Cursor::take_quoted_text(self : Cursor) -> String? {
 }
 
 ///|
+/// Consumes a double-quoted value, returning its unquoted content. Unlike
+/// `take_quoted_text`, requires a closing quote: an unclosed fragment
+/// consumes nothing and restores the original position.
+pub fn Cursor::take_quoted_value(self : Cursor) -> String? {
+  guard self.peek() == Some('"') else { return None }
+  let start = self.offset
+  ignore(self.advance())
+  while self.advance() is Some(char) {
+    if char == '\\' {
+      ignore(self.advance())
+      continue
+    }
+    if char == '"' {
+      return Some(self.slice(start + 1, self.offset - 1))
+    }
+  }
+  ignore(self.restore(start))
+  None
+}
+
+///|
 /// Consumes text surrounded by `open` and `close`, preserving the delimiters.
 /// An unclosed fragment consumes the remaining input.
 pub fn Cursor::take_delimited_text(
