@@ -12,4 +12,5 @@ pub(all) enum DiagramKind {
   Json
   Yaml
   Toml
+  Dot
 }

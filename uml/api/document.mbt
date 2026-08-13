@@ -12,6 +12,7 @@ pub enum Diagram {
   Json(@structured.StructuredDiagram)
   Yaml(@structured.StructuredDiagram)
   Toml(@structured.StructuredDiagram)
+  Dot(DotDiagram)
 }
 
 ///|
@@ -39,6 +40,7 @@ pub fn Diagram::render_svg(
     Mindmap(diagram) => diagram.render_svg(color_scheme~)
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
       diagram.render_svg(color_scheme~)
+    Dot(diagram) => diagram.render_svg()
   }
 }
 
@@ -56,6 +58,7 @@ pub fn Document::kind(self : Document) -> DiagramKind {
     Json(_) => Json
     Yaml(_) => Yaml
     Toml(_) => Toml
+    Dot(_) => Dot
   }
 }
 
@@ -72,6 +75,7 @@ pub fn parse(source : String) -> Document raise {
       { diagram: Yaml(@structured.parse_yaml(source)) }
     _ if is_toml_source(source) =>
       { diagram: Toml(@structured.parse_toml(source)) }
+    _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)) }
     _ if is_mindmap_source(source) =>
       { diagram: Mindmap(@mindmap.parse(source)) }
     _ if is_sequence_source(source) =>
@@ -322,6 +326,12 @@ pub fn is_yaml_source(input : String) -> Bool {
 /// Returns whether the source uses this project's TOML diagram delimiters.
 pub fn is_toml_source(input : String) -> Bool {
   input.trim().to_lower().has_prefix("@starttoml")
+}
+
+///|
+/// Returns whether the source uses PlantUML's DOT diagram delimiters.
+pub fn is_dot_source(input : String) -> Bool {
+  input.trim().to_lower().has_prefix("@startdot")
 }
 
 ///|

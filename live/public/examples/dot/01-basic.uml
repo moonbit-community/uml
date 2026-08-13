@@ -1,0 +1,7 @@
+@startdot
+digraph G {
+  rankdir=LR;
+  a -> b -> c;
+  a -> c [label="direct"];
+}
+@enddot

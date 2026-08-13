@@ -177,5 +177,6 @@ fn kind_name(kind : @api.DiagramKind) -> String {
     Json => "json"
     Yaml => "yaml"
     Toml => "toml"
+    Dot => "dot"
   }
 }

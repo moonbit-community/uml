@@ -226,6 +226,29 @@ test "toml diagram" (it : @test.Test) {
 
 ![TOML diagram](./__snapshot__/toml.svg)
 
+### DOT diagram
+
+`@startdot` forwards the DOT source to the shared graphviz engine, like
+PlantUML does with the system `dot` executable:
+
+```mbt check
+///|
+test "dot diagram" (it : @test.Test) {
+  let source =
+    #|@startdot
+    #|digraph G {
+    #|  rankdir=LR;
+    #|  a -> b -> c;
+    #|  a -> c [label="direct"];
+    #|}
+    #|@enduml
+  it.write(@api.render_svg(source))
+  it.snapshot(filename="dot.svg")
+}
+```
+
+![DOT diagram](./__snapshot__/dot.svg)
+
 ## Theming
 
 `render_svg` accepts a `color_scheme`. The two positional roles are the ink
@@ -300,12 +323,6 @@ test "collapsible class members" {
   assert_true(svg.contains("<details"))
 }
 ```
-
-## Supported diagrams
-
-Available: sequence, class, usecase, mindmap, yaml, toml, json.
-
-Under construction: object, state, component, activity.
 
 ## Snapshot workflow
 

@@ -17,18 +17,48 @@ gallery (use case, YAML, TOML, dark theming) and API walkthrough.
 
 ## Supported diagrams
 
-Available:
+Diagram types that render a picture, matching PlantUML's `DiagramType`.
+`usecase` and the legacy sub-diagrams (`timing`, `composite`) are started from
+`@startuml`; `toml` is an extension not present in PlantUML.
+
+Done:
 
 - sequence
 - class
 - usecase
 - mindmap
-- yaml
-- toml
 - json
+- yaml
+- toml (extension)
+- dot
 
-Under construction:
+In progress:
 
 - object
 - state
 - component
+- activity
+
+Planned:
+
+- timing
+- composite
+- bpm
+- board
+- chart
+- chronology
+- chen
+- ditaa
+- ebnf
+- flow
+- files
+- gantt
+- git
+- hcl
+- jcckit
+- nwdiag
+- packetdiag
+- regex
+- salt
+- wire
+- wbs
