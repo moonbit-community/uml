@@ -219,8 +219,13 @@ fn append_entity(
   } else {
     height
   }
+  let node_index_attribute = if class_member_collapsible {
+    " data-node-index=\"\{index}\" style=\"--uml-header-height:\{header.height}px\""
+  } else {
+    ""
+  }
   output <+
-    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
+    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"\{node_index_attribute}><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
   match (entity.render_capability().spot, placement.circle_center) {
     (ClassSpot, Some((circle_cx, circle_cy))) =>
       output <+

@@ -56,6 +56,15 @@ fn EntityDiagram::render_svg_with_mode(
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)
+  let collapse_style = collapsible_relation_style(
+    self, layout, text_metrics, collapsible,
+  )
+  if collapse_style != "" {
+    output <+
+      $|<style>
+      $|.class-node:has(details:not([open])) foreignObject{height:var(--uml-header-height)}
+      $|\{collapse_style}</style>\n
+  }
   let has_object_image = self.entities.any(entity => {
     match entity.render_capability().renderer {
       ObjectRenderer | MapRenderer | JsonRenderer => true
@@ -83,14 +92,14 @@ fn EntityDiagram::render_svg_with_mode(
       }
       for relation_index, relation in self.relations {
         append_relation(
-          output, self, relation_index, relation, text_metrics, layout,
+          output, self, relation_index, relation, text_metrics, layout, collapsible,
         )
       }
     }
     RelationsBeforeEntities => {
       for relation_index, relation in self.relations {
         append_relation(
-          output, self, relation_index, relation, text_metrics, layout,
+          output, self, relation_index, relation, text_metrics, layout, collapsible,
         )
       }
       for index, entity in self.entities {

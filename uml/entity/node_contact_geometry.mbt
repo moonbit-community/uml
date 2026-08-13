@@ -200,3 +200,39 @@ fn clip_ray_to_node(
     Ellipse => clip_ray_to_ellipse(endpoint, adjacent, bounds)
   }
 }
+
+///|
+/// Closest point on an axis-aligned rectangle to a given point. Used to
+/// re-anchor a relation onto the header strip of a collapsed class node: the
+/// projected point stays on the header boundary, and the segment from any
+/// outside point to its projection never crosses the rectangle interior.
+fn closest_point_on_rect(target : Point, bounds : Rect) -> Point {
+  let left = bounds.center.x - bounds.width / 2.0
+  let right = bounds.center.x + bounds.width / 2.0
+  let top = bounds.center.y - bounds.height / 2.0
+  let bottom = bounds.center.y + bounds.height / 2.0
+  point(target.x.min(right).max(left), target.y.min(bottom).max(top))
+}
+
+///|
+/// Which edge of an axis-aligned rectangle a boundary point lies on, choosing
+/// the nearest side when the point sits on a corner.
+fn rect_contact_side(point : Point, bounds : Rect) -> RelationContactSide {
+  let left = bounds.center.x - bounds.width / 2.0
+  let right = bounds.center.x + bounds.width / 2.0
+  let top = bounds.center.y - bounds.height / 2.0
+  let bottom = bounds.center.y + bounds.height / 2.0
+  let candidates = [
+    ((point.x - left).abs(), ContactWest),
+    ((point.x - right).abs(), ContactEast),
+    ((point.y - top).abs(), ContactNorth),
+    ((point.y - bottom).abs(), ContactSouth),
+  ]
+  let mut closest = candidates[0]
+  for candidate in candidates[1:] {
+    if candidate.0 < closest.0 {
+      closest = candidate
+    }
+  }
+  closest.1
+}

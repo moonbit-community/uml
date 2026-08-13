@@ -1076,6 +1076,86 @@ test "class_member_collapsible shrinks the node rect to the header" {
 }
 
 ///|
+fn relation_path_data(svg : String, state_class : String) -> String {
+  let marker = "<g class=\"edge-state edge-state-\{state_class}\">"
+  let start = svg.find(marker).unwrap_or(0)
+  let tail = svg[start:]
+  let d_start = tail.find("d=\"").unwrap_or(0)
+  let data = tail[d_start + 3:]
+  data[0:data.find("\"").unwrap_or(0)].to_owned()
+}
+
+///|
+test "class_member_collapsible wraps collapsible relations in edge states" {
+  let source = "@startuml\nclass A {\n+ x : Int\n}\nclass B {\n+ y : Int\n}\nA --> B\n@enduml"
+  let plain = parse(source).render_svg()
+  let collapsible = parse(source).render_svg(class_member_collapsible=true)
+  @test.assert_eq(plain.contains("data-edge-index"), false)
+  @test.assert_eq(plain.contains("edge-state"), false)
+  @test.assert_eq(
+    collapsible.contains("<g class=\"edge\" data-edge-index=\"0\">"),
+    true,
+  )
+  for state in ["00", "10", "01", "11"] {
+    @test.assert_eq(
+      collapsible.contains("<g class=\"edge-state edge-state-\{state}\">"),
+      true,
+    )
+  }
+  @test.assert_eq(
+    collapsible.contains(
+      "svg:has(.class-node[data-node-index=\"0\"] details:not([open])):has(.class-node[data-node-index=\"1\"] details:not([open])) > g[data-edge-index=\"0\"] > .edge-state-11{display:block}",
+    ),
+    true,
+  )
+  @test.assert_eq(
+    collapsible.contains(
+      "svg:has(.class-node[data-node-index=\"0\"] details[open]):has(.class-node[data-node-index=\"1\"] details[open]) > g[data-edge-index=\"0\"] > .edge-state-00{display:block}",
+    ),
+    true,
+  )
+  @test.assert_eq(
+    collapsible.contains(
+      ".class-node:has(details:not([open])) foreignObject{height:var(--uml-header-height)}",
+    ),
+    true,
+  )
+  @test.assert_eq(
+    collapsible.contains("data-node-index=\"0\" style=\"--uml-header-height:"),
+    true,
+  )
+}
+
+///|
+test "class_member_collapsible re-anchors closed edges onto the header strip" {
+  let source = "@startuml\nclass A {\n+ x : Int\n}\nclass B {\n+ y : Int\n}\nA --> B\n@enduml"
+  let diagram = parse(source)
+  let svg = diagram.render_svg(class_member_collapsible=true)
+  let open_data = relation_path_data(svg, "00")
+  let closed_data = relation_path_data(svg, "11")
+  @test.assert_eq(open_data == closed_data, false)
+  let open_parts = open_data.split(" ").take(3).to_array()
+  let closed_parts = closed_data.split(" ").take(3).to_array()
+  let open_head = open_parts.join(" ")
+  let closed_head = closed_parts.join(" ")
+  @test.assert_eq(open_head == closed_head, false)
+  let open_y = @string.parse_double(open_parts[2]) catch { _ => 0.0 }
+  let closed_y = @string.parse_double(closed_parts[2]) catch { _ => 0.0 }
+  @test.assert_eq(closed_y < open_y, true)
+}
+
+///|
+test "class_member_collapsible ignores relations outside the class family" {
+  let source = "@startuml\nactor Customer\nusecase (Login)\nCustomer --> (Login)\n@enduml"
+  let collapsible = parse(source, family=UseCaseDiagram).render_svg(
+    class_member_collapsible=true,
+  )
+  @test.assert_eq(collapsible.contains("data-edge-index"), false)
+  @test.assert_eq(collapsible.contains("edge-state"), false)
+  @test.assert_eq(collapsible.contains("data-node-index"), false)
+}
+
+///|
 test "class SVG uses PlantUML spots, visibility icons, and package tabs" {
   let diagram = parse(
     "@startuml\npackage domain {\nabstract class Abstract\nclass Concrete {\n+ visible\n- hidden\n+ run()\n}\ninterface Contract\n}\n@enduml",
