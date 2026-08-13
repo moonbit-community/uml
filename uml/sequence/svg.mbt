@@ -100,8 +100,60 @@ pub fn SequenceDiagram::render_svg(
     append_line(output, 18, y, layout.width - 18, y, "page-break")
   }
   let mut arrow_anchor : Message? = None
+  // An on-arrow note attaches to the latest event able to carry one (Java's
+  // `getLastEventWithNote`). A message/exo carrier wraps its arrow in the
+  // note's URL too (`AbstractMessage.getUrl`), first note wins; a reference
+  // or group-leaf carrier applies no URL at all, so a note attached there
+  // is drawn without its own link.
+  let note_urls : Map[Int, String] = Map([])
+  let note_suppress : Map[Int, Bool] = Map([])
+  let mut last_carrier_index = -1
+  let mut last_carrier_is_message = false
   for index, event in self.events {
-    append_event(output, layout, event, layout.placements[index], arrow_anchor)
+    match event {
+      Message(_) | MessageExo(_) => {
+        last_carrier_index = index
+        last_carrier_is_message = true
+      }
+      Reference(_) | GroupingLeaf(_) => {
+        last_carrier_index = index
+        last_carrier_is_message = false
+      }
+      Note(note) if note.on_arrow => {
+        if !last_carrier_is_message {
+          note_suppress[index] = true
+        }
+        match note.url {
+          Some(url) if last_carrier_is_message &&
+            !note_urls.contains(last_carrier_index) =>
+            note_urls[last_carrier_index] = url
+          _ => ()
+        }
+      }
+      Notes(notes) if notes[0].on_arrow => {
+        if !last_carrier_is_message {
+          note_suppress[index] = true
+        }
+        match notes[0].url {
+          Some(url) if last_carrier_is_message &&
+            !note_urls.contains(last_carrier_index) =>
+            note_urls[last_carrier_index] = url
+          _ => ()
+        }
+      }
+      _ => ()
+    }
+  }
+  for index, event in self.events {
+    append_event(
+      output,
+      layout,
+      event,
+      layout.placements[index],
+      arrow_anchor,
+      note_urls.get(index),
+      note_suppress.get(index).unwrap_or(false),
+    )
     match event {
       Message(message) => arrow_anchor = Some(message)
       _ => ()

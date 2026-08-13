@@ -12,6 +12,10 @@ priv struct NoteLineSyntax {
   on_arrow : Bool
   color : String?
   text : SequenceTextSyntax
+  stereotype : String?
+  url : String?
+  merge : Bool
+  misspelled_across : Bool
 }
 
 ///|
@@ -53,17 +57,20 @@ fn note_style(cursor : @parse.Cursor) -> NoteStyle? {
 }
 
 ///|
-/// Matches a note position keyword.
-fn note_position(cursor : @parse.Cursor) -> NotePosition? {
+/// Matches a note position keyword, returning the position and the matched
+/// word. `accross` is accepted and reported like Java's regex, then rejected
+/// at execution time with an explicit error.
+fn note_position(cursor : @parse.Cursor) -> (NotePosition, String)? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
-    "left" => Some(Left)
-    "right" => Some(Right)
-    "bottom" => Some(Bottom)
-    "top" => Some(Top)
-    "over" => Some(Over)
-    "across" => Some(Across)
+    "left" => Some((Left, word))
+    "right" => Some((Right, word))
+    "bottom" => Some((Bottom, word))
+    "top" => Some((Top, word))
+    "over" => Some((Over, word))
+    "across" => Some((Across, word))
+    "accross" => Some((Across, word))
     _ => None
   }
   match result {
@@ -119,19 +126,111 @@ fn sequence_text(cursor : @parse.Cursor) -> SequenceTextSyntax {
 }
 
 ///|
+/// Matches a `<<...>>` stereotype token, mirroring Java's non-greedy
+/// `<<.+?>>` under regex backtracking: the shortest token whose
+/// continuation satisfies `continues` wins; otherwise the scan extends to
+/// the next `>>` and retries. Consumes the trailing spaces when the token
+/// is committed, and restores the original position when it is absent.
+fn take_stereotype_with_continuation(
+  cursor : @parse.Cursor,
+  continues : (@parse.Cursor) -> Bool,
+) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume_literal("<<") else { return None }
+  while !cursor.is_eof() {
+    if cursor.starts_with_literal(">>") {
+      ignore(cursor.consume_literal(">>"))
+      let end = cursor.offset()
+      let saved = cursor.offset()
+      cursor.skip_inline_spaces()
+      if end - start > 4 && continues(cursor) {
+        return Some(cursor.slice(start, end))
+      }
+      ignore(cursor.restore(saved))
+    }
+    ignore(cursor.advance())
+  }
+  ignore(cursor.restore(start))
+  None
+}
+
+///|
+/// Matches an optional `<<...>>` stereotype token with the surrounding
+/// spaces, mirroring Java's `StereotypePattern.optional`. The leading
+/// spaces are consumed even when the token is absent, because Java's
+/// `spaceZeroOrMore` hands them to the following tokens (color, URL, `:`);
+/// the trailing spaces belong to the token itself.
+fn take_optional_stereotype(
+  cursor : @parse.Cursor,
+  continues : (@parse.Cursor) -> Bool,
+) -> String? {
+  cursor.skip_inline_spaces()
+  match take_stereotype_with_continuation(cursor, continues) {
+    Some(value) => {
+      cursor.skip_inline_spaces()
+      Some(value)
+    }
+    None => None
+  }
+}
+
+///|
+/// Matches an optional `[[...]]` URL token preceded by spaces, restoring
+/// the spaces when the token is absent.
+fn take_optional_url(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  cursor.skip_inline_spaces()
+  match cursor.take_url_value() {
+    Some(value) => Some(value)
+    None => {
+      ignore(cursor.restore(start))
+      None
+    }
+  }
+}
+
+///|
+/// Matches the note tail after the position word or participant list:
+/// optional stereotype, optional `#color`, optional `[[url]]`, then the
+/// text, mirroring the `STEREO2 color()? spaceZeroOrMore UrlBuilder.OPTIONAL
+/// spaceZeroOrMore (: spaceZeroOrMore NOTE)?` tail shared by the note
+/// factories. `stereo1` wins over STEREO2, like Java's `getLazzy` lookup.
+fn note_tail(
+  cursor : @parse.Cursor,
+  stereo1 : String?,
+) -> (String?, String?, String?, SequenceTextSyntax) {
+  let stereo2 = take_optional_stereotype(cursor, across_tail_continues)
+  let stereotype = match stereo1 {
+    Some(value) => Some(value)
+    None => stereo2
+  }
+  let color = take_note_color_value(cursor)
+  cursor.skip_inline_spaces()
+  let url = take_optional_url(cursor)
+  cursor.skip_inline_spaces()
+  let text = sequence_text(cursor)
+  (stereotype, color, url, text)
+}
+
+///|
 fn note_on_arrow_tail(
   cursor : @parse.Cursor,
   position : NotePosition,
   note_style : NoteStyle,
+  stereotype : String?,
 ) -> NoteLineSyntax? {
-  let text = sequence_text(cursor)
+  let (stereotype, color, url, text) = note_tail(cursor, stereotype)
   Some({
     participant_codes: [],
     position,
     note_style,
     on_arrow: true,
-    color: None,
+    color,
     text,
+    stereotype,
+    url,
+    merge: false,
+    misspelled_across: false,
   })
 }
 
@@ -141,6 +240,7 @@ fn participant_note_tail(
   position : NotePosition,
   note_style : NoteStyle,
   require_of : Bool,
+  stereotype : String?,
 ) -> NoteLineSyntax? {
   let start = cursor.offset()
   if require_of {
@@ -172,9 +272,7 @@ fn participant_note_tail(
         ignore(cursor.restore(start))
         return None
       }
-      let color = optional_color(cursor)
-      cursor.skip_inline_spaces()
-      let text = sequence_text(cursor)
+      let (stereotype, color, url, text) = note_tail(cursor, stereotype)
       Some({
         participant_codes,
         position: parsed_note_position(position, participant_codes),
@@ -182,19 +280,102 @@ fn participant_note_tail(
         on_arrow: false,
         color,
         text,
+        stereotype,
+        url,
+        merge: false,
+        misspelled_across: false,
       })
     }
   }
 }
 
 ///|
+/// Matches a `#`-prefixed note color, taking Java's
+/// `#\w+[-\\|/]?\w+` run (`ColorParser.COLOR_REGEXP`): word characters,
+/// then one optional `-`/`\`/`|`/`/` separator and more word characters.
+/// A lone separator keeps only the first word, leaving the separator for
+/// the caller, like the regex engine backtracking out of the separator
+/// group. Restores the original position when no word follows the marker.
+fn take_note_color_value(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('#') else { return None }
+  let first = cursor.take_while(is_word_char)
+  guard first.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let separator = cursor.offset()
+  match cursor.peek() {
+    Some(char) if char == '-' || char == '\\' || char == '|' || char == '/' => {
+      ignore(cursor.advance())
+      let second = cursor.take_while(is_word_char)
+      if second.length() > 0 {
+        Some(first + char.to_string() + second)
+      } else {
+        ignore(cursor.restore(separator))
+        Some(first)
+      }
+    }
+    _ => Some(first)
+  }
+}
+
+///|
+/// The tail-continuation check shared by the message and across tails: the
+/// input after a candidate `>>` must be an optional `[[url]]` followed by
+/// `: label` or eof, mirroring `UrlBuilder.OPTIONAL spaceZeroOrMore
+/// MESSAGE? end()`. A URL that is itself followed by another token belongs
+/// to the stereotype, so the token keeps extending (Java backtracks `.+?`
+/// past it). Never moves the cursor.
+fn url_then_colon_or_eof(cursor : @parse.Cursor) -> Bool {
+  let saved = cursor.offset()
+  cursor.skip_inline_spaces()
+  let result = match cursor.peek() {
+    Some(':') | None => true
+    Some('[') =>
+      match cursor.take_url_value() {
+        Some(_) => {
+          cursor.skip_inline_spaces()
+          cursor.peek() == Some(':') || cursor.is_eof()
+        }
+        None => false
+      }
+    _ => false
+  }
+  ignore(cursor.restore(saved))
+  result
+}
+
+///|
+/// The across-tail continuation: `#color?` then the URL/colon/eof
+/// remainder, mirroring Java's `color()? spaceZeroOrMore UrlBuilder.OPTIONAL
+/// spaceZeroOrMore (: ...)?`. Never moves the cursor.
+fn across_tail_continues(cursor : @parse.Cursor) -> Bool {
+  let saved = cursor.offset()
+  cursor.skip_inline_spaces()
+  let result = match cursor.peek() {
+    Some('#') =>
+      match take_note_color_value(cursor) {
+        Some(_) => url_then_colon_or_eof(cursor)
+        None => false
+      }
+    _ => url_then_colon_or_eof(cursor)
+  }
+  ignore(cursor.restore(saved))
+  result
+}
+
+///|
+/// Matches the across tail: optional stereotype, optional color, optional
+/// URL, then the text, mirroring Java's across factory tail. Each token
+/// consumes its own spaces.
 fn across_note_tail(
   cursor : @parse.Cursor,
   note_style : NoteStyle,
+  stereotype : String?,
+  misspelled_across : Bool,
 ) -> NoteLineSyntax? {
-  let color = optional_color(cursor)
-  cursor.skip_inline_spaces()
-  let text = sequence_text(cursor)
+  let (stereotype, color, url, text) = note_tail(cursor, stereotype)
   Some({
     participant_codes: [],
     position: Across,
@@ -202,14 +383,18 @@ fn across_note_tail(
     on_arrow: false,
     color,
     text,
+    stereotype,
+    url,
+    merge: false,
+    misspelled_across,
   })
 }
 
 ///|
 fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
   let start = cursor.offset()
-  ignore(cursor.consume('&'))
-  ignore(cursor.consume('/'))
+  let parallel = cursor.consume('&')
+  let merge = cursor.consume('/')
   cursor.skip_inline_spaces()
   match note_style(cursor) {
     None => {
@@ -221,27 +406,61 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
         ignore(cursor.restore(start))
         return None
       }
+      let stereotype = take_optional_stereotype(cursor, cursor => {
+        cursor.peek() is Some(char) && is_ident_char(char)
+      })
       match note_position(cursor) {
         None => {
           ignore(cursor.restore(start))
           None
         }
-        Some(position) => {
-          cursor.skip_inline_spaces()
+        Some((position, word)) => {
+          let misspelled_across = position is Across &&
+            word.to_lower() == "accross"
           let syntax = match position {
-            Top | Bottom => note_on_arrow_tail(cursor, position, note_style)
+            Top | Bottom => {
+              guard !parallel else {
+                ignore(cursor.restore(start))
+                return None
+              }
+              cursor.skip_inline_spaces()
+              note_on_arrow_tail(cursor, position, note_style, stereotype)
+            }
             Left | Right => {
+              cursor.skip_inline_spaces()
               let saved = cursor.offset()
-              match participant_note_tail(cursor, position, note_style, true) {
+              match
+                participant_note_tail(
+                  cursor, position, note_style, true, stereotype,
+                ) {
                 Some(value) => Some(value)
                 None => {
+                  // The `&` prefix is only accepted by the participant note
+                  // factories; the on-arrow fallback rejects it.
+                  guard !parallel else {
+                    ignore(cursor.restore(start))
+                    return None
+                  }
                   ignore(cursor.restore(saved))
-                  note_on_arrow_tail(cursor, position, note_style)
+                  note_on_arrow_tail(cursor, position, note_style, stereotype)
                 }
               }
             }
-            Over => participant_note_tail(cursor, position, note_style, false)
-            Across => across_note_tail(cursor, note_style)
+            Over => {
+              cursor.skip_inline_spaces()
+              participant_note_tail(
+                cursor, position, note_style, false, stereotype,
+              )
+            }
+            Across => {
+              guard !parallel else {
+                ignore(cursor.restore(start))
+                return None
+              }
+              across_note_tail(
+                cursor, note_style, stereotype, misspelled_across,
+              )
+            }
             OverSeveral => None
           }
           match syntax {
@@ -250,7 +469,7 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
                 ignore(cursor.restore(start))
                 return None
               }
-              Some(value)
+              Some({ ..value, merge, })
             }
             None => {
               ignore(cursor.restore(start))

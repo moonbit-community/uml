@@ -123,6 +123,8 @@ priv struct Message {
   activation_spec : ActivationSpec?
   activation_spec2 : ActivationSpec?
   life_color : String?
+  stereotype : String?
+  url : String?
 }
 
 ///|
@@ -148,6 +150,7 @@ priv struct MessageExo {
   short_arrow : Bool
   activation_spec : ActivationSpec?
   life_color : String?
+  url : String?
 }
 
 ///|
@@ -158,6 +161,8 @@ priv struct Note {
   note_style : NoteStyle
   on_arrow : Bool
   color : String?
+  stereotype : String?
+  url : String?
 }
 
 ///|
@@ -222,6 +227,7 @@ priv enum Event {
   Message(Message)
   MessageExo(MessageExo)
   Note(Note)
+  Notes(Array[Note])
   GroupingStart(GroupingStart)
   GroupingLeaf(GroupingLeaf)
   LifeEvent(LifeEvent)

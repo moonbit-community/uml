@@ -199,6 +199,8 @@ fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
       }
     MessageExo(_) => MESSAGE_EVENT_HEIGHT
     Note(note) => note.height(text_metrics) + 10
+    Notes(notes) =>
+      notes.fold(init=0, (acc, note) => acc.max(note.height(text_metrics))) + 10
     GroupingStart(_) => 22
     GroupingLeaf(leaf) => if leaf.is_end { 0 } else { 29 }
     LifeEvent(_) => 0
@@ -252,6 +254,11 @@ fn Event::required_gap_before(
         _ => 14
       }
     Note(note) => note.component(text_metrics).height + 18
+    Notes(notes) =>
+      notes.fold(init=0, (acc, note) => {
+        acc.max(note.component(text_metrics).height)
+      }) +
+      18
     _ => self.height(text_metrics)
   }
 }
@@ -277,6 +284,27 @@ fn Event::participant_span(
         (Some(first), Some(last)) => between(first, last)
         _ => None
       }
+    Notes(notes) => {
+      let mut span : (Int, Int)? = None
+      for note in notes {
+        match (note.participant_codes.get(0), note.participant_codes.last()) {
+          (Some(first), Some(last)) =>
+            match between(first, last) {
+              Some((left, right)) =>
+                span = Some(
+                  match span {
+                    Some((span_left, span_right)) =>
+                      (span_left.min(left), span_right.max(right))
+                    None => (left, right)
+                  },
+                )
+              None => ()
+            }
+          _ => ()
+        }
+      }
+      span
+    }
     Reference(reference) =>
       match
         (reference.participant_codes.get(0), reference.participant_codes.last()) {
@@ -313,6 +341,7 @@ fn event_advances_layout(
 ) -> Bool {
   match event {
     Note(note) => !note.on_arrow
+    Notes(notes) => !notes[0].on_arrow
     _ => event.height(text_metrics) > 0
   }
 }
@@ -410,6 +439,14 @@ fn SequenceDiagram::participant_is_linked(
         for participant in note.participant_codes {
           if participant == code {
             return true
+          }
+        }
+      Notes(notes) =>
+        for note in notes {
+          for participant in note.participant_codes {
+            if participant == code {
+              return true
+            }
           }
         }
       LifeEvent(life) => if life.participant_code == code { return true }

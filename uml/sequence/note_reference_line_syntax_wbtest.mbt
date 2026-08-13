@@ -8,6 +8,7 @@ test "note line grammar parses supported note headers" {
       Right,
       NodeNormal,
       true,
+      None,
     )
     is Some(_) else {
     @test.fail("participant note tail failed")
@@ -46,9 +47,51 @@ test "note position dispatch follows the command factory" {
       }
     _ => @test.fail("across inline note rejected")
   }
-  guard note_line_syntax(@parse.Cursor::new("note across #yellow : text"))
-    is None else {
-    @test.fail("single-space colored across note accepted")
+  match note_line_syntax(@parse.Cursor::new("note across #yellow : text")) {
+    Some(note) => {
+      @test.assert_eq(note.color, Some("yellow"))
+      match note.text {
+        Inline(text) => @test.assert_eq(text, "text")
+        Multiline => @test.fail("across inline text lost")
+      }
+    }
+    _ => @test.fail("colored across note rejected")
+  }
+}
+
+///|
+test "across note tail accepts stereotype, url and misspelling" {
+  match
+    note_line_syntax(@parse.Cursor::new("note <<first>> across #yellow : text")) {
+    Some(note) => @test.assert_eq(note.stereotype, Some("<<first>>"))
+    _ => @test.fail("stereo1 across note rejected")
+  }
+  match note_line_syntax(@parse.Cursor::new("note across <<second>> : text")) {
+    Some(note) => @test.assert_eq(note.stereotype, Some("<<second>>"))
+    _ => @test.fail("stereo2 across note rejected")
+  }
+  match
+    note_line_syntax(
+      @parse.Cursor::new("note <<first>> across <<second>> : text"),
+    ) {
+    Some(note) => @test.assert_eq(note.stereotype, Some("<<first>>"))
+    _ => @test.fail("stereo1 must win over stereo2")
+  }
+  match
+    note_line_syntax(@parse.Cursor::new("note <<one>> <<two>> across : text")) {
+    Some(note) => @test.assert_eq(note.stereotype, Some("<<one>> <<two>>"))
+    _ => @test.fail("backtracking stereotype rejected")
+  }
+  match
+    note_line_syntax(
+      @parse.Cursor::new("note across [[https://example.com]] : text"),
+    ) {
+    Some(note) => @test.assert_eq(note.url, Some("https://example.com"))
+    _ => @test.fail("across url rejected")
+  }
+  match note_line_syntax(@parse.Cursor::new("note accross : text")) {
+    Some(note) => @test.assert_eq(note.misspelled_across, true)
+    _ => @test.fail("misspelled accross rejected at grammar level")
   }
 }
 
@@ -74,6 +117,7 @@ test "note participants are validated per position" {
       Left,
       NodeNormal,
       true,
+      None,
     )
     is None else {
     @test.fail("left note accepted two participants")
@@ -83,6 +127,7 @@ test "note participants are validated per position" {
       Over,
       NodeNormal,
       false,
+      None,
     )
     is None else {
     @test.fail("over note accepted three participants")

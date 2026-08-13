@@ -87,6 +87,16 @@ fn DiagramLayout::content_horizontal_bounds(
         min_x = min_x.min(geometry.x)
         max_x = max_x.max(geometry.x + geometry.component.width)
       }
+      Notes(notes) =>
+        for note in notes {
+          let geometry = self.note_geometry(
+            note,
+            self.placements[index],
+            arrow_anchor,
+          )
+          min_x = min_x.min(geometry.x)
+          max_x = max_x.max(geometry.x + geometry.component.width)
+        }
       _ => ()
     }
   }

@@ -474,6 +474,77 @@ test "only over notes may span two participants" {
 }
 
 ///|
+test "across notes parse color stereotype and url like the java factory" {
+  let diagram = parse(
+    "@startuml\nAlice -> Bob\nnote <<first>> across <<second>> #yellow [[https://example.com]] : shared\n@enduml",
+  )
+  match diagram.events[1] {
+    Note(note) => {
+      @test.assert_eq(note.position is Across, true)
+      @test.assert_eq(note.color, Some("yellow"))
+      @test.assert_eq(note.stereotype, Some("<<first>>"))
+      @test.assert_eq(note.url, Some("https://example.com"))
+      @test.assert_eq(note.text, "shared")
+    }
+    _ => fail("expected an across note")
+  }
+}
+
+///|
+test "a leading slash merges a note with the previous note" {
+  let diagram = parse(
+    "@startuml\nnote across #yellow : first\n/note across : second\n/note across #red : third\nnote across : standalone\n@enduml",
+  )
+  match diagram.events[0] {
+    Notes(notes) => {
+      @test.assert_eq(notes.length(), 3)
+      @test.assert_eq(notes[0].text, "first")
+      @test.assert_eq(notes[0].color, Some("yellow"))
+      @test.assert_eq(notes[1].text, "second")
+      @test.assert_eq(notes[1].color, None)
+      @test.assert_eq(notes[2].text, "third")
+      @test.assert_eq(notes[2].color, Some("red"))
+    }
+    _ => fail("expected merged notes")
+  }
+  match diagram.events[1] {
+    Note(note) => @test.assert_eq(note.text, "standalone")
+    _ => fail("expected a plain note after the merged group")
+  }
+}
+
+///|
+test "a leading slash after a message does not merge" {
+  let diagram = parse("@startuml\nAlice -> Bob\n/note across : orphan\n@enduml")
+  match diagram.events[1] {
+    Note(note) => @test.assert_eq(note.text, "orphan")
+    _ => fail("expected a plain note after a message")
+  }
+}
+
+///|
+test "the accross misspelling is accepted then rejected with an error" {
+  try parse("@startuml\nnote accross : text\n@enduml") catch {
+    SyntaxError(_, message) =>
+      @test.assert_eq(message, "Use 'across' instead of 'accross'")
+  } noraise {
+    _ => fail("expected the accross error")
+  }
+}
+
+///|
+test "merged notes share one layout row and max height" {
+  let diagram = parse(
+    "@startuml\nnote across #yellow : first\n/note across : second\n@enduml",
+  )
+  let layout = diagram.layout()
+  @test.assert_eq(layout.placements.length(), 1)
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains(">first</tspan>"), true)
+  @test.assert_eq(svg.contains(">second</tspan>"), true)
+}
+
+///|
 test "non-PlantUML box order raises a parse error" {
   try parse("@startuml\nbox #lightblue Infrastructure\n@enduml") catch {
     SyntaxError(_, _) => ()
@@ -718,9 +789,9 @@ test "parse colored participant boxes from the advanced example" {
 ///|
 test "parse note variants with shared participants and arrow attachment" {
   let result = parse(
-    "@startuml\nhnote over Alice, Bob #yellow : shared\nnote right : attached\n@enduml",
+    "@startuml\nhnote over Alice, Bob #yellow : shared\nAlice -> Bob\nnote right : attached\n@enduml",
   )
-  @test.assert_eq(result.events.length(), 2)
+  @test.assert_eq(result.events.length(), 3)
   match result.events[0] {
     Note(note) => {
       @test.assert_eq(note.participant_codes, ["Alice", "Bob"])
@@ -733,12 +804,47 @@ test "parse note variants with shared participants and arrow attachment" {
     }
     _ => fail("expected note")
   }
-  match result.events[1] {
+  match result.events[2] {
     Note(note) => {
       @test.assert_eq(note.text, "attached")
       @test.assert_eq(note.on_arrow, true)
     }
     _ => fail("expected arrow note")
+  }
+}
+
+///|
+test "on-arrow notes without a preceding carrier are dropped like java" {
+  let result = parse(
+    "@startuml\nnote top : orphan\nnote bottom : also orphan\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 0)
+}
+
+///|
+test "top and bottom notes are dropped after a reference carrier" {
+  let result = parse(
+    "@startuml\nAlice -> Bob\nref over Alice, Bob : call\nnote top : gone\nnote bottom : also gone\n@enduml",
+  )
+  match result.events[1] {
+    Reference(_) => ()
+    _ => fail("expected the reference")
+  }
+  @test.assert_eq(result.events.length(), 2)
+}
+
+///|
+test "left and right notes survive a reference carrier" {
+  let result = parse(
+    "@startuml\nAlice -> Bob\nref over Alice, Bob : call\nnote left : kept\n@enduml",
+  )
+  @test.assert_eq(result.events.length(), 3)
+  match result.events[2] {
+    Note(note) => {
+      @test.assert_eq(note.text, "kept")
+      @test.assert_eq(note.on_arrow, true)
+    }
+    _ => fail("expected the left note")
   }
 }
 

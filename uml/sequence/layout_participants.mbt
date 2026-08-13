@@ -194,6 +194,8 @@ fn layout_participants(
       }
       MessageExo(_) | Return(_) => ignore(autonumber.take())
       Note(note) => constrain_note_gap(gaps, index, note, text_metrics)
+      Notes(notes) =>
+        notes.each(note => constrain_note_gap(gaps, index, note, text_metrics))
       _ => ()
     }
   }

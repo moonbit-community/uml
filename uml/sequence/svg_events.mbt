@@ -5,6 +5,7 @@ fn append_note(
   note : Note,
   placement : EventPlacement,
   arrow_anchor : Message?,
+  suppress_url : Bool,
 ) -> Unit {
   let geometry = layout.note_geometry(note, placement, arrow_anchor)
   let x = geometry.x
@@ -15,7 +16,12 @@ fn append_note(
     Hexagonal => "note hex-note"
     Box => "note box-note"
   }
-  let fill = note_color(note.color, layout.defaults)
+  let fill = note_color(note.color, note.stereotype, layout.defaults)
+  match note.url {
+    Some(url) if !suppress_url =>
+      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
+    _ => ()
+  }
   match note.note_style {
     NodeNormal => {
       let fold_x = x + component.width - component.fold
@@ -43,6 +49,9 @@ fn append_note(
     line_height=layout.text_metrics.note.line_height,
     font_metrics=Some(layout.text_metrics.note),
   )
+  if note.url is Some(_) && !suppress_url {
+    output.write_string("</a>\n")
+  }
 }
 
 ///|
@@ -210,13 +219,21 @@ fn append_event(
   event : Event,
   placement : EventPlacement,
   arrow_anchor : Message?,
+  note_url : String?,
+  suppress_url : Bool,
 ) -> Unit {
   guard !placement.ignored else { return }
   match event {
-    Message(message) => append_message(output, layout, message, placement)
+    Message(message) =>
+      append_message(output, layout, message, placement, note_url)
     MessageExo(message) =>
-      append_exo_message(output, layout, message, placement)
-    Note(note) => append_note(output, layout, note, placement, arrow_anchor)
+      append_exo_message(output, layout, message, placement, note_url)
+    Note(note) =>
+      append_note(output, layout, note, placement, arrow_anchor, suppress_url)
+    Notes(notes) =>
+      notes.each(note => {
+        append_note(output, layout, note, placement, arrow_anchor, suppress_url)
+      })
     Divider(divider) => append_divider(output, layout, divider, placement)
     Delay(delay) => append_delay(output, layout, delay, placement)
     Reference(reference) =>

@@ -378,6 +378,53 @@ test "delays split lifelines into visible event ranges" {
 }
 
 ///|
+test "message exo and note urls render as href anchors" {
+  let svg = render_sequence_svg(
+    "@startuml\nAlice -> Bob [[https://example.com/message]] : hello\n[-> Bob [[https://example.com/exo]] : exo text\nnote across [[https://example.com/note]] : note text\n@enduml",
+  )
+  @test.assert_eq(
+    svg.contains("<a href=\"https://example.com/message\" target=\"_top\">"),
+    true,
+  )
+  @test.assert_eq(
+    svg.contains("<a href=\"https://example.com/exo\" target=\"_top\">"),
+    true,
+  )
+  @test.assert_eq(
+    svg.contains("<a href=\"https://example.com/note\" target=\"_top\">"),
+    true,
+  )
+  @test.assert_eq(svg.contains("</a>\n"), true)
+}
+
+///|
+test "message stereotypes parse without a visual trace like the java reference" {
+  let svg = render_sequence_svg(
+    "@startuml\nAlice -> Bob <<stereo>> : hello\n@enduml",
+  )
+  @test.assert_eq(svg.contains("stereo"), false)
+  @test.assert_eq(svg.contains(">hello</tspan>"), true)
+}
+
+///|
+test "an on-arrow note url wraps the attached message arrow" {
+  let svg = render_sequence_svg(
+    "@startuml\nAlice -> Bob\nnote top [[https://example.com/top]] : top note\n@enduml",
+  )
+  let count = svg.split("<a href=\"https://example.com/top\"").length() - 1
+  @test.assert_eq(count, 2)
+}
+
+///|
+test "notes attached to a reference render without any link" {
+  let svg = render_sequence_svg(
+    "@startuml\nAlice -> Bob\nref over Alice, Bob : call\nnote left [[https://example.com/ref]] : on ref\n@enduml",
+  )
+  @test.assert_eq(svg.contains("<a href=\"https://example.com/ref\""), false)
+  @test.assert_eq(svg.contains(">on ref</tspan>"), true)
+}
+
+///|
 test "text metrics distinguish narrow and wide default sans glyphs" {
   let metrics = @metrics.FontMetrics::default()
   let narrow_text = "iii"

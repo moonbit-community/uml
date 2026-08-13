@@ -560,15 +560,35 @@ fn take_exo_participant(cursor : @parse.Cursor) -> PartRef? {
 }
 
 ///|
+/// Matches a `#`-prefixed life-line color, taking only Java's `\w` run
+/// (`[A-Za-z0-9_]`), mirroring the `#\w+` LIFECOLOR group of the arrow and
+/// exo commands. Restores the original position when no word follows the
+/// marker.
+fn take_life_color_value(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('#') else { return None }
+  let word = cursor.take_while(is_word_char)
+  guard word.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(word)
+}
+
+///|
 /// Matches the message tail: optional activation specifier, optional
-/// `#color`, optional `:` label. Always succeeds.
+/// `#color`, optional `<<stereotype>>`, optional `[[url]]`, optional `:`
+/// label, mirroring Java's `ACTIVATION LIFECOLOR StereotypePattern.optional
+/// UrlBuilder.OPTIONAL : MESSAGE?`. Always succeeds.
 fn take_message_tail(
   cursor : @parse.Cursor,
-) -> (ActivationSpec?, ActivationSpec?, String?, String?) {
+) -> (ActivationSpec?, ActivationSpec?, String?, String?, String?, String?) {
   cursor.skip_inline_spaces()
   let activation = take_message_activation(cursor)
   cursor.skip_inline_spaces()
-  let life_color = cursor.take_color_value()
+  let life_color = take_life_color_value(cursor)
+  let stereotype = take_optional_stereotype(cursor, url_then_colon_or_eof)
+  let url = take_optional_url(cursor)
   cursor.skip_inline_spaces()
   let label = if cursor.consume(':') {
     @parse.normalize_label(cursor.take_while(_ => true))
@@ -576,26 +596,31 @@ fn take_message_tail(
     None
   }
   match activation {
-    Some((spec, second)) => (Some(spec), second, life_color, label)
-    None => (None, None, life_color, label)
+    Some((spec, second)) =>
+      (Some(spec), second, life_color, stereotype, url, label)
+    None => (None, None, life_color, stereotype, url, label)
   }
 }
 
 ///|
 /// Matches the exo tail: optional activation run, optional `#color`,
-/// optional `:` label. Always succeeds.
-fn take_exo_tail(cursor : @parse.Cursor) -> (ActivationSpec?, String?, String?) {
+/// optional `[[url]]`, optional `:` label. Exo arrows accept no stereotype,
+/// mirroring `CommandExoArrowLeft`/`Right`. Always succeeds.
+fn take_exo_tail(
+  cursor : @parse.Cursor,
+) -> (ActivationSpec?, String?, String?, String?) {
   cursor.skip_inline_spaces()
   let activation_spec = take_exo_activation(cursor)
   cursor.skip_inline_spaces()
-  let life_color = cursor.take_color_value()
+  let life_color = take_life_color_value(cursor)
+  let url = take_optional_url(cursor)
   cursor.skip_inline_spaces()
   let label = if cursor.consume(':') {
     @parse.normalize_label(cursor.take_while(_ => true))
   } else {
     None
   }
-  (activation_spec, life_color, label)
+  (activation_spec, life_color, url, label)
 }
 
 ///|
@@ -638,7 +663,7 @@ fn message_line_syntax(cursor : @parse.Cursor) -> Event? {
   }
   ignore(take_multicast(cursor))
   ignore(take_anchor(cursor))
-  let (activation_spec, activation_spec2, life_color, label) = take_message_tail(
+  let (activation_spec, activation_spec2, life_color, stereotype, url, label) = take_message_tail(
     cursor,
   )
   let direction = match message_direction(left, right) {
@@ -666,6 +691,8 @@ fn message_line_syntax(cursor : @parse.Cursor) -> Event? {
       activation_spec,
       activation_spec2,
       life_color,
+      stereotype,
+      url,
     }),
   )
 }
@@ -712,7 +739,7 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
       return None
     }
   }
-  let (activation_spec, life_color, label) = take_exo_tail(cursor)
+  let (activation_spec, life_color, url, label) = take_exo_tail(cursor)
   guard cursor.is_eof() else {
     ignore(cursor.restore(start))
     return None
@@ -741,6 +768,7 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
       short_arrow,
       activation_spec,
       life_color,
+      url,
     }),
   )
 }
@@ -787,7 +815,7 @@ fn right_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
       return None
     }
   }
-  let (activation_spec, life_color, label) = take_exo_tail(cursor)
+  let (activation_spec, life_color, url, label) = take_exo_tail(cursor)
   guard cursor.is_eof() else {
     ignore(cursor.restore(start))
     return None
@@ -816,6 +844,7 @@ fn right_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
       short_arrow,
       activation_spec,
       life_color,
+      url,
     }),
   )
 }

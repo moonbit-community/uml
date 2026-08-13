@@ -112,10 +112,31 @@ fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
 }
 
 ///|
+/// Whether any preceding event can carry an on-arrow note, mirroring Java's
+/// `getLastEventWithNote` plus the carrier's `addNote` position rules:
+/// messages and exo arrows carry every on-arrow position, while references
+/// and group leaves carry only left/right notes (a top/bottom note attached
+/// to them is dropped with a warning).
+fn ParseCtx::has_event_with_note(self : ParseCtx, top_or_bottom : Bool) -> Bool {
+  let mut carried = false
+  for event in self.events {
+    match event {
+      Message(_) | MessageExo(_) => carried = true
+      Reference(_) | GroupingLeaf(_) => carried = !top_or_bottom
+      _ => ()
+    }
+  }
+  carried
+}
+
+///|
 fn ParseCtx::apply_note_syntax(
   self : ParseCtx,
   syntax : NoteLineSyntax,
 ) -> Unit raise @parse.ParseError {
+  if syntax.misspelled_across {
+    self.source.raise_parse_error("Use 'across' instead of 'accross'")
+  }
   self.source.skip_line()
   let text = match syntax.text {
     Inline(text) => text
@@ -134,16 +155,37 @@ fn ParseCtx::apply_note_syntax(
         }
       }
   }
-  self.push_event(
-    Note({
-      participant_codes: syntax.participant_codes,
-      position: syntax.position,
-      text,
-      note_style: syntax.note_style,
-      on_arrow: syntax.on_arrow,
-      color: syntax.color,
-    }),
-  )
+  let note : Note = {
+    participant_codes: syntax.participant_codes,
+    position: syntax.position,
+    text,
+    note_style: syntax.note_style,
+    on_arrow: syntax.on_arrow,
+    color: syntax.color,
+    stereotype: syntax.stereotype,
+    url: syntax.url,
+  }
+  // Java silently drops an on-arrow note when no preceding event can carry
+  // it (`FactorySequenceNoteOnArrowCommand.executeInternal` does nothing
+  // when `getLastEventWithNote` returns null), and top/bottom notes are
+  // dropped when the carrier only accepts left/right positions.
+  if note.on_arrow &&
+    !self.has_event_with_note(note.position is Top || note.position is Bottom) {
+    return
+  }
+  self.push_event(Note(note))
+  if syntax.merge && self.events.length() > 1 {
+    match self.events.pop() {
+      Some(Note(popped)) =>
+        match self.events[self.events.length() - 1] {
+          Note(previous) =>
+            self.events[self.events.length() - 1] = Notes([previous, popped])
+          Notes(list) => list.push(popped)
+          _ => self.events.push(Note(popped))
+        }
+      _ => ()
+    }
+  }
 }
 
 ///|

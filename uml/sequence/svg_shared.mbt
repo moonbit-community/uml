@@ -12,8 +12,21 @@ fn activation_color(
 }
 
 ///|
-fn note_color(color : String?, defaults : @style.SequenceColors) -> String {
-  @svg.svg_color(color, defaults.note)
+fn note_color(
+  color : String?,
+  stereotype : String?,
+  defaults : @style.SequenceColors,
+) -> String {
+  // Java resolves stereotype-tagged noteBackground/noteBorder skinparam
+  // colors (`Colors.applyStereotypeForNote`); the modeled style set has no
+  // stereotype variants, so both resolve to the shared note color.
+  @svg.svg_color(
+    color,
+    match stereotype {
+      Some(_) => defaults.note
+      None => defaults.note
+    },
+  )
 }
 
 ///|

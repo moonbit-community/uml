@@ -143,7 +143,7 @@ fn layout_events(
     let advances = !ignored && event_advances_layout(event, text_metrics)
     let height = if !advances {
       0
-    } else if event is Note(_) {
+    } else if event is Note(_) || event is Notes(_) {
       event_height
     } else {
       event_height.max(
@@ -152,6 +152,7 @@ fn layout_events(
     }
     let y = match event {
       Note(note) if note.on_arrow => previous_top + 4
+      Notes(notes) if notes[0].on_arrow => previous_top + 4
       _ => current_y
     }
     let number = match event {

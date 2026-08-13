@@ -75,14 +75,39 @@ fn ArrowHead::marker(self : ArrowHead, start : Bool) -> String {
 }
 
 ///|
+/// The message link URL: the message's own URL, falling back to the URL of
+/// an attached on-arrow note, mirroring `AbstractMessage.getUrl()`.
+fn link_url(own : String?, note : String?) -> String? {
+  match own {
+    Some(url) => Some(url)
+    None => note
+  }
+}
+
+///|
 fn append_message(
   output : StringBuilder,
   layout : DiagramLayout,
   message : Message,
   placement : EventPlacement,
+  note_url : String?,
 ) -> Unit {
   guard layout.participant_at(message.from_code) is Some(from) else { return }
   guard layout.participant_at(message.to_code) is Some(to) else { return }
+  // Java merges the stereotype into the arrow style signature
+  // (AbstractMessage.getStyleSignature); the modeled style set has no
+  // stereotype-tagged arrow styles, so the tag changes nothing visible.
+  match message.stereotype {
+    Some(_) => ()
+    None => ()
+  }
+  // Java's `AbstractMessage.getUrl()` falls back to the URL of an attached
+  // on-arrow note, wrapping the arrow in the note's link as well.
+  match link_url(message.url, note_url) {
+    Some(url) =>
+      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
+    None => ()
+  }
   let y = placement.y + MESSAGE_ARROW_OFFSET
   let label = message.rendered_label(placement.number)
   let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
@@ -167,6 +192,9 @@ fn append_message(
   if message.anchor is Some(_) {
     output.write_string("</g>\n")
   }
+  if link_url(message.url, note_url) is Some(_) {
+    output.write_string("</a>\n")
+  }
 }
 
 ///|
@@ -175,9 +203,15 @@ fn append_exo_message(
   layout : DiagramLayout,
   message : MessageExo,
   placement : EventPlacement,
+  note_url : String?,
 ) -> Unit {
   guard layout.participant_at(message.participant_code) is Some(participant) else {
     return
+  }
+  match link_url(message.url, note_url) {
+    Some(url) =>
+      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
+    None => ()
   }
   let y = placement.y + MESSAGE_ARROW_OFFSET
   let (outside_x, participant_x) = match message.exo_type {
@@ -222,6 +256,9 @@ fn append_exo_message(
     line_height=layout.text_metrics.body.line_height,
     font_metrics=Some(layout.text_metrics.body),
   )
+  if link_url(message.url, note_url) is Some(_) {
+    output.write_string("</a>\n")
+  }
 }
 
 ///|
