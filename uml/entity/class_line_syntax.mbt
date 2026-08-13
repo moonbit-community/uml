@@ -17,21 +17,23 @@ priv enum ClassLineSyntax {
 }
 
 ///|
-fn[T] validated_whole_line_parser(
-  label : String,
+fn[T] validated_whole_line(
+  cursor : @parse.Cursor,
   classify : (String) -> T?,
-) -> @talc.StringParser[T] {
-  @talc.many_chars1(@talc.satisfy(label, _ => true)).bind(line => {
-    match classify(line) {
-      Some(value) => @talc.pure(value)
-      None => @talc.fail(label)
-    }
-  })
+) -> T? {
+  let start = cursor.offset()
+  let line = cursor.take_while(_ => true)
+  ignore(cursor.restore(start))
+  if line.length() == 0 {
+    None
+  } else {
+    classify(line)
+  }
 }
 
 ///|
-fn class_control_line_parser() -> @talc.StringParser[ClassLineSyntax] {
-  validated_whole_line_parser("class control line", line => {
+fn class_control_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
+  validated_whole_line(cursor, fn(line) {
     match line.to_lower() {
       "allowmixing" | "allow_mixing" => Some(ParsedAllowMixing)
       "}" | "};" | "end package" | "end namespace" => Some(ParsedPackageClose)
@@ -44,8 +46,8 @@ fn class_control_line_parser() -> @talc.StringParser[ClassLineSyntax] {
 }
 
 ///|
-fn ignored_class_directive_parser() -> @talc.StringParser[ClassLineSyntax] {
-  validated_whole_line_parser("ignored class directive", line => {
+fn ignored_class_directive(cursor : @parse.Cursor) -> ClassLineSyntax? {
+  validated_whole_line(cursor, fn(line) {
     let lower = line.to_lower()
     if lower.has_prefix("skinparam ") ||
       lower.has_prefix("set namespace_separator ") ||
@@ -65,41 +67,50 @@ fn ignored_class_directive_parser() -> @talc.StringParser[ClassLineSyntax] {
 }
 
 ///|
-fn class_line_parser() -> @talc.StringParser[ClassLineSyntax] {
-  @talc.choice([
-    class_control_line_parser().attempt(),
-    class_annotation_line_parser()
-    .map(syntax => ParsedAnnotation(syntax))
-    .attempt(),
-    filter_line_parser().map(syntax => ParsedFilter(syntax)).attempt(),
-    class_command_line_parser().map(syntax => ParsedCommand(syntax)).attempt(),
-    text_block_header_parser()
-    .map(keyword => ParsedTextBlock(keyword))
-    .attempt(),
-    multiline_element_header_parser()
-    .map(header => ParsedMultilineElement(header))
-    .attempt(),
-    json_single_declaration_parser()
-    .map(value => ParsedSingleLineJson(value))
-    .attempt(),
-    relation_line_parser().map(syntax => ParsedRelation(syntax)).attempt(),
-    declaration_line_parser().map(syntax => ParsedDeclaration(syntax)).attempt(),
-    external_member_line_parser()
-    .map(value => {
-      let (target, entry) = value
-      ParsedExternalMember(target~, entry~)
-    })
-    .attempt(),
-    ignored_class_directive_parser(),
-  ]).skip(@talc.eof())
+fn class_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
+  let start = cursor.offset()
+  if class_control_line(cursor) is Some(value) {
+    return Some(value)
+  }
+  if class_annotation_line(cursor) is Some(value) {
+    return Some(ParsedAnnotation(value))
+  }
+  if filter_line(cursor) is Some(value) {
+    return Some(ParsedFilter(value))
+  }
+  if class_command_line(cursor) is Some(value) {
+    return Some(ParsedCommand(value))
+  }
+  if text_block_header(cursor) is Some(value) {
+    return Some(ParsedTextBlock(value))
+  }
+  if multiline_element_header(cursor) is Some(value) {
+    return Some(ParsedMultilineElement(value))
+  }
+  if json_single_declaration(cursor) is Some(value) {
+    return Some(ParsedSingleLineJson(value))
+  }
+  if relation_line(cursor) is Some(value) {
+    return Some(ParsedRelation(value))
+  }
+  if declaration_line(cursor) is Some(value) {
+    return Some(ParsedDeclaration(value))
+  }
+  if external_member_line(cursor) is Some(value) {
+    let (target, entry) = value
+    return Some(ParsedExternalMember(target~, entry~))
+  }
+  if ignored_class_directive(cursor) is Some(value) {
+    return Some(value)
+  }
+  ignore(cursor.restore(start))
+  None
 }
 
 ///|
 fn parse_class_line(line : String) -> ClassLineSyntax? {
-  match class_line_parser().parse(@talc.Input::new(line)) {
-    Ok(syntax) => Some(syntax)
-    Err(_) => None
-  }
+  let cursor = @parse.Cursor::new(line)
+  class_line(cursor)
 }
 
 ///|

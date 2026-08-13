@@ -217,7 +217,7 @@ test "accepts PlantUML single-stroke relation bodies" {
 }
 
 ///|
-test "parsec relation grammar skips protected punctuation" {
+test "relation grammar skips protected punctuation" {
   let diagram = parse(
     "@startuml\nclass order-item\nclass target\norder-item --> target [[https://host:8443/item]] <<phase:value>> : \"sync: now\"\n@enduml",
   )
@@ -736,7 +736,7 @@ test "preserves relation directions and weights" {
 }
 
 ///|
-test "parsec relation choices backtrack across shared prefixes" {
+test "relation choices backtrack across shared prefixes" {
   let diagram = parse(
     "@startuml\nA -r-> B\nC <||-- D\nE --||> F\nG <|:-- H\nI --:|> J\n@enduml",
   )

@@ -1,151 +1,200 @@
 ///|
-fn declaration_metadata_tail_parser() -> @talc.StringParser[
-  DeclarationMetadataSyntax,
-] {
-  inline_space1()
-  .then(declaration_suffix_parser())
-  .attempt()
-  .many()
-  .map(declaration_metadata_from)
-}
-
-///|
-fn json_single_declaration_parser() -> @talc.StringParser[JsonSingleDeclaration] {
-  declaration_visibility_parser()
-  .bind(visibility => {
-    inline_keyword_parser("json")
-    .then(inline_space1())
-    .then(declaration_name_syntax_parser())
-    .bind(name => {
-      declaration_metadata_tail_parser().bind(metadata => {
-        inline_space1()
-        .then(@talc.many_chars1(@talc.satisfy("JSON data", _ => true)))
-        .bind(data => {
-          let data = data.trim().to_owned()
-          if valid_json(data) {
-            @talc.pure({
-              declaration: declaration_from_syntax(
-                Json,
-                visibility,
-                false,
-                name,
-                metadata,
-              ),
-              data,
-            })
-          } else {
-            @talc.fail("valid JSON data")
-          }
-        })
-      })
-    })
+fn json_single_declaration(cursor : @parse.Cursor) -> JsonSingleDeclaration? {
+  let start = cursor.offset()
+  let visibility = declaration_visibility(cursor)
+  guard consume_inline_keyword(cursor, "json") && cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard declaration_name_syntax(cursor) is Some(name) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let suffixes = take_declaration_suffixes(cursor)
+  let metadata = declaration_metadata_from(suffixes)
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let data = cursor.take_while(_ => true).trim().to_owned()
+  guard data.length() > 0 && valid_json(data) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some({
+    declaration: declaration_from_syntax(
+      Json,
+      visibility,
+      false,
+      name,
+      metadata,
+    ),
+    data,
   })
-  .skip(@talc.eof())
 }
 
 ///|
-fn multiline_element_header_parser() -> @talc.StringParser[
-  MultilineElementHeader,
-] {
-  declaration_visibility_parser()
-  .bind(visibility => {
-    declaration_kind_parser().bind(kind_and_static => {
-      let (kind, is_static, _) = kind_and_static
-      inline_space1()
-      .then(declaration_name_syntax_parser())
-      .bind(name => {
-        declaration_metadata_tail_parser().bind(metadata => {
-          let quoted_marker = inline_space1()
-            .then(inline_keyword_parser("as"))
-            .then(inline_space1())
-            .then(@talc.char('"'))
-            .map(_ => '"')
-          let bracket_marker = inline_space1()
-            .then(@talc.char('['))
-            .map(_ => ']')
-          quoted_marker
-          .attempt()
-          .or(bracket_marker)
-          .bind(terminator => {
-            @talc.many_chars(
-              @talc.satisfy("multiline description", char => char != terminator),
-            ).map(first_line => {
-              declaration: declaration_from_syntax(
-                kind, visibility, is_static, name, metadata,
-              ),
-              first_line,
-              terminator,
-            })
-          })
-        })
-      })
-    })
+fn take_multiline_marker(cursor : @parse.Cursor) -> Char? {
+  let start = cursor.offset()
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let after_space = cursor.offset()
+  if consume_inline_keyword(cursor, "as") &&
+    cursor.skip_inline_space1() &&
+    cursor.consume('"') {
+    return Some('"')
+  }
+  ignore(cursor.restore(after_space))
+  if cursor.consume('[') {
+    return Some(']')
+  }
+  ignore(cursor.restore(start))
+  None
+}
+
+///|
+fn multiline_element_header(cursor : @parse.Cursor) -> MultilineElementHeader? {
+  let start = cursor.offset()
+  let visibility = declaration_visibility(cursor)
+  guard declaration_kind_syntax(cursor) is Some((kind, is_static, _)) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard declaration_name_syntax(cursor) is Some(name) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let suffixes = take_declaration_suffixes(cursor)
+  let metadata = declaration_metadata_from(suffixes)
+  guard take_multiline_marker(cursor) is Some(terminator) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let first_line = cursor.take_while(char => char != terminator)
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some({
+    declaration: declaration_from_syntax(
+      kind, visibility, is_static, name, metadata,
+    ),
+    first_line,
+    terminator,
   })
-  .skip(@talc.eof())
 }
 
 ///|
-fn external_member_line_parser() -> @talc.StringParser[(String, Member)] {
-  let separator = @talc.char(':')
-  let qualified = @talc.string("::")
-  let target_part = qualified
-    .attempt()
-    .or(
-      separator
-      .not_followed_by("external member separator")
-      .then(@talc.satisfy("external member target", _ => true))
-      .string_map(char => char.to_string()),
-    )
-  target_part
-  .many()
-  .map(parts => parts.join("").trim().to_owned())
-  .skip(separator)
-  .bind(target => {
-    @talc.many_chars1(@talc.satisfy("external member body", _ => true)).bind(body => {
-      let target = @parse.unquote_identifier(target)
-      let body = body.trim().to_owned()
-      let invalid_target = target.length() == 0 ||
-        body.length() == 0 ||
-        target.to_lower().has_prefix("mix_") ||
-        declaration_kind(target) is Some(_) ||
-        target.contains("-") ||
-        target.contains("<") ||
-        target.contains("[[")
-      if invalid_target {
-        @talc.fail("external member")
-      } else {
-        @talc.pure((target, member_of(body)))
+fn external_member_line(cursor : @parse.Cursor) -> (String, Member)? {
+  let start = cursor.offset()
+  let target = StringBuilder()
+  while true {
+    if cursor.consume_literal("::") {
+      target.write_string("::")
+    } else if cursor.peek() is Some(char) && char != ':' {
+      ignore(cursor.advance())
+      target.write_char(char)
+    } else {
+      break
+    }
+  }
+  guard cursor.consume(':') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let target = @parse.unquote_identifier(target.to_string().trim().to_owned())
+  let body = cursor.take_while(_ => true).trim().to_owned()
+  let invalid_target = target.length() == 0 ||
+    body.length() == 0 ||
+    target.to_lower().has_prefix("mix_") ||
+    declaration_kind(target) is Some(_) ||
+    target.contains("-") ||
+    target.contains("<") ||
+    target.contains("[[")
+  if invalid_target {
+    ignore(cursor.restore(start))
+    None
+  } else {
+    Some((target, member_of(body)))
+  }
+}
+
+///|
+fn take_alignment(cursor : @parse.Cursor) -> Bool {
+  let start = cursor.offset()
+  guard take_inline_word(cursor) is Some(word) else { return false }
+  match word.to_lower() {
+    "top" | "bottom" | "left" | "right" | "center" => true
+    _ => {
+      ignore(cursor.restore(start))
+      false
+    }
+  }
+}
+
+///|
+fn text_block_header(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  let legend : String? = if consume_inline_keyword(cursor, "legend") {
+    while true {
+      let segment_start = cursor.offset()
+      guard cursor.skip_inline_space1() && take_alignment(cursor) else {
+        ignore(cursor.restore(segment_start))
+        break
       }
-    })
-  })
-  .skip(@talc.eof())
-}
-
-///|
-fn text_block_header_parser() -> @talc.StringParser[String] {
-  let alignment = inline_word_parser("text block alignment").bind(word => {
-    match word.to_lower() {
-      "top" | "bottom" | "left" | "right" | "center" => @talc.pure(())
-      _ => @talc.fail("text block alignment")
     }
-  })
-  let legend = inline_keyword_parser("legend")
-    .then(inline_space1().then(alignment).some().optional())
-    .map(_ => "legend")
-  let aligned_header = alignment
-    .then(inline_space1())
-    .then(
-      inline_keyword_parser("header")
-      .map(_ => "header")
-      .attempt()
-      .or(inline_keyword_parser("footer").map(_ => "footer")),
-    )
-  let simple = inline_word_parser("text block keyword").bind(word => {
-    match word.to_lower() {
-      "title" | "legend" | "header" | "footer" | "caption" =>
-        @talc.pure(word.to_lower())
-      _ => @talc.fail("text block keyword")
+    Some("legend")
+  } else {
+    ignore(cursor.restore(start))
+    None
+  }
+  let aligned : String? = match legend {
+    Some(value) => Some(value)
+    None =>
+      if take_alignment(cursor) && cursor.skip_inline_space1() {
+        if consume_inline_keyword(cursor, "header") {
+          Some("header")
+        } else if consume_inline_keyword(cursor, "footer") {
+          Some("footer")
+        } else {
+          ignore(cursor.restore(start))
+          None
+        }
+      } else {
+        ignore(cursor.restore(start))
+        None
+      }
+  }
+  let simple : String? = match aligned {
+    Some(value) => Some(value)
+    None =>
+      match take_inline_word(cursor) {
+        Some(word) =>
+          match word.to_lower() {
+            "title" | "legend" | "header" | "footer" | "caption" =>
+              Some(word.to_lower())
+            _ => {
+              ignore(cursor.restore(start))
+              None
+            }
+          }
+        None => {
+          ignore(cursor.restore(start))
+          None
+        }
+      }
+  }
+  match simple {
+    Some(value) if cursor.is_eof() => Some(value)
+    _ => {
+      ignore(cursor.restore(start))
+      None
     }
-  })
-  legend.attempt().or(aligned_header.attempt()).or(simple).skip(@talc.eof())
+  }
 }

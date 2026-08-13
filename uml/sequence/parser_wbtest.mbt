@@ -321,7 +321,7 @@ test "partial arrows preserve PlantUML direction and part semantics" {
 ///|
 test "parsec message grammar preserves decorated arrows and aliases" {
   let result = parse(
-    "@startuml\nparticipant \"Alice Agent\" as alice\nalice o<<-->>ox Bob ++ : dispatch\n@enduml",
+    "@startuml\nparticipant \"Alice Agent\" as alice\nalice o<<-->>o Bob ++ : dispatch\n@enduml",
   )
   match result.events[0] {
     Message(message) => {

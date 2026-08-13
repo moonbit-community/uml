@@ -5,11 +5,12 @@ test "command line grammar parses complete single-line commands" {
     "box Frontend #lightyellow", "end box", "activate Service #lime", "deactivate Service",
     "deactivate", "destroy Service", "== section ==", "... waiting ...", "||20||",
     "newpage summary", "autonumber 1.2 3 \"(0)\"", "autonumber inc b", "autoactivate on",
-    "hide footbox", "hide @unlinked", "url of Alice is [[https://example.com User]]",
+    "autoactivate off", "hide footbox", "hide @unlinked", "url of Alice is [[https://example.com User]]",
     "return response", "ignore newpage", "autonewpage 10", "{left} <-> {right} : link",
+    "footbox on", "footbox off",
   ]
   for line in lines {
-    guard simple_event_line_parser().parse(@talc.Input::new(line)) is Ok(_) else {
+    guard simple_event_line_syntax(@parse.Cursor::new(line)) is Some(_) else {
       @test.fail("command grammar rejected: " + line)
     }
   }
@@ -22,9 +23,151 @@ test "participant declaration grammar parses complete declarations" {
     "participant Alice [[https://example.com]] #lightblue", "create Bob",
   ]
   for line in lines {
-    guard participant_declaration_line_parser().parse(@talc.Input::new(line))
-      is Ok(_) else {
+    guard participant_declaration_line_syntax(@parse.Cursor::new(line))
+      is Some(_) else {
       @test.fail("participant grammar rejected: " + line)
     }
+  }
+}
+
+///|
+test "box and grouping order follows the command factory" {
+  guard box_line_syntax(@parse.Cursor::new("box Frontend #lightyellow"))
+    is Some(BoxStart(_)) else {
+    @test.fail("box start rejected")
+  }
+  guard box_line_syntax(@parse.Cursor::new("end box")) is Some(BoxEnd) else {
+    @test.fail("box end rejected")
+  }
+  match grouping_line_syntax(@parse.Cursor::new("end boxx")) {
+    Some(GroupingLeaf(leaf)) => @test.assert_eq(leaf.is_end, true)
+    _ => @test.fail("unrecognized text after end box must close a group")
+  }
+}
+
+///|
+test "bare deactivate matches before participant deactivate" {
+  guard deactivate_line_syntax(@parse.Cursor::new("deactivate"))
+    is Some(DeactivateLatest) else {
+    @test.fail("bare deactivate rejected")
+  }
+  match deactivate_line_syntax(@parse.Cursor::new("deactivate Bob")) {
+    Some(LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
+    _ => @test.fail("participant deactivate rejected")
+  }
+}
+
+///|
+test "divider requires the closing delimiter" {
+  match divider_line_syntax(@parse.Cursor::new("== section ==")) {
+    Some(Divider(divider)) => @test.assert_eq(divider.title, "section")
+    _ => @test.fail("divider rejected")
+  }
+  guard divider_line_syntax(@parse.Cursor::new("== section")) is None else {
+    @test.fail("unclosed divider accepted")
+  }
+}
+
+///|
+test "delay and hspace delimiters" {
+  match delay_line_syntax(@parse.Cursor::new("...")) {
+    Some(Delay(delay)) => @test.assert_eq(delay.label, None)
+    _ => @test.fail("bare delay rejected")
+  }
+  match delay_line_syntax(@parse.Cursor::new("... waiting ...")) {
+    Some(Delay(delay)) => @test.assert_eq(delay.label, Some("waiting"))
+    _ => @test.fail("labeled delay rejected")
+  }
+  guard delay_line_syntax(@parse.Cursor::new("... waiting")) is None else {
+    @test.fail("unclosed delay accepted")
+  }
+  match hspace_line_syntax(@parse.Cursor::new("||20||")) {
+    Some(HSpace(hspace)) => @test.assert_eq(hspace.pixels, Some(20))
+    _ => @test.fail("hspace rejected")
+  }
+}
+
+///|
+test "autonumber branches are tried in factory order" {
+  guard autonumber_line_syntax(@parse.Cursor::new("autonumber stop"))
+    is Some(AutonumberStop) else {
+    @test.fail("autonumber stop rejected")
+  }
+  match autonumber_line_syntax(@parse.Cursor::new("autonumber inc b")) {
+    Some(AutonumberIncrement(value)) => @test.assert_eq(value, Some("b"))
+    _ => @test.fail("autonumber inc rejected")
+  }
+  match autonumber_line_syntax(@parse.Cursor::new("autonumber 1.2 3 \"(0)\"")) {
+    Some(Autonumber(number)) => {
+      @test.assert_eq(number.start, Some("1.2"))
+      @test.assert_eq(number.increment, Some(3))
+      @test.assert_eq(number.format, Some("(0)"))
+    }
+    _ => @test.fail("autonumber start rejected")
+  }
+}
+
+///|
+test "autonumber branch keywords commit the whole line" {
+  guard autonumber_line_syntax(@parse.Cursor::new("autonumber stop 5")) is None else {
+    @test.fail("autonumber stop with trailing value accepted")
+  }
+  guard autonumber_line_syntax(@parse.Cursor::new("autonumber inc 5")) is None else {
+    @test.fail("autonumber inc with trailing digits accepted")
+  }
+  match autonumber_line_syntax(@parse.Cursor::new("autonumber stopx")) {
+    Some(Autonumber(number)) => @test.assert_eq(number.start, Some("stopx"))
+    _ => @test.fail("start value starting with stop rejected")
+  }
+}
+
+///|
+test "a failed box end falls through to a group end" {
+  match grouping_line_syntax(@parse.Cursor::new("end box x")) {
+    Some(GroupingLeaf(leaf)) => @test.assert_eq(leaf.is_end, true)
+    _ => @test.fail("end box with trailing text must close a group")
+  }
+  guard toggle_line_syntax(@parse.Cursor::new("autoactivate on x")) is None else {
+    @test.fail("toggle with trailing junk accepted")
+  }
+  guard url_command_line_syntax(
+      @parse.Cursor::new("url of Alice is [[https://example.com]] x"),
+    )
+    is None else {
+    @test.fail("url with trailing junk accepted")
+  }
+  guard miscellaneous_event_line_syntax(@parse.Cursor::new("ignore newpage x"))
+    is None else {
+    @test.fail("ignore newpage with trailing junk accepted")
+  }
+}
+
+///|
+test "life events require a whole identifier or a closed quote" {
+  match
+    life_event_line_syntax(
+      @parse.Cursor::new("activate Bob"),
+      "activate",
+      Activate,
+    ) {
+    Some(LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
+    _ => @test.fail("life event rejected")
+  }
+  match
+    life_event_line_syntax(
+      @parse.Cursor::new("activate \"Bob\""),
+      "activate",
+      Activate,
+    ) {
+    Some(LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
+    _ => @test.fail("quoted life event rejected")
+  }
+  guard life_event_line_syntax(
+      @parse.Cursor::new("activate \"Bob"),
+      "activate",
+      Activate,
+    )
+    is None else {
+    @test.fail("unclosed quote accepted")
   }
 }

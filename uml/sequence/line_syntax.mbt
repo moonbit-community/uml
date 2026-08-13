@@ -22,39 +22,92 @@ fn take_block_text(
 }
 
 ///|
-fn title_line_parser() -> @talc.StringParser[SequenceLineSyntax] {
-  keyword_parser("title")
-  .then(line_rest_parser("title"))
-  .map(rest => {
-    match @parse.normalize_label(rest) {
-      Some(text) => ParsedTitle(Inline(text))
-      None => ParsedTitle(Multiline)
+/// Consumes one or more identifier characters, or nothing.
+fn take_ident(cursor : @parse.Cursor) -> String {
+  cursor.take_while(is_ident_char)
+}
+
+///|
+/// Matches a whole identifier word against `keyword`, ignoring case.
+fn take_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
+  let start = cursor.offset()
+  let word = take_ident(cursor)
+  if word.length() > 0 && word.equal_ignore_ascii_case(keyword) {
+    true
+  } else {
+    ignore(cursor.restore(start))
+    false
+  }
+}
+
+///|
+/// Matches a quoted value, falling back to an unquoted identifier token.
+fn take_quoted_or_ident(cursor : @parse.Cursor) -> String? {
+  if cursor.peek() == Some('"') {
+    match cursor.take_quoted_value() {
+      Some(value) => return Some(value)
+      None => ()
     }
-  })
-  .skip(@talc.eof())
+  }
+  let value = take_ident(cursor)
+  if value.length() > 0 {
+    Some(value)
+  } else {
+    None
+  }
 }
 
 ///|
-fn sequence_line_parser() -> @talc.StringParser[SequenceLineSyntax] {
-  @talc.choice([
-    complete_message_line_parser().attempt().map(event => ParsedEvent(event)),
-    note_line_parser().attempt().map(note => ParsedNote(note)),
-    reference_line_parser()
-    .attempt()
-    .map(reference => ParsedReference(reference)),
-    simple_event_line_parser().attempt().map(event => ParsedEvent(event)),
-    participant_declaration_line_parser()
-    .attempt()
-    .map(participant => ParsedParticipant(participant)),
-    title_line_parser(),
-  ])
+/// Matches an optionally negative run of digits.
+fn take_signed_integer(cursor : @parse.Cursor) -> Int? {
+  let start = cursor.offset()
+  let sign = if cursor.consume('-') { "-" } else { "" }
+  let digits = cursor.take_while(Char::is_ascii_digit)
+  guard digits.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(@string.parse_int(sign + digits) catch { _ => 0 })
 }
 
 ///|
+fn title_line_syntax(cursor : @parse.Cursor) -> SequenceTextSyntax? {
+  guard take_keyword(cursor, "title") else { return None }
+  let rest = cursor.take_while(_ => true)
+  match @parse.normalize_label(rest) {
+    Some(text) => Some(Inline(text))
+    None => Some(Multiline)
+  }
+}
+
+///|
+/// Command matching follows `SequenceDiagramFactory` order, with message
+/// arrows tried before the other Cursor-based commands.
 fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
-  match sequence_line_parser().parse(@talc.Input::new(line)) {
-    Ok(syntax) => Some(syntax)
-    Err(_) => None
+  let cursor = @parse.Cursor::new(line)
+  if complete_message_line_syntax(cursor) is Some(event) {
+    return Some(ParsedEvent(event))
+  }
+  ignore(cursor.restore(0))
+  if note_line_syntax(cursor) is Some(note) {
+    return Some(ParsedNote(note))
+  }
+  ignore(cursor.restore(0))
+  if reference_line_syntax(cursor) is Some(reference) {
+    return Some(ParsedReference(reference))
+  }
+  ignore(cursor.restore(0))
+  if simple_event_line_syntax(cursor) is Some(event) {
+    return Some(ParsedEvent(event))
+  }
+  ignore(cursor.restore(0))
+  if participant_declaration_line_syntax(cursor) is Some(participant) {
+    return Some(ParsedParticipant(participant))
+  }
+  ignore(cursor.restore(0))
+  match title_line_syntax(cursor) {
+    Some(text) => Some(ParsedTitle(text))
+    None => None
   }
 }
 

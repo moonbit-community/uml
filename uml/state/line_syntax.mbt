@@ -80,7 +80,8 @@ priv struct StateMetadataValues {
 
 ///|
 /// Matches a quoted or unquoted state name. An unterminated quote falls back
-/// to the raw unquoted token, mirroring the talc `quoted.attempt().or(...)`.
+/// to the raw unquoted token, mirroring the entity `quoted.attempt().or(...)`
+/// grammar.
 fn state_identifier(cursor : @parse.Cursor) -> StateIdentifier? {
   if cursor.peek() == Some('"') {
     match cursor.take_quoted_value() {
@@ -103,47 +104,18 @@ fn state_identifier(cursor : @parse.Cursor) -> StateIdentifier? {
 }
 
 ///|
-fn state_stereotype(cursor : @parse.Cursor) -> String? {
-  guard cursor.consume_literal("<<") else { return None }
-  let start = cursor.offset()
-  while !cursor.is_eof() && !cursor.starts_with_literal(">>") {
-    ignore(cursor.advance())
-  }
-  guard cursor.consume_literal(">>") else { return None }
-  Some("<<" + cursor.slice(start, cursor.offset() - 2) + ">>")
-}
-
-///|
-fn state_url(cursor : @parse.Cursor) -> String? {
-  guard cursor.consume_literal("[[") else { return None }
-  let start = cursor.offset()
-  while !cursor.is_eof() && !cursor.starts_with_literal("]]") {
-    ignore(cursor.advance())
-  }
-  guard cursor.consume_literal("]]") else { return None }
-  let content = cursor.slice(start, cursor.offset() - 2)
-  match @parse.parse_url_target("[[" + content + "]]") {
-    Some(target) => Some(target.target)
-    None => None
-  }
-}
-
-///|
 fn state_color(cursor : @parse.Cursor) -> String? {
-  guard cursor.consume('#') else { return None }
-  let token = cursor.take_while(char => !char.is_whitespace())
-  guard token.length() > 0 else { return None }
-  Some(token)
+  cursor.take_color_value()
 }
 
 ///|
 fn state_metadata(cursor : @parse.Cursor) -> StateMetadata? {
   let start = cursor.offset()
-  if state_stereotype(cursor) is Some(value) {
+  if cursor.take_stereotype_value() is Some(value) {
     return Some(Stereotype(value))
   }
   ignore(cursor.restore(start))
-  if state_url(cursor) is Some(value) {
+  if cursor.take_url_value() is Some(value) {
     return Some(Url(value))
   }
   ignore(cursor.restore(start))

@@ -1,9 +1,6 @@
 ///|
 test "sequence line dispatcher accepts complete example commands" {
-  guard left_exo_message_parser().parse(
-      @talc.Input::new("[-> client : HTTP request"),
-    )
-    is Ok(_) else {
+  guard parse_sequence_line("[-> client : HTTP request") is Some(_) else {
     @test.fail("left exo parser rejected")
   }
   let lines = [

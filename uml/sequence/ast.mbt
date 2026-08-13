@@ -121,6 +121,7 @@ priv struct Message {
   arrow_config : ArrowConfig
   anchor : String?
   activation_spec : ActivationSpec?
+  activation_spec2 : ActivationSpec?
   life_color : String?
 }
 

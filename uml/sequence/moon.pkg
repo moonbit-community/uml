@@ -1,5 +1,4 @@
 import {
-  "kokic/talcparsec" @talc,
   "kokic/uml/core/metrics",
   "moonbitlang/core/string",
   "moonbitlang/core/test",

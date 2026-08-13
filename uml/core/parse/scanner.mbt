@@ -15,6 +15,18 @@ pub fn Cursor::skip_inline_whitespace(self : Cursor) -> Int {
 }
 
 ///|
+/// Consumes zero or more inline whitespace characters.
+pub fn Cursor::skip_inline_spaces(self : Cursor) -> Unit {
+  ignore(self.skip_inline_whitespace())
+}
+
+///|
+/// Consumes one or more inline whitespace characters.
+pub fn Cursor::skip_inline_space1(self : Cursor) -> Bool {
+  self.skip_inline_whitespace() > 0
+}
+
+///|
 /// Consumes a double-quoted syntax fragment, preserving its quotes and escape
 /// sequences. An unclosed quote consumes the remaining input.
 pub fn Cursor::take_quoted_text(self : Cursor) -> String? {
@@ -71,6 +83,84 @@ pub fn Cursor::take_delimited_text(
     ignore(self.advance())
   }
   Some(self.slice(start, self.offset()))
+}
+
+///|
+/// Consumes a `<<...>>` stereotype value, including the markers. An unclosed
+/// fragment consumes nothing and restores the original position.
+pub fn Cursor::take_stereotype_value(self : Cursor) -> String? {
+  let start = self.offset()
+  guard self.consume_literal("<<") else { return None }
+  while !self.is_eof() && !self.starts_with_literal(">>") {
+    ignore(self.advance())
+  }
+  guard self.consume_literal(">>") else {
+    ignore(self.restore(start))
+    return None
+  }
+  Some(self.slice(start, self.offset()))
+}
+
+///|
+/// Consumes a `[[...]]` URL value and returns the validated target. An
+/// unclosed or invalid fragment consumes nothing and restores the original
+/// position.
+pub fn Cursor::take_url_value(self : Cursor) -> String? {
+  let start = self.offset()
+  guard self.consume_literal("[[") else { return None }
+  let content_start = self.offset()
+  while !self.is_eof() && !self.starts_with_literal("]]") {
+    ignore(self.advance())
+  }
+  guard self.consume_literal("]]") else {
+    ignore(self.restore(start))
+    return None
+  }
+  let content = self.slice(content_start, self.offset() - 2)
+  match parse_url_target("[[" + content + "]]") {
+    Some(target) => Some(target.target)
+    None => {
+      ignore(self.restore(start))
+      None
+    }
+  }
+}
+
+///|
+/// Consumes a non-whitespace token, requiring at least one character.
+pub fn Cursor::take_color_token(self : Cursor) -> String? {
+  let value = self.take_while(char => !char.is_whitespace())
+  if value.length() == 0 {
+    None
+  } else {
+    Some(value)
+  }
+}
+
+///|
+/// Consumes a `#`-prefixed color value, returning the token without the
+/// marker. Restores the original position when no token follows the marker.
+pub fn Cursor::take_color_value(self : Cursor) -> String? {
+  let start = self.offset()
+  guard self.consume('#') else { return None }
+  guard self.take_color_token() is Some(value) else {
+    ignore(self.restore(start))
+    return None
+  }
+  Some(value)
+}
+
+///|
+/// Consumes a `$`-prefixed tag value, returning the token without the
+/// marker. Restores the original position when no token follows the marker.
+pub fn Cursor::take_tag_value(self : Cursor) -> String? {
+  let start = self.offset()
+  guard self.consume('$') else { return None }
+  guard self.take_color_token() is Some(value) else {
+    ignore(self.restore(start))
+    return None
+  }
+  Some(value)
 }
 
 ///|

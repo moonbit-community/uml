@@ -15,93 +15,112 @@ priv struct RelationArrowCandidate {
 }
 
 ///|
-fn relation_symbol(value : String) -> @talc.StringParser[String] {
-  @talc.string(value).attempt()
+fn take_relation_decor(
+  cursor : @parse.Cursor,
+  decorations : Array[(String, RelationEnd)],
+) -> String? {
+  for entry in decorations {
+    if cursor.consume_literal(entry.0) {
+      return Some(entry.0)
+    }
+  }
+  None
 }
 
 ///|
-fn relation_stroke_parser() -> @talc.StringParser[RelationStroke] {
-  let stroke = @talc.many_chars1(@talc.one_of("-=."))
-  let style = @talc.char('[')
-    .then(@talc.many_chars(@talc.none_of("]")))
-    .skip(@talc.char(']'))
-    .attempt()
-    .optional()
-  let direction = @talc.choice([
-    relation_symbol("right"),
-    relation_symbol("down"),
-    relation_symbol("left"),
-    relation_symbol("up"),
-    relation_symbol("ri"),
-    relation_symbol("do"),
-    relation_symbol("le"),
-    relation_symbol("r"),
-    relation_symbol("d"),
-    relation_symbol("l"),
-    relation_symbol("u"),
-  ]).optional()
-  stroke.bind(first => {
-    style.bind(first_style => {
-      direction.bind(direction => {
-        style.bind(second_style => {
-          @talc.many_chars(@talc.one_of("-=.")).map(second => {
-            let text = first +
-              first_style.map_or("", value => "[" + value + "]") +
-              direction.unwrap_or("") +
-              second_style.map_or("", value => "[" + value + "]") +
-              second
-            {
-              first_length: first.length(),
-              has_direction: direction is Some(_),
-              text,
-            }
-          })
-        })
-      })
-    })
+fn take_style(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('[') else { return None }
+  let value = cursor.take_while(char => char != ']')
+  guard cursor.consume(']') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(value)
+}
+
+///|
+fn take_direction(cursor : @parse.Cursor) -> String? {
+  let symbols = [
+    "right", "down", "left", "up", "ri", "do", "le", "r", "d", "l", "u",
+  ]
+  for symbol in symbols {
+    if cursor.consume_literal(symbol) {
+      return Some(symbol)
+    }
+  }
+  None
+}
+
+///|
+fn relation_stroke(cursor : @parse.Cursor) -> RelationStroke? {
+  let first = cursor.take_while(char => "-=.".contains_char(char))
+  guard first.length() > 0 else { return None }
+  let first_style = take_style(cursor)
+  let direction = take_direction(cursor)
+  let second_style = take_style(cursor)
+  let second = cursor.take_while(char => "-=.".contains_char(char))
+  let text = first +
+    first_style.map_or("", value => "[" + value + "]") +
+    direction.unwrap_or("") +
+    second_style.map_or("", value => "[" + value + "]") +
+    second
+  Some({
+    first_length: first.length(),
+    has_direction: direction is Some(_),
+    text,
   })
 }
 
 ///|
-fn relation_arrow_candidate_parser() -> @talc.StringParser[
-  RelationArrowCandidate,
-] {
-  let left_decor = @talc.choice(
-      left_relation_decorations.map(entry => relation_symbol(entry.0)),
-    )
-    .attempt()
-    .optional()
-  let right_decor = @talc.choice(
-      right_relation_decorations.map(entry => relation_symbol(entry.0)),
-    )
-    .attempt()
-    .optional()
-  let inside = @talc.choice([
-      relation_symbol("(0)"),
-      relation_symbol("(0"),
-      relation_symbol("0)"),
-      relation_symbol("0"),
-    ])
-    .bind(value => {
-      @talc.many_chars1(@talc.one_of("-=.")).map(stroke => value + stroke)
-    })
-    .attempt()
-    .optional()
-  left_decor.bind(left => {
-    relation_stroke_parser().bind(stroke => {
-      inside.bind(inside => {
-        right_decor.map(right => {
-          let left_text = left.unwrap_or("")
-          let right_text = right.unwrap_or("")
-          {
-            first_length: stroke.first_length,
-            has_direction: stroke.has_direction,
-            has_left_decor: left is Some(_),
-            has_right_decor: right is Some(_),
-            text: left_text + stroke.text + inside.unwrap_or("") + right_text,
-          }
-        })
-      })
-    })
+fn take_inside(cursor : @parse.Cursor) -> String? {
+  let symbols = ["(0)", "(0", "0)", "0"]
+  for symbol in symbols {
+    let sym_start = cursor.offset()
+    if cursor.consume_literal(symbol) {
+      let stroke = cursor.take_while(char => "-=.".contains_char(char))
+      if stroke.length() > 0 {
+        return Some(symbol + stroke)
+      }
+      ignore(cursor.restore(sym_start))
+    }
+  }
+  None
+}
+
+///|
+fn relation_arrow_candidate(cursor : @parse.Cursor) -> RelationArrowCandidate? {
+  let start = cursor.offset()
+  let left = take_relation_decor(cursor, left_relation_decorations)
+  guard relation_stroke(cursor) is Some(stroke) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let inside = take_inside(cursor)
+  let right = take_relation_decor(cursor, right_relation_decorations)
+  Some({
+    first_length: stroke.first_length,
+    has_direction: stroke.has_direction,
+    has_left_decor: left is Some(_),
+    has_right_decor: right is Some(_),
+    text: left.unwrap_or("") +
+    stroke.text +
+    inside.unwrap_or("") +
+    right.unwrap_or(""),
   })
+}
+
+///|
+fn relation_non_single_arrow(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard relation_arrow_candidate(cursor) is Some(candidate) else { return None }
+  if candidate.first_length >= 2 ||
+    candidate.has_direction ||
+    candidate.has_left_decor ||
+    candidate.has_right_decor {
+    Some(candidate.text)
+  } else {
+    ignore(cursor.restore(start))
+    None
+  }
 }

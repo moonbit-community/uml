@@ -209,6 +209,32 @@ fn ParseCtx::validate_event(
 }
 
 ///|
+/// Tracks the activating-message stack for a message activation
+/// specifier, mirroring Java's `manageActivations`: `++`/`**` activate
+/// the second participant, `--`/`!!` act on the first one.
+fn ParseCtx::apply_message_activation(
+  self : ParseCtx,
+  spec : ActivationSpec?,
+  message : Message,
+) -> Unit {
+  let participant = match spec {
+    Some(Activate) | Some(Create) => message.to_code
+    Some(Deactivate) | Some(Destroy) => message.from_code
+    None => return
+  }
+  match spec {
+    Some(Activate) | Some(Create) => self.activating_messages.push(participant)
+    Some(Deactivate) | Some(Destroy) =>
+      if self.activating_messages
+        .last()
+        .map_or(false, code => code == participant) {
+        let _ = self.activating_messages.pop()
+      }
+    None => ()
+  }
+}
+
+///|
 fn ParseCtx::resolve_event(
   self : ParseCtx,
   event : Event,
@@ -242,17 +268,8 @@ fn ParseCtx::push_event(
     Message(message) => {
       self.last_message_from = Some(message.from_code)
       self.last_message_to = Some(message.to_code)
-      match message.activation_spec {
-        Some(Activate) | Some(Create) =>
-          self.activating_messages.push(message.to_code)
-        Some(Deactivate) | Some(Destroy) =>
-          if self.activating_messages
-            .last()
-            .map_or(false, code => code == message.to_code) {
-            let _ = self.activating_messages.pop()
-          }
-        None => ()
-      }
+      self.apply_message_activation(message.activation_spec, message)
+      self.apply_message_activation(message.activation_spec2, message)
     }
     LifeEvent(life) => {
       if life.event_type is Activate &&

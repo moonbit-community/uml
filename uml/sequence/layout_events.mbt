@@ -49,6 +49,17 @@ fn finish_activation(
 }
 
 ///|
+/// The participant a message activation specifier acts on: `++`/`**`/`!!`
+/// target the second participant, `--` the first one, mirroring Java's
+/// `manageActivations`.
+fn message_target(message : Message, spec : ActivationSpec?) -> String {
+  match spec {
+    Some(Deactivate) => message.from_code
+    _ => message.to_code
+  }
+}
+
+///|
 fn apply_activation_spec(
   spec : ActivationSpec?,
   participant_code : String,
@@ -101,8 +112,7 @@ fn layout_events(
   let mut previous_top = current_y
   let mut parallel_bottom = current_y
   let mut last_visual_bottom = start_y
-  let mut last_message_to : String? = None
-  let mut last_message_arrow_y : Int? = None
+  let last_message_y : Map[String, Int] = Map([])
   let mut autoactivate = diagram.autoactivate
   let mut ignore_newpage = false
   let auto_page_breaks = []
@@ -179,7 +189,17 @@ fn layout_events(
         )
         apply_activation_spec(
           message.activation_spec,
-          message.to_code,
+          message_target(message, message.activation_spec),
+          Some(message.from_code),
+          y + MESSAGE_ARROW_OFFSET,
+          message.life_color,
+          activations,
+          active,
+          destroys,
+        )
+        apply_activation_spec(
+          message.activation_spec2,
+          message_target(message, message.activation_spec2),
           Some(message.from_code),
           y + MESSAGE_ARROW_OFFSET,
           message.life_color,
@@ -199,8 +219,8 @@ fn layout_events(
             None,
           )
         }
-        last_message_to = Some(message.to_code)
-        last_message_arrow_y = Some(y + MESSAGE_ARROW_OFFSET)
+        last_message_y[message.from_code] = y + MESSAGE_ARROW_OFFSET
+        last_message_y[message.to_code] = y + MESSAGE_ARROW_OFFSET
       }
       MessageExo(message) => {
         messages_since_auto_newpage += 1
@@ -215,15 +235,16 @@ fn layout_events(
           active,
           destroys,
         )
-        last_message_to = Some(message.participant_code)
-        last_message_arrow_y = Some(y + MESSAGE_ARROW_OFFSET)
+        last_message_y[message.participant_code] = y + MESSAGE_ARROW_OFFSET
       }
       LifeEvent(life) => {
-        let life_y = if life.event_type is Activate &&
-          last_message_to == Some(life.participant_code) {
-          last_message_arrow_y.unwrap_or(y)
-        } else {
-          y
+        // A standalone life event attaches to the y of the last message
+        // dealing with its participant, mirroring Java's
+        // `lastEventWithDeactivate.dealWith(p)`; otherwise it sits on its
+        // own row.
+        let life_y = match last_message_y.get(life.participant_code) {
+          Some(arrow_y) => arrow_y
+          None => y
         }
         apply_activation_spec(
           Some(life.event_type),

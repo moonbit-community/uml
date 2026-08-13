@@ -37,21 +37,35 @@ fn message_direction(
   left : DressingResult,
   right : DressingResult,
 ) -> MessageDirection? {
-  if right.has_dir || left.cross || right.cross {
+  if right.has_dir {
     Some(Forward)
   } else if left.has_dir {
     Some(Reverse)
+  } else if left.cross || right.cross {
+    Some(Forward)
   } else {
     None
   }
 }
 
 ///|
-fn from_left_exo_type(
+/// Derives the exo message type for the left-border commands, mirroring
+/// `CommandExoArrowLeft.getMessageExoType`: a leading `]` selects the
+/// right border, otherwise the border is the left one.
+fn exo_left_type(
+  symbol : Char,
   left : DressingResult,
   right : DressingResult,
 ) -> MessageExoType? {
-  if right.has_dir {
+  if symbol == ']' {
+    if right.has_dir {
+      Some(FromRight)
+    } else if left.has_dir {
+      Some(ToRight)
+    } else {
+      None
+    }
+  } else if right.has_dir {
     Some(FromLeft)
   } else if left.has_dir {
     Some(ToLeft)
@@ -61,11 +75,23 @@ fn from_left_exo_type(
 }
 
 ///|
-fn to_right_exo_type(
+/// Derives the exo message type for the right-border commands, mirroring
+/// `CommandExoArrowRight.getMessageExoType`: a leading `[` selects the
+/// left border, otherwise the border is the right one.
+fn exo_right_type(
+  symbol : Char,
   left : DressingResult,
   right : DressingResult,
 ) -> MessageExoType? {
-  if right.has_dir {
+  if symbol == '[' {
+    if right.has_dir {
+      Some(ToLeft)
+    } else if left.has_dir {
+      Some(FromLeft)
+    } else {
+      None
+    }
+  } else if right.has_dir {
     Some(ToRight)
   } else if left.has_dir {
     Some(FromRight)

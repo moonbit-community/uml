@@ -24,60 +24,108 @@ pub fn normalize_url_target(value : String) -> String {
 }
 
 ///|
-fn url_target_prefix_parser() -> @talc.StringParser[UrlTarget] {
-  let quoted_target = quoted_value_parser()
-  let unquoted_target = @talc.many_chars1(
-    @talc.satisfy("URL target", char => !char.is_whitespace() && char != ']'),
-  )
-  let target = quoted_target.attempt().or(unquoted_target)
-  let terminator = @talc.string("]]")
-  let label_char = terminator
-    .not_followed_by("URL terminator")
-    .then(@talc.char(']'))
-    .or(@talc.none_of("]"))
-  let label = @talc.many_chars(label_char).skip(terminator)
-  let no_label = @talc.spaces().then(terminator).map(_ => None)
-  let with_label = @talc.whitespace()
-    .some()
-    .then(label)
-    .map(label => {
-      let label = label.trim().to_owned()
-      if label.length() == 0 {
-        None
-      } else {
-        Some(label)
-      }
-    })
-  @talc.string("[[")
-  .then(@talc.spaces())
-  .then(
-    target.bind(target => {
-      no_label.attempt().or(with_label).map(label => { target, label })
-    }),
-  )
+fn skip_url_spaces(cursor : Cursor) -> Unit {
+  ignore(cursor.skip_while(Char::is_whitespace))
 }
 
 ///|
-fn url_target_parser() -> @talc.StringParser[UrlTarget] {
-  @talc.spaces()
-  .then(url_target_prefix_parser())
-  .skip(@talc.spaces())
-  .skip(@talc.eof())
+fn skip_url_space1(cursor : Cursor) -> Bool {
+  cursor.skip_while(Char::is_whitespace) > 0
+}
+
+///|
+/// Consumes the `]]` terminator directly after optional whitespace.
+fn take_url_terminator(cursor : Cursor) -> Bool {
+  skip_url_spaces(cursor)
+  cursor.consume_literal("]]")
+}
+
+///|
+/// Consumes the label of a URL target up to its `]]` terminator.
+fn take_url_label(cursor : Cursor) -> String? {
+  let start = cursor.offset()
+  while !cursor.is_eof() && !cursor.starts_with_literal("]]") {
+    ignore(cursor.advance())
+  }
+  guard cursor.consume_literal("]]") else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(cursor.slice(start, cursor.offset() - 2))
+}
+
+///|
+/// Parses a `[[target label]]` prefix, leaving the cursor after the
+/// terminator. On failure the cursor is restored to its original position.
+fn url_target_prefix(cursor : Cursor) -> UrlTarget? {
+  let start = cursor.offset()
+  guard cursor.consume_literal("[[") else { return None }
+  skip_url_spaces(cursor)
+  let target = match cursor.take_quoted_value() {
+    Some(value) => value
+    None => {
+      let value = cursor.take_while(char => !char.is_whitespace() && char != ']')
+      guard value.length() > 0 else {
+        ignore(cursor.restore(start))
+        return None
+      }
+      value
+    }
+  }
+  let label_start = cursor.offset()
+  let label : String? = if take_url_terminator(cursor) {
+    None
+  } else {
+    ignore(cursor.restore(label_start))
+    guard skip_url_space1(cursor) else {
+      ignore(cursor.restore(start))
+      return None
+    }
+    guard take_url_label(cursor) is Some(raw) else {
+      ignore(cursor.restore(start))
+      return None
+    }
+    let label = raw.trim().to_owned()
+    if label.length() == 0 {
+      None
+    } else {
+      Some(label)
+    }
+  }
+  Some({ target, label })
+}
+
+///|
+fn url_target_parser(cursor : Cursor) -> UrlTarget? {
+  let start = cursor.offset()
+  skip_url_spaces(cursor)
+  guard url_target_prefix(cursor) is Some(target) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  skip_url_spaces(cursor)
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(target)
 }
 
 ///|
 /// Parse a URL target at the beginning of a larger PlantUML command.
 pub fn parse_url_target_prefix(value : String) -> (UrlTarget, String)? {
-  match url_target_prefix_parser().run(@talc.Input::new(value)) {
-    Ok((target, rest)) => Some((target, rest.remaining().to_owned()))
-    Err(_) => None
+  let cursor = Cursor::new(value)
+  match url_target_prefix(cursor) {
+    Some(target) => Some((target, cursor.remaining()))
+    None => None
   }
 }
 
 ///|
 pub fn parse_url_target(value : String) -> UrlTarget? {
-  match url_target_parser().parse(@talc.Input::new(value)) {
-    Ok(target) if target.target.length() > 0 => Some(target)
+  let cursor = Cursor::new(value)
+  match url_target_parser(cursor) {
+    Some(target) if target.target.length() > 0 => Some(target)
     _ => None
   }
 }

@@ -11,63 +11,106 @@ priv enum ParsedMapEntrySyntax {
 }
 
 ///|
-fn map_value_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
-  let separator = @talc.string("=>")
-  separator
-  .not_followed_by("map value separator")
-  .then(@talc.satisfy("map key", _ => true))
-  .string_map(char => char.to_string())
-  .many()
-  .map(parts => parts.join("").trim().to_owned())
-  .skip(separator)
-  .bind(key => {
-    guard key.length() > 0 else { return @talc.fail("map key") }
-    @talc.many_chars(@talc.satisfy("map value", _ => true)).map(value => {
-      let value = value.trim().to_owned()
-      ParsedMapValue(key~, value~)
-    })
-  })
+fn map_value_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
+  let start = cursor.offset()
+  let key = cursor.take_while(_ => !cursor.starts_with_literal("=>"))
+  guard key.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.consume_literal("=>") else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let value = cursor.take_while(_ => true).trim().to_owned()
+  let key = key.trim().to_owned()
+  Some(ParsedMapValue(key~, value~))
 }
 
 ///|
-fn map_link_entry_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
-  linked_map_arrow_parser().bind(prefix => {
-    let (key, arrow) = prefix
-    let key = key.trim().to_owned()
-    guard key.length() > 0 else { return @talc.fail("map link key") }
-    @talc.many_chars1(@talc.satisfy("map link target", _ => true)).bind(target => {
-      let target = @parse.unquote_identifier(target.trim().to_owned())
-      if target.length() > 0 {
-        @talc.pure(ParsedMapLink(key~, arrow~, target~))
-      } else {
-        @talc.fail("map link target")
-      }
-    })
-  })
+fn linked_map_arrow(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('*') else { return None }
+  let dashes = cursor.take_while(char => char == '-')
+  guard dashes.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let underscore = cursor.consume('_')
+  guard cursor.consume('>') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some("*" + dashes + (if underscore { "_" } else { "" }) + ">")
 }
 
 ///|
-fn map_entry_line_parser() -> @talc.StringParser[ParsedMapEntrySyntax] {
-  map_value_entry_parser()
-  .attempt()
-  .or(map_link_entry_parser())
-  .skip(@talc.eof())
+fn starts_linked_arrow(cursor : @parse.Cursor) -> Bool {
+  let offset = cursor.offset()
+  let matched = linked_map_arrow(cursor) is Some(_)
+  ignore(cursor.restore(offset))
+  matched
+}
+
+///|
+fn linked_map_arrow_parser(cursor : @parse.Cursor) -> (String, String)? {
+  let start = cursor.offset()
+  let prefix = cursor.take_while(_ => !starts_linked_arrow(cursor))
+  guard linked_map_arrow(cursor) is Some(arrow) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some((prefix, arrow))
+}
+
+///|
+fn map_link_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
+  let start = cursor.offset()
+  guard linked_map_arrow_parser(cursor) is Some((key, arrow)) else {
+    return None
+  }
+  let key = key.trim().to_owned()
+  guard key.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let target = @parse.unquote_identifier(
+    cursor.take_while(_ => true).trim().to_owned(),
+  )
+  if target.length() > 0 {
+    Some(ParsedMapLink(key~, arrow~, target~))
+  } else {
+    ignore(cursor.restore(start))
+    None
+  }
+}
+
+///|
+fn map_entry_line(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
+  let start = cursor.offset()
+  if map_value_entry(cursor) is Some(value) {
+    return Some(value)
+  }
+  ignore(cursor.restore(start))
+  guard map_link_entry(cursor) is Some(value) else { return None }
+  Some(value)
 }
 
 ///|
 fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
-  match map_entry_line_parser().parse(@talc.Input::new(line)) {
-    Ok(ParsedMapValue(key~, value~)) =>
+  let cursor = @parse.Cursor::new(line)
+  match map_entry_line(cursor) {
+    Some(ParsedMapValue(key~, value~)) =>
       Some({
         entry: { key, value: Some(value), link_target: None, raw: line },
         arrow: None,
       })
-    Ok(ParsedMapLink(key~, arrow~, target~)) =>
+    Some(ParsedMapLink(key~, arrow~, target~)) =>
       Some({
         entry: { key, value: None, link_target: Some(target), raw: line },
         arrow: Some(arrow),
       })
-    Err(_) => None
+    None => None
   }
 }
 
@@ -283,27 +326,6 @@ test "reject invalid map entry line" {
   guard parse_map_entry_line("invalid line") is None else {
     fail("expected invalid map entry")
   }
-}
-
-///|
-fn linked_map_arrow_parser() -> @talc.StringParser[(String, String)] {
-  let arrow = @talc.char('*').bind(_ => {
-    @talc.many_chars1(@talc.char('-')).bind(dashes => {
-      @talc.char('_')
-      .optional()
-      .bind(underscore => {
-        @talc.char('>').map(_ => {
-          "*" + dashes + underscore.map_or("", _ => "_") + ">"
-        })
-      })
-    })
-  })
-  let prefix_character = arrow
-    .not_followed_by("map link arrow")
-    .then(@talc.satisfy("map entry text", _ => true))
-  @talc.many_chars(prefix_character).bind(prefix => {
-    arrow.map(arrow => (prefix, arrow))
-  })
 }
 
 ///|

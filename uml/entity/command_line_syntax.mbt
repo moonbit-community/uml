@@ -6,134 +6,153 @@ priv enum ClassCommandLineSyntax {
 }
 
 ///|
-fn package_keyword_parser() -> @talc.StringParser[Bool] {
-  inline_keyword_parser("package")
-  .map(_ => false)
-  .attempt()
-  .or(inline_keyword_parser("namespace").map(_ => true))
+fn package_keyword(cursor : @parse.Cursor) -> Bool? {
+  if consume_inline_keyword(cursor, "package") {
+    Some(false)
+  } else if consume_inline_keyword(cursor, "namespace") {
+    Some(true)
+  } else {
+    None
+  }
 }
 
 ///|
-fn package_body_parser() -> @talc.StringParser[
-  (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool),
-] {
-  declaration_name_syntax_parser().bind(name => {
-    inline_space1()
-    .then(declaration_suffix_parser())
-    .attempt()
-    .many()
-    .bind(suffixes => {
-      inline_spaces()
-      .then(
-        @talc.string("{}")
-        .map(_ => true)
-        .attempt()
-        .or(@talc.char('{').map(_ => false)),
-      )
-      .attempt()
-      .optional()
-      .skip(inline_spaces())
-      .map(brace => {
-        (name, declaration_metadata_from(suffixes), brace.unwrap_or(false))
-      })
-    })
-  })
+fn package_body(
+  cursor : @parse.Cursor,
+) -> (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool)? {
+  guard take_declaration_name_and_suffixes(cursor) is Some((name, metadata)) else {
+    return None
+  }
+  let empty = take_brace(cursor, true)
+  cursor.skip_inline_spaces()
+  Some((name, metadata, empty))
 }
 
 ///|
-fn package_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
-  declaration_visibility_parser()
-  .bind(visibility => {
-    package_keyword_parser().bind(is_namespace => {
-      inline_space1()
-      .then(package_body_parser())
-      .map(value => {
-        let (name, metadata, empty) = value
-        ParsedPackage({
-          code: name.code,
-          display: name.display,
-          is_namespace,
-          visibility,
-          stereotype: metadata.stereotype,
-          url: metadata.url,
-          color: metadata.color,
-          empty,
-        })
-      })
-    })
-  })
-  .skip(@talc.eof())
-}
-
-///|
-fn stereotype_assignment_line_parser() -> @talc.StringParser[
-  ClassCommandLineSyntax,
-] {
-  let code = @parse.quoted_value_parser()
-    .attempt()
-    .or(
-      @talc.many_chars1(
-        @talc.satisfy("stereotype assignment target", char => {
-          !char.is_whitespace() && char != '<'
-        }),
-      ),
-    )
-    .map(@parse.unquote_identifier)
-  code
-  .bind(code => {
-    inline_space1()
-    .then(@parse.stereotype_value_parser())
-    .map(stereotype => ParsedStereotypeAssignment(code~, stereotype~))
-  })
-  .skip(@talc.eof())
-}
-
-///|
-fn url_assignment_target_parser() -> @talc.StringParser[String] {
-  @parse.quoted_value_parser()
-  .attempt()
-  .or(
-    @talc.many_chars1(
-      @talc.satisfy("URL assignment target", char => {
-        !char.is_whitespace() && char != '['
-      }),
-    ),
+fn package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+  let start = cursor.offset()
+  let visibility = declaration_visibility(cursor)
+  guard package_keyword(cursor) is Some(is_namespace) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard package_body(cursor) is Some((name, metadata, empty)) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(
+    ParsedPackage({
+      code: name.code,
+      display: name.display,
+      is_namespace,
+      visibility,
+      stereotype: metadata.stereotype,
+      url: metadata.url,
+      color: metadata.color,
+      empty,
+    }),
   )
-  .map(@parse.unquote_identifier)
 }
 
 ///|
-fn url_assignment_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
-  inline_keyword_parser("url")
-  .then(inline_space1())
-  .then(
-    inline_keyword_parser("of")
-    .attempt()
-    .or(inline_keyword_parser("for"))
-    .then(inline_space1())
-    .attempt()
-    .optional(),
-  )
-  .bind(_ => {
-    url_assignment_target_parser().bind(code => {
-      inline_space1()
-      .then(inline_keyword_parser("is"))
-      .attempt()
-      .optional()
-      .then(inline_space1())
-      .then(@parse.url_value_parser())
-      .map(url => ParsedUrlAssignment(code~, url~))
-    })
-  })
-  .skip(@talc.eof())
+fn stereotype_assignment_line(
+  cursor : @parse.Cursor,
+) -> ClassCommandLineSyntax? {
+  let start = cursor.offset()
+  let code = match cursor.take_quoted_value() {
+    Some(value) => @parse.unquote_identifier(value)
+    None => {
+      let value = cursor.take_while(char => !char.is_whitespace() && char != '<')
+      guard value.length() > 0 else {
+        ignore(cursor.restore(start))
+        return None
+      }
+      @parse.unquote_identifier(value)
+    }
+  }
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.take_stereotype_value() is Some(stereotype) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(ParsedStereotypeAssignment(code~, stereotype~))
 }
 
 ///|
-fn class_command_line_parser() -> @talc.StringParser[ClassCommandLineSyntax] {
-  package_line_parser()
-  .attempt()
-  .or(url_assignment_line_parser().attempt())
-  .or(stereotype_assignment_line_parser())
+fn url_assignment_target(cursor : @parse.Cursor) -> String? {
+  match cursor.take_quoted_value() {
+    Some(value) => Some(@parse.unquote_identifier(value))
+    None => {
+      let value = cursor.take_while(char => !char.is_whitespace() && char != '[')
+      guard value.length() > 0 else { return None }
+      Some(@parse.unquote_identifier(value))
+    }
+  }
+}
+
+///|
+fn url_assignment_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+  let start = cursor.offset()
+  guard consume_inline_keyword(cursor, "url") && cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let of_start = cursor.offset()
+  if !((
+      consume_inline_keyword(cursor, "of") ||
+      consume_inline_keyword(cursor, "for")
+    ) &&
+    cursor.skip_inline_space1()) {
+    ignore(cursor.restore(of_start))
+  }
+  guard url_assignment_target(cursor) is Some(code) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  ignore(consume_inline_keyword(cursor, "is"))
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.take_url_value() is Some(url) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(ParsedUrlAssignment(code~, url~))
+}
+
+///|
+fn class_command_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+  if package_line(cursor) is Some(value) {
+    return Some(value)
+  }
+  if url_assignment_line(cursor) is Some(value) {
+    return Some(value)
+  }
+  stereotype_assignment_line(cursor)
 }
 
 ///|

@@ -142,33 +142,50 @@ priv enum FilterLineSyntax {
 }
 
 ///|
-fn filter_token_parser() -> @talc.StringParser[String] {
-  @parse.stereotype_value_parser()
-  .attempt()
-  .or(@parse.quoted_value_parser().attempt())
-  .or(
-    @talc.many_chars1(
-      @talc.satisfy("filter token", char => !char.is_whitespace()),
-    ),
-  )
+fn filter_token(cursor : @parse.Cursor) -> String? {
+  if cursor.take_stereotype_value() is Some(value) {
+    return Some(value)
+  }
+  if cursor.take_quoted_value() is Some(value) {
+    return Some(value)
+  }
+  let value = cursor.take_while(char => !char.is_whitespace())
+  if value.length() > 0 {
+    Some(value)
+  } else {
+    None
+  }
 }
 
 ///|
-fn filter_line_parser() -> @talc.StringParser[FilterLineSyntax] {
-  filter_token_parser()
-  .sep_by1(inline_space1())
-  .bind(tokens => {
-    match portion_rule_from_tokens(tokens) {
-      Some(rule) => @talc.pure(ParsedPortionRule(rule))
-      None =>
-        match entity_rule_from_tokens(tokens) {
-          Some(rule) => @talc.pure(ParsedEntityRule(rule))
-          None => @talc.fail("class filter command")
-        }
+fn filter_line(cursor : @parse.Cursor) -> FilterLineSyntax? {
+  let start = cursor.offset()
+  guard filter_token(cursor) is Some(first) else { return None }
+  let tokens = [first]
+  while true {
+    let sep_start = cursor.offset()
+    guard cursor.skip_inline_space1() && filter_token(cursor) is Some(token) else {
+      ignore(cursor.restore(sep_start))
+      break
     }
-  })
-  .skip(inline_spaces())
-  .skip(@talc.eof())
+    tokens.push(token)
+  }
+  cursor.skip_inline_spaces()
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  match portion_rule_from_tokens(tokens) {
+    Some(rule) => Some(ParsedPortionRule(rule))
+    None =>
+      match entity_rule_from_tokens(tokens) {
+        Some(rule) => Some(ParsedEntityRule(rule))
+        None => {
+          ignore(cursor.restore(start))
+          None
+        }
+      }
+  }
 }
 
 ///|

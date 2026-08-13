@@ -1,5 +1,4 @@
 import {
   "moonbitlang/core/string",
   "moonbitlang/core/test",
-  "kokic/talcparsec" @talc,
 }

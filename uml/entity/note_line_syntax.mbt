@@ -50,71 +50,83 @@ priv enum ClassAnnotationLineSyntax {
 }
 
 ///|
-fn note_position_parser() -> @talc.StringParser[NotePosition] {
-  inline_word_parser("note position").bind(word => {
-    match note_position(word) {
-      Some(position) => @talc.pure(position)
-      None => @talc.fail("note position")
+fn note_position_syntax(cursor : @parse.Cursor) -> NotePosition? {
+  let start = cursor.offset()
+  guard take_inline_word(cursor) is Some(word) else { return None }
+  match note_position(word) {
+    Some(position) => Some(position)
+    None => {
+      ignore(cursor.restore(start))
+      None
     }
-  })
+  }
 }
 
 ///|
-fn note_name_parser(label : String) -> @talc.StringParser[String] {
-  let plain = @talc.many_chars1(
-    @talc.satisfy(label, char => {
-      !char.is_whitespace() &&
-      char != ':' &&
-      char != '#' &&
-      char != '$' &&
-      char != '<' &&
-      char != '[' &&
-      char != '{'
-    }),
-  )
-  @parse.quoted_value_parser()
-  .attempt()
-  .or(plain)
-  .map(@parse.unquote_identifier)
-}
-
-///|
-fn note_entity_name_parser() -> @talc.StringParser[String] {
-  note_name_parser("note entity").bind(name => {
-    if name.equal_ignore_ascii_case("of") {
-      @talc.fail("note entity")
-    } else {
-      @talc.pure(name)
+fn note_name(cursor : @parse.Cursor) -> String? {
+  let value = match cursor.take_quoted_value() {
+    Some(value) => value
+    None => {
+      let value = cursor.take_while(char => {
+        !char.is_whitespace() &&
+        char != ':' &&
+        char != '#' &&
+        char != '$' &&
+        char != '<' &&
+        char != '[' &&
+        char != '{'
+      })
+      guard value.length() > 0 else { return None }
+      value
     }
+  }
+  Some(@parse.unquote_identifier(value))
+}
+
+///|
+fn note_entity_name(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard note_name(cursor) is Some(name) else { return None }
+  if name.equal_ignore_ascii_case("of") {
+    ignore(cursor.restore(start))
+    None
+  } else {
+    Some(name)
+  }
+}
+
+///|
+fn note_member_name(cursor : @parse.Cursor) -> String? {
+  let value = cursor.take_while(char => {
+    !char.is_whitespace() &&
+    char != '#' &&
+    char != '$' &&
+    char != '<' &&
+    char != '[' &&
+    char != '{'
   })
+  if value.length() == 0 {
+    None
+  } else {
+    Some(@parse.unquote_identifier(value))
+  }
 }
 
 ///|
-fn note_member_name_parser() -> @talc.StringParser[String] {
-  @talc.many_chars1(
-    @talc.satisfy("note member", char => {
-      !char.is_whitespace() &&
-      char != '#' &&
-      char != '$' &&
-      char != '<' &&
-      char != '[' &&
-      char != '{'
-    }),
-  ).map(@parse.unquote_identifier)
-}
-
-///|
-fn note_metadata_item_parser() -> @talc.StringParser[NoteMetadataItemSyntax] {
-  @talc.choice([
-    @parse.url_value_parser().attempt().map(value => NoteUrl(value)),
-    @parse.stereotype_value_parser()
-    .attempt()
-    .map(value => NoteStereotype(value)),
-    @parse.color_value_parser("note color")
-    .attempt()
-    .map(value => NoteColor(value)),
-    @parse.tag_value_parser("note tag").map(value => NoteTag(value)),
-  ])
+fn note_metadata_item(cursor : @parse.Cursor) -> NoteMetadataItemSyntax? {
+  if cursor.take_url_value() is Some(value) {
+    return Some(NoteUrl(value))
+  }
+  if cursor.take_stereotype_value() is Some(value) {
+    return Some(NoteStereotype(value))
+  }
+  if cursor.take_color_value() is Some(value) {
+    return Some(NoteColor(value))
+  }
+  if cursor.take_tag_value() is Some(value) {
+    return Some(NoteTag(value))
+  }
+  None
 }
 
 ///|
@@ -138,185 +150,258 @@ fn note_metadata_from(
 }
 
 ///|
-fn note_metadata_parser() -> @talc.StringParser[NoteMetadataSyntax] {
-  inline_space1()
-  .then(note_metadata_item_parser())
-  .attempt()
-  .many()
-  .bind(items => {
-    inline_spaces()
-    .then(@talc.char('{'))
-    .attempt()
-    .optional()
-    .map(brace => note_metadata_from(items, brace is Some(_)))
-  })
+fn note_metadata(cursor : @parse.Cursor) -> NoteMetadataSyntax {
+  let items = []
+  while true {
+    let item_start = cursor.offset()
+    guard cursor.skip_inline_space1() &&
+      note_metadata_item(cursor) is Some(item) else {
+      ignore(cursor.restore(item_start))
+      break
+    }
+    items.push(item)
+  }
+  let brace_start = cursor.offset()
+  cursor.skip_inline_spaces()
+  let braced = cursor.consume('{')
+  if !braced {
+    ignore(cursor.restore(brace_start))
+  }
+  note_metadata_from(items, braced)
 }
 
 ///|
-fn note_content_parser() -> @talc.StringParser[NoteContentSyntax] {
-  inline_spaces()
-  .then(@talc.char(':'))
-  .skip(@talc.char(':').not_followed_by("qualified member"))
-  .then(
-    inline_spaces().then(
-      @talc.many_chars(@talc.satisfy("note text", _ => true)),
-    ),
-  )
-  .map(text => NoteInline(text.trim().to_owned()))
-  .attempt()
-  .optional()
-  .map(content => content.unwrap_or(NoteBlock))
+fn note_content(cursor : @parse.Cursor) -> NoteContentSyntax {
+  let start = cursor.offset()
+  cursor.skip_inline_spaces()
+  if cursor.consume(':') && cursor.peek() != Some(':') {
+    cursor.skip_inline_spaces()
+    NoteInline(cursor.take_while(_ => true).trim().to_owned())
+  } else {
+    ignore(cursor.restore(start))
+    NoteBlock
+  }
 }
 
 ///|
-fn named_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
-  let multiline = inline_keyword_parser("as")
-    .then(inline_space1())
-    .then(note_name_parser("named note code"))
-    .map(code => (code, NoteBlock))
-  let inline = @parse.quoted_value_parser().bind(text => {
-    inline_space1()
-    .then(inline_keyword_parser("as"))
-    .then(inline_space1())
-    .then(note_name_parser("named note code"))
-    .map(code => (code, NoteInline(text)))
-  })
-  inline
-  .attempt()
-  .or(multiline)
-  .bind(value => {
-    let (code, content) = value
-    note_metadata_parser().map(metadata => {
-      target: NoteFloatingTarget(code),
-      position: Right,
-      content,
-      metadata,
-    })
-  })
-}
-
-///|
-fn link_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
-  note_position_parser()
-  .skip(inline_space1())
-  .attempt()
-  .optional()
-  .bind(position => {
-    inline_keyword_parser("on")
-    .attempt()
-    .or(inline_keyword_parser("of"))
-    .skip(inline_space1())
-    .then(inline_keyword_parser("link"))
-    .then(note_metadata_parser())
-    .bind(metadata => {
-      note_content_parser().map(content => {
-        target: NoteLinkTarget,
-        position: position.unwrap_or(Bottom),
+fn named_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+  let inline = match cursor.take_quoted_value() {
+    Some(text) => {
+      let as_start = cursor.offset()
+      if cursor.skip_inline_space1() &&
+        consume_inline_keyword(cursor, "as") &&
+        cursor.skip_inline_space1() {
+        match note_name(cursor) {
+          Some(code) => Some((code, NoteInline(text)))
+          None => {
+            ignore(cursor.restore(as_start))
+            None
+          }
+        }
+      } else {
+        ignore(cursor.restore(as_start))
+        None
+      }
+    }
+    None => None
+  }
+  let value = match inline {
+    Some(pair) => Some(pair)
+    None => {
+      let as_start = cursor.offset()
+      if consume_inline_keyword(cursor, "as") && cursor.skip_inline_space1() {
+        match note_name(cursor) {
+          Some(code) => Some((code, NoteBlock))
+          None => {
+            ignore(cursor.restore(as_start))
+            None
+          }
+        }
+      } else {
+        ignore(cursor.restore(as_start))
+        None
+      }
+    }
+  }
+  match value {
+    Some((code, content)) => {
+      let metadata = note_metadata(cursor)
+      Some({
+        target: NoteFloatingTarget(code),
+        position: Right,
         content,
         metadata,
       })
-    })
-  })
-}
-
-///|
-fn member_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
-  note_position_parser().bind(position => {
-    guard position is Left || position is Right else {
-      return @talc.fail("member note position")
     }
-    inline_space1()
-    .then(inline_keyword_parser("of"))
-    .then(inline_space1())
-    .then(note_entity_name_parser())
-    .bind(entity => {
-      @talc.string("::")
-      .then(note_member_name_parser())
-      .bind(entry => {
-        note_metadata_parser().map(metadata => {
-          target: NoteMemberTarget(entity~, entry~),
-          position,
-          content: NoteBlock,
-          metadata,
-        })
-      })
-    })
+    None => None
+  }
+}
+
+///|
+fn link_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+  let start = cursor.offset()
+  let pos_start = cursor.offset()
+  let position = if note_position_syntax(cursor) is Some(value) &&
+    cursor.skip_inline_space1() {
+    Some(value)
+  } else {
+    ignore(cursor.restore(pos_start))
+    None
+  }
+  guard (
+      consume_inline_keyword(cursor, "on") ||
+      consume_inline_keyword(cursor, "of")
+    ) &&
+    cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "link") else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let metadata = note_metadata(cursor)
+  let content = note_content(cursor)
+  Some({
+    target: NoteLinkTarget,
+    position: position.unwrap_or(Bottom),
+    content,
+    metadata,
   })
 }
 
 ///|
-fn entity_note_target_parser() -> @talc.StringParser[String?] {
-  let explicit = inline_space1()
-    .then(inline_keyword_parser("of"))
-    .then(inline_space1())
-    .then(note_entity_name_parser())
-  let implicit = inline_space1().then(note_entity_name_parser())
-  explicit.attempt().or(implicit).attempt().optional()
-}
-
-///|
-fn entity_note_tail_parser() -> @talc.StringParser[NoteLineSyntax] {
-  note_position_parser().bind(position => {
-    entity_note_target_parser().bind(target => {
-      note_metadata_parser().bind(metadata => {
-        note_content_parser().map(content => {
-          target: NoteEntityTarget(target),
-          position,
-          content,
-          metadata,
-        })
-      })
-    })
+fn member_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+  let start = cursor.offset()
+  guard note_position_syntax(cursor) is Some(position) else { return None }
+  guard position is Left || position is Right else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "of") &&
+    cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard note_entity_name(cursor) is Some(entity) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.consume_literal("::") else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard note_member_name(cursor) is Some(entry) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let metadata = note_metadata(cursor)
+  Some({
+    target: NoteMemberTarget(entity~, entry~),
+    position,
+    content: NoteBlock,
+    metadata,
   })
 }
 
 ///|
-fn note_line_parser() -> @talc.StringParser[ClassAnnotationLineSyntax] {
-  inline_keyword_parser("note")
-  .then(inline_space1())
-  .then(
-    @talc.choice([
-      named_note_tail_parser().attempt(),
-      link_note_tail_parser().attempt(),
-      member_note_tail_parser().attempt(),
-      entity_note_tail_parser(),
-    ]),
-  )
-  .skip(inline_spaces())
-  .skip(@talc.eof())
-  .map(note => ParsedClassNote(note))
+fn entity_note_target(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  let explicit_start = cursor.offset()
+  if cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "of") &&
+    cursor.skip_inline_space1() {
+    if note_entity_name(cursor) is Some(name) {
+      return Some(name)
+    }
+    ignore(cursor.restore(explicit_start))
+  } else {
+    ignore(cursor.restore(explicit_start))
+  }
+  if cursor.skip_inline_space1() {
+    if note_entity_name(cursor) is Some(name) {
+      return Some(name)
+    }
+    ignore(cursor.restore(start))
+  }
+  None
 }
 
 ///|
-fn link_constraint_line_parser() -> @talc.StringParser[
-  ClassAnnotationLineSyntax,
-] {
-  inline_keyword_parser("constraint")
-  .then(inline_space1())
-  .then(inline_keyword_parser("on"))
-  .then(inline_space1())
-  .then(inline_keyword_parser("links"))
-  .then(
-    inline_space1()
-    .then(@parse.color_value_parser("constraint color"))
-    .attempt()
-    .optional(),
-  )
-  .bind(color => {
-    inline_spaces()
-    .then(@talc.char(':'))
-    .then(inline_spaces())
-    .then(@talc.many_chars(@talc.satisfy("constraint text", _ => true)))
-    .map(text => ParsedLinkConstraint({ text: text.trim().to_owned(), color }))
-  })
-  .skip(@talc.eof())
+fn entity_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+  guard note_position_syntax(cursor) is Some(position) else { return None }
+  let target = entity_note_target(cursor)
+  let metadata = note_metadata(cursor)
+  let content = note_content(cursor)
+  Some({ target: NoteEntityTarget(target), position, content, metadata })
 }
 
 ///|
-fn class_annotation_line_parser() -> @talc.StringParser[
-  ClassAnnotationLineSyntax,
-] {
-  note_line_parser().attempt().or(link_constraint_line_parser())
+fn note_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
+  let start = cursor.offset()
+  guard consume_inline_keyword(cursor, "note") && cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let tail = if named_note_tail(cursor) is Some(value) {
+    Some(value)
+  } else if link_note_tail(cursor) is Some(value) {
+    Some(value)
+  } else if member_note_tail(cursor) is Some(value) {
+    Some(value)
+  } else {
+    entity_note_tail(cursor)
+  }
+  guard tail is Some(note) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  cursor.skip_inline_spaces()
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(ParsedClassNote(note))
+}
+
+///|
+fn link_constraint_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
+  let start = cursor.offset()
+  guard consume_inline_keyword(cursor, "constraint") &&
+    cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "on") &&
+    cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "links") else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let color_start = cursor.offset()
+  let color = if cursor.skip_inline_space1() {
+    match cursor.take_color_value() {
+      Some(value) => Some(value)
+      None => {
+        ignore(cursor.restore(color_start))
+        None
+      }
+    }
+  } else {
+    ignore(cursor.restore(color_start))
+    None
+  }
+  cursor.skip_inline_spaces()
+  guard cursor.consume(':') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  cursor.skip_inline_spaces()
+  let text = cursor.take_while(_ => true).trim().to_owned()
+  Some(ParsedLinkConstraint({ text, color }))
+}
+
+///|
+fn class_annotation_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
+  match note_line(cursor) {
+    Some(value) => Some(value)
+    None => link_constraint_line(cursor)
+  }
 }
 
 ///|
@@ -327,7 +412,8 @@ test "class note line grammar accepts complete annotation lines" {
     "note \"shared note\" as N1 $shared <<info>> #yellow", "note as N2 {", "constraint on links #pink : {xor}",
   ]
   for line in lines {
-    guard class_annotation_line_parser().parse(@talc.Input::new(line)) is Ok(_) else {
+    let cursor = @parse.Cursor::new(line)
+    guard class_annotation_line(cursor) is Some(_) else {
       @test.fail("expected annotation syntax: \{line}")
     }
   }
@@ -340,7 +426,8 @@ test "class note line grammar rejects trailing or incomplete syntax" {
     "note right of User unexpected metadata",
   ]
   for line in lines {
-    guard class_annotation_line_parser().parse(@talc.Input::new(line)) is Err(_) else {
+    let cursor = @parse.Cursor::new(line)
+    guard class_annotation_line(cursor) is None else {
       @test.fail("unexpected annotation syntax: \{line}")
     }
   }

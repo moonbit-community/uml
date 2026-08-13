@@ -44,225 +44,322 @@ priv struct DeclarationLineSyntax {
 }
 
 ///|
-fn declaration_visibility_parser() -> @talc.StringParser[Visibility] {
-  @talc.one_of("+-#~")
-  .map(char => {
-    match char {
-      '+' => Public
-      '-' => Private
-      '#' => Protected
-      '~' => Package
-      _ => Unknown
-    }
-  })
-  .skip(inline_spaces())
-  .optional()
-  .map(value => value.unwrap_or(Unknown))
-}
-
-///|
-fn declaration_generic_parser() -> @talc.StringParser[String] {
-  @talc.char('<')
-  .skip(@talc.char('<').not_followed_by("stereotype"))
-  .then(generic_content_parser())
-  .skip(@talc.char('>'))
-}
-
-///|
-fn declaration_shaped_name_parser() -> @talc.StringParser[String] {
-  let parentheses = @talc.char('(')
-    .then(@talc.many_chars1(@talc.none_of(")")))
-    .skip(@talc.char(')'))
-    .bind(name => {
-      @talc.char('/')
-      .attempt()
-      .optional()
-      .map(business => {
-        let suffix = if business is Some(_) { "/" } else { "" }
-        "(" + name + ")" + suffix
-      })
-    })
-  let actor = @talc.char(':')
-    .then(@talc.many_chars1(@talc.none_of(":")))
-    .skip(@talc.char(':'))
-    .bind(name => {
-      @talc.char('/')
-      .attempt()
-      .optional()
-      .map(business => {
-        let suffix = if business is Some(_) { "/" } else { "" }
-        ":" + name + ":" + suffix
-      })
-    })
-  let component = @talc.char('[')
-    .then(@talc.many_chars1(@talc.none_of("]")))
-    .skip(@talc.char(']'))
-    .map(value => "[" + value + "]")
-  @talc.choice([parentheses, actor, component])
-}
-
-///|
-fn declaration_name_atom_parser() -> @talc.StringParser[DeclarationNameAtom] {
-  let quoted = @parse.quoted_value_parser().map(value => (value, true))
-  let shaped = declaration_shaped_name_parser().map(value => (value, false))
-  let plain = @talc.many_chars1(
-    @talc.satisfy("declaration name", char => {
-      !char.is_whitespace() &&
-      char != '<' &&
-      char != '{' &&
-      char != ',' &&
-      char != '$' &&
-      char != '#'
-    }),
-  ).map(value => (value, false))
-  quoted
-  .attempt()
-  .or(shaped.attempt())
-  .or(plain)
-  .bind(pair => {
-    let (value, quoted) = pair
-    declaration_generic_parser()
-    .attempt()
-    .optional()
-    .map(generic => { value: @parse.unquote_identifier(value), generic, quoted })
-  })
-}
-
-///|
-fn declaration_name_syntax_parser() -> @talc.StringParser[DeclarationNameSyntax] {
-  declaration_name_atom_parser().bind(first => {
-    inline_space1()
-    .then(inline_keyword_parser("as"))
-    .then(inline_space1())
-    .then(declaration_name_atom_parser())
-    .attempt()
-    .optional()
-    .map(alternate => {
-      match alternate {
-        Some(second) => {
-          let generic = match first.generic {
-            Some(value) => Some(value)
-            None => second.generic
-          }
-          if second.quoted {
-            { display: second.value, code: first.value, generic }
-          } else {
-            { display: first.value, code: second.value, generic }
-          }
-        }
-        None =>
-          { display: first.value, code: first.value, generic: first.generic }
+fn declaration_visibility(cursor : @parse.Cursor) -> Visibility {
+  match cursor.peek() {
+    Some(char) if "+-#~".contains_char(char) => {
+      ignore(cursor.advance())
+      cursor.skip_inline_spaces()
+      match char {
+        '+' => Public
+        '-' => Private
+        '#' => Protected
+        _ => Package
       }
-    })
-  })
-}
-
-///|
-fn declaration_target_parser() -> @talc.StringParser[String] {
-  @parse.quoted_value_parser()
-  .attempt()
-  .or(
-    @talc.many_chars1(
-      @talc.satisfy("inheritance target", char => {
-        !char.is_whitespace() && char != ','
-      }),
-    ),
-  )
-  .map(@parse.unquote_identifier)
-}
-
-///|
-fn declaration_target_list_parser() -> @talc.StringParser[Array[String]] {
-  let separator = inline_spaces()
-    .then(@talc.char(','))
-    .skip(inline_spaces())
-    .attempt()
-  declaration_target_parser().sep_by1(separator)
-}
-
-///|
-fn declaration_stereotype_parser() -> @talc.StringParser[
-  DeclarationSuffixSyntax,
-] {
-  @talc.string("<<")
-  .then(
-    @talc.string(">>")
-    .not_followed_by("stereotype terminator")
-    .then(@talc.satisfy("stereotype", _ => true))
-    .string_map(char => char.to_string())
-    .many()
-    .map(parts => parts.join("")),
-  )
-  .skip(@talc.string(">>"))
-  .map(value => DeclarationStereotype("<<" + value + ">>"))
-}
-
-///|
-fn declaration_url_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
-  let terminator = @talc.string("]]")
-  let character = terminator
-    .not_followed_by("URL terminator")
-    .then(@talc.satisfy("URL character", _ => true))
-  @talc.string("[[")
-  .then(@talc.many_chars(character))
-  .skip(terminator)
-  .bind(content => {
-    match @parse.parse_url_target("[[" + content + "]]") {
-      Some(target) => @talc.pure(DeclarationUrl(target.target))
-      None => @talc.fail("URL")
     }
-  })
+    _ => Unknown
+  }
 }
 
 ///|
-fn declaration_line_style_parser() -> @talc.StringParser[
-  DeclarationSuffixSyntax,
-] {
-  @talc.string("##")
-  .then(
-    @talc.char('[')
-    .then(@talc.many_chars(@talc.none_of("]")))
-    .skip(@talc.char(']'))
-    .attempt()
-    .optional(),
-  )
-  .bind(style => {
-    @parse.color_token_parser("line color").map(color => {
-      let color = if color.length() == 0 { None } else { Some(color) }
-      DeclarationLine(style~, color~)
-    })
-  })
+fn take_shaped_parentheses(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('(') else { return None }
+  let name = cursor.take_while(char => char != ')')
+  guard name.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.consume(')') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let suffix = if cursor.consume('/') { "/" } else { "" }
+  Some("(" + name + ")" + suffix)
 }
 
 ///|
-fn declaration_suffix_parser() -> @talc.StringParser[DeclarationSuffixSyntax] {
-  let extends = inline_keyword_parser("extends")
-    .then(inline_space1())
-    .then(declaration_target_list_parser())
-    .map(values => DeclarationExtends(values))
-  let implements = inline_keyword_parser("implements")
-    .then(inline_space1())
-    .then(declaration_target_list_parser())
-    .map(values => DeclarationImplements(values))
-  let tag = @talc.char('$')
-    .then(
-      @talc.many_chars1(
-        @talc.satisfy("declaration tag", char => !char.is_whitespace()),
-      ),
-    )
-    .map(value => DeclarationTag(value))
-  let color = @parse.color_value_parser("declaration color").map(value => {
-    DeclarationColor(value)
-  })
-  @talc.choice([
-    extends.attempt(),
-    implements.attempt(),
-    declaration_stereotype_parser().attempt(),
-    declaration_url_parser().attempt(),
-    declaration_line_style_parser().attempt(),
-    tag.attempt(),
-    color,
-  ])
+fn take_shaped_actor(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume(':') else { return None }
+  let name = cursor.take_while(char => char != ':')
+  guard name.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.consume(':') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let suffix = if cursor.consume('/') { "/" } else { "" }
+  Some(":" + name + ":" + suffix)
+}
+
+///|
+fn take_shaped_component(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('[') else { return None }
+  let name = cursor.take_while(char => char != ']')
+  guard name.length() > 0 else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.consume(']') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some("[" + name + "]")
+}
+
+///|
+fn declaration_shaped_name(cursor : @parse.Cursor) -> String? {
+  match take_shaped_parentheses(cursor) {
+    Some(value) => Some(value)
+    None =>
+      match take_shaped_actor(cursor) {
+        Some(value) => Some(value)
+        None => take_shaped_component(cursor)
+      }
+  }
+}
+
+///|
+fn take_nested_generic(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('<') else { return None }
+  let content = generic_content(cursor)
+  guard cursor.consume('>') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(content)
+}
+
+///|
+fn generic_content(cursor : @parse.Cursor) -> String {
+  let parts = StringBuilder()
+  while true {
+    let start = cursor.offset()
+    match take_nested_generic(cursor) {
+      Some(content) => parts.write_string("<" + content + ">")
+      None => {
+        ignore(cursor.restore(start))
+        let plain = cursor.take_while(char => char != '<' && char != '>')
+        if plain.length() == 0 {
+          break
+        }
+        parts.write_string(plain)
+      }
+    }
+  }
+  parts.to_string()
+}
+
+///|
+fn declaration_generic(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard cursor.consume('<') else { return None }
+  guard cursor.peek() != Some('<') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let content = generic_content(cursor)
+  guard cursor.consume('>') else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(content)
+}
+
+///|
+fn declaration_name_atom(cursor : @parse.Cursor) -> DeclarationNameAtom? {
+  let start = cursor.offset()
+  let (value, quoted) = match cursor.take_quoted_value() {
+    Some(value) => (value, true)
+    None =>
+      match declaration_shaped_name(cursor) {
+        Some(value) => (value, false)
+        None => {
+          let value = cursor.take_while(char => {
+            !char.is_whitespace() &&
+            char != '<' &&
+            char != '{' &&
+            char != ',' &&
+            char != '$' &&
+            char != '#'
+          })
+          guard value.length() > 0 else {
+            ignore(cursor.restore(start))
+            return None
+          }
+          (value, false)
+        }
+      }
+  }
+  let generic_start = cursor.offset()
+  let generic = declaration_generic(cursor)
+  if generic is None {
+    ignore(cursor.restore(generic_start))
+  }
+  Some({ value: @parse.unquote_identifier(value), generic, quoted })
+}
+
+///|
+fn declaration_name_syntax(cursor : @parse.Cursor) -> DeclarationNameSyntax? {
+  guard declaration_name_atom(cursor) is Some(first) else { return None }
+  let as_start = cursor.offset()
+  let alternate = if cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "as") &&
+    cursor.skip_inline_space1() {
+    declaration_name_atom(cursor)
+  } else {
+    None
+  }
+  if alternate is None {
+    ignore(cursor.restore(as_start))
+  }
+  match alternate {
+    Some(second) => {
+      let generic = match first.generic {
+        Some(value) => Some(value)
+        None => second.generic
+      }
+      if second.quoted {
+        Some({ display: second.value, code: first.value, generic })
+      } else {
+        Some({ display: first.value, code: second.value, generic })
+      }
+    }
+    None =>
+      Some({ display: first.value, code: first.value, generic: first.generic })
+  }
+}
+
+///|
+fn declaration_target(cursor : @parse.Cursor) -> String? {
+  match cursor.take_quoted_value() {
+    Some(value) => Some(@parse.unquote_identifier(value))
+    None => {
+      let value = cursor.take_while(char => !char.is_whitespace() && char != ',')
+      guard value.length() > 0 else { return None }
+      Some(@parse.unquote_identifier(value))
+    }
+  }
+}
+
+///|
+fn declaration_target_list(cursor : @parse.Cursor) -> Array[String]? {
+  guard declaration_target(cursor) is Some(first) else { return None }
+  let values = [first]
+  while true {
+    let sep_start = cursor.offset()
+    cursor.skip_inline_spaces()
+    guard cursor.consume(',') else {
+      ignore(cursor.restore(sep_start))
+      break
+    }
+    cursor.skip_inline_spaces()
+    guard declaration_target(cursor) is Some(value) else {
+      ignore(cursor.restore(sep_start))
+      break
+    }
+    values.push(value)
+  }
+  Some(values)
+}
+
+///|
+fn declaration_stereotype(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+  let start = cursor.offset()
+  guard cursor.consume_literal("<<") else { return None }
+  let parts = StringBuilder()
+  while !cursor.is_eof() && !cursor.starts_with_literal(">>") {
+    match cursor.advance() {
+      Some(char) => parts.write_char(char)
+      None => break
+    }
+  }
+  guard cursor.consume_literal(">>") else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(DeclarationStereotype("<<" + parts.to_string() + ">>"))
+}
+
+///|
+fn declaration_url(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+  match cursor.take_url_value() {
+    Some(url) => Some(DeclarationUrl(url))
+    None => None
+  }
+}
+
+///|
+fn declaration_line_style(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+  let start = cursor.offset()
+  guard cursor.consume_literal("##") else { return None }
+  let style = if cursor.consume('[') {
+    let value = cursor.take_while(char => char != ']')
+    guard cursor.consume(']') else {
+      ignore(cursor.restore(start))
+      return None
+    }
+    Some(value)
+  } else {
+    None
+  }
+  guard cursor.take_color_token() is Some(token) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  let color : String? = Some(token)
+  Some(DeclarationLine(style~, color~))
+}
+
+///|
+fn take_suffix_target_list(
+  cursor : @parse.Cursor,
+  keyword : String,
+) -> Array[String]? {
+  let start = cursor.offset()
+  guard consume_inline_keyword(cursor, keyword) && cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  match declaration_target_list(cursor) {
+    Some(values) => Some(values)
+    None => {
+      ignore(cursor.restore(start))
+      None
+    }
+  }
+}
+
+///|
+fn declaration_suffix(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+  match take_suffix_target_list(cursor, "extends") {
+    Some(values) => return Some(DeclarationExtends(values))
+    None => ()
+  }
+  match take_suffix_target_list(cursor, "implements") {
+    Some(values) => return Some(DeclarationImplements(values))
+    None => ()
+  }
+  if declaration_stereotype(cursor) is Some(value) {
+    return Some(value)
+  }
+  if declaration_url(cursor) is Some(value) {
+    return Some(value)
+  }
+  if declaration_line_style(cursor) is Some(value) {
+    return Some(value)
+  }
+  if cursor.take_tag_value() is Some(value) {
+    return Some(DeclarationTag(value))
+  }
+  match cursor.take_color_value() {
+    Some(color) => Some(DeclarationColor(color))
+    None => None
+  }
 }
 
 ///|
@@ -296,52 +393,88 @@ fn declaration_metadata_from(
 }
 
 ///|
-fn declaration_body_parser() -> @talc.StringParser[
-  (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool),
-] {
-  declaration_name_syntax_parser().bind(name => {
-    inline_space1()
-    .then(declaration_suffix_parser())
-    .attempt()
-    .many()
-    .bind(suffixes => {
-      inline_spaces()
-      .then(
-        @talc.string("{}")
-        .map(_ => false)
-        .attempt()
-        .or(@talc.string("{").map(_ => true)),
-      )
-      .attempt()
-      .optional()
-      .skip(inline_spaces())
-      .map(opens_body => {
-        (name, declaration_metadata_from(suffixes), opens_body.unwrap_or(false))
-      })
-    })
-  })
+fn take_declaration_suffixes(
+  cursor : @parse.Cursor,
+) -> Array[DeclarationSuffixSyntax] {
+  let suffixes = []
+  while true {
+    let suffix_start = cursor.offset()
+    guard cursor.skip_inline_space1() &&
+      declaration_suffix(cursor) is Some(suffix) else {
+      ignore(cursor.restore(suffix_start))
+      break
+    }
+    suffixes.push(suffix)
+  }
+  suffixes
 }
 
 ///|
-fn declaration_kind_parser() -> @talc.StringParser[(EntityKind, Bool, Bool)] {
-  let static_class = inline_keyword_parser("static")
-    .then(inline_space1())
-    .then(inline_keyword_parser("class"))
-    .map(_ => (Class, true, false))
-  let abstract_class = inline_keyword_parser("abstract")
-    .then(
-      inline_space1().then(inline_keyword_parser("class")).attempt().optional(),
-    )
-    .map(_ => (AbstractClass, false, false))
-  let regular = inline_word_parser("declaration word").bind(word => {
-    let mix_prefixed = word.to_lower().has_prefix("mix_")
-    let word = if mix_prefixed { word[4:].to_owned() } else { word }
-    match declaration_kind(word) {
-      Some(kind) => @talc.pure((kind, false, mix_prefixed))
-      None => @talc.fail("declaration kind")
+fn take_declaration_name_and_suffixes(
+  cursor : @parse.Cursor,
+) -> (DeclarationNameSyntax, DeclarationMetadataSyntax)? {
+  guard declaration_name_syntax(cursor) is Some(name) else { return None }
+  let suffixes = take_declaration_suffixes(cursor)
+  Some((name, declaration_metadata_from(suffixes)))
+}
+
+///|
+/// Consumes the optional `{}` or `{` body marker. `empty_opens` selects
+/// whether `{}` counts as an empty body; both `{}` and no marker leave the
+/// cursor after inline whitespace.
+fn take_brace(cursor : @parse.Cursor, empty_opens : Bool) -> Bool {
+  let start = cursor.offset()
+  cursor.skip_inline_spaces()
+  if cursor.consume_literal("{}") {
+    empty_opens
+  } else if cursor.consume('{') {
+    !empty_opens
+  } else {
+    ignore(cursor.restore(start))
+    false
+  }
+}
+
+///|
+fn declaration_body(
+  cursor : @parse.Cursor,
+) -> (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool)? {
+  guard take_declaration_name_and_suffixes(cursor) is Some((name, metadata)) else {
+    return None
+  }
+  let opens_body = take_brace(cursor, false)
+  cursor.skip_inline_spaces()
+  Some((name, metadata, opens_body))
+}
+
+///|
+fn declaration_kind_syntax(cursor : @parse.Cursor) -> (EntityKind, Bool, Bool)? {
+  let start = cursor.offset()
+  if consume_inline_keyword(cursor, "static") &&
+    cursor.skip_inline_space1() &&
+    consume_inline_keyword(cursor, "class") {
+    return Some((Class, true, false))
+  }
+  ignore(cursor.restore(start))
+  if consume_inline_keyword(cursor, "abstract") {
+    let after_abstract = cursor.offset()
+    if cursor.skip_inline_space1() && consume_inline_keyword(cursor, "class") {
+      return Some((AbstractClass, false, false))
     }
-  })
-  static_class.attempt().or(abstract_class.attempt()).or(regular)
+    ignore(cursor.restore(after_abstract))
+    return Some((AbstractClass, false, false))
+  }
+  ignore(cursor.restore(start))
+  guard take_inline_word(cursor) is Some(word) else { return None }
+  let mix_prefixed = word.to_lower().has_prefix("mix_")
+  let word = if mix_prefixed { word[4:].to_owned() } else { word }
+  match declaration_kind(word) {
+    Some(kind) => Some((kind, false, mix_prefixed))
+    None => {
+      ignore(cursor.restore(start))
+      None
+    }
+  }
 }
 
 ///|
@@ -376,35 +509,45 @@ fn declaration_from_syntax(
 }
 
 ///|
-fn regular_declaration_parser(
+fn regular_declaration(
+  cursor : @parse.Cursor,
   visibility : Visibility,
-) -> @talc.StringParser[DeclarationLineSyntax] {
-  declaration_kind_parser().bind(kind_and_static => {
-    let (kind, is_static, mix_prefixed) = kind_and_static
-    inline_space1()
-    .then(declaration_body_parser())
-    .map(body => {
-      let (name, metadata, opens_body) = body
-      {
-        declaration: declaration_from_syntax(
-          kind, visibility, is_static, name, metadata,
-        ),
-        opens_body,
-        mix_prefixed,
-        symbol: false,
-      }
-    })
+) -> DeclarationLineSyntax? {
+  let start = cursor.offset()
+  guard declaration_kind_syntax(cursor) is Some((kind, is_static, mix_prefixed)) else {
+    return None
+  }
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard declaration_body(cursor) is Some((name, metadata, opens_body)) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some({
+    declaration: declaration_from_syntax(
+      kind, visibility, is_static, name, metadata,
+    ),
+    opens_body,
+    mix_prefixed,
+    symbol: false,
   })
 }
 
 ///|
-fn symbol_declaration_parser(
+fn symbol_declaration(
+  cursor : @parse.Cursor,
   visibility : Visibility,
-) -> @talc.StringParser[DeclarationLineSyntax] {
-  let diamond = @talc.string("<>")
-    .then(inline_spaces())
-    .then(declaration_name_syntax_parser())
-    .map(name => {
+) -> DeclarationLineSyntax? {
+  let start = cursor.offset()
+  if cursor.consume_literal("<>") {
+    cursor.skip_inline_spaces()
+    guard declaration_name_syntax(cursor) is Some(name) else {
+      ignore(cursor.restore(start))
+      return None
+    }
+    return Some({
       declaration: declaration_from_syntax(
         Diamond,
         visibility,
@@ -416,46 +559,46 @@ fn symbol_declaration_parser(
       mix_prefixed: false,
       symbol: true,
     })
-  let interface = @talc.string("()")
-    .then(inline_spaces())
-    .then(
-      @talc.char('#')
-      .then(
-        @talc.many_chars1(
-          @talc.satisfy("ignored interface color", char => !char.is_whitespace()),
-        ),
-      )
-      .skip(inline_space1())
-      .attempt()
-      .optional(),
-    )
-    .then(declaration_body_parser())
-    .map(body => {
-      let (name, metadata, opens_body) = body
-      {
-        declaration: declaration_from_syntax(
-          Interface,
-          visibility,
-          false,
-          name,
-          metadata,
-        ),
-        opens_body,
-        mix_prefixed: false,
-        symbol: true,
+  }
+  ignore(cursor.restore(start))
+  if cursor.consume_literal("()") {
+    cursor.skip_inline_spaces()
+    let color_start = cursor.offset()
+    if cursor.peek() == Some('#') {
+      ignore(cursor.advance())
+      let token = cursor.take_while(char => !char.is_whitespace())
+      if token.length() == 0 || !cursor.skip_inline_space1() {
+        ignore(cursor.restore(color_start))
       }
-    })
-  let shaped = declaration_body_parser().bind(body => {
-    let (name, metadata, opens_body) = body
-    let (kind, _, _) = decode_shaped_entity(Class, name.display, name.code)
-    guard kind is Usecase ||
-      kind is BusinessUsecase ||
-      kind is Actor ||
-      kind is BusinessActor ||
-      kind is Component else {
-      return @talc.fail("shaped declaration")
     }
-    @talc.pure({
+    guard declaration_body(cursor) is Some((name, metadata, opens_body)) else {
+      ignore(cursor.restore(start))
+      return None
+    }
+    return Some({
+      declaration: declaration_from_syntax(
+        Interface,
+        visibility,
+        false,
+        name,
+        metadata,
+      ),
+      opens_body,
+      mix_prefixed: false,
+      symbol: true,
+    })
+  }
+  ignore(cursor.restore(start))
+  guard declaration_body(cursor) is Some((name, metadata, opens_body)) else {
+    return None
+  }
+  let (kind, _, _) = decode_shaped_entity(Class, name.display, name.code)
+  if kind is Usecase ||
+    kind is BusinessUsecase ||
+    kind is Actor ||
+    kind is BusinessActor ||
+    kind is Component {
+    Some({
       declaration: declaration_from_syntax(
         Class,
         visibility,
@@ -467,35 +610,35 @@ fn symbol_declaration_parser(
       mix_prefixed: false,
       symbol: true,
     })
-  })
-  diamond.attempt().or(interface.attempt()).or(shaped)
+  } else {
+    ignore(cursor.restore(start))
+    None
+  }
 }
 
 ///|
-fn declaration_line_parser() -> @talc.StringParser[DeclarationLineSyntax] {
-  declaration_visibility_parser()
-  .bind(visibility => {
-    symbol_declaration_parser(visibility)
-    .attempt()
-    .or(regular_declaration_parser(visibility))
-  })
-  .skip(@talc.eof())
+fn declaration_line(cursor : @parse.Cursor) -> DeclarationLineSyntax? {
+  let start = cursor.offset()
+  let visibility = declaration_visibility(cursor)
+  let syntax = match symbol_declaration(cursor, visibility) {
+    Some(value) => value
+    None => {
+      guard regular_declaration(cursor, visibility) is Some(value) else {
+        ignore(cursor.restore(start))
+        return None
+      }
+      value
+    }
+  }
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(syntax)
 }
 
 ///|
 test "declaration line grammar accepts supported declarations" {
-  guard declaration_target_list_parser().run(
-      @talc.Input::new("BaseA, BaseB implements APIA, APIB"),
-    )
-    is Ok(_) else {
-    @test.fail("inheritance target list rejected")
-  }
-  guard declaration_suffix_parser().run(
-      @talc.Input::new("extends BaseA, BaseB implements APIA, APIB"),
-    )
-    is Ok(_) else {
-    @test.fail("inheritance suffix parser rejected")
-  }
   let lines = [
     "abstract class \"User\" as U {", "interface Auth", "+ static class Repository<T> <<storage>> extends BaseRepository",
     "class RedisCache implements Cache", "() Api <<service>> [[https://example.com/api]] #lightblue",
@@ -504,18 +647,9 @@ test "declaration line grammar accepts supported declarations" {
     "<> association",
   ]
   for line in lines {
-    guard declaration_line_parser().parse(@talc.Input::new(line)) is Ok(_) else {
+    let cursor = @parse.Cursor::new(line)
+    guard declaration_line(cursor) is Some(_) else {
       @test.fail("declaration grammar rejected: " + line)
     }
   }
-}
-
-///|
-fn generic_content_parser() -> @talc.StringParser[String] {
-  let plain = @talc.many_chars1(@talc.none_of("<>"))
-  let nested = @talc.char('<')
-    .then(@talc.delay(generic_content_parser))
-    .skip(@talc.char('>'))
-    .map(content => "<" + content + ">")
-  nested.attempt().or(plain).many().map(parts => parts.join(""))
 }

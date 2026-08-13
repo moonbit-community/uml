@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="260" height="207" viewBox="0 0 260 207" role="img" aria-label="Sequence diagram"><defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="255" height="207" viewBox="0 0 255 207" role="img" aria-label="Sequence diagram"><defs>
 <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="arrow-fill"/></marker>
 <marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
 <marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
@@ -40,13 +40,13 @@ svg{font-family:Arial, sans-serif;font-size:13px;background:#0d1117}
 .page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}
 .page-label{font-size:12px;font-style:italic}
 .destroy{stroke-width:2}
-</style><rect x="0" y="0" width="260" height="207" fill="#0d1117"/><g class="participant participant-box" data-code="App"><rect x="5" y="5" width="69" height="36" rx="2" fill="#161b22"/><text x="39" y="28" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="39" dy="0" textLength="55" lengthAdjust="spacing">Web App</tspan></text>
+</style><rect x="0" y="0" width="255" height="207" fill="#0d1117"/><g class="participant participant-box" data-code="App"><rect x="5" y="5" width="69" height="36" rx="2" fill="#161b22"/><text x="39" y="28" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="39" dy="0" textLength="55" lengthAdjust="spacing">Web App</tspan></text>
 </g>
 <g class="participant participant-box" data-code="Auth"><rect x="98" y="5" width="92" height="36" rx="2" fill="#161b22"/><text x="144" y="28" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="144" dy="0" textLength="78" lengthAdjust="spacing">Auth Service</tspan></text>
 </g>
-<line x1="39" y1="41" x2="39" y2="156" class="lifeline"/><line x1="144" y1="41" x2="144" y2="156" class="lifeline"/><rect x="139" y="67" width="10" height="54" class="activation" fill="#21262d"/><line x1="39" y1="67" x2="144" y2="67" class="message" marker-end="url(#arrow)"/><text x="46" y="61" text-anchor="start" fill="#e6edf3" class="message-label"><tspan x="46" dy="0" textLength="66" lengthAdjust="spacing">POST /token</tspan></text>
+<line x1="39" y1="41" x2="39" y2="156" class="lifeline"/><line x1="144" y1="41" x2="144" y2="156" class="lifeline"/><rect x="139" y="67" width="10" height="29" class="activation" fill="#21262d"/><line x1="39" y1="67" x2="144" y2="67" class="message" marker-end="url(#arrow)"/><text x="46" y="61" text-anchor="start" fill="#e6edf3" class="message-label"><tspan x="46" dy="0" textLength="66" lengthAdjust="spacing">POST /token</tspan></text>
 <line x1="144" y1="96" x2="39" y2="96" class="message dotted" marker-end="url(#arrow)"/><text x="80" y="90" text-anchor="start" fill="#e6edf3" class="message-label"><tspan x="80" dy="0" textLength="67" lengthAdjust="spacing">access token</tspan></text>
-<path d="M149,121 L149,146 L255,146 L255,131 L245,121 Z" class="note" fill="#2d2a1f" /><path d="M245,121 L245,131 L255,131" class="note-fold" fill="none" /><text x="155" y="139" text-anchor="start" fill="#e6edf3" class="note-label"><tspan x="155" dy="0" textLength="86" lengthAdjust="spacing">stateless issuer</tspan></text>
+<path d="M144,121 L144,146 L250,146 L250,131 L240,121 Z" class="note" fill="#2d2a1f" /><path d="M240,121 L240,131 L250,131" class="note-fold" fill="none" /><text x="150" y="139" text-anchor="start" fill="#e6edf3" class="note-label"><tspan x="150" dy="0" textLength="86" lengthAdjust="spacing">stateless issuer</tspan></text>
 <g class="participant participant-box" data-code="App"><rect x="5" y="165" width="69" height="36" rx="2" fill="#161b22"/><text x="39" y="188" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="39" dy="0" textLength="55" lengthAdjust="spacing">Web App</tspan></text>
 </g>
 <g class="participant participant-box" data-code="Auth"><rect x="98" y="165" width="92" height="36" rx="2" fill="#161b22"/><text x="144" y="188" text-anchor="middle" fill="#e6edf3" class="participant-label"><tspan x="144" dy="0" textLength="78" lengthAdjust="spacing">Auth Service</tspan></text>
