@@ -1,13 +1,11 @@
 name = "kokic/uml"
 
-version = "0.1.2"
+version = "0.1.4"
 
 import {
-  "moonbitlang/x@0.4.45",
   "bobzhang/toml@0.4.2",
   "moonbit-community/yaml@0.0.6",
   "moonbit-community/graphviz@0.1.3",
-  "Milky2018/svgdiff@0.7.1",
 }
 
 readme = "README.md"
