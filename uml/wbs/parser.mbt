@@ -476,9 +476,8 @@ fn Parser::add_item(
     stereotype,
     parent: Some(parent),
   })
-  match item.code {
-    Some(code) => self.codes[code] = node_index
-    None => ()
+  if item.code is Some(code) {
+    self.codes[code] = node_index
   }
 }
 
@@ -677,19 +676,16 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
     self.consume_text_block(kind)
     return
   }
-  match @style.parse_style_directive(trimmed) {
-    Some(directive) => {
-      self.style.apply(directive)
-      return
-    }
-    None => if lower.has_prefix("skinparam ") { return }
+  if @style.parse_style_directive(trimmed) is Some(directive) {
+    self.style.apply(directive)
+    return
   }
-  match parse_item_line(line) {
-    Some(item) => {
-      self.add_item(item)
-      return
-    }
-    None => ()
+  if lower.has_prefix("skinparam ") {
+    return
+  }
+  if parse_item_line(line) is Some(item) {
+    self.add_item(item)
+    return
   }
   if self.parse_link(trimmed) {
     return

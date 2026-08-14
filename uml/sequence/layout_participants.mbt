@@ -71,38 +71,33 @@ fn constrain_participant_box_gaps(
   layouts : Array[ParticipantLayout],
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
-  let mut max_depth = 0
-  for layout in layouts {
-    max_depth = max_depth.max(layout.participant.boxes.length())
-  }
+  let max_depth = layouts.fold(init=0, (depth, layout) => {
+    depth.max(layout.participant.boxes.length())
+  })
   for depth in 0..<max_depth {
     let mut active : ParticipantBox? = None
     let mut start = 0
     for index, layout in layouts {
       let current = layout.participant.boxes.get(depth)
       if current != active {
-        match active {
-          Some(box) =>
-            constrain_participant_box_gap(
-              gaps, layouts, start, index, box, text_metrics,
-            )
-          None => ()
+        if active is Some(box) {
+          constrain_participant_box_gap(
+            gaps, layouts, start, index, box, text_metrics,
+          )
         }
         active = current
         start = index
       }
     }
-    match active {
-      Some(box) =>
-        constrain_participant_box_gap(
-          gaps,
-          layouts,
-          start,
-          layouts.length(),
-          box,
-          text_metrics,
-        )
-      None => ()
+    if active is Some(box) {
+      constrain_participant_box_gap(
+        gaps,
+        layouts,
+        start,
+        layouts.length(),
+        box,
+        text_metrics,
+      )
     }
   }
 }

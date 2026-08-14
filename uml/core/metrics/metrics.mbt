@@ -223,18 +223,16 @@ fn unicode_block_width(widths : Array[Int], low_byte : Int) -> Int {
   } else {
     let mut cursor = 0
     let mut decoded_index = 0
-    let mut value = 0
     while cursor < widths.length() {
       let count = widths[cursor]
       let next_value = widths[cursor + 1]
       if low_byte < decoded_index + count {
-        value = next_value
-        break
+        return next_value
       }
       decoded_index += count
       cursor += 2
     }
-    value
+    0
   }
 }
 

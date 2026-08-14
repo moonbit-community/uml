@@ -1,0 +1,13 @@
+import {
+  "kokic/uml/api",
+  "kokic/uml/core/parse",
+  "Milky2018/svgdiff",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native+wasm"

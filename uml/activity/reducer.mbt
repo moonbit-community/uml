@@ -79,19 +79,17 @@ fn matches_reduction_boundary(
   node : ActivityNode,
   boundary : ReductionBoundary,
 ) -> Bool {
-  match (node, boundary) {
-    (ActivityNode::ElseIf(_), ElseIf)
-    | (ActivityNode::Else(_), Else)
-    | (ActivityNode::EndIf, EndIf)
-    | (ActivityNode::EndWhile(_), EndWhile)
-    | (ActivityNode::RepeatWhile(_), RepeatWhile)
-    | (ActivityNode::ForkAgain, ForkAgain)
-    | (ActivityNode::EndFork, EndFork)
-    | (ActivityNode::Case(_), Case)
-    | (ActivityNode::EndSwitch, EndSwitch)
-    | (ActivityNode::EndPartition, EndPartition) => true
-    _ => false
-  }
+  (node, boundary)
+  is ((ActivityNode::ElseIf(_), ElseIf)
+  | (ActivityNode::Else(_), Else)
+  | (ActivityNode::EndIf, EndIf)
+  | (ActivityNode::EndWhile(_), EndWhile)
+  | (ActivityNode::RepeatWhile(_), RepeatWhile)
+  | (ActivityNode::ForkAgain, ForkAgain)
+  | (ActivityNode::EndFork, EndFork)
+  | (ActivityNode::Case(_), Case)
+  | (ActivityNode::EndSwitch, EndSwitch)
+  | (ActivityNode::EndPartition, EndPartition))
 }
 
 ///|
@@ -125,16 +123,12 @@ fn[B] reduce_chain(
     let (body, next) = reduce_flow(nodes, cursor, boundaries)
     branches.push(branch(header, body))
     guard next < nodes.length() else { return None }
-    match continue_with(nodes[next]) {
-      Some(next_header) => {
-        header = next_header
-        cursor = next + 1
-      }
-      None => {
-        instructions.push(finish(branches))
-        return Some(next + 1)
-      }
+    guard continue_with(nodes[next]) is Some(next_header) else {
+      instructions.push(finish(branches))
+      return Some(next + 1)
     }
+    header = next_header
+    cursor = next + 1
   }
   None
 }
@@ -161,9 +155,8 @@ fn reduce_flow(
     let node = nodes[index]
     guard !at_reduction_boundary(node, boundaries) else { break }
     match node {
-      ActivityNode::If(_) =>
-        match
-          reduce_chain(
+      ActivityNode::If(_) => {
+        guard reduce_chain(
             instructions,
             nodes,
             node,
@@ -189,10 +182,12 @@ fn reduce_flow(
               }
             },
             branches => ActivityInstruction::IfChain({ branches, }),
-          ) {
-          Some(next_index) => index = next_index
-          None => break
+          )
+          is Some(next_index) else {
+          break
         }
+        index = next_index
+      }
       ActivityNode::While(raw) => {
         let (body, end) = reduce_flow(nodes, index + 1, [EndWhile])
         guard end < nodes.length() else { break }
@@ -228,9 +223,8 @@ fn reduce_flow(
         )
         index = end + 1
       }
-      ActivityNode::Fork =>
-        match
-          reduce_chain(
+      ActivityNode::Fork => {
+        guard reduce_chain(
             instructions,
             nodes,
             node,
@@ -244,15 +238,16 @@ fn reduce_flow(
               }
             },
             branches => ActivityInstruction::Fork({ branches, }),
-          ) {
-          Some(next_index) => index = next_index
-          None => break
+          )
+          is Some(next_index) else {
+          break
         }
+        index = next_index
+      }
       ActivityNode::Switch(raw) =>
         match nodes.get(index + 1) {
-          Some(node) if node is ActivityNode::Case(_) =>
-            match
-              reduce_chain(
+          Some(node) if node is ActivityNode::Case(_) => {
+            guard reduce_chain(
                 instructions,
                 nodes,
                 node,
@@ -277,10 +272,12 @@ fn reduce_flow(
                     branches,
                   })
                 },
-              ) {
-              Some(next_index) => index = next_index
-              None => break
+              )
+              is Some(next_index) else {
+              break
             }
+            index = next_index
+          }
           _ => break
         }
       ActivityNode::Partition(label) => {
@@ -323,6 +320,5 @@ fn reduce_flow(
 ///|
 /// Reduce parser commands to the semantic instruction layer used by activity layout.
 pub fn reduce(nodes : Array[ActivityNode]) -> Array[ActivityInstruction] {
-  let (instructions, _) = reduce_flow(nodes, 0, [])
-  instructions
+  reduce_flow(nodes, 0, []).0
 }

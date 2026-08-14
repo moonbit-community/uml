@@ -72,10 +72,8 @@ pub fn XmlWriter::raw(self : XmlWriter, markup : String) -> Unit {
 
 ///|
 pub fn XmlWriter::close(self : XmlWriter) -> Unit {
-  match self.open_tags.pop() {
-    Some(name) => self.output <+ "</\{name}>"
-    None => ()
-  }
+  guard self.open_tags.pop() is Some(name) else { return }
+  self.output <+ "</\{name}>"
 }
 
 ///|

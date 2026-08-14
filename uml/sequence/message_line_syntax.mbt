@@ -124,12 +124,11 @@ fn take_multicast(cursor : @parse.Cursor) -> Array[String] {
 ///|
 /// Consumes exactly one inline whitespace character.
 fn consume_inline_space1(cursor : @parse.Cursor) -> Bool {
-  match cursor.peek() {
-    Some(char) if is_inline_whitespace(char) => {
-      ignore(cursor.advance())
-      true
-    }
-    _ => false
+  if cursor.peek() is Some(char) && is_inline_whitespace(char) {
+    ignore(cursor.advance())
+    true
+  } else {
+    false
   }
 }
 
@@ -406,20 +405,19 @@ fn is_word_char(char : Char) -> Bool {
 
 ///|
 fn is_style_keyword(word : String) -> Bool {
-  match word {
-    "dotted"
-    | "dashed"
-    | "plain"
-    | "bold"
-    | "hidden"
-    | "norank"
-    | "single"
-    | "node" => true
-    _ =>
-      word.has_prefix("thickness=") &&
-      word.length() > "thickness=".length() &&
-      word["thickness=".length():].all(char => char.is_ascii_digit())
-  }
+  word == "dotted" ||
+  word == "dashed" ||
+  word == "plain" ||
+  word == "bold" ||
+  word == "hidden" ||
+  word == "norank" ||
+  word == "single" ||
+  word == "node" ||
+  (
+    word.has_prefix("thickness=") &&
+    word.length() > "thickness=".length() &&
+    word["thickness=".length():].all(char => char.is_ascii_digit())
+  )
 }
 
 ///|

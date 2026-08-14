@@ -54,13 +54,9 @@ pub fn Cursor::peek_ahead(self : Cursor, distance : Int) -> Char? {
 ///|
 /// Consumes and returns the current character.
 pub fn Cursor::advance(self : Cursor) -> Char? {
-  match self.peek() {
-    Some(char) => {
-      self.offset += 1
-      Some(char)
-    }
-    None => None
-  }
+  guard self.peek() is Some(char) else { return None }
+  self.offset += 1
+  Some(char)
 }
 
 ///|

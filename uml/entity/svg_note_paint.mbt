@@ -45,14 +45,8 @@ fn note_opale_attachment(
   for spline in edge.splines {
     let path = spline.points
     guard path.length() > 0 else { continue }
-    let first = match spline.arrow_start {
-      Some(point) => point
-      None => path[0]
-    }
-    let last = match spline.arrow_end {
-      Some(point) => point
-      None => path[path.length() - 1]
-    }
+    let first = spline.arrow_start.unwrap_or(path[0])
+    let last = spline.arrow_end.unwrap_or(path[path.length() - 1])
     let first_adjacent = match spline.arrow_start {
       Some(_) => path[0]
       None => if path.length() > 1 { path[1] } else { last }

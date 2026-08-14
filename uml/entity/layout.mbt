@@ -375,24 +375,23 @@ fn EntityDiagram::graphviz_layout(
     let point = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
     let x = point.x
     let y = point.y
-    match graphviz_entity_index(self, node_layout.node.name()) {
-      Some(entity_index) => {
-        let raw_width = @graphviz.inches_to_points(node_layout.width_in)
-        let raw_height = @graphviz.inches_to_points(node_layout.height_in)
-        let width = raw_width.ceil().max(1.0)
-        let height = raw_height.ceil().max(1.0)
-        let left = (x - raw_width / 2.0).floor()
-        let top = (y - raw_height / 2.0).floor()
-        nodes.push({
-          code: self.entities[entity_index].qualified_code,
-          x: left + width / 2.0,
-          y: top + height / 2.0,
-          width,
-          height,
-        })
-      }
-      None => ()
+    guard graphviz_entity_index(self, node_layout.node.name())
+      is Some(entity_index) else {
+      continue
     }
+    let raw_width = @graphviz.inches_to_points(node_layout.width_in)
+    let raw_height = @graphviz.inches_to_points(node_layout.height_in)
+    let width = raw_width.ceil().max(1.0)
+    let height = raw_height.ceil().max(1.0)
+    let left = (x - raw_width / 2.0).floor()
+    let top = (y - raw_height / 2.0).floor()
+    nodes.push({
+      code: self.entities[entity_index].qualified_code,
+      x: left + width / 2.0,
+      y: top + height / 2.0,
+      width,
+      height,
+    })
   }
   let packages : Array[GraphvizPackageLayout] = []
   append_package_layouts(packages, laid_out, bbox, package_indices)

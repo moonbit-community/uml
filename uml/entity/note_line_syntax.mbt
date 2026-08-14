@@ -398,10 +398,10 @@ fn link_constraint_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
 
 ///|
 fn class_annotation_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
-  match note_line(cursor) {
-    Some(value) => Some(value)
-    None => link_constraint_line(cursor)
+  guard note_line(cursor) is Some(value) else {
+    return link_constraint_line(cursor)
   }
+  Some(value)
 }
 
 ///|
@@ -463,14 +463,13 @@ fn Parser::push_note_syntax(
     NoteEntityTarget(entity) =>
       target = match entity {
         Some(value) => self.ensure_entity(value)
-        None =>
-          match self.last_entity {
-            Some(value) => value
-            None => {
-              self.raise_parse_error("nothing to note to")
-              ""
-            }
+        None => {
+          guard self.last_entity is Some(value) else {
+            self.raise_parse_error("nothing to note to")
+            ""
           }
+          value
+        }
       }
     NoteFloatingTarget(note_code) => {
       let existing = self.resolve(note_code)

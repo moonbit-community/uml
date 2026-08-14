@@ -228,13 +228,9 @@ fn Parser::ensure_entity_as(
 ///|
 fn Parser::set_entity_url(self : Parser, code : String, url : String) -> Bool {
   let qualified_code = self.resolve(code)
-  match self.entity_index(qualified_code) {
-    Some(index) => {
-      self.entities[index] = { ..self.entities[index], url: Some(url) }
-      true
-    }
-    None => false
-  }
+  guard self.entity_index(qualified_code) is Some(index) else { return false }
+  self.entities[index] = { ..self.entities[index], url: Some(url) }
+  true
 }
 
 ///|
@@ -244,16 +240,12 @@ fn Parser::set_entity_stereotype(
   stereotype : String,
 ) -> Bool {
   let qualified_code = self.resolve(code)
-  match self.entity_index(qualified_code) {
-    Some(index) => {
-      self.entities[index] = {
-        ..self.entities[index],
-        stereotype: Some(stereotype),
-      }
-      true
-    }
-    None => false
+  guard self.entity_index(qualified_code) is Some(index) else { return false }
+  self.entities[index] = {
+    ..self.entities[index],
+    stereotype: Some(stereotype),
   }
+  true
 }
 
 ///|

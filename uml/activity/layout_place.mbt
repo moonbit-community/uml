@@ -176,13 +176,10 @@ fn place_tile(
       let branches_size = measure_if_chain(branches, nodes, metrics)
       let mut decision_height = 0
       for branch in branches {
-        match branch.decision {
-          Some(decision) =>
-            decision_height = decision_height.max(
-              nodes[decision].size(metrics).height,
-            )
-          None => ()
-        }
+        guard branch.decision is Some(decision) else { continue }
+        decision_height = decision_height.max(
+          nodes[decision].size(metrics).height,
+        )
       }
       let body_y = y + decision_height + VERTICAL_GAP
       let placed = []

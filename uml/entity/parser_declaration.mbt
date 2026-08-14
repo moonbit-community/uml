@@ -55,28 +55,26 @@ fn declaration_kind(word : String) -> EntityKind? {
 
 ///|
 fn native_class_kind(kind : EntityKind) -> Bool {
-  match kind {
-    Class
-    | AbstractClass
-    | Interface
-    | Enum
-    | Annotation
-    | Object
-    | Entity
-    | Protocol
-    | Struct
-    | Circle
-    | Exception
-    | Metaclass
-    | Stereotype
-    | Dataclass
-    | Record
-    | Map
-    | Json
-    | Diamond
-    | NamedNote => true
-    _ => false
-  }
+  kind
+  is (Class
+  | AbstractClass
+  | Interface
+  | Enum
+  | Annotation
+  | Object
+  | Entity
+  | Protocol
+  | Struct
+  | Circle
+  | Exception
+  | Metaclass
+  | Stereotype
+  | Dataclass
+  | Record
+  | Map
+  | Json
+  | Diamond
+  | NamedNote)
 }
 
 ///|

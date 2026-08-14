@@ -14,13 +14,11 @@ fn participant_type(cursor : @parse.Cursor) -> ParticipantType? {
     "queue" => Some(Queue)
     _ => None
   }
-  match result {
-    Some(_) => result
-    None => {
-      ignore(cursor.restore(start))
-      None
-    }
+  guard result is Some(_) else {
+    ignore(cursor.restore(start))
+    return None
   }
+  result
 }
 
 ///|
@@ -40,13 +38,11 @@ fn group_keyword(cursor : @parse.Cursor) -> GroupKeyword? {
     "partition" => Some(Partition)
     _ => None
   }
-  match result {
-    Some(_) => result
-    None => {
-      ignore(cursor.restore(start))
-      None
-    }
+  guard result is Some(_) else {
+    ignore(cursor.restore(start))
+    return None
   }
+  result
 }
 
 ///|
@@ -54,12 +50,11 @@ fn group_keyword(cursor : @parse.Cursor) -> GroupKeyword? {
 fn take_as_keyword(cursor : @parse.Cursor) -> Bool {
   let start = cursor.offset()
   guard cursor.consume_literal("as") else { return false }
-  match cursor.peek() {
-    Some(char) if is_ident_char(char) => {
-      ignore(cursor.restore(start))
-      false
-    }
-    _ => true
+  if cursor.peek() is Some(char) && is_ident_char(char) {
+    ignore(cursor.restore(start))
+    false
+  } else {
+    true
   }
 }
 
@@ -84,10 +79,7 @@ fn take_alias_code(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn alias_ref(cursor : @parse.Cursor, name : String) -> PartRef? {
-  match take_alias_code(cursor) {
-    Some(code) => Some({ code, display: name })
-    None => None
-  }
+  take_alias_code(cursor).map(code => { code, display: name })
 }
 
 ///|
@@ -491,29 +483,24 @@ fn delay_line_syntax(cursor : @parse.Cursor) -> Event? {
     None => ()
   }
   ignore(cursor.restore(start))
-  match delimiter {
-    Some(value) => {
-      ignore(cursor.consume_literal(value))
-      let label = StringBuilder()
-      while !cursor.is_eof() && !cursor.starts_with_literal(value) {
-        match cursor.advance() {
-          Some(char) => label.write_char(char)
-          None => ()
-        }
-      }
-      guard cursor.consume_literal(value) else {
-        ignore(cursor.restore(start))
-        return None
-      }
-      cursor.skip_inline_spaces()
-      guard cursor.is_eof() else {
-        ignore(cursor.restore(start))
-        return None
-      }
-      Some(Delay({ label: @parse.normalize_label(label.to_string()) }))
+  guard delimiter is Some(value) else { return None }
+  ignore(cursor.consume_literal(value))
+  let label = StringBuilder()
+  while !cursor.is_eof() && !cursor.starts_with_literal(value) {
+    for char in cursor.advance() {
+      label.write_char(char)
     }
-    None => None
   }
+  guard cursor.consume_literal(value) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  cursor.skip_inline_spaces()
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  Some(Delay({ label: @parse.normalize_label(label.to_string()) }))
 }
 
 ///|

@@ -464,14 +464,13 @@ fn SequenceDiagram::participant_is_linked(
 
 ///|
 fn SequenceDiagram::hides_unlinked(self : SequenceDiagram) -> Bool {
-  let mut hidden = false
-  for event in self.events {
-    match event {
-      HideUnlinked(value) => hidden = value
-      _ => ()
+  self.events.fold(init=false, (hidden, event) => {
+    if event is HideUnlinked(value) {
+      value
+    } else {
+      hidden
     }
-  }
-  hidden
+  })
 }
 
 ///|

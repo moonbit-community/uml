@@ -298,27 +298,19 @@ fn ActivityNode::label(self : ActivityNode) -> String? {
 
 ///|
 fn test_text(value : String, separator : String) -> String {
-  match value.to_lower().find(separator) {
-    Some(index) => value[:index].trim().to_owned()
-    None => value
-  }
+  guard value.to_lower().find(separator) is Some(index) else { return value }
+  value[:index].trim().to_owned()
 }
 
 ///|
 fn ActivityNode::is_decision(self : ActivityNode) -> Bool {
-  match self {
-    If(_) | While(_) | EndWhile(_) | RepeatWhile(_) | Switch(_) | Case(_) =>
-      true
-    _ => false
-  }
+  self
+  is (If(_) | While(_) | EndWhile(_) | RepeatWhile(_) | Switch(_) | Case(_))
 }
 
 ///|
 fn ActivityNode::is_fork(self : ActivityNode) -> Bool {
-  match self {
-    Fork | EndFork => true
-    _ => false
-  }
+  self is (Fork | EndFork)
 }
 
 ///|

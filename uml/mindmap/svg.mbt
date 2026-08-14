@@ -119,14 +119,12 @@ fn append_mindmap_node(
   )
   let line_color = @svg.svg_color(node_style.line_color, defaults.line)
   let font_color = @svg.svg_color(node_style.font_color, defaults.text)
-  let line_thickness = match node_style.line_thickness {
-    Some(value) => value.to_string()
-    None => "1.5"
-  }
-  let round_corner = match node_style.round_corner {
-    Some(value) => value.to_string()
-    None => "12.5"
-  }
+  let line_thickness = node_style.line_thickness.map_or("1.5", value => {
+    value.to_string()
+  })
+  let round_corner = node_style.round_corner.map_or("12.5", value => {
+    value.to_string()
+  })
   output.open("g", attributes=[
     ("class", "mindmap-node " + shape_class),
     ("data-idea-index", node.idea_index.to_string()),

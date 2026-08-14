@@ -33,10 +33,7 @@ pub struct StateNode {
 
 ///|
 fn StateNode::has_description(self : StateNode) -> Bool {
-  match self.description {
-    Some(text) => text.length() > 0
-    None => false
-  }
+  self.description is Some(text) && text.length() > 0
 }
 
 ///|

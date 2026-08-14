@@ -90,15 +90,8 @@ fn portion_rule_from_tokens(tokens : Array[String]) -> PortionRule? {
   } else {
     tokens[1:].to_owned()
   }
-  let mut empty_only = false
-  let selector_tokens : Array[String] = []
-  for token in middle {
-    if token.to_lower() == "empty" {
-      empty_only = true
-    } else {
-      selector_tokens.push(token)
-    }
-  }
+  let empty_only = middle.any(token => token.to_lower() == "empty")
+  let selector_tokens = middle.filter(token => token.to_lower() != "empty")
   match visibility_list(selector_tokens) {
     Some(visibilities) =>
       Some({

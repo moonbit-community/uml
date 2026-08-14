@@ -19,14 +19,12 @@ fn ParseCtx::consume_style_directive(
     guard closed else { self.source.raise_parse_error("unclosed skinparam") }
     return true
   }
-  match @style.parse_style_directive(line) {
-    Some(directive) => {
-      self.source.skip_line()
-      self.style.apply(directive)
-      true
-    }
-    None => false
+  guard @style.parse_style_directive(line) is Some(directive) else {
+    return false
   }
+  self.source.skip_line()
+  self.style.apply(directive)
+  true
 }
 
 ///|

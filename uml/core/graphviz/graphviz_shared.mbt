@@ -67,13 +67,13 @@ pub fn[T] layout_or_fallback(
   fallback : (() -> T)?,
 ) -> T raise @dot_layout.DotLayoutError {
   try layout() catch {
-    @dot_layout.DotLayoutError::UnsupportedFeature(message~) =>
-      match fallback {
-        Some(fallback) => fallback()
-        None => raise @dot_layout.DotLayoutError::UnsupportedFeature(message~)
+    @dot_layout.DotLayoutError::UnsupportedFeature(message~) => {
+      guard fallback is Some(fallback) else {
+        raise @dot_layout.DotLayoutError::UnsupportedFeature(message~)
       }
-    @dot_layout.DotLayoutError::InvalidGraph(message~) =>
-      raise @dot_layout.DotLayoutError::InvalidGraph(message~)
+      fallback()
+    }
+    other => raise other
   } noraise {
     value => value
   }
@@ -164,10 +164,11 @@ pub fn graphviz_edges(
   names : Map[Int, String],
   bbox : @geom.Rect,
 ) -> Array[GraphvizEdge] {
-  let edges = []
-  for edge_layout in laid_out.edges {
-    guard names.get(edge_layout.edge.id()) is Some(index_text) else { continue }
-    let index = @string.parse_int(index_text) catch { _ => continue }
+  laid_out.edges.filter_map(edge_layout => {
+    guard names.get(edge_layout.edge.id()) is Some(index_text) else {
+      return None
+    }
+    let index = @string.parse_int(index_text) catch { _ => return None }
     let splines = edge_layout.splines.map(spline => {
       graphviz_path_to_svg(spline, bbox)
     })
@@ -180,9 +181,8 @@ pub fn graphviz_edges(
     let tail_label = edge_layout.tail_label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
     })
-    edges.push({ index, splines, label, head_label, tail_label })
-  }
-  edges
+    Some({ index, splines, label, head_label, tail_label })
+  })
 }
 
 ///|

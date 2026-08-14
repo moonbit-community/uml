@@ -452,14 +452,11 @@ fn note_position(cursor : @parse.Cursor) -> Bool {
 /// A trailing inline color must fully match; a bare `#` rejects the note.
 fn note_color(cursor : @parse.Cursor) -> String?? {
   match cursor.peek() {
-    Some('#') =>
-      match state_color(cursor) {
-        Some(value) => {
-          ignore(cursor.skip_inline_whitespace())
-          Some(Some(value))
-        }
-        None => None
-      }
+    Some('#') => {
+      guard state_color(cursor) is Some(value) else { return None }
+      ignore(cursor.skip_inline_whitespace())
+      Some(Some(value))
+    }
     _ => Some(None)
   }
 }

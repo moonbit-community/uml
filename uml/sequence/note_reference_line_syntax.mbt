@@ -47,13 +47,11 @@ fn note_style(cursor : @parse.Cursor) -> NoteStyle? {
     "rnote" => Some(Box)
     _ => None
   }
-  match result {
-    Some(_) => result
-    None => {
-      ignore(cursor.restore(start))
-      None
-    }
+  guard result is Some(_) else {
+    ignore(cursor.restore(start))
+    return None
   }
+  result
 }
 
 ///|
@@ -73,13 +71,11 @@ fn note_position(cursor : @parse.Cursor) -> (NotePosition, String)? {
     "accross" => Some((Across, word))
     _ => None
   }
-  match result {
-    Some(_) => result
-    None => {
-      ignore(cursor.restore(start))
-      None
-    }
+  guard result is Some(_) else {
+    ignore(cursor.restore(start))
+    return None
   }
+  result
 }
 
 ///|
@@ -165,13 +161,11 @@ fn take_optional_stereotype(
   continues : (@parse.Cursor) -> Bool,
 ) -> String? {
   cursor.skip_inline_spaces()
-  match take_stereotype_with_continuation(cursor, continues) {
-    Some(value) => {
-      cursor.skip_inline_spaces()
-      Some(value)
-    }
-    None => None
+  guard take_stereotype_with_continuation(cursor, continues) is Some(value) else {
+    return None
   }
+  cursor.skip_inline_spaces()
+  Some(value)
 }
 
 ///|
@@ -180,13 +174,11 @@ fn take_optional_stereotype(
 fn take_optional_url(cursor : @parse.Cursor) -> String? {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
-  match cursor.take_url_value() {
-    Some(value) => Some(value)
-    None => {
-      ignore(cursor.restore(start))
-      None
-    }
+  guard cursor.take_url_value() is Some(value) else {
+    ignore(cursor.restore(start))
+    return None
   }
+  Some(value)
 }
 
 ///|
@@ -333,13 +325,11 @@ fn url_then_colon_or_eof(cursor : @parse.Cursor) -> Bool {
   let result = match cursor.peek() {
     Some(':') | None => true
     Some('[') =>
-      match cursor.take_url_value() {
-        Some(_) => {
-          cursor.skip_inline_spaces()
-          cursor.peek() == Some(':') || cursor.is_eof()
-        }
-        None => false
-      }
+      cursor.take_url_value() is Some(_) &&
+      ({
+        cursor.skip_inline_spaces()
+        cursor.peek() == Some(':') || cursor.is_eof()
+      })
     _ => false
   }
   ignore(cursor.restore(saved))
@@ -355,10 +345,7 @@ fn across_tail_continues(cursor : @parse.Cursor) -> Bool {
   cursor.skip_inline_spaces()
   let result = match cursor.peek() {
     Some('#') =>
-      match take_note_color_value(cursor) {
-        Some(_) => url_then_colon_or_eof(cursor)
-        None => false
-      }
+      take_note_color_value(cursor) is Some(_) && url_then_colon_or_eof(cursor)
     _ => url_then_colon_or_eof(cursor)
   }
   ignore(cursor.restore(saved))

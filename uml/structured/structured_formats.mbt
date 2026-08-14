@@ -16,13 +16,7 @@ fn yaml_value_view(value : @yaml.Yaml) -> StructuredValueView[@yaml.Yaml] {
   match value {
     Map(map) if map.is_empty() => EmptyView
     Array(values) if values.is_empty() => EmptyView
-    Map(map) => {
-      let entries = []
-      for key, child_value in map {
-        entries.push((key, child_value))
-      }
-      ObjectView(entries)
-    }
+    Map(map) => ObjectView(map.to_array())
     Array(values) => ArrayView(values)
     _ => ScalarView(yaml_value_display(value))
   }
@@ -62,13 +56,7 @@ fn toml_value_view(
   match value {
     TomlTable(table) if table.is_empty() => EmptyView
     TomlArray(values) if values.is_empty() => EmptyView
-    TomlTable(table) => {
-      let entries = []
-      for key, child_value in table {
-        entries.push((key, child_value))
-      }
-      ObjectView(entries)
-    }
+    TomlTable(table) => ObjectView(table.to_array())
     TomlArray(values) => ArrayView(values)
     _ => ScalarView(toml_value_display(value))
   }

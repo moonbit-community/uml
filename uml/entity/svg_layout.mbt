@@ -173,10 +173,7 @@ fn ClassLayout::content_bounds(
         }
       }
   }
-  match bounds {
-    Some(bounds) => bounds
-    None => { min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 }
-  }
+  bounds.unwrap_or({ min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 })
 }
 
 ///|

@@ -15,13 +15,7 @@ fn json_value_view(value : Json) -> StructuredValueView[Json] {
   match value {
     Object(object) if object.is_empty() => EmptyView
     Array(array) if array.is_empty() => EmptyView
-    Object(object) => {
-      let entries = []
-      for key, child_value in object {
-        entries.push((key, child_value))
-      }
-      ObjectView(entries)
-    }
+    Object(object) => ObjectView(object.to_array())
     Array(array) => ArrayView(array)
     _ => ScalarView(json_scalar_display(value))
   }

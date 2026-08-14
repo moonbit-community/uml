@@ -117,13 +117,11 @@ pub fn Cursor::take_url_value(self : Cursor) -> String? {
     return None
   }
   let content = self.slice(content_start, self.offset() - 2)
-  match parse_url_target("[[" + content + "]]") {
-    Some(target) => Some(target.target)
-    None => {
-      ignore(self.restore(start))
-      None
-    }
+  guard parse_url_target("[[" + content + "]]") is Some(target) else {
+    ignore(self.restore(start))
+    return None
   }
+  Some(target.target)
 }
 
 ///|

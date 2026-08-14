@@ -162,10 +162,8 @@ fn has_component_declaration(line : String) -> Bool {
 
 ///|
 fn has_usecase_declaration(line : String) -> Bool {
-  if starts_with_keyword(line, usecase_keywords) {
-    return true
-  }
   let trimmed = line.trim().to_owned()
+  starts_with_keyword(line, usecase_keywords) ||
   (trimmed.has_prefix("(") && !trimmed.has_prefix("()")) ||
   trimmed.contains(">(") ||
   trimmed.contains("> (")

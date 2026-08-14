@@ -187,17 +187,13 @@ fn StructuredNode::place(
   let children = []
   let mut child_y = next_y
   for index, row in self.rows {
-    match row.child {
-      Some(child) => {
-        let (placed, following_y) = child.place(
-          x + metrics.width + STRUCTURED_NODE_GAP,
-          child_y,
-        )
-        children.push((index, placed))
-        child_y = following_y + STRUCTURED_SIBLING_GAP
-      }
-      None => ()
-    }
+    guard row.child is Some(child) else { continue }
+    let (placed, following_y) = child.place(
+      x + metrics.width + STRUCTURED_NODE_GAP,
+      child_y,
+    )
+    children.push((index, placed))
+    child_y = following_y + STRUCTURED_SIBLING_GAP
   }
   if children.is_empty() {
     return (
@@ -217,41 +213,26 @@ fn StructuredNode::place(
 
 ///|
 fn PlacedNode::max_right(self : PlacedNode) -> Int {
-  let mut right = self.x + self.metrics.width
-  for pair in self.children {
-    let (_, child) = pair
-    right = right.max(child.max_right())
-  }
-  right
+  self.children.fold(init=self.x + self.metrics.width, (right, pair) => {
+    right.max(pair.1.max_right())
+  })
 }
 
 ///|
 fn PlacedNode::max_bottom(self : PlacedNode) -> Int {
-  let mut bottom = self.y + self.metrics.height
-  for pair in self.children {
-    let (_, child) = pair
-    bottom = bottom.max(child.max_bottom())
-  }
-  bottom
+  self.children.fold(init=self.y + self.metrics.height, (bottom, pair) => {
+    bottom.max(pair.1.max_bottom())
+  })
 }
 
 ///|
 fn PlacedNode::min_top(self : PlacedNode) -> Int {
-  let mut top = self.y
-  for pair in self.children {
-    let (_, child) = pair
-    top = top.min(child.min_top())
-  }
-  top
+  self.children.fold(init=self.y, (top, pair) => top.min(pair.1.min_top()))
 }
 
 ///|
 fn PlacedNode::shifted(self : PlacedNode, delta : Int) -> PlacedNode {
-  let children = []
-  for pair in self.children {
-    let (row, child) = pair
-    children.push((row, child.shifted(delta)))
-  }
+  let children = self.children.map(pair => (pair.0, pair.1.shifted(delta)))
   {
     node: self.node,
     metrics: self.metrics,

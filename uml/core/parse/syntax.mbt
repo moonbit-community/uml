@@ -20,13 +20,12 @@ pub fn syntax_words(line : String) -> Array[String] {
   while !cursor.is_eof() {
     let word = StringBuilder()
     while cursor.peek() is Some(char) && !char.is_whitespace() {
-      match cursor.take_quoted_text() {
-        Some(quoted) => word.write_string(quoted)
-        None => {
-          word.write_char(char)
-          ignore(cursor.advance())
-        }
+      guard cursor.take_quoted_text() is Some(quoted) else {
+        word.write_char(char)
+        ignore(cursor.advance())
+        continue
       }
+      word.write_string(quoted)
     }
     words.push(word.to_string())
     ignore(cursor.skip_while(Char::is_whitespace))

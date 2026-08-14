@@ -223,10 +223,8 @@ fn note_position(word : String) -> NotePosition? {
 
 ///|
 fn text_block_end(line : String, keyword : String) -> Bool {
-  match line.to_lower() {
-    value if value == "end " + keyword || value == "end" + keyword => true
-    _ => false
-  }
+  let value = line.to_lower()
+  value == "end " + keyword || value == "end" + keyword
 }
 
 ///|

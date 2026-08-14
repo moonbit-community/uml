@@ -23,16 +23,11 @@ fn marker_end(line : String) -> Int {
 
 ///|
 fn marker_is_valid(marker : String) -> Bool {
-  let cursor = @parse.Cursor::new(marker)
-  let mut found = false
-  while cursor.advance() is Some(char) {
-    if char == '*' || char == '#' || char == '+' || char == '-' {
-      found = true
-    } else if char != ' ' && char != '\t' {
-      return false
-    }
+  let is_marker = (char : Char) => {
+    char == '*' || char == '#' || char == '+' || char == '-'
   }
-  found
+  marker.any(is_marker) &&
+  marker.all(char => is_marker(char) || char == ' ' || char == '\t')
 }
 
 ///|
@@ -230,20 +225,19 @@ fn parse_mindmap_style_block(
       index += 1
       continue
     }
-    match selector {
-      Some(current) => {
-        let words = @parse.syntax_words(line)
-        if words.length() >= 2 {
-          let key = words[0]
-          let value = words[1:].to_owned().join(" ")
-          if current.trim().equal_ignore_ascii_case("arrow") {
-            style.apply_arrow_property(key, value)
-          } else {
-            style.apply_node_property(current, key, value)
-          }
-        }
+    guard selector is Some(current) else {
+      index += 1
+      continue
+    }
+    let words = @parse.syntax_words(line)
+    if words.length() >= 2 {
+      let key = words[0]
+      let value = words[1:].to_owned().join(" ")
+      if current.trim().equal_ignore_ascii_case("arrow") {
+        style.apply_arrow_property(key, value)
+      } else {
+        style.apply_node_property(current, key, value)
       }
-      None => ()
     }
     index += 1
   }
@@ -301,14 +295,11 @@ pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
       index = parse_mindmap_style_block(lines, index, mindmap_style)
       continue
     }
-    match @style.parse_style_directive(trimmed) {
-      Some(directive) => {
-        style.apply(directive)
-        mindmap_style.apply_skinparam(directive)
-        index += 1
-        continue
-      }
-      None => ()
+    if @style.parse_style_directive(trimmed) is Some(directive) {
+      style.apply(directive)
+      mindmap_style.apply_skinparam(directive)
+      index += 1
+      continue
     }
     let lower = trimmed.to_lower()
     if lower.contains("left side") || lower.contains("left direction") {
@@ -347,8 +338,7 @@ pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
     }
     let direction = raw.direction.unwrap_or(default_direction)
     let (label, last, stereotype) = if raw.multiline {
-      let result = complete_multiline_label(lines, index, raw.label)
-      result
+      complete_multiline_label(lines, index, raw.label)
     } else {
       let (text, stereotype) = ending_stereotype(raw.label)
       (text, index, stereotype)

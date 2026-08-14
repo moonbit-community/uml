@@ -112,13 +112,7 @@ fn Parser::ensure_endpoint(
       (raw.has_prefix("==") && raw.has_suffix("==")) => base_code + parent
     _ => base_code
   }
-  let mut exists = false
-  for state in self.states {
-    if state.code == code {
-      exists = true
-    }
-  }
-  if !exists {
+  if !self.states.any(state => state.code == code) {
     self.states.push({
       code,
       display: raw,
@@ -178,8 +172,9 @@ fn Parser::apply_line_syntax(
   self : Parser,
   line : String,
 ) -> Bool raise @parse.ParseError {
-  match parse_line_syntax(line) {
-    Some(Declaration(syntax)) => {
+  guard parse_line_syntax(line) is Some(syntax) else { return false }
+  match syntax {
+    Declaration(syntax) => {
       self.upsert_state({
         code: syntax.code,
         display: syntax.display,
@@ -197,7 +192,7 @@ fn Parser::apply_line_syntax(
       }
       true
     }
-    Some(Frame(syntax)) => {
+    Frame(syntax) => {
       self.upsert_state({
         code: syntax.code,
         display: syntax.display,
@@ -213,7 +208,7 @@ fn Parser::apply_line_syntax(
       self.stack.push({ code: syntax.code, region_index })
       true
     }
-    Some(Transition(syntax)) => {
+    Transition(syntax) => {
       let source = self.ensure_endpoint(syntax.source, TransitionSource)
       let target = self.ensure_endpoint(syntax.target, TransitionTarget)
       self.transitions.push({
@@ -226,11 +221,11 @@ fn Parser::apply_line_syntax(
       })
       true
     }
-    Some(EntityNote(note)) => {
+    EntityNote(note) => {
       self.consume_entity_note(note.target, note.color)
       true
     }
-    Some(LinkNote(note)) => {
+    LinkNote(note) => {
       guard self.transitions.length() > 0 else {
         raise SyntaxError(self.line_number(), "link note without transition")
       }
@@ -241,7 +236,6 @@ fn Parser::apply_line_syntax(
       })
       true
     }
-    None => false
   }
 }
 

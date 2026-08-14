@@ -115,19 +115,13 @@ fn url_target_parser(cursor : Cursor) -> UrlTarget? {
 /// Parse a URL target at the beginning of a larger PlantUML command.
 pub fn parse_url_target_prefix(value : String) -> (UrlTarget, String)? {
   let cursor = Cursor::new(value)
-  match url_target_prefix(cursor) {
-    Some(target) => Some((target, cursor.remaining()))
-    None => None
-  }
+  url_target_prefix(cursor).map(target => (target, cursor.remaining()))
 }
 
 ///|
 pub fn parse_url_target(value : String) -> UrlTarget? {
   let cursor = Cursor::new(value)
-  match url_target_parser(cursor) {
-    Some(target) if target.target.length() > 0 => Some(target)
-    _ => None
-  }
+  url_target_parser(cursor).filter(target => target.target.length() > 0)
 }
 
 ///|

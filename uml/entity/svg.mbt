@@ -66,10 +66,10 @@ fn EntityDiagram::render_svg_with_mode(
       $|\{collapse_style}</style>\n
   }
   let has_object_image = self.entities.any(entity => {
-    match entity.render_capability().renderer {
-      ObjectRenderer | MapRenderer | JsonRenderer => true
-      _ => false
-    }
+    let renderer = entity.render_capability().renderer
+    renderer is ObjectRenderer ||
+    renderer is MapRenderer ||
+    renderer is JsonRenderer
   })
   if has_object_image {
     let object_style =

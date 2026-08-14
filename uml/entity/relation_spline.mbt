@@ -64,28 +64,22 @@ fn relation_edge_endpoint(
 ) -> (Double, Double)? {
   if start {
     for spline in edge.splines {
-      match spline.arrow_start {
-        Some(point) => return Some(point.pair())
-        None =>
-          match spline.points.get(0) {
-            Some(point) => return Some(point.pair())
-            None => ()
-          }
+      guard spline.arrow_start is Some(point) else {
+        guard spline.points.get(0) is Some(point) else { continue }
+        return Some(point.pair())
       }
+      return Some(point.pair())
     }
   } else {
     let mut index = edge.splines.length()
     while index > 0 {
       index -= 1
       let spline = edge.splines[index]
-      match spline.arrow_end {
-        Some(point) => return Some(point.pair())
-        None =>
-          match spline.points.last() {
-            Some(point) => return Some(point.pair())
-            None => ()
-          }
+      guard spline.arrow_end is Some(point) else {
+        guard spline.points.last() is Some(point) else { continue }
+        return Some(point.pair())
       }
+      return Some(point.pair())
     }
   }
   None

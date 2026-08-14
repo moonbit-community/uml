@@ -129,13 +129,13 @@ fn external_member_line(cursor : @parse.Cursor) -> (String, Member)? {
 fn take_alignment(cursor : @parse.Cursor) -> Bool {
   let start = cursor.offset()
   guard take_inline_word(cursor) is Some(word) else { return false }
-  match word.to_lower() {
-    "top" | "bottom" | "left" | "right" | "center" => true
-    _ => {
-      ignore(cursor.restore(start))
-      false
-    }
+  let aligned = word.to_lower()
+    is ("top" | "bottom" | "left" | "right" | "center")
+  guard aligned else {
+    ignore(cursor.restore(start))
+    return false
   }
+  aligned
 }
 
 ///|

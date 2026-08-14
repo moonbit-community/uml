@@ -157,12 +157,13 @@ fn append_return(
 ) -> Unit {
   guard layout.participants.length() >= 2 else { return }
   let y = placement.y + MESSAGE_ARROW_OFFSET
-  let mut activation : ActivationSpan? = None
-  for candidate in layout.activations {
+  let activation = layout.activations.fold(init=None, (activation, candidate) => {
     if candidate.start_y <= y && y <= candidate.end_y {
-      activation = Some(candidate)
+      Some(candidate)
+    } else {
+      activation
     }
-  }
+  })
   let (from, to) = match activation {
     Some(span) =>
       (
@@ -194,10 +195,9 @@ fn append_return(
       }
   }
   let return_value = value.value.unwrap_or("")
-  let label = match placement.number {
-    Some(number) => "\{number} \{return_value}"
-    None => return_value
-  }
+  let label = placement.number.map_or(return_value, number => {
+    "\{number} \{return_value}"
+  })
   output <+
     $|<line x1="\{from.center_x}" y1="\{y}" x2="\{to.center_x}" y2="\{y}" class="message dotted" marker-end="url(#arrow)"/>
   append_text(

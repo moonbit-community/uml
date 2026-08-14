@@ -337,13 +337,10 @@ pub fn MindmapStyle::node_style(
   } else if !has_children {
     result = result.merge(self.leaf_node)
   }
-  match idea.stereotype {
-    Some(stereotype) =>
-      result.merge(
-        self.stereotypes
-        .get(normalized_stereotype(stereotype))
-        .unwrap_or(MindmapNodeStyle::empty()),
-      )
-    None => result
-  }
+  guard idea.stereotype is Some(stereotype) else { return result }
+  result.merge(
+    self.stereotypes
+    .get(normalized_stereotype(stereotype))
+    .unwrap_or(MindmapNodeStyle::empty()),
+  )
 }

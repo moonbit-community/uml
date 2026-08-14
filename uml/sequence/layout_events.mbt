@@ -124,12 +124,10 @@ fn layout_events(
     autonumber.apply(event)
     // Auto pagination is a layout marker inserted before the next message;
     // it keeps the parsed event stream unchanged for metadata and numbering.
-    let auto_page_break = match auto_newpage {
-      Some(threshold) if threshold > 0 &&
-        messages_since_auto_newpage >= threshold =>
-        event is Message(_) || event is MessageExo(_)
-      _ => false
-    }
+    let auto_page_break = auto_newpage is Some(threshold) &&
+      threshold > 0 &&
+      messages_since_auto_newpage >= threshold &&
+      (event is Message(_) || event is MessageExo(_))
     if auto_page_break {
       auto_page_breaks.push(current_y + 20)
       current_y += 40
@@ -168,13 +166,11 @@ fn layout_events(
       current_y = parallel_bottom
     }
 
-    match event.participant_span(participant_index) {
-      Some(span) =>
-        for group_index in group_stack {
-          let group = groups[group_index]
-          groups[group_index] = GroupSpan::include_participant_span(group, span)
-        }
-      None => ()
+    if event.participant_span(participant_index) is Some(span) {
+      for group_index in group_stack {
+        let group = groups[group_index]
+        groups[group_index] = GroupSpan::include_participant_span(group, span)
+      }
     }
 
     match event {
@@ -243,10 +239,7 @@ fn layout_events(
         // dealing with its participant, mirroring Java's
         // `lastEventWithDeactivate.dealWith(p)`; otherwise it sits on its
         // own row.
-        let life_y = match last_message_y.get(life.participant_code) {
-          Some(arrow_y) => arrow_y
-          None => y
-        }
+        let life_y = last_message_y.get(life.participant_code).unwrap_or(y)
         apply_activation_spec(
           Some(life.event_type),
           life.participant_code,

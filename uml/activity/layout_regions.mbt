@@ -6,11 +6,9 @@ fn append_layout_edge(
   route : ActivityEdgeRoute,
   label? : String? = None,
 ) -> Unit {
-  match (from_node_index, to_node_index) {
-    (Some(from_node_index), Some(to_node_index)) =>
-      edges.push({ from_node_index, to_node_index, route, label })
-    _ => ()
-  }
+  guard from_node_index is Some(from_node_index) else { return }
+  guard to_node_index is Some(to_node_index) else { return }
+  edges.push({ from_node_index, to_node_index, route, label })
 }
 
 ///|
@@ -112,15 +110,11 @@ fn region_for_range(
 
 ///|
 fn swimlane_for_node(nodes : Array[ActivityNode], node_index : Int) -> String? {
-  let mut result : String? = None
-  for index, node in nodes {
-    guard index <= node_index else { break }
-    match node {
-      ActivityNode::Swimlane(name) => result = Some(name)
-      _ => ()
-    }
+  for index = node_index.min(nodes.length() - 1); index >= 0; index = index - 1 {
+    guard nodes[index] is ActivityNode::Swimlane(name) else { continue }
+    return Some(name)
   }
-  result
+  None
 }
 
 ///|
@@ -150,10 +144,7 @@ fn reposition_swimlanes(
 ) -> Int {
   let names = swimlane_names(nodes)
   guard !names.is_empty() else { return 0 }
-  let widths = []
-  for _ in names {
-    widths.push(MINIMUM_ACTION_WIDTH + REGION_PADDING * 2)
-  }
+  let widths = names.map(_ => MINIMUM_ACTION_WIDTH + REGION_PADDING * 2)
   for layout in layouts {
     guard swimlane_for_node(nodes, layout.node_index) is Some(name) else {
       continue
@@ -206,33 +197,36 @@ fn regions_from_nodes(
       Swimlane(label) => {
         guard !seen_swimlanes.contains(label) else { continue }
         seen_swimlanes.push(label)
-        match region_for_swimlane(nodes, layouts, label) {
-          Some(region) => regions.push(region)
-          None => ()
+        guard region_for_swimlane(nodes, layouts, label) is Some(region) else {
+          continue
         }
+        regions.push(region)
       }
       Partition(label) => {
-        let mut end = nodes.length()
-        for next, candidate in nodes {
-          guard next > index else { continue }
-          guard candidate is EndPartition else { continue }
-          end = next
-          break
-        }
-        match
-          region_for_range(
+        let end = partition_end(nodes, index)
+        guard region_for_range(
             layouts,
             index,
             end,
             ActivityRegionKind::Partition,
             label,
-          ) {
-          Some(region) => regions.push(region)
-          None => ()
+          )
+          is Some(region) else {
+          continue
         }
+        regions.push(region)
       }
       _ => ()
     }
   }
   regions
+}
+
+///|
+fn partition_end(nodes : Array[ActivityNode], index : Int) -> Int {
+  for next = index + 1; next < nodes.length(); next = next + 1 {
+    guard nodes[next] is EndPartition else { continue }
+    return next
+  }
+  nodes.length()
 }

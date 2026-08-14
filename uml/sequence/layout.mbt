@@ -105,41 +105,34 @@ fn DiagramLayout::content_horizontal_bounds(
     min_x = min_x.min(x)
     max_x = max_x.max(x + width)
   }
-  let mut max_box_depth = 0
-  for participant in self.participants {
-    max_box_depth = max_box_depth.max(participant.participant.boxes.length())
-  }
+  let max_box_depth = self.participants.fold(init=0, (depth, participant) => {
+    depth.max(participant.participant.boxes.length())
+  })
   for depth in 0..<max_box_depth {
     let mut active : ParticipantBox? = None
     let mut start = 0
     for index, participant in self.participants {
       let current = participant.participant.boxes.get(depth)
       if current != active {
-        match active {
-          Some(box) => {
-            let (left, right) = participant_box_horizontal_bounds(
-              self.participants[start:index].to_owned(),
-              box,
-            )
-            min_x = min_x.min(left)
-            max_x = max_x.max(right)
-          }
-          None => ()
+        if active is Some(box) {
+          let (left, right) = participant_box_horizontal_bounds(
+            self.participants[start:index].to_owned(),
+            box,
+          )
+          min_x = min_x.min(left)
+          max_x = max_x.max(right)
         }
         active = current
         start = index
       }
     }
-    match active {
-      Some(box) => {
-        let (left, right) = participant_box_horizontal_bounds(
-          self.participants[start:].to_owned(),
-          box,
-        )
-        min_x = min_x.min(left)
-        max_x = max_x.max(right)
-      }
-      None => ()
+    if active is Some(box) {
+      let (left, right) = participant_box_horizontal_bounds(
+        self.participants[start:].to_owned(),
+        box,
+      )
+      min_x = min_x.min(left)
+      max_x = max_x.max(right)
     }
   }
   (min_x, max_x)

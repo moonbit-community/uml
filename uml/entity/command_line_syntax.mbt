@@ -198,14 +198,8 @@ fn Parser::apply_package_declaration(
         None
       },
     }
-    let mut existing = None
-    for index, item in self.packages {
-      if item.qualified_name == qualified_name {
-        existing = Some(index)
-        break
-      }
-    }
-    match existing {
+    match
+      self.packages.search_by(item => item.qualified_name == qualified_name) {
       Some(index) => if is_last { self.packages[index] = package_value }
       None => self.packages.push(package_value)
     }

@@ -166,10 +166,8 @@ pub fn DocumentStyle::property_font_size(
   key : String,
   fallback~ : Int,
 ) -> Int {
-  match self.property(key) {
-    Some(value) => parse_font_size(value, fallback~)
-    None => fallback
-  }
+  guard self.property(key) is Some(value) else { return fallback }
+  parse_font_size(value, fallback~)
 }
 
 ///|
@@ -316,10 +314,8 @@ pub fn consume_skinparam_body(
   apply : (StyleDirective) -> Unit,
 ) -> Bool {
   @parse.consume_lines_until(next_line, line => line.trim() == "}", line => {
-    match parse_style_property(line) {
-      Some(directive) => apply(directive)
-      None => ()
-    }
+    guard parse_style_property(line) is Some(directive) else { return }
+    apply(directive)
   })
 }
 
@@ -342,10 +338,8 @@ pub fn DocumentStyle::font_size_value(
   self : DocumentStyle,
   fallback? : Int = 13,
 ) -> Int {
-  match self.font_size {
-    Some(value) => parse_font_size(value, fallback~)
-    None => fallback
-  }
+  guard self.font_size is Some(value) else { return fallback }
+  parse_font_size(value, fallback~)
 }
 
 ///|

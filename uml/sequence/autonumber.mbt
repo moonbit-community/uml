@@ -84,9 +84,8 @@ fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
     AutonumberResume(config) => {
       self.enabled = true
       self.increment = config.increment.unwrap_or(self.increment)
-      self.format = match config.format {
-        Some(format) => Some(format)
-        None => self.format
+      if config.format is Some(format) {
+        self.format = Some(format)
       }
     }
     AutonumberIncrement(position) =>

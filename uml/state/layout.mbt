@@ -171,13 +171,7 @@ fn StateDiagram::regions_for(
   self : StateDiagram,
   parent : String,
 ) -> Array[StateRegion] {
-  let regions : Array[StateRegion] = []
-  for region in self.regions {
-    if region.parent == parent {
-      regions.push(region)
-    }
-  }
-  regions
+  self.regions.filter(region => region.parent == parent)
 }
 
 ///|
@@ -256,18 +250,11 @@ fn StateDiagram::transition_visible_endpoint(
   let path = self.scope_path(code)
   match scope {
     None => if path.length() > 0 { path[0] } else { code }
-    Some(scope) => {
-      let mut found = false
-      for entry in path {
-        if found {
-          return entry
-        }
-        if entry == scope {
-          found = true
-        }
+    Some(scope) =>
+      match path.search_by(entry => entry == scope) {
+        Some(index) if index + 1 < path.length() => path[index + 1]
+        _ => code
       }
-      code
-    }
   }
 }
 
@@ -276,10 +263,7 @@ fn StateDiagram::state_note_scope(
   self : StateDiagram,
   target : String,
 ) -> String? {
-  match self.state(target) {
-    Some(state) => state.parent
-    None => None
-  }
+  self.state(target).bind(state => state.parent)
 }
 
 ///|
@@ -420,18 +404,16 @@ fn StateDiagram::visible_nodes_for_scope(
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
 ) -> Array[StateVisibleNode] raise @dot_layout.DotLayoutError {
-  let output : Array[StateVisibleNode] = []
-  for state in self.states {
-    guard state.parent == scope else { continue }
+  self.states.filter_map(state => {
+    guard state.parent == scope else { return None }
     guard region_index < 0 || state.region_index == region_index else {
-      continue
+      return None
     }
     let child = self.composite_fragment(
       state, name_metrics, description_metrics,
     )
-    output.push({ state, child })
-  }
-  output
+    Some({ state, child })
+  })
 }
 
 ///|
@@ -510,9 +492,8 @@ fn StateDiagram::layout_scope(
       name="t" + transition_index.to_string(),
     )
     transition_names[edge.id()] = transition_index.to_string()
-    match transition.label {
-      Some(label) => edge.set_attr("label", label)
-      None => ()
+    if transition.label is Some(label) {
+      edge.set_attr("label", label)
     }
     match transition.direction {
       Leftward => edge.set_attr("dir", "back")
@@ -535,15 +516,12 @@ fn StateDiagram::layout_scope(
     let (width, height) = state_note_size(note, note_metrics)
     @graphviz.set_fixed_node_size(node, width, height, shape="note")
     match self.note_anchor(note, scope) {
-      Some(anchor) =>
-        match node_names.get(anchor) {
-          Some(anchor_name) => {
-            let edge = graph.edge(node, graph.node(anchor_name))
-            edge.set_attr("dir", "none")
-            edge.set_attr("style", "invis")
-          }
-          None => ()
-        }
+      Some(anchor) => {
+        guard node_names.get(anchor) is Some(anchor_name) else { continue }
+        let edge = graph.edge(node, graph.node(anchor_name))
+        edge.set_attr("dir", "none")
+        edge.set_attr("style", "invis")
+      }
       None => ()
     }
   }
@@ -699,17 +677,14 @@ fn StateDiagram::layout_composite_state(
       description_metrics,
     )
   }
-  let fragments : Array[StateFragment] = []
-  for region in regions {
-    fragments.push(
-      self.layout_scope(
-        Some(state.code),
-        region.index,
-        name_metrics,
-        description_metrics,
-      ),
+  let fragments = regions.map(region => {
+    self.layout_scope(
+      Some(state.code),
+      region.index,
+      name_metrics,
+      description_metrics,
     )
-  }
+  })
   stack_region_fragments(state.code, regions, fragments)
 }
 

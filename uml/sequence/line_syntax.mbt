@@ -118,15 +118,15 @@ fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
 /// and group leaves carry only left/right notes (a top/bottom note attached
 /// to them is dropped with a warning).
 fn ParseCtx::has_event_with_note(self : ParseCtx, top_or_bottom : Bool) -> Bool {
-  let mut carried = false
-  for event in self.events {
-    match event {
-      Message(_) | MessageExo(_) => carried = true
-      Reference(_) | GroupingLeaf(_) => carried = !top_or_bottom
-      _ => ()
+  self.events.fold(init=false, (carried, event) => {
+    if event is Message(_) || event is MessageExo(_) {
+      true
+    } else if event is Reference(_) || event is GroupingLeaf(_) {
+      !top_or_bottom
+    } else {
+      carried
     }
-  }
-  carried
+  })
 }
 
 ///|

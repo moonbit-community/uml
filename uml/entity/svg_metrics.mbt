@@ -245,7 +245,6 @@ fn Entity::object_body_layout(
   let entries : Array[Member] = []
   let mut member_count = 0
   let mut separator_count = 0
-  let mut has_visibility = false
   let mut previous_separator = false
   for entry in self.members {
     guard self.entry_visible(entry) else { continue }
@@ -259,14 +258,14 @@ fn Entity::object_body_layout(
     } else {
       entries.push(entry)
       member_count += 1
-      let explicit_visibility = match entry.visibility {
-        Unknown => false
-        _ => true
-      }
-      has_visibility = has_visibility || explicit_visibility
       previous_separator = false
     }
   }
+  let has_visibility = self.members.any(entry => {
+    self.entry_visible(entry) &&
+    !entry.is_separator &&
+    !(entry.visibility is Unknown)
+  })
   let height = if member_count == 0 {
     OBJECT_EMPTY_BODY_HEIGHT
   } else {
@@ -541,16 +540,11 @@ fn Entity::body_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
 ) -> ClassBodyLayout {
-  let fields : Array[Member] = []
-  let methods : Array[Member] = []
-  for entry in self.members {
-    guard self.entry_visible(entry) && !entry.is_separator else { continue }
-    if entry.is_method {
-      methods.push(entry)
-    } else {
-      fields.push(entry)
-    }
-  }
+  let visible = self.members.filter(entry => {
+    self.entry_visible(entry) && !entry.is_separator
+  })
+  let fields = visible.filter(entry => !entry.is_method)
+  let methods = visible.filter(entry => entry.is_method)
   // MethodsOrFieldsArea always contributes its separator and vertical margins,
   // even when that portion has no visible members.
   {

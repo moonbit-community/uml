@@ -119,17 +119,14 @@ pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
       }
       continue
     }
-    match @style.parse_style_directive(line) {
-      Some(directive) => {
-        style.apply(directive)
-        index += 1
-        continue
-      }
-      None =>
-        if lower.has_prefix("skinparam ") {
-          index += 1
-          continue
-        }
+    if @style.parse_style_directive(line) is Some(directive) {
+      style.apply(directive)
+      index += 1
+      continue
+    }
+    if lower.has_prefix("skinparam ") {
+      index += 1
+      continue
     }
     if lower.has_prefix("note ") && !line.contains(":") {
       let (text, end) = parse_note(lines, index)

@@ -210,13 +210,13 @@ fn MindmapDiagram::branch_gap(self : MindmapDiagram, index : Int) -> Int {
 
 ///|
 fn contact(frontier : Array[Stripe], start : Int, end : Int) -> Int {
-  let mut result = -1_000_000_000
-  for stripe in frontier {
+  frontier.fold(init=-1_000_000_000, (result, stripe) => {
     if stripe.end > start && stripe.start < end {
-      result = result.max(stripe.value)
+      result.max(stripe.value)
+    } else {
+      result
     }
-  }
-  result
+  })
 }
 
 ///|
