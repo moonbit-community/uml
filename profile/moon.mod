@@ -1,10 +1,11 @@
-name = "moonbit-community/uml_cli"
+name = "kokic/uml-profile"
 
 version = "0.1.0"
 
 import {
-  "kokic/uml@0.1.2",
+  "kokic/uml@0.1.3",
   "moonbitlang/x@0.4.50",
+  "Milky2018/svgdiff@0.7.1",
 }
 
 readme = "README.md"
