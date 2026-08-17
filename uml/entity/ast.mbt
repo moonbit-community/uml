@@ -51,9 +51,11 @@ pub(all) enum EntityKind {
   State
 } derive(Eq, Debug)
 
+///|
 pub extend EntityKind with Eq::{not_equal, equal}
-pub extend EntityKind with Debug::{to_repr}
 
+///|
+pub extend EntityKind with Debug::{to_repr}
 
 ///|
 pub(all) enum Visibility {
@@ -64,9 +66,11 @@ pub(all) enum Visibility {
   Unknown
 } derive(Eq, Debug)
 
+///|
 pub extend Visibility with Eq::{not_equal, equal}
-pub extend Visibility with Debug::{to_repr}
 
+///|
+pub extend Visibility with Debug::{to_repr}
 
 ///|
 pub struct Member {
@@ -79,9 +83,11 @@ pub struct Member {
   is_hidden : Bool
 } derive(Eq, Debug)
 
+///|
 pub extend Member with Eq::{not_equal, equal}
-pub extend Member with Debug::{to_repr}
 
+///|
+pub extend Member with Debug::{to_repr}
 
 ///|
 pub struct Entity {
@@ -110,9 +116,11 @@ pub struct Entity {
   json_data : String?
 } derive(Eq, Debug)
 
+///|
 pub extend Entity with Eq::{not_equal, equal}
-pub extend Entity with Debug::{to_repr}
 
+///|
+pub extend Entity with Debug::{to_repr}
 
 ///|
 pub struct MapEntry {
@@ -122,9 +130,11 @@ pub struct MapEntry {
   raw : String
 } derive(Eq, Debug)
 
+///|
 pub extend MapEntry with Eq::{not_equal, equal}
-pub extend MapEntry with Debug::{to_repr}
 
+///|
+pub extend MapEntry with Debug::{to_repr}
 
 ///|
 pub(all) enum RelationKind {
@@ -136,9 +146,11 @@ pub(all) enum RelationKind {
   Realization
 } derive(Eq, Debug)
 
+///|
 pub extend RelationKind with Eq::{not_equal, equal}
-pub extend RelationKind with Debug::{to_repr}
 
+///|
+pub extend RelationKind with Debug::{to_repr}
 
 ///|
 pub(all) enum RelationEnd {
@@ -166,9 +178,11 @@ pub(all) enum RelationEnd {
   HalfArrowDown
 } derive(Eq, Debug)
 
+///|
 pub extend RelationEnd with Eq::{not_equal, equal}
-pub extend RelationEnd with Debug::{to_repr}
 
+///|
+pub extend RelationEnd with Debug::{to_repr}
 
 ///|
 pub(all) enum RelationDirection {
@@ -179,9 +193,11 @@ pub(all) enum RelationDirection {
   Downward
 } derive(Eq, Debug)
 
+///|
 pub extend RelationDirection with Eq::{not_equal, equal}
-pub extend RelationDirection with Debug::{to_repr}
 
+///|
+pub extend RelationDirection with Debug::{to_repr}
 
 ///|
 pub struct Relation {
@@ -212,9 +228,11 @@ pub struct Relation {
   right_couple : (String, String)?
 } derive(Eq, Debug)
 
+///|
 pub extend Relation with Eq::{not_equal, equal}
-pub extend Relation with Debug::{to_repr}
 
+///|
+pub extend Relation with Debug::{to_repr}
 
 ///|
 fn Relation::new(
@@ -267,9 +285,11 @@ pub struct Package {
   color : String?
 } derive(Eq, Debug)
 
+///|
 pub extend Package with Eq::{not_equal, equal}
-pub extend Package with Debug::{to_repr}
 
+///|
+pub extend Package with Debug::{to_repr}
 
 ///|
 pub(all) enum NotePosition {
@@ -279,9 +299,11 @@ pub(all) enum NotePosition {
   Bottom
 } derive(Eq, Debug)
 
+///|
 pub extend NotePosition with Eq::{not_equal, equal}
-pub extend NotePosition with Debug::{to_repr}
 
+///|
+pub extend NotePosition with Debug::{to_repr}
 
 ///|
 pub(all) enum NoteTargetKind {
@@ -291,9 +313,11 @@ pub(all) enum NoteTargetKind {
   FloatingNote
 } derive(Eq, Debug)
 
+///|
 pub extend NoteTargetKind with Eq::{not_equal, equal}
-pub extend NoteTargetKind with Debug::{to_repr}
 
+///|
+pub extend NoteTargetKind with Debug::{to_repr}
 
 ///|
 pub struct Note {
@@ -310,9 +334,11 @@ pub struct Note {
   tags : Array[String]
 } derive(Eq, Debug)
 
+///|
 pub extend Note with Eq::{not_equal, equal}
-pub extend Note with Debug::{to_repr}
 
+///|
+pub extend Note with Debug::{to_repr}
 
 ///|
 pub struct LinkConstraint {
@@ -322,9 +348,11 @@ pub struct LinkConstraint {
   color : String?
 } derive(Eq, Debug)
 
+///|
 pub extend LinkConstraint with Eq::{not_equal, equal}
-pub extend LinkConstraint with Debug::{to_repr}
 
+///|
+pub extend LinkConstraint with Debug::{to_repr}
 
 ///|
 /// The PlantUML diagram family a parsed entity graph belongs to.
@@ -338,9 +366,11 @@ pub(all) enum EntityFamily {
   UseCaseDiagram
 } derive(Eq, Debug)
 
+///|
 pub extend EntityFamily with Eq::{not_equal, equal}
-pub extend EntityFamily with Debug::{to_repr}
 
+///|
+pub extend EntityFamily with Debug::{to_repr}
 
 ///|
 /// Whether declarations outside the class grammar may appear without an
@@ -372,9 +402,11 @@ pub struct EntityDiagram {
   style : @style.DocumentStyle
 } derive(Eq, Debug)
 
+///|
 pub extend EntityDiagram with Eq::{not_equal, equal}
-pub extend EntityDiagram with Debug::{to_repr}
 
+///|
+pub extend EntityDiagram with Debug::{to_repr}
 
 ///|
 priv struct Declaration {

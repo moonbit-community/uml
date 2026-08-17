@@ -5,9 +5,11 @@ pub struct UrlTarget {
   label : String?
 } derive(Eq, Debug)
 
+///|
 pub extend UrlTarget with Eq::{not_equal, equal}
-pub extend UrlTarget with Debug::{to_repr}
 
+///|
+pub extend UrlTarget with Debug::{to_repr}
 
 ///|
 /// A PlantUML URL embedded in a larger command.
@@ -17,9 +19,11 @@ pub struct UrlOccurrence {
   after : String
 } derive(Eq, Debug)
 
+///|
 pub extend UrlOccurrence with Eq::{not_equal, equal}
-pub extend UrlOccurrence with Debug::{to_repr}
 
+///|
+pub extend UrlOccurrence with Debug::{to_repr}
 
 ///|
 pub fn normalize_url_target(value : String) -> String {

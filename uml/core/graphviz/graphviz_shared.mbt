@@ -95,9 +95,11 @@ pub(all) struct GraphvizPoint {
   y : Double
 } derive(Eq, Debug)
 
+///|
 pub extend GraphvizPoint with Eq::{not_equal, equal}
-pub extend GraphvizPoint with Debug::{to_repr}
 
+///|
+pub extend GraphvizPoint with Debug::{to_repr}
 
 ///|
 /// Convert a normalized point at the SVG/tuple serialization boundary.
@@ -150,9 +152,11 @@ pub(all) struct GraphvizSpline {
   points : Array[GraphvizPoint]
 } derive(Eq, Debug)
 
+///|
 pub extend GraphvizSpline with Eq::{not_equal, equal}
-pub extend GraphvizSpline with Debug::{to_repr}
 
+///|
+pub extend GraphvizSpline with Debug::{to_repr}
 
 ///|
 /// One graphviz edge normalized into SVG coordinates.
@@ -164,9 +168,11 @@ pub(all) struct GraphvizEdge {
   tail_label : GraphvizPoint?
 } derive(Eq, Debug)
 
+///|
 pub extend GraphvizEdge with Eq::{not_equal, equal}
-pub extend GraphvizEdge with Debug::{to_repr}
 
+///|
+pub extend GraphvizEdge with Debug::{to_repr}
 
 ///|
 /// Extract edges whose graphviz ids appear in `names`, mapping each id to
@@ -207,9 +213,11 @@ pub(all) struct GraphvizNote {
   height : Double
 } derive(Eq, Debug)
 
+///|
 pub extend GraphvizNote with Eq::{not_equal, equal}
-pub extend GraphvizNote with Debug::{to_repr}
 
+///|
+pub extend GraphvizNote with Debug::{to_repr}
 
 ///|
 /// Select whether normalized node coordinates identify the center or the
@@ -219,9 +227,11 @@ pub(all) enum NodeAnchor {
   TopLeft
 } derive(Eq, Debug)
 
+///|
 pub extend NodeAnchor with Eq::{not_equal, equal}
-pub extend NodeAnchor with Debug::{to_repr}
 
+///|
+pub extend NodeAnchor with Debug::{to_repr}
 
 ///|
 /// Extract note nodes whose graphviz names appear in `note_names`. With

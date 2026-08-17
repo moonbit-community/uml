@@ -8,9 +8,11 @@ pub struct ActivityNodeLayout {
   height : Int
 } derive(Eq, Debug)
 
+///|
 pub extend ActivityNodeLayout with Eq::{not_equal, equal}
-pub extend ActivityNodeLayout with Debug::{to_repr}
 
+///|
+pub extend ActivityNodeLayout with Debug::{to_repr}
 
 ///|
 pub(all) enum ActivityEdgeRoute {
@@ -21,9 +23,11 @@ pub(all) enum ActivityEdgeRoute {
   BackwardRight
 } derive(Eq, Debug)
 
+///|
 pub extend ActivityEdgeRoute with Eq::{not_equal, equal}
-pub extend ActivityEdgeRoute with Debug::{to_repr}
 
+///|
+pub extend ActivityEdgeRoute with Debug::{to_repr}
 
 ///|
 /// A directed connector between visible activity instructions.
@@ -34,9 +38,11 @@ pub struct ActivityEdgeLayout {
   label : String?
 } derive(Eq, Debug)
 
+///|
 pub extend ActivityEdgeLayout with Eq::{not_equal, equal}
-pub extend ActivityEdgeLayout with Debug::{to_repr}
 
+///|
+pub extend ActivityEdgeLayout with Debug::{to_repr}
 
 ///|
 pub(all) enum ActivityRegionKind {
@@ -44,9 +50,11 @@ pub(all) enum ActivityRegionKind {
   Swimlane
 } derive(Eq, Debug)
 
+///|
 pub extend ActivityRegionKind with Eq::{not_equal, equal}
-pub extend ActivityRegionKind with Debug::{to_repr}
 
+///|
+pub extend ActivityRegionKind with Debug::{to_repr}
 
 ///|
 pub struct ActivityRegionLayout {
@@ -58,9 +66,11 @@ pub struct ActivityRegionLayout {
   height : Int
 } derive(Eq, Debug)
 
+///|
 pub extend ActivityRegionLayout with Eq::{not_equal, equal}
-pub extend ActivityRegionLayout with Debug::{to_repr}
 
+///|
+pub extend ActivityRegionLayout with Debug::{to_repr}
 
 ///|
 /// Complete geometry emitted by the built-in activity layout stage.
@@ -73,9 +83,11 @@ pub struct ActivityLayout {
   height : Int
 } derive(Eq, Debug)
 
+///|
 pub extend ActivityLayout with Eq::{not_equal, equal}
-pub extend ActivityLayout with Debug::{to_repr}
 
+///|
+pub extend ActivityLayout with Debug::{to_repr}
 
 ///|
 priv enum Tile {

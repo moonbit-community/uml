@@ -5,9 +5,11 @@ pub(all) enum TextAlignment {
   Right
 } derive(Eq, Debug)
 
+///|
 pub extend TextAlignment with Eq::{not_equal, equal}
-pub extend TextAlignment with Debug::{to_repr}
 
+///|
+pub extend TextAlignment with Debug::{to_repr}
 
 ///|
 pub struct MindmapNodeStyle {
@@ -28,9 +30,11 @@ pub struct MindmapNodeStyle {
   alignment : TextAlignment?
 } derive(Eq, Debug)
 
+///|
 pub extend MindmapNodeStyle with Eq::{not_equal, equal}
-pub extend MindmapNodeStyle with Debug::{to_repr}
 
+///|
+pub extend MindmapNodeStyle with Debug::{to_repr}
 
 ///|
 pub struct MindmapArrowStyle {
@@ -38,9 +42,11 @@ pub struct MindmapArrowStyle {
   line_thickness : Int?
 } derive(Eq, Debug)
 
+///|
 pub extend MindmapArrowStyle with Eq::{not_equal, equal}
-pub extend MindmapArrowStyle with Debug::{to_repr}
 
+///|
+pub extend MindmapArrowStyle with Debug::{to_repr}
 
 ///|
 pub struct MindmapStyle {
@@ -51,9 +57,11 @@ pub struct MindmapStyle {
   mut arrow : MindmapArrowStyle
 } derive(Eq, Debug)
 
+///|
 pub extend MindmapStyle with Eq::{not_equal, equal}
-pub extend MindmapStyle with Debug::{to_repr}
 
+///|
+pub extend MindmapStyle with Debug::{to_repr}
 
 ///|
 fn MindmapNodeStyle::empty() -> MindmapNodeStyle {

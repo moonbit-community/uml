@@ -5,9 +5,11 @@ pub(all) enum Direction {
   Right
 } derive(Eq, Debug)
 
+///|
 pub extend Direction with Eq::{not_equal, equal}
-pub extend Direction with Debug::{to_repr}
 
+///|
+pub extend Direction with Debug::{to_repr}
 
 ///|
 /// The visual form requested by a mindmap item.
@@ -16,9 +18,11 @@ pub(all) enum IdeaShape {
   Boxless
 } derive(Eq, Debug)
 
+///|
 pub extend IdeaShape with Eq::{not_equal, equal}
-pub extend IdeaShape with Debug::{to_repr}
 
+///|
+pub extend IdeaShape with Debug::{to_repr}
 
 ///|
 /// A parsed mindmap item. `parent` is the index of its parent in
@@ -33,9 +37,11 @@ pub struct Idea {
   parent : Int?
 } derive(Eq, Debug)
 
+///|
 pub extend Idea with Eq::{not_equal, equal}
-pub extend Idea with Debug::{to_repr}
 
+///|
+pub extend Idea with Debug::{to_repr}
 
 ///|
 /// Parsed PlantUML mindmap state.
@@ -45,5 +51,8 @@ pub struct MindmapDiagram {
   mindmap_style : MindmapStyle
 } derive(Eq, Debug)
 
+///|
 pub extend MindmapDiagram with Eq::{not_equal, equal}
+
+///|
 pub extend MindmapDiagram with Debug::{to_repr}

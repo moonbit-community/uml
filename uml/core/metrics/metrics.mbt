@@ -11,9 +11,11 @@ pub struct TextMetrics {
   ink_right : Int
 } derive(Eq, Debug)
 
+///|
 pub extend TextMetrics with Eq::{not_equal, equal}
-pub extend TextMetrics with Debug::{to_repr}
 
+///|
+pub extend TextMetrics with Debug::{to_repr}
 
 ///|
 /// Coarse built-in width profiles for deterministic cross-platform layout.
@@ -23,9 +25,11 @@ pub(all) enum FontProfile {
   Monospace
 } derive(Eq, Debug)
 
+///|
 pub extend FontProfile with Eq::{not_equal, equal}
-pub extend FontProfile with Debug::{to_repr}
 
+///|
+pub extend FontProfile with Debug::{to_repr}
 
 ///|
 pub(all) enum FontStyle {
@@ -33,9 +37,11 @@ pub(all) enum FontStyle {
   Italic
 } derive(Eq, Debug)
 
+///|
 pub extend FontStyle with Eq::{not_equal, equal}
-pub extend FontStyle with Debug::{to_repr}
 
+///|
+pub extend FontStyle with Debug::{to_repr}
 
 ///|
 /// Configurable, deterministic font metrics for SVG layout.
@@ -77,15 +83,18 @@ pub struct FontMetrics {
   emoji_width : Int
 } derive(Eq, Debug)
 
+///|
 pub extend FontMetrics with Eq::{not_equal, equal}
-pub extend FontMetrics with Debug::{to_repr}
 
+///|
+pub extend FontMetrics with Debug::{to_repr}
 
 ///|
 pub impl Default for FontMetrics with fn default() -> FontMetrics {
   FontMetrics::from_defaults()
 }
 
+///|
 pub extend FontMetrics with Default::{default}
 
 ///|

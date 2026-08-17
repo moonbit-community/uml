@@ -5,9 +5,11 @@ pub struct DotDiagram {
   source : String
 } derive(Eq, Debug)
 
+///|
 pub extend DotDiagram with Eq::{not_equal, equal}
-pub extend DotDiagram with Debug::{to_repr}
 
+///|
+pub extend DotDiagram with Debug::{to_repr}
 
 ///|
 fn dot_source_between_markers(input : String) -> String {

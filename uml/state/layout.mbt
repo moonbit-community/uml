@@ -7,9 +7,11 @@ pub struct StateNodeLayout {
   height : Double
 } derive(Eq, Debug)
 
+///|
 pub extend StateNodeLayout with Eq::{not_equal, equal}
-pub extend StateNodeLayout with Debug::{to_repr}
 
+///|
+pub extend StateNodeLayout with Debug::{to_repr}
 
 ///|
 pub struct StateEdgeLayout {
@@ -18,9 +20,11 @@ pub struct StateEdgeLayout {
   label : (Double, Double)?
 } derive(Eq, Debug)
 
+///|
 pub extend StateEdgeLayout with Eq::{not_equal, equal}
-pub extend StateEdgeLayout with Debug::{to_repr}
 
+///|
+pub extend StateEdgeLayout with Debug::{to_repr}
 
 ///|
 pub struct StateRegionLayout {
@@ -33,9 +37,11 @@ pub struct StateRegionLayout {
   height : Double
 } derive(Eq, Debug)
 
+///|
 pub extend StateRegionLayout with Eq::{not_equal, equal}
-pub extend StateRegionLayout with Debug::{to_repr}
 
+///|
+pub extend StateRegionLayout with Debug::{to_repr}
 
 ///|
 pub struct StateNoteLayout {
@@ -46,9 +52,11 @@ pub struct StateNoteLayout {
   height : Double
 } derive(Eq, Debug)
 
+///|
 pub extend StateNoteLayout with Eq::{not_equal, equal}
-pub extend StateNoteLayout with Debug::{to_repr}
 
+///|
+pub extend StateNoteLayout with Debug::{to_repr}
 
 ///|
 pub struct StateLayout {
@@ -60,9 +68,11 @@ pub struct StateLayout {
   notes : Array[StateNoteLayout]
 } derive(Eq, Debug)
 
+///|
 pub extend StateLayout with Eq::{not_equal, equal}
-pub extend StateLayout with Debug::{to_repr}
 
+///|
+pub extend StateLayout with Debug::{to_repr}
 
 ///|
 priv struct StateFragment {

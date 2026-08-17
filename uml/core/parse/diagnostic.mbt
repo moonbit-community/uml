@@ -5,9 +5,11 @@ pub struct ParseDiagnostic {
   message : String
 } derive(Eq, Debug)
 
+///|
 pub extend ParseDiagnostic with Eq::{not_equal, equal}
-pub extend ParseDiagnostic with Debug::{to_repr}
 
+///|
+pub extend ParseDiagnostic with Debug::{to_repr}
 
 ///|
 /// A syntax or semantic parsing error reported at a source line.
@@ -18,8 +20,8 @@ pub(all) suberror ParseError {
   SyntaxError(Int, String)
 } derive(Debug)
 
+///|
 pub extend ParseError with Debug::{to_repr}
-
 
 ///|
 pub fn ParseDiagnostic::line_number(self : ParseDiagnostic) -> Int {
