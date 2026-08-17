@@ -5,9 +5,11 @@ pub(all) enum Direction {
   Right
 } derive(Eq, Debug)
 
+///|
 pub extend Direction with Eq::{not_equal, equal}
-pub extend Direction with Debug::{to_repr}
 
+///|
+pub extend Direction with Debug::{to_repr}
 
 ///|
 /// The visual form selected for a WBS node.
@@ -17,9 +19,11 @@ pub(all) enum NodeShape {
   Pseudo
 } derive(Eq, Debug)
 
+///|
 pub extend NodeShape with Eq::{not_equal, equal}
-pub extend NodeShape with Debug::{to_repr}
 
+///|
+pub extend NodeShape with Debug::{to_repr}
 
 ///|
 /// One node in PlantUML's work-breakdown tree. `parent` indexes `WbsDiagram::nodes`.
@@ -34,9 +38,11 @@ pub struct WbsNode {
   parent : Int?
 } derive(Eq, Debug)
 
+///|
 pub extend WbsNode with Eq::{not_equal, equal}
-pub extend WbsNode with Debug::{to_repr}
 
+///|
+pub extend WbsNode with Debug::{to_repr}
 
 ///|
 /// A non-tree WBS arrow between two coded nodes.
@@ -48,9 +54,11 @@ pub struct WbsLink {
   label : String?
 } derive(Eq, Debug)
 
+///|
 pub extend WbsLink with Eq::{not_equal, equal}
-pub extend WbsLink with Debug::{to_repr}
 
+///|
+pub extend WbsLink with Debug::{to_repr}
 
 ///|
 /// One property from a PlantUML `<style>` block. Nested selectors are joined
@@ -61,9 +69,11 @@ pub struct WbsStyleProperty {
   value : String
 } derive(Eq, Debug)
 
+///|
 pub extend WbsStyleProperty with Eq::{not_equal, equal}
-pub extend WbsStyleProperty with Debug::{to_repr}
 
+///|
+pub extend WbsStyleProperty with Debug::{to_repr}
 
 ///|
 /// Parsed PlantUML WBS state.
@@ -74,5 +84,8 @@ pub struct WbsDiagram {
   style_properties : Array[WbsStyleProperty]
 } derive(Eq, Debug)
 
+///|
 pub extend WbsDiagram with Eq::{not_equal, equal}
+
+///|
 pub extend WbsDiagram with Debug::{to_repr}

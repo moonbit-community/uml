@@ -150,7 +150,7 @@ fn parse_color(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn valid_code(code : String) -> Bool {
-  code.length() > 0 && code.to_array().all(char => !char.is_whitespace())
+  code.length() > 0 && code.to_array().all(@unicode.is_identifier_char)
 }
 
 ///|
@@ -349,10 +349,17 @@ fn Parser::complete_multiline(
   self : Parser,
   first : String,
 ) -> (String, String?) raise @parse.ParseError {
-  let values = []
+  let values = [first.trim().to_owned()]
   let start = self.index
-  let mut current = first.trim().to_owned()
   while true {
+    self.index += 1
+    guard self.index < self.lines.length() else {
+      raise SyntaxError(start + 1, "unclosed WBS item")
+    }
+    let current = self.lines[self.index].trim().to_owned()
+    if current.has_prefix("'") {
+      continue
+    }
     match multiline_end(current) {
       Some((last, stereotype)) => {
         values.push(last)
@@ -360,15 +367,6 @@ fn Parser::complete_multiline(
       }
       None => values.push(current)
     }
-    self.index += 1
-    guard self.index < self.lines.length() else {
-      raise SyntaxError(start + 1, "unclosed WBS item")
-    }
-    current = @parse.strip_line_comment_preserving_indent(
-        self.lines[self.index],
-      )
-      .trim()
-      .to_owned()
   }
   raise SyntaxError(start + 1, "unclosed WBS item")
 }
@@ -485,12 +483,38 @@ fn Parser::add_item(
 fn parse_link_color(cursor : @parse.Cursor) -> String? {
   let checkpoint = cursor.offset()
   guard cursor.consume('#') else { return None }
-  let value = cursor.take_while(is_word_char)
-  guard value.length() > 0 else {
+  let first = cursor.take_while(is_word_char)
+  guard first.length() > 0 else {
     ignore(cursor.restore(checkpoint))
     return None
   }
-  Some("#" + value)
+  if cursor.peek() is Some(char) && (char == '-' || char == '|' || char == '/') {
+    ignore(cursor.advance())
+    let second = cursor.take_while(is_word_char)
+    guard second.length() > 0 else {
+      ignore(cursor.restore(checkpoint))
+      return None
+    }
+  }
+  let rest = StringBuilder()
+  while cursor.peek() == Some(';') {
+    ignore(cursor.advance())
+    let segment = cursor.take_while(char => {
+      is_word_char(char) ||
+      char == '.' ||
+      char == ':' ||
+      char == '-' ||
+      char == '|' ||
+      char == '/'
+    })
+    guard segment.length() > 0 else {
+      ignore(cursor.restore(checkpoint))
+      return None
+    }
+    rest.write_char(';')
+    rest.write_string(segment)
+  }
+  Some("#" + first + rest.to_string())
 }
 
 ///|
@@ -517,9 +541,7 @@ fn Parser::parse_link(
   guard valid_code(source_code) else { return false }
   ignore(cursor.restore(arrow_end + 1))
   ignore(cursor.skip_while(char => char.is_whitespace()))
-  let target_code = cursor.take_while(char => {
-    !char.is_whitespace() && char != '#' && char != '<' && char != ':'
-  })
+  let target_code = cursor.take_while(@unicode.is_identifier_char)
   guard valid_code(target_code) else { return false }
   ignore(cursor.skip_while(char => char.is_whitespace()))
   let mut color = None
@@ -544,7 +566,9 @@ fn Parser::parse_link(
     ignore(cursor.skip_while(char => char.is_whitespace()))
   }
   if cursor.consume(':') {
-    label = Some(cursor.remaining().trim().to_owned())
+    let value = cursor.remaining().trim().to_owned()
+    guard value.length() > 0 else { return false }
+    label = Some(value)
     ignore(cursor.restore(cursor.length()))
   }
   ignore(cursor.skip_while(char => char.is_whitespace()))
@@ -631,10 +655,10 @@ fn Parser::consume_text_block(
 
 ///|
 fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
-  let line = @parse.strip_line_comment_preserving_indent(self.lines[self.index])
-  let trimmed = line.trim().to_owned()
+  let trimmed = self.lines[self.index].trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
+    trimmed.has_prefix("'") ||
     lower == "@startwbs" ||
     lower == "@endwbs" ||
     lower == "@startuml" ||
@@ -683,7 +707,7 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
   if lower.has_prefix("skinparam ") {
     return
   }
-  if parse_item_line(line) is Some(item) {
+  if parse_item_line(self.lines[self.index]) is Some(item) {
     self.add_item(item)
     return
   }

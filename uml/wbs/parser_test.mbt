@@ -174,3 +174,71 @@ test "rejects invalid tree structure and unresolved links" {
   })
   @test.assert_raise(() => ignore(parse("@startwbs\n*\n@endwbs")))
 }
+
+///|
+test "keeps reading a multiline item past a semicolon on the first line" {
+  @test.assert_raise(() => {
+    ignore(parse("@startwbs\n*: foo;\n** Child\n@endwbs"))
+  })
+  @test.assert_raise(() => {
+    ignore(parse("@startwbs\n*: foo; <<x>>\n** Child\n@endwbs"))
+  })
+}
+
+///|
+test "drops comment lines and keeps trailing comments in labels" {
+  let diagram = parse(
+    "@startwbs\n* Root 'note\n**: first\n'comment line\nsecond line 'tail;\n@endwbs",
+  )
+  @test.assert_eq(node_named(diagram, "Root 'note").parent, None)
+  @test.assert_eq(
+    node_named(diagram, "first\nsecond line 'tail").stereotype,
+    None,
+  )
+  @test.assert_raise(() => {
+    ignore(parse("@startwbs\n*: first\n'; only\n@endwbs"))
+  })
+}
+
+///|
+test "accepts only letter-digit-underscore codes" {
+  let literal = node_named(
+    parse("@startwbs\n* Root\n** \"a\" as b-c\n@endwbs"),
+    "\"a\" as b-c",
+  )
+  @test.assert_eq(literal.code, None)
+  let unicode = node_named(
+    parse("@startwbs\n* Root\n** \"a\" as 代码\n@endwbs"),
+    "a",
+  )
+  @test.assert_eq(unicode.code, Some("代码"))
+  @test.assert_raise(() => {
+    ignore(parse("@startwbs\n* Root\n**(a-b) Child\n@endwbs"))
+  })
+  @test.assert_raise(() => {
+    ignore(parse("@startwbs\n* Root\n**(a b) Child\n@endwbs"))
+  })
+}
+
+///|
+test "parses link colors, stereotypes, and rejects empty link labels" {
+  let diagram = parse(
+    "@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b #red;line:blue <<x>> : label\n@endwbs",
+  )
+  let link = first_link(diagram)
+  @test.assert_eq(link.color, Some("#red;line:blue"))
+  @test.assert_eq(link.stereotype, Some("<<x>>"))
+  @test.assert_eq(link.label, Some("label"))
+  @test.assert_raise(() => {
+    ignore(
+      parse("@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b:\n@endwbs"),
+    )
+  })
+  @test.assert_raise(() => {
+    ignore(
+      parse(
+        "@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b-c\n@endwbs",
+      ),
+    )
+  })
+}
