@@ -139,7 +139,7 @@ fn apply_source(state : AppState, path : String, source : String) -> AppState {
 
 ///|
 fn workspace_default_sizes() -> Array[Int] {
-  [26, 44, 30]
+  [26, 30, 44]
 }
 
 ///|
