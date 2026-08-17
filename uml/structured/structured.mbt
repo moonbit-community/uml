@@ -7,6 +7,10 @@ pub(all) enum StructuredValueDisplay {
   Compound
 } derive(Eq, Debug)
 
+pub extend StructuredValueDisplay with Eq::{not_equal, equal}
+pub extend StructuredValueDisplay with Debug::{to_repr}
+
+
 ///|
 pub struct StructuredRow {
   key : String?
@@ -14,11 +18,19 @@ pub struct StructuredRow {
   child : StructuredNode?
 } derive(Eq, Debug)
 
+pub extend StructuredRow with Eq::{not_equal, equal}
+pub extend StructuredRow with Debug::{to_repr}
+
+
 ///|
 pub(all) enum StructuredNodeKind {
   Object
   Array
 } derive(Eq, Debug)
+
+pub extend StructuredNodeKind with Eq::{not_equal, equal}
+pub extend StructuredNodeKind with Debug::{to_repr}
+
 
 ///|
 /// Source format represented by a structured-data diagram.
@@ -27,6 +39,10 @@ pub(all) enum StructuredFormat {
   Yaml
   Toml
 } derive(Eq, Debug)
+
+pub extend StructuredFormat with Eq::{not_equal, equal}
+pub extend StructuredFormat with Debug::{to_repr}
+
 
 ///|
 pub fn StructuredFormat::aria_label(self : StructuredFormat) -> String {
@@ -46,11 +62,19 @@ pub struct StructuredNode {
   rows : Array[StructuredRow]
 } derive(Eq, Debug)
 
+pub extend StructuredNode with Eq::{not_equal, equal}
+pub extend StructuredNode with Debug::{to_repr}
+
+
 ///|
 pub struct StructuredDiagram {
   format : StructuredFormat
   root : StructuredNode
 } derive(Eq, Debug)
+
+pub extend StructuredDiagram with Eq::{not_equal, equal}
+pub extend StructuredDiagram with Debug::{to_repr}
+
 
 ///|
 fn source_between_markers(

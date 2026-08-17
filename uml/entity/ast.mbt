@@ -51,6 +51,10 @@ pub(all) enum EntityKind {
   State
 } derive(Eq, Debug)
 
+pub extend EntityKind with Eq::{not_equal, equal}
+pub extend EntityKind with Debug::{to_repr}
+
+
 ///|
 pub(all) enum Visibility {
   Public
@@ -59,6 +63,10 @@ pub(all) enum Visibility {
   Package
   Unknown
 } derive(Eq, Debug)
+
+pub extend Visibility with Eq::{not_equal, equal}
+pub extend Visibility with Debug::{to_repr}
+
 
 ///|
 pub struct Member {
@@ -70,6 +78,10 @@ pub struct Member {
   is_separator : Bool
   is_hidden : Bool
 } derive(Eq, Debug)
+
+pub extend Member with Eq::{not_equal, equal}
+pub extend Member with Debug::{to_repr}
+
 
 ///|
 pub struct Entity {
@@ -98,6 +110,10 @@ pub struct Entity {
   json_data : String?
 } derive(Eq, Debug)
 
+pub extend Entity with Eq::{not_equal, equal}
+pub extend Entity with Debug::{to_repr}
+
+
 ///|
 pub struct MapEntry {
   key : String
@@ -105,6 +121,10 @@ pub struct MapEntry {
   link_target : String?
   raw : String
 } derive(Eq, Debug)
+
+pub extend MapEntry with Eq::{not_equal, equal}
+pub extend MapEntry with Debug::{to_repr}
+
 
 ///|
 pub(all) enum RelationKind {
@@ -115,6 +135,10 @@ pub(all) enum RelationKind {
   Composition
   Realization
 } derive(Eq, Debug)
+
+pub extend RelationKind with Eq::{not_equal, equal}
+pub extend RelationKind with Debug::{to_repr}
+
 
 ///|
 pub(all) enum RelationEnd {
@@ -142,6 +166,10 @@ pub(all) enum RelationEnd {
   HalfArrowDown
 } derive(Eq, Debug)
 
+pub extend RelationEnd with Eq::{not_equal, equal}
+pub extend RelationEnd with Debug::{to_repr}
+
+
 ///|
 pub(all) enum RelationDirection {
   Automatic
@@ -150,6 +178,10 @@ pub(all) enum RelationDirection {
   Upward
   Downward
 } derive(Eq, Debug)
+
+pub extend RelationDirection with Eq::{not_equal, equal}
+pub extend RelationDirection with Debug::{to_repr}
+
 
 ///|
 pub struct Relation {
@@ -179,6 +211,10 @@ pub struct Relation {
   left_couple : (String, String)?
   right_couple : (String, String)?
 } derive(Eq, Debug)
+
+pub extend Relation with Eq::{not_equal, equal}
+pub extend Relation with Debug::{to_repr}
+
 
 ///|
 fn Relation::new(
@@ -231,6 +267,10 @@ pub struct Package {
   color : String?
 } derive(Eq, Debug)
 
+pub extend Package with Eq::{not_equal, equal}
+pub extend Package with Debug::{to_repr}
+
+
 ///|
 pub(all) enum NotePosition {
   Left
@@ -239,6 +279,10 @@ pub(all) enum NotePosition {
   Bottom
 } derive(Eq, Debug)
 
+pub extend NotePosition with Eq::{not_equal, equal}
+pub extend NotePosition with Debug::{to_repr}
+
+
 ///|
 pub(all) enum NoteTargetKind {
   EntityNote
@@ -246,6 +290,10 @@ pub(all) enum NoteTargetKind {
   MemberTip
   FloatingNote
 } derive(Eq, Debug)
+
+pub extend NoteTargetKind with Eq::{not_equal, equal}
+pub extend NoteTargetKind with Debug::{to_repr}
+
 
 ///|
 pub struct Note {
@@ -262,6 +310,10 @@ pub struct Note {
   tags : Array[String]
 } derive(Eq, Debug)
 
+pub extend Note with Eq::{not_equal, equal}
+pub extend Note with Debug::{to_repr}
+
+
 ///|
 pub struct LinkConstraint {
   first_relation : Int
@@ -269,6 +321,10 @@ pub struct LinkConstraint {
   text : String
   color : String?
 } derive(Eq, Debug)
+
+pub extend LinkConstraint with Eq::{not_equal, equal}
+pub extend LinkConstraint with Debug::{to_repr}
+
 
 ///|
 /// The PlantUML diagram family a parsed entity graph belongs to.
@@ -281,6 +337,10 @@ pub(all) enum EntityFamily {
   ComponentDiagram
   UseCaseDiagram
 } derive(Eq, Debug)
+
+pub extend EntityFamily with Eq::{not_equal, equal}
+pub extend EntityFamily with Debug::{to_repr}
+
 
 ///|
 /// Whether declarations outside the class grammar may appear without an
@@ -311,6 +371,10 @@ pub struct EntityDiagram {
   constraints : Array[LinkConstraint]
   style : @style.DocumentStyle
 } derive(Eq, Debug)
+
+pub extend EntityDiagram with Eq::{not_equal, equal}
+pub extend EntityDiagram with Debug::{to_repr}
+
 
 ///|
 priv struct Declaration {

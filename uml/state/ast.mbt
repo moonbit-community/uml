@@ -9,6 +9,10 @@ pub(all) enum StateKind {
   Choice
 } derive(Eq, Debug)
 
+pub extend StateKind with Eq::{not_equal, equal}
+pub extend StateKind with Debug::{to_repr}
+
+
 ///|
 pub(all) enum TransitionDirection {
   Automatic
@@ -17,6 +21,10 @@ pub(all) enum TransitionDirection {
   Upward
   Downward
 } derive(Eq, Debug)
+
+pub extend TransitionDirection with Eq::{not_equal, equal}
+pub extend TransitionDirection with Debug::{to_repr}
+
 
 ///|
 pub struct StateNode {
@@ -30,6 +38,10 @@ pub struct StateNode {
   url : String?
   color : String?
 } derive(Eq, Debug)
+
+pub extend StateNode with Eq::{not_equal, equal}
+pub extend StateNode with Debug::{to_repr}
+
 
 ///|
 fn StateNode::has_description(self : StateNode) -> Bool {
@@ -46,11 +58,19 @@ pub struct StateTransition {
   has_cross_start : Bool
 } derive(Eq, Debug)
 
+pub extend StateTransition with Eq::{not_equal, equal}
+pub extend StateTransition with Debug::{to_repr}
+
+
 ///|
 pub(all) enum StateRegionSeparator {
   Horizontal
   Vertical
 } derive(Eq, Debug)
+
+pub extend StateRegionSeparator with Eq::{not_equal, equal}
+pub extend StateRegionSeparator with Debug::{to_repr}
+
 
 ///|
 pub struct StateRegion {
@@ -59,11 +79,19 @@ pub struct StateRegion {
   index : Int
 } derive(Eq, Debug)
 
+pub extend StateRegion with Eq::{not_equal, equal}
+pub extend StateRegion with Debug::{to_repr}
+
+
 ///|
 pub(all) enum StateNoteTarget {
   StateNote(String)
   TransitionNote(Int)
 } derive(Eq, Debug)
+
+pub extend StateNoteTarget with Eq::{not_equal, equal}
+pub extend StateNoteTarget with Debug::{to_repr}
+
 
 ///|
 pub struct StateNote {
@@ -71,6 +99,10 @@ pub struct StateNote {
   text : String
   color : String?
 } derive(Eq, Debug)
+
+pub extend StateNote with Eq::{not_equal, equal}
+pub extend StateNote with Debug::{to_repr}
+
 
 ///|
 pub struct StateDiagram {
@@ -81,6 +113,10 @@ pub struct StateDiagram {
   regions : Array[StateRegion]
   style : @style.DocumentStyle
 } derive(Eq, Debug)
+
+pub extend StateDiagram with Eq::{not_equal, equal}
+pub extend StateDiagram with Debug::{to_repr}
+
 
 ///|
 fn StateDiagram::hide_empty_description(self : StateDiagram) -> Bool {

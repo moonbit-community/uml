@@ -6,6 +6,10 @@ pub struct SourceSpan {
   column : Int
 } derive(Eq, Debug)
 
+pub extend SourceSpan with Eq::{not_equal, equal}
+pub extend SourceSpan with Debug::{to_repr}
+
+
 ///|
 pub fn source_span(chars : Array[Char], offset : Int) -> SourceSpan {
   let limit = offset.min(chars.length())

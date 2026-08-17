@@ -8,6 +8,10 @@ pub struct GraphvizNodeLayout {
   height : Double
 } derive(Eq, Debug)
 
+pub extend GraphvizNodeLayout with Eq::{not_equal, equal}
+pub extend GraphvizNodeLayout with Debug::{to_repr}
+
+
 ///|
 pub struct GraphvizPackageLayout {
   package_index : Int
@@ -16,6 +20,10 @@ pub struct GraphvizPackageLayout {
   width : Double
   height : Double
 } derive(Eq, Debug)
+
+pub extend GraphvizPackageLayout with Eq::{not_equal, equal}
+pub extend GraphvizPackageLayout with Debug::{to_repr}
+
 
 ///|
 /// Complete Graphviz layout normalized to an SVG coordinate system.
@@ -29,6 +37,10 @@ pub struct GraphvizLayout {
   packages : Array[GraphvizPackageLayout]
   notes : Array[@graphviz.GraphvizNote]
 } derive(Eq, Debug)
+
+pub extend GraphvizLayout with Eq::{not_equal, equal}
+pub extend GraphvizLayout with Debug::{to_repr}
+
 
 ///|
 const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / @graphviz.GRAPHVIZ_DPI

@@ -11,6 +11,10 @@ pub struct RelationTextBox {
   baseline : Double
 } derive(Eq, Debug)
 
+pub extend RelationTextBox with Eq::{not_equal, equal}
+pub extend RelationTextBox with Debug::{to_repr}
+
+
 ///|
 /// Final positions for every textual part of one class relation.
 pub struct RelationLabelLayout {
@@ -21,6 +25,10 @@ pub struct RelationLabelLayout {
   left_role : RelationTextBox?
   right_role : RelationTextBox?
 } derive(Eq, Debug)
+
+pub extend RelationLabelLayout with Eq::{not_equal, equal}
+pub extend RelationLabelLayout with Debug::{to_repr}
+
 
 ///|
 fn RelationLabelLayout::boxes(

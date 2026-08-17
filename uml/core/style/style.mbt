@@ -22,11 +22,19 @@ pub struct DocumentStyle {
   properties : Map[String, String]
 } derive(Eq, Debug)
 
+pub extend DocumentStyle with Eq::{not_equal, equal}
+pub extend DocumentStyle with Debug::{to_repr}
+
+
 ///|
 pub(all) enum Direction {
   TopToBottom
   LeftToRight
 } derive(Eq, Debug)
+
+pub extend Direction with Eq::{not_equal, equal}
+pub extend Direction with Debug::{to_repr}
+
 
 ///|
 pub(all) enum StyleDirective {
@@ -41,6 +49,10 @@ pub(all) enum StyleDirective {
   Title(String)
   Property(String, String)
 } derive(Eq, Debug)
+
+pub extend StyleDirective with Eq::{not_equal, equal}
+pub extend StyleDirective with Debug::{to_repr}
+
 
 ///|
 pub fn DocumentStyle::empty() -> DocumentStyle {

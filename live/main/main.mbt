@@ -11,6 +11,12 @@ enum Theme {
 } derive(Eq, Debug)
 
 ///|
+pub extend Theme with Eq::{not_equal, equal}
+
+///|
+pub extend Theme with Debug::{to_repr}
+
+///|
 fn Theme::css_name(self : Theme) -> String {
   match self {
     Light => "light"
@@ -46,6 +52,9 @@ struct AppState {
   load_error : String?
   theme : Theme
 } derive(Eq)
+
+///|
+pub extend AppState with Eq::{not_equal, equal}
 
 ///|
 fn update(

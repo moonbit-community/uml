@@ -39,6 +39,10 @@ pub struct ColorScheme {
   visibility_package_fill : String
 } derive(Eq, Debug)
 
+pub extend ColorScheme with Eq::{not_equal, equal}
+pub extend ColorScheme with Debug::{to_repr}
+
+
 ///|
 /// Theme roles consumed by the sequence renderer. Sequence-specific fallback
 /// and skinparam precedence remain owned by the sequence package.
@@ -56,6 +60,10 @@ pub struct SequenceColors {
   reference_tab : String
   page_break : String
 } derive(Eq, Debug)
+
+pub extend SequenceColors with Eq::{not_equal, equal}
+pub extend SequenceColors with Debug::{to_repr}
+
 
 ///|
 /// Theme roles consumed by the class/object/component/use-case renderer.
@@ -81,6 +89,10 @@ pub struct EntityColors {
   visibility_package_stroke : String
   visibility_package_fill : String
 } derive(Eq, Debug)
+
+pub extend EntityColors with Eq::{not_equal, equal}
+pub extend EntityColors with Debug::{to_repr}
+
 
 ///|
 /// Build a color scheme. `text` and `line` are required because those are the

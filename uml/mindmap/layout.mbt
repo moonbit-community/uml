@@ -11,6 +11,10 @@ pub struct NodeLayout {
   height : Int
 } derive(Eq, Debug)
 
+pub extend NodeLayout with Eq::{not_equal, equal}
+pub extend NodeLayout with Debug::{to_repr}
+
+
 ///|
 /// A cubic parent-to-child connector in document coordinates.
 pub struct EdgeLayout {
@@ -26,6 +30,10 @@ pub struct EdgeLayout {
   y2 : Int
 } derive(Eq, Debug)
 
+pub extend EdgeLayout with Eq::{not_equal, equal}
+pub extend EdgeLayout with Debug::{to_repr}
+
+
 ///|
 /// Complete geometry for a mindmap SVG.
 pub struct MindmapLayout {
@@ -34,6 +42,10 @@ pub struct MindmapLayout {
   width : Int
   height : Int
 } derive(Eq, Debug)
+
+pub extend MindmapLayout with Eq::{not_equal, equal}
+pub extend MindmapLayout with Debug::{to_repr}
+
 
 ///|
 priv struct Tee {
