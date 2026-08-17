@@ -4,7 +4,7 @@ version = "0.1.0"
 
 import {
   "moonbit-community/rabbita@0.13.1",
-  "kokic/uml@0.1.0",
+  "kokic/uml@0.1.4",
   "Yoorkin/rui@0.1.0",
 }
 

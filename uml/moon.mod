@@ -1,9 +1,9 @@
 name = "kokic/uml"
 
-version = "0.1.4"
+version = "0.1.5"
 
 import {
-  "bobzhang/toml@0.4.2",
+  "bobzhang/toml@0.4.3",
   "moonbit-community/yaml@0.0.6",
   "moonbit-community/graphviz@0.1.3",
 }
@@ -18,4 +18,4 @@ keywords = [ ]
 
 description = ""
 
-preferred_target = "wasm"
+preferred_target = "js"

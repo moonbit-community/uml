@@ -3,7 +3,7 @@ name = "moonbit-community/uml_cli"
 version = "0.1.0"
 
 import {
-  "kokic/uml@0.1.2",
+  "kokic/uml@0.1.4",
   "moonbitlang/x@0.4.50",
 }
 
@@ -17,4 +17,4 @@ keywords = [ "uml", "plantuml", "svg", "cli" ]
 
 description = "Command-line tool to render PlantUML diagrams as SVG"
 
-preferred_target = "wasm"
+preferred_target = "native"
