@@ -3,7 +3,7 @@ name = "kokic/uml-profile"
 version = "0.1.0"
 
 import {
-  "kokic/uml@0.1.3",
+  "kokic/uml@0.1.5",
   "moonbitlang/x@0.4.50",
   "Milky2018/svgdiff@0.7.1",
 }

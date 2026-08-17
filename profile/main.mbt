@@ -1,13 +1,15 @@
 ///|
 /// Compare every uml-rendered SVG against its PlantUML reference with the
-/// svgdiff visual-semantic engine and print one Markdown summary per fixture.
+/// svgdiff visual-semantic engine and write one report per run.
 ///
 /// With no arguments, every `live/public/examples/<diagram>/<fixture>.uml`
 /// is analyzed. Arguments may name individual `.uml` fixtures or diagram
 /// directories. A fixture is skipped when no `puml/<fixture>.svg` reference
 /// exists next to it.
 ///
-/// `--json` prints the canonical structured report JSON instead of Markdown.
+/// The report is written to `--output <file>` when given, and otherwise to
+/// `profiles/uml-vs-plantuml.md` (or `.json` with `--json`). `--json` writes
+/// the canonical structured report JSON instead of Markdown.
 let examples_root : String = "live/public/examples"
 
 ///|
@@ -19,75 +21,143 @@ enum Outcome {
 
 ///|
 fn main {
-  let args = @env.args()[1:]
-  let json = args.contains("--json")
-  let paths = args.filter(fn(path) { path != "--json" })
-  let fixtures = if paths.is_empty() {
+  let matches = @argparse.parse(
+    uml_profile_command(),
+    argv=@env.args()[1:],
+    env=Map([]),
+  ) catch {
+    err => {
+      println(err)
+      @sys.exit(2)
+      abort("usage error")
+    }
+  }
+  let requested = matches.values.get("fixtures").unwrap_or([])
+  let fixtures = if requested.is_empty() {
     discover_fixtures(examples_root)
   } else {
-    let fixtures : Array[String] = []
-    for path in paths {
-      for fixture in expand_fixture(path) {
-        fixtures.push(fixture)
-      }
-    }
-    fixtures
+    requested.map(expand_fixture).flatten()
   }
+  let report = StringBuilder()
   let mut analyzed = 0
   let mut skipped = 0
   let mut failed = 0
   for fixture in fixtures {
-    match compare_fixture(fixture, json~) {
+    match compare_fixture(
+      fixture,
+      json=matches.flags.get("json").unwrap_or(false),
+      report,
+    ) {
       Analyzed => analyzed += 1
       Skipped => skipped += 1
       Failed(message) => {
         failed += 1
-        println("error: \{fixture}: \{message}")
+        report.write_string("error: \{fixture}: \{message}\n")
       }
     }
   }
-  println("")
-  println(
-    "profile summary: \{analyzed} analyzed, \{skipped} skipped (missing plantuml reference), \{failed} failed",
-  )
+  report.write_string("\n")
+  report.write_string(summary_line(analyzed, skipped, failed))
+  report.write_string("\n")
+  let output = match matches.values.get("output") {
+    Some([path]) => path
+    _ => {
+      ignore(@fs.create_dir("profiles") catch { _ => () })
+      default_output_path(json=matches.flags.get("json").unwrap_or(false))
+    }
+  }
+  @fs.write_string_to_file(output, report.to_string()) catch {
+    IOError(message) => {
+      println("error: failed to write \{output}: \{message}")
+      @sys.exit(1)
+    }
+  }
+  println(summary_line(analyzed, skipped, failed))
+  println("report written to \{output}")
   @sys.exit(if failed > 0 { 1 } else { 0 })
 }
 
 ///|
-fn discover_fixtures(root : String) -> Array[String] {
-  let fixtures : Array[String] = []
-  let categories = @fs.read_dir(root) catch { _ => return fixtures }
-  for category in categories {
-    if category.has_prefix(".") {
-      continue
-    }
-    let dir = "\{root}/\{category}"
-    let files = @fs.read_dir(dir) catch { _ => continue }
-    for file in files {
-      if file.has_suffix(".uml") {
-        fixtures.push("\{dir}/\{file}")
-      }
-    }
+fn uml_profile_command() -> @argparse.Command {
+  Command(
+    "uml_profile",
+    about="Compare uml-rendered SVGs against their PlantUML references.",
+    positionals=[
+      PositionArg(
+        "fixtures",
+        about=".uml fixture paths or diagram directories.",
+        num_args=@argparse.ValueRange(lower=0),
+      ),
+    ],
+    options=[
+      OptionArg(
+        "output",
+        short='o',
+        long="output",
+        about="Write the report to this file.",
+      ),
+    ],
+    flags=[
+      FlagArg(
+        "json",
+        long="json",
+        about="Write the canonical structured report JSON instead of Markdown.",
+        action=@argparse.FlagAction::SetTrue,
+      ),
+    ],
+  )
+}
+
+///|
+fn summary_line(analyzed : Int, skipped : Int, failed : Int) -> String {
+  "profile summary: \{analyzed} analyzed, \{skipped} skipped (missing plantuml reference), \{failed} failed"
+}
+
+///|
+fn default_output_path(json~ : Bool) -> String {
+  if json {
+    "profiles/uml-vs-plantuml.json"
+  } else {
+    "profiles/uml-vs-plantuml.md"
   }
+}
+
+///|
+fn discover_fixtures(root : String) -> Array[String] {
+  let categories = @fs.read_dir(root) catch { _ => return [] }
+  let fixtures = categories
+    .filter(category => !category.has_prefix("."))
+    .map(category => uml_files_in("\{root}/\{category}"))
+    .flatten()
   fixtures.sort_by(fn(left, right) { left.compare(right) })
   fixtures
 }
 
 ///|
+/// Expand a `.uml` fixture path, or every `.uml` file inside a directory.
 fn expand_fixture(path : String) -> Array[String] {
   let is_dir = @fs.is_dir(path) catch { _ => false }
   if is_dir {
-    let files = @fs.read_dir(path) catch { _ => [] }
-    files
-    .filter(fn(file) { file.has_suffix(".uml") })
-    .map(fn(file) { "\{path}/\{file}" })
+    uml_files_in(path)
   } else {
     [path]
   }
 }
 
 ///|
-fn compare_fixture(fixture : String, json~ : Bool) -> Outcome {
+fn uml_files_in(dir : String) -> Array[String] {
+  let files = @fs.read_dir(dir) catch { _ => return [] }
+  files
+  .filter(file => file.has_suffix(".uml"))
+  .map(file => "\{dir}/\{file}")
+}
+
+///|
+fn compare_fixture(
+  fixture : String,
+  json~ : Bool,
+  sink : StringBuilder,
+) -> Outcome {
   let source = @fs.read_file_to_string(fixture) catch {
     IOError(message) => return Failed("read: \{message}")
   }
@@ -107,11 +177,12 @@ fn compare_fixture(fixture : String, json~ : Bool) -> Outcome {
     comparison_profile(uml_svg, puml_svg),
   )
   if json {
-    println(report.to_compact_json_string())
+    sink.write_string(report.to_compact_json_string())
+    sink.write_string("\n")
   } else {
-    println("")
-    println("## \{fixture}  vs  \{reference}")
-    println(@svgdiff.render_markdown_summary(report))
+    sink.write_string("\n## \{fixture}  vs  \{reference}\n")
+    sink.write_string(@svgdiff.render_markdown_summary(report))
+    sink.write_string("\n")
   }
   Analyzed
 }
@@ -119,15 +190,15 @@ fn compare_fixture(fixture : String, json~ : Bool) -> Outcome {
 ///|
 /// The reference SVG lives in the `puml/` directory next to the fixture.
 fn reference_path_of(fixture : String) -> String {
-  let parts = @parse.split_unquoted(fixture, '/')
-  let name = parts[parts.length() - 1]
-  let base = if name.has_suffix(".uml") {
-    name[:name.length() - 4].to_owned()
+  let slash = fixture.rev_find("/").unwrap_or(-1)
+  let dir = if slash >= 0 { fixture[:slash] } else { "." }
+  let base = fixture[slash + 1 :].to_owned()
+  let name = if base.has_suffix(".uml") {
+    base[:base.length() - 4]
   } else {
-    name
+    base
   }
-  let dir = parts[:parts.length() - 1].join("/")
-  "\{dir}/puml/\{base}.svg"
+  "\{dir}/puml/\{name}.svg"
 }
 
 ///|
@@ -147,9 +218,7 @@ fn comparison_profile(
 
 ///|
 fn viewport_dimensions(before : String, after : String) -> (Int, Int)? {
-  let before_dims = svg_dimensions(before)
-  let after_dims = svg_dimensions(after)
-  match (before_dims, after_dims) {
+  match (svg_dimensions(before), svg_dimensions(after)) {
     (Some((width1, height1)), Some((width2, height2))) =>
       Some((width1.max(width2), height1.max(height2)))
     (Some(dims), None) => Some(dims)
@@ -162,12 +231,8 @@ fn viewport_dimensions(before : String, after : String) -> (Int, Int)? {
 /// Prefer the drawing region (`viewBox`) and fall back to `width`/`height`.
 fn svg_dimensions(svg : String) -> (Int, Int)? {
   match attr_value(svg, "viewBox") {
-    Some(value) =>
-      match viewbox_dimensions(value) {
-        Some(dims) => return Some(dims)
-        None => ()
-      }
-    None => ()
+    Some(value) if viewbox_dimensions(value) is Some(dims) => return Some(dims)
+    _ => ()
   }
   match (attr_value(svg, "width"), attr_value(svg, "height")) {
     (Some(width), Some(height)) =>

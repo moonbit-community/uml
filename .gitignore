@@ -4,6 +4,7 @@ target/
 .mooncakes/
 .moonagent/
 .local/
+profiles/
 *.mbti
 *.dot
 *.svg
