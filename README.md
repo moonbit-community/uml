@@ -25,6 +25,7 @@ Done:
 
 - sequence
 - class
+- object
 - usecase
 - mindmap
 - json
@@ -34,7 +35,6 @@ Done:
 
 In progress:
 
-- object
 - state
 - component
 - activity

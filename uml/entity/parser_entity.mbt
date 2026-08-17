@@ -76,6 +76,48 @@ fn Parser::append_entity(self : Parser, entity : Entity) -> Int {
 }
 
 ///|
+/// Create a synthetic entity (lollipop interface circle or association
+/// point) with an empty body and no display metadata.
+fn Parser::append_synthetic_entity(
+  self : Parser,
+  code : String,
+  display : String,
+  kind : EntityKind,
+) -> String {
+  let qualified_code = self.qualify(code)
+  guard !self.has_entity(qualified_code) else { return qualified_code }
+  ignore(
+    self.append_entity({
+      code,
+      qualified_code,
+      display,
+      kind,
+      scope: self.implicit_namespace_scope(code),
+      visibility: Unknown,
+      is_static: false,
+      generic: None,
+      stereotype: None,
+      is_hidden: false,
+      is_removed: false,
+      fields_hidden: false,
+      methods_hidden: false,
+      stereotype_hidden: false,
+      circle_hidden: false,
+      url: None,
+      color: None,
+      line_color: None,
+      line_style: None,
+      tags: [],
+      members: [],
+      map_entries: [],
+      json_data: None,
+      json_tree: None,
+    }),
+  )
+  qualified_code
+}
+
+///|
 fn Parser::add_entity(
   self : Parser,
   declaration : Declaration,
@@ -133,6 +175,7 @@ fn Parser::add_entity(
         members: [],
         map_entries: [],
         json_data: None,
+        json_tree: None,
       })
       if open {
         self.current_entity = Some(index)
@@ -205,6 +248,7 @@ fn Parser::ensure_entity(self : Parser, code : String) -> String {
       members: [],
       map_entries: [],
       json_data: None,
+      json_tree: None,
     }),
   )
   qualified_code

@@ -408,20 +408,222 @@ fn Entity::map_port_endpoint(
 }
 
 ///|
-/// O4 replaces the JSON branch with its typed tree layout. Keeping the switch
-/// here ensures the body source is selected from capability metadata instead
-/// of reparsing renderer-private strings.
-fn Entity::object_like_body_layout(
+/// One ordered JSON row inside the body. `top` is relative to the body so the
+/// SVG painter, Graphviz node size, and fallback endpoints share one geometry.
+priv struct JsonRowLayout {
+  key : String?
+  value : String?
+  top : Int
+  hline : Bool
+  hline_from : Int
+  hline_width : Int
+  value_x : Int
+}
+
+///|
+/// Vertical divider of one JSON object body, spanning the object's rows.
+priv struct JsonDividerLayout {
+  x : Int
+  top : Int
+  height : Int
+}
+
+///|
+priv struct JsonBodyLayout {
+  rows : Array[JsonRowLayout]
+  dividers : Array[JsonDividerLayout]
+  width : Int
+  height : Int
+}
+
+///|
+priv struct JsonNodeSize {
+  key_column_width : Int
+  width : Int
+  height : Int
+}
+
+///|
+/// `TextBlockCucaJSon` measures each object's key and value columns
+/// independently; nested compounds participate with their own full width.
+fn measure_json_node(
+  node : JsonNode,
+  text_metrics : ClassTextMetrics,
+) -> JsonNodeSize {
+  match node {
+    JsonObject(members) => {
+      let mut key_column_width = 0
+      let mut value_column_width = 0
+      let mut height = 0
+      for entry in members {
+        let key = text_metrics.regular.measure(entry.key)
+        let value_size = measure_json_node(entry.value, text_metrics)
+        key_column_width = key_column_width.max(
+          key.width + MAP_CELL_HORIZONTAL_PADDING * 2,
+        )
+        value_column_width = value_column_width.max(value_size.width)
+        height += (key.height + MAP_CELL_VERTICAL_PADDING * 2).max(
+          value_size.height,
+        )
+      }
+      { key_column_width, width: key_column_width + value_column_width, height }
+    }
+    JsonArray(elements) => {
+      let mut width = 0
+      let mut height = 0
+      for element in elements {
+        let size = measure_json_node(element, text_metrics)
+        width = width.max(size.width)
+        height += size.height
+      }
+      { key_column_width: 0, width, height }
+    }
+    _ => {
+      let scalar = text_metrics.regular.measure(node.display())
+      {
+        key_column_width: 0,
+        width: scalar.width + MAP_CELL_HORIZONTAL_PADDING * 2,
+        height: scalar.height + MAP_CELL_VERTICAL_PADDING * 2,
+      }
+    }
+  }
+}
+
+///|
+/// Flatten a JSON node into ordered body rows. Rows carry their absolute body
+/// offsets; nested compounds append their own rows below the member row and
+/// emit their own divider. Object hlines precede every row, array hlines
+/// precede all but the first element, and both span the enclosing value
+/// column (`hline_width`) like `TextBlockJson.drawU`.
+fn build_json_rows(
+  node : JsonNode,
+  text_metrics : ClassTextMetrics,
+  rows : Array[JsonRowLayout],
+  dividers : Array[JsonDividerLayout],
+  origin_x : Int,
+  hline_width : Int,
+  top : Int,
+) -> Unit {
+  match node {
+    JsonObject(members) => {
+      let size = measure_json_node(node, text_metrics)
+      dividers.push({
+        x: origin_x + size.key_column_width,
+        top,
+        height: size.height,
+      })
+      let mut current_top = top
+      for entry in members {
+        let key = text_metrics.regular.measure(entry.key)
+        let value_size = measure_json_node(entry.value, text_metrics)
+        let row_height = (key.height + MAP_CELL_VERTICAL_PADDING * 2).max(
+          value_size.height,
+        )
+        rows.push({
+          key: Some(entry.key),
+          value: match entry.value {
+            JsonObject(_) | JsonArray(_) => None
+            _ => Some(entry.value.display())
+          },
+          top: current_top,
+          hline: true,
+          hline_from: origin_x,
+          hline_width,
+          value_x: origin_x + size.key_column_width,
+        })
+        match entry.value {
+          JsonObject(_) | JsonArray(_) =>
+            build_json_rows(
+              entry.value,
+              text_metrics,
+              rows,
+              dividers,
+              origin_x + size.key_column_width,
+              hline_width - size.key_column_width,
+              current_top,
+            )
+          _ => ()
+        }
+        current_top += row_height
+      }
+    }
+    JsonArray(elements) => {
+      let mut current_top = top
+      for index, element in elements {
+        let element_size = measure_json_node(element, text_metrics)
+        rows.push({
+          key: None,
+          value: match element {
+            JsonObject(_) | JsonArray(_) => None
+            _ => Some(element.display())
+          },
+          top: current_top,
+          hline: index > 0,
+          hline_from: origin_x,
+          hline_width,
+          value_x: origin_x,
+        })
+        match element {
+          JsonObject(_) | JsonArray(_) =>
+            build_json_rows(
+              element, text_metrics, rows, dividers, origin_x, hline_width, current_top,
+            )
+          _ => ()
+        }
+        current_top += element_size.height
+      }
+    }
+    _ =>
+      rows.push({
+        key: None,
+        value: Some(node.display()),
+        top,
+        hline: false,
+        hline_from: origin_x,
+        hline_width,
+        value_x: origin_x,
+      })
+  }
+}
+
+///|
+fn Entity::json_body_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
-  capability : EntityRenderCapability,
-) -> ObjectBodyLayout {
-  match capability.body {
-    OrderedMembers => self.object_body_layout(text_metrics)
-    JsonData => self.object_body_layout(text_metrics)
-    MapEntries => panic()
-    ClassCompartments | NoBody => panic()
+) -> JsonBodyLayout {
+  match self.json_tree {
+    Some(tree) => {
+      let rows : Array[JsonRowLayout] = []
+      let dividers : Array[JsonDividerLayout] = []
+      let size = measure_json_node(tree, text_metrics)
+      build_json_rows(tree, text_metrics, rows, dividers, 0, size.width, 0)
+      { rows, dividers, width: size.width, height: size.height }
+    }
+    None => { rows: [], dividers: [], width: 0, height: 0 }
   }
+}
+
+///|
+/// `EntityImageJson` stacks the stereotype without margins and wraps the
+/// title with a 2px vertical margin on both sides. The width and centering
+/// come from the object header contract.
+fn Entity::json_header_layout(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+) -> ObjectHeaderLayout {
+  let header = self.object_header_layout(text_metrics)
+  { ..header, height: header.height + 2 }
+}
+
+///|
+fn ObjectHeaderLayout::json_placement(
+  self : ObjectHeaderLayout,
+  rect_width : Int,
+) -> (Int, Int, (Int, Int)?) {
+  let (title_x, title_baseline, stereotype_position) = self.placement(
+    rect_width,
+  )
+  (title_x, title_baseline + 2, stereotype_position)
 }
 
 ///|
@@ -606,6 +808,7 @@ priv enum ActorAppearance {
 priv enum NodeShape {
   Box
   Ellipse
+  Circle
 }
 
 ///|
@@ -728,6 +931,15 @@ const COMPONENT_TAB_MARK_TOP_OFFSET : Int = 2
 
 ///|
 const COMPONENT_TAB_MARK_GAP : Int = 4
+
+///|
+/// `EntityImageLollipopInterface` is a fixed 10x10 circle image with the
+/// interface name centered below the circle.
+const LOLLIPOP_SIZE : Int = 10
+
+///|
+/// `EntityImageAssociationPoint` is a fixed 4x4 filled circle.
+const ASSOCIATION_POINT_SIZE : Int = 4
 
 ///|
 const USECASE_RELATION_LABEL_FONT_SIZE : Int = 13
@@ -892,6 +1104,19 @@ fn Entity::map_width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
 fn Entity::map_height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
   self.object_header_layout(text_metrics).height +
   self.map_body_layout(text_metrics).height
+}
+
+///|
+fn Entity::json_width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+  self.json_header_layout(text_metrics).width.max(
+    self.json_body_layout(text_metrics).width,
+  )
+}
+
+///|
+fn Entity::json_height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+  self.json_header_layout(text_metrics).height +
+  self.json_body_layout(text_metrics).height
 }
 
 ///|
@@ -1070,10 +1295,16 @@ fn Entity::node_geometry(
 ) -> NodeGeometry {
   let capability = self.render_capability()
   match (capability.header, capability.body, capability.renderer) {
-    (ObjectHeader, OrderedMembers | JsonData, ObjectRenderer | JsonRenderer) =>
+    (ObjectHeader, OrderedMembers, ObjectRenderer) =>
       {
         width: self.object_width(text_metrics),
         height: self.object_height(text_metrics),
+        shape: capability.shape,
+      }
+    (ObjectHeader, JsonData, JsonRenderer) =>
+      {
+        width: self.json_width(text_metrics),
+        height: self.json_height(text_metrics),
         shape: capability.shape,
       }
     (ObjectHeader, MapEntries, MapRenderer) =>
@@ -1097,6 +1328,14 @@ fn Entity::node_geometry(
     }
     (DescriptionHeader, NoBody, ComponentRenderer) =>
       self.component_geometry(text_metrics)
+    (DescriptionHeader, NoBody, LollipopRenderer) =>
+      { width: LOLLIPOP_SIZE, height: LOLLIPOP_SIZE, shape: Circle }
+    (DescriptionHeader, NoBody, PointRenderer) =>
+      {
+        width: ASSOCIATION_POINT_SIZE,
+        height: ASSOCIATION_POINT_SIZE,
+        shape: Circle,
+      }
     (ClassHeader, ClassCompartments, ClassRenderer) =>
       {
         width: self.width(text_metrics),

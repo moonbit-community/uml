@@ -197,7 +197,7 @@ fn clip_ray_to_node(
   let bounds = rect(point(node.x, node.y), node.width, node.height)
   match shape {
     Box => clip_ray_to_rect(endpoint, adjacent, bounds)
-    Ellipse => clip_ray_to_ellipse(endpoint, adjacent, bounds)
+    Ellipse | Circle => clip_ray_to_ellipse(endpoint, adjacent, bounds)
   }
 }
 

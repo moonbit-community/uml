@@ -184,27 +184,82 @@ fn opale_note_path(
 }
 
 ///|
+
+///|
+const FALLBACK_NOTE_GAP : Int = 12
+
+///|
+/// Place notes next to their target entity when Graphviz is unavailable.
+/// Link notes need the routed label anchor and are skipped in this mode.
+fn fallback_note_layouts(
+  diagram : EntityDiagram,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+) -> Array[@graphviz.GraphvizNote] {
+  let notes : Array[@graphviz.GraphvizNote] = []
+  for note_index, note in diagram.notes {
+    if note.target_kind is LinkNote {
+      continue
+    }
+    let (width, height) = note_size(note, text_metrics)
+    match note.target_kind {
+      EntityNote | MemberTip =>
+        if entity_index(diagram, note.target) is Some(target_index) {
+          let (x, y, w, h) = layout.entity_rect(
+            diagram, target_index, text_metrics,
+          )
+          let position = note.position.with_rankdir(diagram.style)
+          let (nx, ny) = match position {
+            Right => (x + w + FALLBACK_NOTE_GAP + width / 2, y + h / 2)
+            Left => (x - FALLBACK_NOTE_GAP - width / 2, y + h / 2)
+            Top => (x + w / 2, y - FALLBACK_NOTE_GAP - height / 2)
+            Bottom => (x + w / 2, y + h + FALLBACK_NOTE_GAP + height / 2)
+          }
+          notes.push({
+            note_index,
+            x: nx.to_double(),
+            y: ny.to_double(),
+            width: width.to_double(),
+            height: height.to_double(),
+          })
+        }
+      FloatingNote =>
+        notes.push({
+          note_index,
+          x: (SVG_MARGIN_LEFT + width / 2).to_double(),
+          y: (SVG_MARGIN_TOP + height / 2).to_double(),
+          width: width.to_double(),
+          height: height.to_double(),
+        })
+      LinkNote => ()
+    }
+  }
+  notes
+}
+
+///|
 fn append_notes(
   output : StringBuilder,
   diagram : EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
-  match layout.graphviz {
-    Some(graphviz) =>
-      for note_layout in graphviz.notes {
-        guard note_layout.note_index < diagram.notes.length() else { continue }
-        let note = diagram.notes[note_layout.note_index]
-        let x = note_layout.x - note_layout.width / 2.0
-        let y = note_layout.y - note_layout.height / 2.0
-        let fill = @svg.svg_color(
-          note.color,
-          note_background_color(diagram.style),
-        )
-        let mut path = normal_note_path(note_layout)
-        let corner_path = note_corner_path(note_layout)
-        let mut path_class = ""
-        if note.target_kind is EntityNote || note.target_kind is MemberTip {
+  let note_layouts = match layout.graphviz {
+    Some(graphviz) => graphviz.notes
+    None => fallback_note_layouts(diagram, text_metrics, layout)
+  }
+  for note_layout in note_layouts {
+    guard note_layout.note_index < diagram.notes.length() else { continue }
+    let note = diagram.notes[note_layout.note_index]
+    let x = note_layout.x - note_layout.width / 2.0
+    let y = note_layout.y - note_layout.height / 2.0
+    let fill = @svg.svg_color(note.color, note_background_color(diagram.style))
+    let mut path = normal_note_path(note_layout)
+    let corner_path = note_corner_path(note_layout)
+    let mut path_class = ""
+    if note.target_kind is EntityNote || note.target_kind is MemberTip {
+      match layout.graphviz {
+        Some(graphviz) =>
           match graphviz.note_edge(note_layout.note_index) {
             Some(edge) =>
               match (graphviz.node(note.target), diagram.entity(note.target)) {
@@ -228,26 +283,26 @@ fn append_notes(
               }
             None => ()
           }
-        }
-        output <+
-          $|<g class="class-note" style="stroke:\{note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
-        for line_index, line in note.text.split("\n") {
-          let line_text = line.to_owned()
-          output.write_string(
-            @svg.text_markup(
-              x + NOTE_LEFT_PADDING.to_double(),
-              y +
-              NOTE_VERTICAL_PADDING.to_double() +
-              text_metrics.note.ascent.to_double() +
-              line_index.to_double() * text_metrics.note.line_height.to_double(),
-              line_text,
-              [("class", "note-text")],
-              text_metrics.note,
-            ),
-          )
-          output.write_char('\n')
-        }
+        None => ()
       }
-    None => ()
+    }
+    output <+
+      $|<g class="class-note" style="stroke:\{note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
+    for line_index, line in note.text.split("\n") {
+      let line_text = line.to_owned()
+      output.write_string(
+        @svg.text_markup(
+          x + NOTE_LEFT_PADDING.to_double(),
+          y +
+          NOTE_VERTICAL_PADDING.to_double() +
+          text_metrics.note.ascent.to_double() +
+          line_index.to_double() * text_metrics.note.line_height.to_double(),
+          line_text,
+          [("class", "note-text")],
+          text_metrics.note,
+        ),
+      )
+      output.write_char('\n')
+    }
   }
 }

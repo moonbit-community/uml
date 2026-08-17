@@ -74,6 +74,7 @@ fn parse_with_family(
     packages: parser.packages,
     notes: parser.notes,
     constraints: parser.constraints,
+    together_groups: parser.together_groups,
     style: parser.style,
   }
 }
@@ -111,6 +112,8 @@ priv struct Parser {
   mut namespace_separator : String?
   mut allow_mixing : Bool
   mut body_depth : Int
+  mut synthetic_sequence : Int
+  together_groups : Array[Array[String]]
 }
 
 ///|
@@ -138,6 +141,8 @@ fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
     namespace_separator: Some("."),
     allow_mixing,
     body_depth: 0,
+    synthetic_sequence: 0,
+    together_groups: [],
   }
 }
 
@@ -160,10 +165,10 @@ fn Parser::diagnostic(
 }
 
 ///|
-fn Parser::raise_parse_error(
+fn[A] Parser::raise_parse_error(
   self : Parser,
   message : String,
-) -> Unit raise @parse.ParseError {
+) -> A raise @parse.ParseError {
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }

@@ -28,15 +28,44 @@ fn EntityDiagram::render_svg_with_mode(
     Some(() => fallback_layout),
   )
   let bounds = layout.content_bounds(self, text_metrics)
+  let top_blocks = self.chrome_blocks(true)
+  let bottom_blocks = self.chrome_blocks(false)
+  let top_height = chrome_stack_height(top_blocks)
+  let bottom_height = chrome_stack_height(bottom_blocks)
+  let chrome_width = chrome_stack_width(top_blocks).max(
+    chrome_stack_width(bottom_blocks),
+  )
   let content_width = (bounds.max_x - bounds.min_x).ceil().to_int()
   let content_height = (bounds.max_y - bounds.min_y).ceil().to_int()
-  let output_width = content_width + SVG_MARGIN_LEFT + SVG_MARGIN_RIGHT
-  let output_height = content_height + SVG_MARGIN_TOP + SVG_MARGIN_BOTTOM
+  let output_width = (content_width + SVG_MARGIN_LEFT + SVG_MARGIN_RIGHT).max(
+    chrome_width + 2 * SVG_MARGIN_LEFT,
+  )
+  let output_height = content_height +
+    SVG_MARGIN_TOP +
+    SVG_MARGIN_BOTTOM +
+    top_height +
+    bottom_height
   let view_box_x = bounds.min_x - SVG_MARGIN_LEFT.to_double()
-  let view_box_y = bounds.min_y - SVG_MARGIN_TOP.to_double()
+  let view_box_y = bounds.min_y -
+    SVG_MARGIN_TOP.to_double() -
+    top_height.to_double()
   let output = StringBuilder()
+  let scale = diagram_scale(self.style)
+  let scaled_width = (output_width.to_double() * scale).ceil().to_int()
+  let scaled_height = (output_height.to_double() * scale).ceil().to_int()
   output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{output_width}" height="\{output_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{family_capability.aria_label}">
+    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{scaled_width}" height="\{scaled_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{family_capability.aria_label}">
+  if scale != 1.0 {
+    output <+
+      $|<g transform="scale(\{scale})">
+  }
+  append_chrome_stack(
+    output,
+    top_blocks,
+    output_width.to_double(),
+    view_box_y,
+    text_color,
+  )
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
@@ -73,12 +102,12 @@ fn EntityDiagram::render_svg_with_mode(
   })
   if has_object_image {
     let object_style =
-      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
+      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
     output.write_string(object_style)
   }
 
   let style_note =
-    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
+    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.package-stereotype{fill:\{text_color};font-style:italic}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
   output.write_string(style_note)
   if family_capability.renders_packages {
     append_packages(output, self, text_metrics, layout)
@@ -111,6 +140,16 @@ fn EntityDiagram::render_svg_with_mode(
   }
   if family_capability.renders_notes {
     append_notes(output, self, text_metrics, layout)
+  }
+  append_chrome_stack(
+    output,
+    bottom_blocks,
+    output_width.to_double(),
+    bounds.max_y + SVG_MARGIN_BOTTOM.to_double(),
+    text_color,
+  )
+  if scale != 1.0 {
+    output.write_string("</g>\n")
   }
   output.write_string("</svg>\n")
   output.to_string()

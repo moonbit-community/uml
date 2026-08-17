@@ -80,6 +80,8 @@ priv enum EntityRendererKind {
   ObjectRenderer
   MapRenderer
   JsonRenderer
+  LollipopRenderer
+  PointRenderer
   UsecaseRenderer
   ActorRenderer
   ComponentRenderer
@@ -131,6 +133,7 @@ priv enum EntityStyleRole {
   ObjectStyle
   MapStyle
   JsonStyle
+  LollipopStyle
   UsecaseStyle
   ActorStyle
   ComponentStyle
@@ -228,6 +231,30 @@ fn EntityKind::render_capability(self : EntityKind) -> EntityRenderCapability {
         relation_endpoint: ShapeBoundaryEndpoint,
         style_role: ComponentStyle,
       }
+    LollipopFull | LollipopHalf =>
+      {
+        renderer: LollipopRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Circle,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: false,
+        relation_endpoint: ShapeBoundaryEndpoint,
+        style_role: LollipopStyle,
+      }
+    Point =>
+      {
+        renderer: PointRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Circle,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: false,
+        relation_endpoint: CenterEndpoint,
+        style_role: LollipopStyle,
+      }
     _ =>
       {
         renderer: ClassRenderer,
@@ -255,6 +282,7 @@ fn EntityRenderCapability::node_class(self : EntityRenderCapability) -> String {
     ObjectStyle => "object-node"
     MapStyle => "map-node"
     JsonStyle => "json-node"
+    LollipopStyle => "lollipop-node"
     UsecaseStyle => "usecase-node"
     ActorStyle => "actor-node"
     ComponentStyle => "component-node"
@@ -268,7 +296,7 @@ fn EntityRenderCapability::title_class(self : EntityRenderCapability) -> String 
     MapStyle => "map-title"
     JsonStyle => "json-title"
     UsecaseStyle | ActorStyle | ComponentStyle => "usecase-title"
-    ClassStyle => "class-title"
+    ClassStyle | LollipopStyle => "class-title"
   }
 }
 
@@ -281,7 +309,7 @@ fn EntityRenderCapability::stereotype_class(
     MapStyle => "map-stereotype"
     JsonStyle => "json-stereotype"
     UsecaseStyle | ActorStyle => "usecase-stereotype"
-    ClassStyle | ComponentStyle => "class-stereotype"
+    ClassStyle | ComponentStyle | LollipopStyle => "class-stereotype"
   }
 }
 
@@ -293,5 +321,7 @@ fn EntityRenderCapability::graphviz_shape(
     (Box, MemberPorts | MapEntryPorts | JsonTreePorts | NoPorts) => "box"
     (Ellipse, NoPorts) => "ellipse"
     (Ellipse, _) => "ellipse"
+    (Circle, NoPorts) => "circle"
+    (Circle, _) => "circle"
   }
 }

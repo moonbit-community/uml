@@ -78,6 +78,41 @@ $ cat > user.puml <<'EOF'
 user.puml: OK (class diagram)
 ```
 
+Object diagrams are recognized as their own family:
+
+```mooncram
+$ cat > object.puml <<'EOF'
+> @startuml
+> object "Ada Lovelace" as ada <<customer>> {
+>   + id = "customer-42"
+> }
+> json Profile {
+>   "active": true
+> }
+> map Index {
+>   id => 42
+> }
+> @enduml
+> EOF
+> uml_cli.exe check object.puml
+object.puml: OK (object diagram)
+```
+
+Malformed JSON bodies keep the exit-1 contract:
+
+```mooncram
+$ cat > broken-object.puml <<'EOF'
+> @startuml
+> json Broken {
+> "missing":
+> }
+> @enduml
+> EOF
+> uml_cli.exe check broken-object.puml
+error: broken-object.puml:4: bad JSON data
+[1]
+```
+
 ## Render To A File
 
 `render --output` writes the SVG and prints nothing on success:
@@ -107,6 +142,36 @@ $ cat > hello.puml <<'EOF'
 > EOF
 > uml_cli.exe hello.puml | head -c 15
 <svg xmlns="htt (no-eol)
+```
+
+Object rendering keeps a parseable `<svg>` root and paints the typed nodes:
+
+```mooncram
+$ cat > object.puml <<'EOF'
+> @startuml
+> object Cart {
+>   + total = "42.00"
+> }
+> json Profile {
+>   "name": "Ada"
+> }
+> @enduml
+> EOF
+> uml_cli.exe render object.puml | head -c 15
+<svg xmlns="htt (no-eol)
+```
+
+```mooncram
+$ cat > json-rows.puml <<'EOF'
+> @startuml
+> json Profile {
+>   "name": "Ada",
+>   "active": true
+> }
+> @enduml
+> EOF
+> uml_cli.exe render json-rows.puml | grep -o 'json-row-separator' | wc -l
+       2
 ```
 
 ## Report Errors

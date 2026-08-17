@@ -55,3 +55,31 @@ test "document skinparams take precedence over theme fallbacks" {
   @test.assert_eq(svg.contains("document-node"), true)
   @test.assert_eq(svg.contains("theme-node"), false)
 }
+
+///|
+test "object diagrams render typed nodes and parseable SVG" {
+  let svg = render_svg(
+    (
+      #|@startuml
+      #|object Cart <<aggregate>> {
+      #|  + total = "42.00"
+      #|}
+      #|json Profile {
+      #|  "name": "Ada",
+      #|  "active": true
+      #|}
+      #|map Index {
+      #|  id => 42
+      #|}
+      #|Cart --> Profile : serialized
+      #|@enduml
+    ),
+  )
+  @test.assert_eq(svg.contains("class=\"object-node\""), true)
+  @test.assert_eq(svg.contains("class=\"json-node\""), true)
+  @test.assert_eq(svg.contains("class=\"map-node\""), true)
+  @test.assert_eq(svg.contains("class=\"relation\""), true)
+  @test.assert_eq(svg.contains(">serialized</text>"), true)
+  @test.assert_eq(svg.contains(">Ada</text>"), true)
+  @test.assert_eq(svg.contains(">42</text>"), true)
+}

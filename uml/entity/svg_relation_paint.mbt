@@ -377,6 +377,78 @@ fn relation_state_css(
 }
 
 ///|
+fn relation_edge_endpoints(
+  edge : @graphviz.GraphvizEdge,
+) -> ((Double, Double), (Double, Double))? {
+  let first_index = relation_edge_first_spline_index(edge)
+  let last_index = relation_edge_last_spline_index(edge)
+  guard first_index is Some(first_index) else { return None }
+  guard last_index is Some(last_index) else { return None }
+  let first = edge.splines[first_index]
+  let last = edge.splines[last_index]
+  guard first.points.length() > 0 && last.points.length() > 0 else {
+    return None
+  }
+  Some((first.points[0].pair(), last.points[last.points.length() - 1].pair()))
+}
+
+///|
+/// Qualifier labels sit outside the relation endpoint, mirroring the `Kal`
+/// decoration of the Java edge without its dot-path internals.
+fn append_relation_qualifiers(
+  output : StringBuilder,
+  relation : Relation,
+  left_endpoint : (Double, Double),
+  right_endpoint : (Double, Double),
+  text_metrics : ClassTextMetrics,
+) -> Unit {
+  let font_size = text_metrics.relation_end_regular.font_size
+  let font_family = text_metrics.relation_end_font_family
+  match relation.left_qualifier {
+    Some(qualifier) => {
+      let metrics = text_metrics.relation_end_regular.measure(qualifier)
+      let x = left_endpoint.0 - metrics.width.to_double() - 6.0
+      output.write_string(
+        @svg.text_markup(
+          x,
+          left_endpoint.1 + metrics.ascent.to_double(),
+          qualifier,
+          [
+            ("class", "relation-qualifier"),
+            ("font-family", font_family),
+            ("font-size", font_size.to_string()),
+          ],
+          text_metrics.relation_end_regular,
+        ),
+      )
+      output.write_char('\n')
+    }
+    None => ()
+  }
+  match relation.right_qualifier {
+    Some(qualifier) => {
+      let metrics = text_metrics.relation_end_regular.measure(qualifier)
+      let x = right_endpoint.0 + 6.0
+      output.write_string(
+        @svg.text_markup(
+          x,
+          right_endpoint.1 - metrics.ascent.to_double(),
+          qualifier,
+          [
+            ("class", "relation-qualifier"),
+            ("font-family", font_family),
+            ("font-size", font_size.to_string()),
+          ],
+          text_metrics.relation_end_regular,
+        ),
+      )
+      output.write_char('\n')
+    }
+    None => ()
+  }
+}
+
+///|
 fn append_relation(
   output : StringBuilder,
   diagram : EntityDiagram,
@@ -430,6 +502,27 @@ fn append_relation(
   )
   let style =
     $| style="stroke:\{relation_color};\{relation_style}"
+  let edge_endpoints = match layout.graphviz {
+    Some(graphviz) => {
+      let mut endpoints : ((Double, Double), (Double, Double))? = None
+      for edge in graphviz.edges {
+        if edge.index == relation_index {
+          endpoints = relation_edge_endpoints(edge)
+        }
+      }
+      endpoints
+    }
+    None => None
+  }
+  let (left_endpoint, right_endpoint) = edge_endpoints.unwrap_or(
+    ((x1.to_double(), y1.to_double()), (x2.to_double(), y2.to_double())),
+  )
+  match relation.url {
+    Some(url) =>
+      output <+
+        $|<a href="\{@svg.xml_escape(url)}">
+    None => ()
+  }
   let mut drew_spline = false
   match layout.graphviz {
     Some(graphviz) if !(usecase &&
@@ -573,5 +666,12 @@ fn append_relation(
       ),
     )
     output.write_char('\n')
+  }
+  append_relation_qualifiers(
+    output, relation, left_endpoint, right_endpoint, text_metrics,
+  )
+  match relation.url {
+    Some(_) => output.write_string("</a>\n")
+    None => ()
   }
 }

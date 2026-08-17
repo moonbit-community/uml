@@ -954,6 +954,230 @@ test "map Graphviz ports attach each relation to its source row boundary" {
 }
 
 ///|
+test "JSON tree rows keep source order and paint keys, values, and nested bodies" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|json "Customer profile" as Profile <<payload>> {
+      #|  "name": "Ada",
+      #|  "active": true,
+      #|  "preferences": {
+      #|    "locale": "en-GB",
+      #|    "template": "{customer}/{order}"
+      #|  }
+      #|}
+      #|json RetryCount 3
+      #|json Tags ["priority", "export"]
+      #|json EmptyValue null
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let profile = diagram.entity("Profile").unwrap()
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let header = profile.json_header_layout(metrics)
+  let body = profile.json_body_layout(metrics)
+  let geometry = profile.node_geometry(metrics, ObjectDiagram)
+  @test.assert_eq(geometry.height, header.height + body.height)
+  @test.assert_eq(geometry.width >= body.width, true)
+  @test.assert_eq(body.rows.length(), 5)
+  @test.assert_eq(body.rows[0].key, Some("name"))
+  @test.assert_eq(body.rows[0].value, Some("Ada"))
+  @test.assert_eq(body.rows[2].key, Some("preferences"))
+  @test.assert_eq(body.rows[2].value, None)
+  @test.assert_eq(body.rows[3].key, Some("locale"))
+  @test.assert_eq(body.rows[3].value, Some("en-GB"))
+  @test.assert_eq(body.rows[4].key, Some("template"))
+  @test.assert_eq(body.rows[4].value, Some("{customer}/{order}"))
+  @test.assert_eq(body.rows[0].top < body.rows[1].top, true)
+  @test.assert_eq(body.rows[1].top < body.rows[2].top, true)
+  @test.assert_eq(body.rows[2].top < body.rows[3].top, true)
+  @test.assert_eq(body.dividers.length(), 2)
+  @test.assert_eq(body.dividers[0].x > 0, true)
+  @test.assert_eq(body.dividers[0].height, body.height)
+  @test.assert_eq(body.dividers[1].x > body.dividers[0].x, true)
+  let scalar = diagram.entity("RetryCount").unwrap().json_body_layout(metrics)
+  @test.assert_eq(scalar.rows.length(), 1)
+  @test.assert_eq(scalar.rows[0].value, Some("3"))
+  @test.assert_eq(scalar.rows[0].hline, false)
+  @test.assert_eq(scalar.dividers.length(), 0)
+  let array = diagram.entity("Tags").unwrap().json_body_layout(metrics)
+  @test.assert_eq(array.rows.length(), 2)
+  @test.assert_eq(array.rows[0].hline, false)
+  @test.assert_eq(array.rows[1].hline, true)
+  @test.assert_eq(array.rows[0].top < array.rows[1].top, true)
+  let svg = diagram.render_svg()
+  for
+    text in [
+      "Customer profile", ">name</text>", ">Ada</text>", ">active</text>", ">preferences</text>",
+      ">locale</text>", ">en-GB</text>", ">template</text>", ">{customer}/{order}</text>",
+      ">RetryCount</text>", ">3</text>", ">Tags</text>", ">priority</text>", ">export</text>",
+      ">EmptyValue</text>", ">null</text>",
+    ] {
+    @test.assert_eq(svg.contains(text), true, msg=text)
+  }
+  @test.assert_eq(svg.contains("class=\"json-row-separator\""), true)
+  @test.assert_eq(svg.contains("class=\"json-column-separator\""), true)
+  @test.assert_eq(
+    @parse.find_literal(svg, ">name</text>").unwrap() <
+    @parse.find_literal(svg, ">preferences</text>").unwrap(),
+    true,
+  )
+  @test.assert_eq(
+    @parse.find_literal(svg, ">locale</text>").unwrap() <
+    @parse.find_literal(svg, ">template</text>").unwrap(),
+    true,
+  )
+  let json_node = @parse.find_literal(svg, "class=\"json-node\"")
+  let object_node = @parse.find_literal(svg, "class=\"object-node\"")
+  @test.assert_eq(json_node is Some(_), true)
+  @test.assert_eq(object_node is Some(_), false)
+}
+
+///|
+test "lollipop links render interface circles with names below" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|object A
+      #|interface IProvide
+      #|A ()-- IProvide
+      #|A --(( IRequire
+      #|interface IRequire
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"lollipop-node\""), true)
+  @test.assert_eq(svg.contains("class=\"lollipop-title\""), true)
+  @test.assert_eq(svg.contains(">A</text>"), true)
+  @test.assert_eq(svg.contains(">IRequire</text>"), true)
+  @test.assert_eq(svg.contains("<ellipse cx=\""), true)
+  @test.assert_eq(svg.contains("A5,5"), true)
+  let metrics = ClassTextMetrics::new(diagram.style)
+  for entity in diagram.entities {
+    if entity.kind is LollipopFull || entity.kind is LollipopHalf {
+      let geometry = entity.node_geometry(metrics, ObjectDiagram)
+      @test.assert_eq(geometry.width, 10)
+      @test.assert_eq(geometry.height, 10)
+    }
+  }
+}
+
+///|
+test "couple relations paint the association point between members" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|class A
+      #|class B
+      #|class Label
+      #|(A, B) --> Label : association
+      #|@enduml
+    ),
+    family=ClassDiagram,
+  )
+  let svg = diagram.render_svg()
+  let point_ellipse = @parse.find_literal(svg, "rx=\"2\"")
+  @test.assert_eq(point_ellipse is Some(_), true)
+  @test.assert_eq(svg.contains(">association</text>"), true)
+}
+
+///|
+test "document chrome renders title, header, caption and footer" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|title
+      #|Checkout snapshot
+      #|end title
+      #|center header
+      #|Header text
+      #|endheader
+      #|caption
+      #|Caption text
+      #|end caption
+      #|footer
+      #|Footer text
+      #|end footer
+      #|object Cart
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let svg = diagram.render_svg()
+  for
+    text in [
+      ">Checkout snapshot</text>", ">Header text</text>", ">Caption text</text>",
+      ">Footer text</text>",
+    ] {
+    @test.assert_eq(svg.contains(text), true, msg=text)
+  }
+  @test.assert_eq(svg.contains("class=\"title\""), true)
+  @test.assert_eq(
+    @parse.find_literal(svg, ">Checkout snapshot</text>").unwrap() <
+    @parse.find_literal(svg, ">Cart</text>").unwrap(),
+    true,
+  )
+  @test.assert_eq(
+    @parse.find_literal(svg, ">Cart</text>").unwrap() <
+    @parse.find_literal(svg, ">Caption text</text>").unwrap(),
+    true,
+  )
+  @test.assert_eq(
+    @parse.find_literal(svg, ">Caption text</text>").unwrap() <
+    @parse.find_literal(svg, ">Footer text</text>").unwrap(),
+    true,
+  )
+}
+
+///|
+test "package stereotype renders inside the cluster" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|package checkout <<bounded-context>> {
+      #|  object Cart
+      #|}
+      #|@enduml
+    ),
+    family=ObjectDiagram,
+  )
+  let svg = diagram.render_svg()
+  @test.assert_eq(svg.contains("class=\"package-stereotype\""), true)
+  @test.assert_eq(svg.contains(">«bounded-context»</text>"), true)
+  @test.assert_eq(
+    @parse.find_literal(svg, ">«bounded-context»</text>").unwrap() <
+    @parse.find_literal(svg, ">Cart</text>").unwrap(),
+    true,
+  )
+}
+
+///|
+test "together members stay inside one shared subgraph" {
+  let diagram = parse(
+    (
+      #|@startuml
+      #|class A
+      #|class B
+      #|class C
+      #|together {
+      #|A
+      #|B
+      #|}
+      #|@enduml
+    ),
+    family=ClassDiagram,
+  )
+  @test.assert_eq(diagram.together_groups.length(), 1)
+  @test.assert_eq(diagram.together_groups[0], ["A", "B"])
+  let metrics = ClassTextMetrics::new(diagram.style)
+  let graphviz = diagram.graphviz_layout(metrics)
+  @test.assert_eq(graphviz.nodes.length(), 3)
+}
+
+///|
 test "component family dispatches component images without use-case mode" {
   let diagram = parse(
     "@startuml\ncomponent Gateway\n@enduml",

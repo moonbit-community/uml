@@ -1,4 +1,9 @@
 ///|
+
+///|
+const PACKAGE_TAB_HEIGHT : Double = 22.0
+
+///|
 fn append_packages(
   output : StringBuilder,
   diagram : EntityDiagram,
@@ -25,9 +30,21 @@ fn append_packages(
         let border_color = package_border_color(diagram.style)
         output <+
           $|<g class="package">
-          $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + 22.0} L \{right - 2.5} \{y + 22.0} Q \{right} \{y + 22.0} \{right} \{y + 24.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
-          $|<line x1="\{x}" y1="\{y + 22.0}" x2="\{x + tab_width + 1.5}" y2="\{y + 22.0}" style="stroke:\{border_color}"/>
-          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text></g>
+          $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + PACKAGE_TAB_HEIGHT} L \{right - 2.5} \{y + PACKAGE_TAB_HEIGHT} Q \{right} \{y + PACKAGE_TAB_HEIGHT} \{right} \{y + PACKAGE_TAB_HEIGHT + 2.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
+          $|<line x1="\{x}" y1="\{y + PACKAGE_TAB_HEIGHT}" x2="\{x + tab_width + 1.5}" y2="\{y + PACKAGE_TAB_HEIGHT}" style="stroke:\{border_color}"/>
+          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text>
+        match group.stereotype {
+          Some(stereotype) => {
+            let display = @parse.display_stereotype(stereotype)
+            let metrics = text_metrics.italic.measure(display)
+            let stereotype_x = x +
+              (package_layout.width - metrics.width.to_double()) / 2.0
+            output <+
+              $|<text x="\{stereotype_x}" y="\{y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double()}" class="package-stereotype">\{@svg.xml_escape(display)}</text>
+          }
+          None => ()
+        }
+        output.write_string("</g>\n")
       }
     None => ()
   }
@@ -57,11 +74,155 @@ fn append_entity_image(
       append_object_like_entity(
         output, diagram, entity, index, text_metrics, layout,
       )
+    LollipopRenderer =>
+      append_lollipop_entity(
+        output, diagram, entity, index, text_metrics, layout,
+      )
+    PointRenderer =>
+      append_point_entity(output, diagram, entity, index, text_metrics, layout)
     UsecaseRenderer | ActorRenderer | ComponentRenderer =>
       append_usecase_entity(
         output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
       )
   }
+}
+
+///|
+/// Dominant direction from the lollipop node toward its attached entity,
+/// mirroring `EntityImageLollipopInterface.addImpact` input.
+fn lollipop_attachment_direction(
+  diagram : EntityDiagram,
+  code : String,
+  center : (Int, Int),
+  layout : ClassLayout,
+  text_metrics : ClassTextMetrics,
+) -> (Double, Double) {
+  for relation in diagram.relations {
+    let other = if relation.left == code {
+      Some(relation.right)
+    } else if relation.right == code {
+      Some(relation.left)
+    } else {
+      None
+    }
+    match other {
+      Some(other) =>
+        if entity_index(diagram, other) is Some(other_index) {
+          let (ox, oy, ow, oh) = layout.entity_rect(
+            diagram, other_index, text_metrics,
+          )
+          return (
+            (ox + ow / 2 - center.0).to_double(),
+            (oy + oh / 2 - center.1).to_double(),
+          )
+        }
+      None => ()
+    }
+  }
+  (0.0, -1.0)
+}
+
+///|
+/// Half-lollipop arc bulging toward the attached entity: the curved side
+/// faces the entity while the flat side opens away from it.
+fn lollipop_half_arc(
+  center_x : Int,
+  center_y : Int,
+  direction : (Double, Double),
+) -> String {
+  let radius = (LOLLIPOP_SIZE / 2).to_double()
+  let x = center_x.to_double()
+  let y = center_y.to_double()
+  if direction.0.abs() > direction.1.abs() {
+    if direction.0 > 0.0 {
+      // Entity on the right: bulge right.
+      (
+        $|M \{x},\{y - radius} A \{radius},\{radius} 0 0 1 \{x},\{y + radius}
+      )
+    } else {
+      (
+        // Entity on the left: bulge left.
+        $|M \{x},\{y + radius} A \{radius},\{radius} 0 0 1 \{x},\{y - radius}
+      )
+    }
+  } else if direction.1 > 0.0 {
+    // Entity below: bulge down.
+    (
+      $|M \{x - radius},\{y} A \{radius},\{radius} 0 0 0 \{x + radius},\{y}
+    )
+  } else {
+    (
+      // Entity above: bulge up.
+      $|M \{x + radius},\{y} A \{radius},\{radius} 0 0 0 \{x - radius},\{y}
+    )
+  }
+}
+
+///|
+/// `EntityImageLollipopInterface`: a fixed-size circle (or half circle for
+/// required interfaces) with the interface name centered below it. The name
+/// overflows the small node, matching the Java image contract.
+fn append_lollipop_entity(
+  output : StringBuilder,
+  diagram : EntityDiagram,
+  entity : Entity,
+  index : Int,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+) -> Unit {
+  guard !entity.is_hidden && !entity.is_removed else { return }
+  let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+  let center_x = x + width / 2
+  let center_y = y + height / 2
+  let fill = @svg.svg_color(
+    entity.color,
+    diagram.style.defaults().entity_colors().node,
+  )
+  let stroke = @svg.svg_color(
+    entity.line_color,
+    diagram.style.diagram_line_color(),
+  )
+  let title = text_metrics.regular.measure(entity.display)
+  let title_x = x + LOLLIPOP_SIZE / 2 - title.width / 2
+  let title_y = y + LOLLIPOP_SIZE + title.ascent
+  output <+
+    $|<g class="lollipop-node" data-code="\{@svg.xml_escape(entity.qualified_code)}">
+  match entity.kind {
+    LollipopHalf => {
+      let direction = lollipop_attachment_direction(
+        diagram,
+        entity.qualified_code,
+        (center_x, center_y),
+        layout,
+        text_metrics,
+      )
+      output <+
+        $|<path d="\{lollipop_half_arc(center_x, center_y, direction)}" fill="\{fill}" stroke="\{stroke}" stroke-width="1.5"/>
+    }
+    _ =>
+      output <+
+        $|<ellipse cx="\{center_x}" cy="\{center_y}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" stroke-width="1.5"/>
+  }
+  output <+
+    $|<text x="\{title_x}" y="\{title_y}" class="lollipop-title" fill="\{diagram.style.diagram_text_color()}">\{@svg.xml_escape(entity.display)}</text></g>
+}
+
+///|
+/// `EntityImageAssociationPoint`: a fixed 4x4 circle filled with the line
+/// color, drawn without an entity group like the Java image.
+fn append_point_entity(
+  output : StringBuilder,
+  diagram : EntityDiagram,
+  entity : Entity,
+  index : Int,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+) -> Unit {
+  guard !entity.is_hidden && !entity.is_removed else { return }
+  let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+  let color = diagram.style.diagram_line_color()
+  output <+
+    $|<ellipse cx="\{x + width / 2}" cy="\{y + height / 2}" rx="\{width / 2}" ry="\{height / 2}" fill="\{color}" stroke="\{color}" stroke-width="1"/>
 }
 
 ///|
@@ -79,7 +240,12 @@ fn append_object_like_entity(
   guard !entity.is_hidden && !entity.is_removed else { return }
   let capability = entity.render_capability()
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
-  let header = entity.object_header_layout(text_metrics)
+  let is_json = capability.renderer is JsonRenderer
+  let header = if is_json {
+    entity.json_header_layout(text_metrics)
+  } else {
+    entity.object_header_layout(text_metrics)
+  }
   let fill = @svg.svg_color(
     entity.color,
     capability.style_role.background_color(diagram.style),
@@ -93,7 +259,11 @@ fn append_object_like_entity(
     $| style="stroke:\{stroke};\{stroke_style}"
   let separator_attributes =
     $| style="stroke:\{stroke};stroke-width:\{@svg.standard_border_stroke_width()}"
-  let placement = header.placement(width)
+  let placement = if is_json {
+    header.json_placement(width)
+  } else {
+    header.placement(width)
+  }
   output <+
     $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
   match entity.url {
@@ -112,8 +282,8 @@ fn append_object_like_entity(
   }
   output <+
     $|<text x="\{x + placement.0}" y="\{y + placement.1}" class="\{capability.title_class()}" fill="\{capability.style_role.font_color(diagram.style)}">\{@svg.xml_escape(entity.display)}</text><line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
-  match capability.renderer {
-    MapRenderer => {
+  match capability.body {
+    MapEntries => {
       let body = entity.map_body_layout(text_metrics)
       let text_color = capability.style_role.font_color(diagram.style)
       for row_index, row in body.rows {
@@ -156,8 +326,8 @@ fn append_object_like_entity(
         output.write_string("</g>")
       }
     }
-    ObjectRenderer | JsonRenderer => {
-      let body = entity.object_like_body_layout(text_metrics, capability)
+    OrderedMembers => {
+      let body = entity.object_body_layout(text_metrics)
       let row_height = text_metrics.row_height()
       let text_x = if body.has_visibility { 20 } else { 5 }
       let entity_colors = diagram.style.defaults().entity_colors()
@@ -175,7 +345,40 @@ fn append_object_like_entity(
         }
       }
     }
-    _ => panic()
+    JsonData => {
+      let body = entity.json_body_layout(text_metrics)
+      let body_top = y + header.height
+      let text_color = capability.style_role.font_color(diagram.style)
+      let json_separator_attributes =
+        $| style="stroke:\{stroke};stroke-width:1"
+      for divider in body.dividers {
+        output <+
+          $|<line class="json-column-separator" x1="\{x + divider.x}" y1="\{body_top + divider.top}" x2="\{x + divider.x}" y2="\{body_top + divider.top + divider.height}"\{json_separator_attributes}/>
+      }
+      for row in body.rows {
+        if row.hline {
+          output <+
+            $|<line class="json-row-separator" x1="\{x + row.hline_from}" y1="\{body_top + row.top}" x2="\{x + row.hline_from + row.hline_width}" y2="\{body_top + row.top}"\{json_separator_attributes}/>
+        }
+        match row.key {
+          Some(key) => {
+            let key_metrics = text_metrics.regular.measure(key)
+            output <+
+              $|<text x="\{x + row.hline_from + MAP_CELL_HORIZONTAL_PADDING}" y="\{body_top + row.top + MAP_CELL_VERTICAL_PADDING + key_metrics.ascent}" class="json-key member" fill="\{text_color}">\{@svg.xml_escape(key)}</text>
+          }
+          None => ()
+        }
+        match row.value {
+          Some(value) => {
+            let value_metrics = text_metrics.regular.measure(value)
+            output <+
+              $|<text x="\{x + row.value_x + MAP_CELL_HORIZONTAL_PADDING}" y="\{body_top + row.top + MAP_CELL_VERTICAL_PADDING + value_metrics.ascent}" class="json-value member" fill="\{text_color}">\{@svg.xml_escape(value)}</text>
+          }
+          None => ()
+        }
+      }
+    }
+    ClassCompartments | NoBody => panic()
   }
   match entity.url {
     Some(_) => output.write_string("</a>")

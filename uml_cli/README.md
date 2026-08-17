@@ -30,9 +30,9 @@ it to a file instead. Exit codes: `0` on success, `1` on read/parse/render
 failure, `2` on usage errors.
 
 Diagram families are detected from the source with the same per-line
-heuristics PlantUML uses to pick a diagram factory: sequence, class, use
-case, mindmap, JSON, YAML, and TOML today, with object, state, component,
-and activity under construction. `check` names the detected family:
+heuristics PlantUML uses to pick a diagram factory: sequence, class, object,
+use case, mindmap, JSON, YAML, and TOML today, with state, component, and
+activity under construction. `check` names the detected family:
 
 ```console
 $ uml_cli check hello.puml

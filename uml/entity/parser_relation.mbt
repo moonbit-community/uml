@@ -172,6 +172,29 @@ fn relation_shape(raw : String) -> (String, EntityKind)? {
 }
 
 ///|
+/// Lollipop arrows are the two-character paren forms `()`/`))` before the
+/// dashes or `()`/`((` after them; single-paren ends stay ordinary relation
+/// decorations. The returned value is `Some(half)` for a lollipop arrow.
+fn lollipop_arrow(arrow : String, at_start : Bool) -> Bool? {
+  if at_start {
+    if arrow.has_prefix("()") {
+      return Some(false)
+    }
+    if arrow.has_prefix("))") {
+      return Some(true)
+    }
+  } else {
+    if arrow.has_suffix("()") {
+      return Some(false)
+    }
+    if arrow.has_suffix("((") {
+      return Some(true)
+    }
+  }
+  None
+}
+
+///|
 fn Parser::ensure_relation_entity(
   self : Parser,
   raw : String,
@@ -186,33 +209,108 @@ fn Parser::ensure_relation_entity(
 }
 
 ///|
+/// `CommandLinkLollipop` creates the interface circle as a new leaf whose
+/// display is the name written next to the `()`; the other endpoint must
+/// already exist.
+fn Parser::ensure_lollipop(
+  self : Parser,
+  base : String,
+  display : String,
+  half : Bool,
+) -> String raise @parse.ParseError {
+  let base = self.resolve(base)
+  guard self.has_entity(base) else {
+    self.raise_parse_error("No class " + base)
+  }
+  let code = base + "lol" + self.synthetic_sequence.to_string()
+  self.synthetic_sequence += 1
+  self.append_synthetic_entity(
+    code,
+    display,
+    if half {
+      LollipopHalf
+    } else {
+      LollipopFull
+    },
+  )
+}
+
+///|
+/// The invisible association point between the two couple members.
+fn Parser::ensure_couple_point(self : Parser) -> String {
+  let code = "apoint" + self.synthetic_sequence.to_string()
+  self.synthetic_sequence += 1
+  self.append_synthetic_entity(code, "", Point)
+}
+
+///|
 fn Parser::apply_relation_syntax(
   self : Parser,
   syntax : RelationLineSyntax,
-) -> Unit {
+) -> Unit raise @parse.ParseError {
   let arrow = syntax.arrow
   let left_end = left_relation_end(arrow)
   let right_end = right_relation_end(arrow)
   let (left_name, left_port) = self.resolve_relation_name(syntax.left.name)
   let (right_name, right_port) = self.resolve_relation_name(syntax.right.name)
-  let left = if syntax.left.couple is Some((couple_left, _)) {
-    self.ensure_entity(couple_left)
-  } else {
-    self.ensure_relation_entity(left_name, left_end)
+  let left_lollipop = lollipop_arrow(arrow, true)
+  let right_lollipop = lollipop_arrow(arrow, false)
+  let mut left = ""
+  match syntax.left.couple {
+    Some((couple_left, couple_right)) => {
+      let first = self.resolve(couple_left)
+      let second = self.resolve(couple_right)
+      let point = self.ensure_couple_point()
+      self.relations.push(
+        Relation::new(first, point, Association, "--", Plain, Plain),
+      )
+      self.relations.push(
+        Relation::new(point, second, Association, "--", Plain, Plain),
+      )
+      left = point
+    }
+    None =>
+      left = match left_lollipop {
+        Some(half) => self.ensure_lollipop(right_name, left_name, half)
+        None => self.ensure_relation_entity(left_name, left_end)
+      }
   }
-  let right = if syntax.right.couple is Some((_, couple_right)) {
-    self.ensure_entity(couple_right)
+  let mut right = ""
+  match syntax.right.couple {
+    Some((couple_left, couple_right)) => {
+      let first = self.resolve(couple_left)
+      let second = self.resolve(couple_right)
+      let point = self.ensure_couple_point()
+      self.relations.push(
+        Relation::new(first, point, Association, "--", Plain, Plain),
+      )
+      self.relations.push(
+        Relation::new(point, second, Association, "--", Plain, Plain),
+      )
+      right = point
+    }
+    None =>
+      right = match right_lollipop {
+        Some(half) => self.ensure_lollipop(left_name, right_name, half)
+        None => self.ensure_relation_entity(right_name, right_end)
+      }
+  }
+  let (effective_arrow, effective_left_end, effective_right_end) = if left_lollipop
+    is Some(_) {
+    (arrow[2:].to_owned(), Plain, Plain)
+  } else if right_lollipop is Some(_) {
+    (arrow[0:arrow.length() - 2].to_owned(), Plain, Plain)
   } else {
-    self.ensure_relation_entity(right_name, right_end)
+    (arrow, left_end, right_end)
   }
   self.relations.push({
     ..Relation::new(
       left,
       right,
-      relation_kind(left_end, right_end, arrow),
-      arrow,
-      left_end,
-      right_end,
+      relation_kind(effective_left_end, effective_right_end, effective_arrow),
+      effective_arrow,
+      effective_left_end,
+      effective_right_end,
     ),
     left_cardinality: syntax.left.cardinality,
     right_cardinality: syntax.right.cardinality,

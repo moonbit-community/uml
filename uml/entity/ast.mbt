@@ -49,6 +49,9 @@ pub(all) enum EntityKind {
   Node
   Cloud
   State
+  LollipopFull
+  LollipopHalf
+  Point
 } derive(Eq, Debug)
 
 ///|
@@ -114,6 +117,7 @@ pub struct Entity {
   members : Array[Member]
   map_entries : Array[MapEntry]
   json_data : String?
+  json_tree : JsonNode?
 } derive(Eq, Debug)
 
 ///|
@@ -399,6 +403,7 @@ pub struct EntityDiagram {
   packages : Array[Package]
   notes : Array[Note]
   constraints : Array[LinkConstraint]
+  together_groups : Array[Array[String]]
   style : @style.DocumentStyle
 } derive(Eq, Debug)
 

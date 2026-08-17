@@ -168,7 +168,7 @@ priv struct JsonSingleDeclaration {
 ///|
 fn valid_json(source : String) -> Bool {
   try {
-    ignore(@json.parse(source))
+    ignore(parse_json_tree(source))
     true
   } catch {
     _ => false
@@ -185,10 +185,12 @@ fn Parser::add_single_line_json(
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
   }
   self.add_entity(value.declaration, false)
+  let tree = parse_json_tree(value.data) catch { _ => return }
   if self.entity_index(qualified_code) is Some(index) {
     self.entities[index] = {
       ..self.entities[index],
       json_data: Some(value.data),
+      json_tree: Some(tree),
     }
   }
 }
@@ -246,19 +248,18 @@ fn Parser::consume_json_body_line(
   if self.body_depth + delta <= 0 {
     let body = self.entities[entity_index].json_data.unwrap_or("")
     let wrapped = "{" + body + "}"
-    let source = if valid_json(wrapped) {
-      wrapped
-    } else if valid_json(body) {
-      body
-    } else {
-      self.raise_parse_error("bad JSON data")
-      return
+    match complete_json_source(wrapped, body) {
+      Some((source, tree)) => {
+        self.entities[entity_index] = {
+          ..self.entities[entity_index],
+          json_data: Some(source),
+          json_tree: Some(tree),
+        }
+        self.finish_entity()
+        return
+      }
+      None => self.raise_parse_error("bad JSON data")
     }
-    self.entities[entity_index] = {
-      ..self.entities[entity_index],
-      json_data: Some(source),
-    }
-    self.finish_entity()
     return
   }
   let current = self.entities[entity_index].json_data.unwrap_or("")
@@ -268,6 +269,17 @@ fn Parser::consume_json_body_line(
     json_data: Some(current + separator + line),
   }
   self.body_depth += delta
+}
+
+///|
+/// PlantUML first tries the body wrapped in braces, then the bare body. The
+/// stored source and its ordered tree come from the first successful parse.
+fn complete_json_source(wrapped : String, bare : String) -> (String, JsonNode)? {
+  let wrapped_tree = Some(parse_json_tree(wrapped)) catch { _ => None }
+  match wrapped_tree {
+    Some(tree) => Some((wrapped, tree))
+    None => Some((bare, parse_json_tree(bare))) catch { _ => None }
+  }
 }
 
 ///|

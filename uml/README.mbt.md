@@ -105,6 +105,45 @@ test "class diagram" (it : @test.Test) {
 
 ![Class diagram](./__snapshot__/class.svg)
 
+### Object diagram
+
+Objects with slots, map tables, JSON trees, notes and relations; the title
+chrome renders above the content:
+
+```mbt check
+///|
+test "object diagram" (it : @test.Test) {
+  let source =
+    #|@startuml
+    #|title
+    #|Order snapshot
+    #|end title
+    #|object "Ada Lovelace" as ada <<customer>> #lightblue {
+    #|  + id = "customer-42"
+    #|  + active = true
+    #|}
+    #|map OrderIndex {
+    #|  orderId => "order-7"
+    #|}
+    #|json Profile {
+    #|  "name": "Ada",
+    #|  "preferences": {
+    #|    "locale": "en-GB",
+    #|    "template": "{customer}/{order}"
+    #|  }
+    #|}
+    #|ada --> Profile : serialized
+    #|note right of ada
+    #|  Captured at checkout
+    #|end note
+    #|@enduml
+  it.write(@api.render_svg(source))
+  it.snapshot(filename="object.svg")
+}
+```
+
+![Object diagram](./__snapshot__/object.svg)
+
 ### Use case diagram
 
 Actors, use cases, and dotted relations:

@@ -188,7 +188,14 @@ fn EntityDiagram::graphviz_layout(
     let protection_before = parent.subgraph(name="\{cluster_name}p0")
     protection_before.set_attr("label", "")
     let cluster = protection_before.subgraph(name=cluster_name)
-    cluster.set_attr("label", group.display)
+    // The stereotype line reserves cluster height for the package attribute,
+    // matching Java's Cluster.getTitleAndAttributeHeight.
+    let cluster_label = match group.stereotype {
+      Some(stereotype) =>
+        group.display + "\n" + @parse.display_stereotype(stereotype)
+      None => group.display
+    }
+    cluster.set_attr("label", cluster_label)
     cluster.set_attr("style", "rounded")
     cluster.set_attr("fontname", "Arial Bold")
     cluster.set_attr("fontsize", "14")
@@ -203,13 +210,42 @@ fn EntityDiagram::graphviz_layout(
     package_indices[cluster_name] = package_index
   }
   let node_names : Map[String, String] = Map([])
+  let together_containers : Map[String, @cgraph.Graph] = Map([])
+  for group_index, group in self.together_groups {
+    let mut container : @cgraph.Graph? = None
+    for code in group {
+      match container {
+        Some(subgraph) => together_containers[code] = subgraph
+        None =>
+          match self.entity(code) {
+            Some(entity) => {
+              let parent = match package_content_graphs.get(entity.scope) {
+                Some(cluster) => cluster
+                None => graph
+              }
+              // Java wraps each together block in an unlabeled subgraph so
+              // dot keeps its members close without drawing a container.
+              let subgraph = parent.subgraph(name="together\{group_index}")
+              subgraph.set_attr("label", "")
+              together_containers[code] = subgraph
+              container = Some(subgraph)
+            }
+            None => ()
+          }
+      }
+    }
+  }
   for index, entity in self.entities {
     guard !entity.is_hidden && !entity.is_removed else { continue }
     let name = graphviz_node_name(index)
     node_names[entity.qualified_code] = name
-    let node = match package_content_graphs.get(entity.scope) {
-      Some(cluster) => cluster.node(name)
-      None => graph.node(name)
+    let node = match together_containers.get(entity.qualified_code) {
+      Some(container) => container.node(name)
+      None =>
+        match package_content_graphs.get(entity.scope) {
+          Some(cluster) => cluster.node(name)
+          None => graph.node(name)
+        }
     }
     let geometry = entity.node_geometry(text_metrics, self.family)
     let capability = entity.render_capability()

@@ -260,9 +260,13 @@ fn Parser::consume_braced_block(
 ) -> Unit raise @parse.ParseError {
   let package_depth = self.package_stack.length()
   self.index += 1
+  let members : Array[String] = []
   while self.index < self.lines.length() {
     let line = @parse.strip_line_comment(self.lines[self.index])
     if line == "}" && self.package_stack.length() == package_depth {
+      if kind == "together" {
+        self.together_groups.push(members)
+      }
       return
     }
     let reference = @parse.unquote_identifier(line)
@@ -270,6 +274,15 @@ fn Parser::consume_braced_block(
       (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
       self.parse_line(self.lines[self.index])
+      match self.last_entity {
+        Some(code) => if !members.contains(code) { members.push(code) }
+        None => ()
+      }
+    } else {
+      let resolved = self.resolve(reference)
+      if !members.contains(resolved) {
+        members.push(resolved)
+      }
     }
     self.index += 1
   }

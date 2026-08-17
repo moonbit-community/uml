@@ -760,15 +760,41 @@ test "creates interface targets for implements and lollipop links" {
 ///|
 test "parses full and half lollipop decorators on either side" {
   let diagram = parse(
-    "@startuml\nPort ()-- Service\nClient --() Api\nHalf ))-- Core\nEdge --(( Socket\n@enduml",
+    "@startuml\nobject Port\nobject Service\nobject Client\nobject Api\nobject Half\nobject Core\nobject Edge\nobject Socket\nPort ()-- Service\nClient --() Api\nHalf ))-- Core\nEdge --(( Socket\n@enduml",
   )
   @test.assert_eq(diagram.relations.length(), 4)
-  @test.assert_eq(diagram.relations[0].left, "Port")
-  @test.assert_eq(diagram.relations[0].left_end, Parenthesis)
-  @test.assert_eq(diagram.relations[1].right, "Api")
-  @test.assert_eq(diagram.relations[1].right_end, Parenthesis)
-  @test.assert_eq(diagram.relations[2].left, "Half")
-  @test.assert_eq(diagram.relations[3].right, "Socket")
+  @test.assert_eq(diagram.relations[0].left, "Servicelol0")
+  @test.assert_eq(diagram.relations[0].right, "Service")
+  @test.assert_eq(diagram.relations[0].left_end, Plain)
+  @test.assert_eq(diagram.relations[1].left, "Client")
+  @test.assert_eq(diagram.relations[1].right, "Clientlol1")
+  @test.assert_eq(diagram.relations[2].left, "Corelol2")
+  @test.assert_eq(diagram.relations[2].right, "Core")
+  @test.assert_eq(diagram.relations[3].left, "Edge")
+  @test.assert_eq(diagram.relations[3].right, "Edgelol3")
+  let full = diagram.entity("Servicelol0").unwrap()
+  @test.assert_eq(full.kind, LollipopFull)
+  @test.assert_eq(full.display, "Port")
+  let half = diagram.entity("Corelol2").unwrap()
+  @test.assert_eq(half.kind, LollipopHalf)
+  @test.assert_eq(half.display, "Half")
+  let api = diagram.entity("Clientlol1").unwrap()
+  @test.assert_eq(api.kind, LollipopFull)
+  @test.assert_eq(api.display, "Api")
+}
+
+///|
+test "rejects lollipop links whose other endpoint does not exist" {
+  try parse("@startuml\nPort ()-- Service\n@enduml") catch {
+    SyntaxError(_, message) => @test.assert_eq(message, "No class Service")
+  } noraise {
+    _ => @test.fail("expected missing lollipop target error")
+  }
+  try parse("@startuml\nClient --() Api\n@enduml") catch {
+    SyntaxError(_, message) => @test.assert_eq(message, "No class Client")
+  } noraise {
+    _ => @test.fail("expected missing lollipop source error")
+  }
 }
 
 ///|
@@ -1067,6 +1093,35 @@ test "parses multiline and single-line JSON entities" {
 }
 
 ///|
+test "builds the ordered JSON tree beside the source text" {
+  let diagram = parse(
+    "@startuml\njson Profile {\n\"name\": \"Ada\",\n\"active\": true,\n\"preferences\": {\n  \"locale\": \"en-GB\"\n}\n}\njson Count 3\njson Tags [\"priority\", \"export\"]\njson Empty null\n@enduml",
+  )
+  let profile = diagram.entity("Profile").unwrap().json_tree
+  match profile {
+    Some(JsonObject(members)) => {
+      @test.assert_eq(members.length(), 3)
+      @test.assert_eq(members[0].key, "name")
+      @test.assert_eq(members[0].value, JsonString("Ada"))
+      @test.assert_eq(
+        members[2].value,
+        JsonObject([{ key: "locale", value: JsonString("en-GB") }]),
+      )
+    }
+    _ => fail("expected ordered Profile object")
+  }
+  @test.assert_eq(
+    diagram.entity("Count").unwrap().json_tree,
+    Some(JsonNumber("3")),
+  )
+  @test.assert_eq(
+    diagram.entity("Tags").unwrap().json_tree,
+    Some(JsonArray([JsonString("priority"), JsonString("export")])),
+  )
+  @test.assert_eq(diagram.entity("Empty").unwrap().json_tree, Some(JsonNull))
+}
+
+///|
 test "shared brace scanner ignores braces inside JSON strings" {
   let diagram = parse(
     "@startuml\njson Template {\n\"pattern\": \"{user}/{id}\"\n}\n@enduml",
@@ -1075,6 +1130,11 @@ test "shared brace scanner ignores braces inside JSON strings" {
     diagram.entity("Template").unwrap().json_data,
     Some("{\"pattern\": \"{user}/{id}\"}"),
   )
+  match diagram.entity("Template").unwrap().json_tree {
+    Some(JsonObject(members)) =>
+      @test.assert_eq(members[0].value, JsonString("{user}/{id}"))
+    _ => fail("expected Template object")
+  }
 }
 
 ///|
@@ -1178,9 +1238,39 @@ test "preserves association-class couple endpoints" {
   let diagram = parse(
     "@startuml\nclass A\nclass B\nclass Label\n(A, B) -- Label : association\n@enduml",
   )
-  let relation = diagram.relations[0]
-  @test.assert_eq(relation.left_couple, Some(("A", "B")))
-  @test.assert_eq(relation.right_couple, None)
-  @test.assert_eq(relation.right, "Label")
-  @test.assert_eq(relation.label, Some("association"))
+  @test.assert_eq(diagram.entities.length(), 4)
+  let point = diagram.entities.filter(entity => entity.kind is Point)
+  @test.assert_eq(point.length(), 1)
+  @test.assert_eq(point[0].display, "")
+  @test.assert_eq(diagram.relations.length(), 3)
+  let point_code = point[0].qualified_code
+  @test.assert_eq(diagram.relations[0].left, "A")
+  @test.assert_eq(diagram.relations[0].right, point_code)
+  @test.assert_eq(diagram.relations[0].kind, Association)
+  @test.assert_eq(diagram.relations[1].left, point_code)
+  @test.assert_eq(diagram.relations[1].right, "B")
+  let main = diagram.relations[2]
+  @test.assert_eq(main.left, point_code)
+  @test.assert_eq(main.right, "Label")
+  @test.assert_eq(main.label, Some("association"))
+  @test.assert_eq(main.left_couple, Some(("A", "B")))
+  @test.assert_eq(main.right_couple, None)
+}
+
+///|
+test "routes couple relations through the association point with arrows" {
+  let diagram = parse(
+    "@startuml\nclass A\nclass B\nclass Label\n(A, B) --> Label : association\nLabel --> (C, D)\nclass C\nclass D\n@enduml",
+  )
+  let points = diagram.entities.filter(entity => entity.kind is Point)
+  @test.assert_eq(points.length(), 2)
+  @test.assert_eq(diagram.relations.length(), 6)
+  let first = diagram.relations[2]
+  @test.assert_eq(first.left_end, Plain)
+  @test.assert_eq(first.right_end, Arrow)
+  @test.assert_eq(first.label, Some("association"))
+  let second_main = diagram.relations[5]
+  @test.assert_eq(second_main.left, "Label")
+  @test.assert_eq(second_main.left_end, Arrow)
+  @test.assert_eq(second_main.right_couple, Some(("C", "D")))
 }
