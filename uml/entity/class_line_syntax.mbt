@@ -171,8 +171,8 @@ fn Parser::apply_declaration_syntax(
     declaration
   }
   self.add_entity(declaration, syntax.opens_body)
+  let child = self.resolve(declaration.code)
   for parent in declaration.extends {
-    let child = self.resolve(declaration.code)
     let parent_kind = if declaration.kind is Interface {
       Interface
     } else {
@@ -184,7 +184,6 @@ fn Parser::apply_declaration_syntax(
     )
   }
   for interface in declaration.implements {
-    let child = self.resolve(declaration.code)
     let interface = self.ensure_entity_as(interface, Interface)
     self.relations.push(
       Relation::new(interface, child, Realization, "<|..", Extension, Plain),

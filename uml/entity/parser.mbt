@@ -54,11 +54,7 @@ fn parse_with_family(
   input : String,
   family : EntityFamily,
 ) -> EntityDiagram raise @parse.ParseError {
-  let parser = Parser::new(
-    input,
-    allow_mixing=family.allow_mixing(),
-    family=family,
-  )
+  let parser = Parser::new(input, allow_mixing=family.allow_mixing(), family~)
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]
     parser.parse_line(line)

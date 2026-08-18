@@ -74,7 +74,8 @@ fn portion_rule_from_tokens(tokens : Array[String]) -> PortionRule? {
     "show" => true
     _ => return None
   }
-  let portion = match member_portion(tokens[tokens.length() - 1]) {
+  let last_portion = member_portion(tokens[tokens.length() - 1])
+  let portion = match last_portion {
     Some(value) => value
     None => {
       // CommonHides also registers `hide public` (and the other visibility
@@ -85,7 +86,7 @@ fn portion_rule_from_tokens(tokens : Array[String]) -> PortionRule? {
       MemberPortion
     }
   }
-  let middle = if member_portion(tokens[tokens.length() - 1]) is Some(_) {
+  let middle = if last_portion is Some(_) {
     tokens[1:tokens.length() - 1].to_owned()
   } else {
     tokens[1:].to_owned()

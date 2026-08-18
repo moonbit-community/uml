@@ -193,7 +193,8 @@ priv struct EntityRenderCapability {
 /// difference between description and class parsing: the Java description
 /// factory rejects every other declaration without an `allowmixing` fallback.
 fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
-  self is (Person
+  self
+  is (Person
   | Artifact
   | Actor
   | BusinessActor

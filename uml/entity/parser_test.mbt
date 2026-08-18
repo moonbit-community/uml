@@ -446,21 +446,29 @@ test "deployment parser nests symbol groups and parses leaves without allowmixin
 
 ///|
 test "deployment parser rejects class-only declarations and body openings" {
-  try parse("@startuml\nnode X\nclass A\n@enduml", family=DeploymentDiagram) catch {
+  try
+    parse("@startuml\nnode X\nclass A\n@enduml", family=DeploymentDiagram)
+  catch {
     SyntaxError(_, message) =>
-      @test.assert_eq(message, "Syntax Error? (Assumed diagram type: component)")
+      @test.assert_eq(
+        message, "Syntax Error? (Assumed diagram type: component)",
+      )
   } noraise {
     _ => @test.fail("expected description grammar error")
   }
   try parse("@startuml\nusecase X {\n@enduml", family=DeploymentDiagram) catch {
     SyntaxError(_, message) =>
-      @test.assert_eq(message, "Syntax Error? (Assumed diagram type: component)")
+      @test.assert_eq(
+        message, "Syntax Error? (Assumed diagram type: component)",
+      )
   } noraise {
     _ => @test.fail("expected body opening error")
   }
   try parse("@startuml\nnode X {}\n@enduml", family=DeploymentDiagram) catch {
     SyntaxError(_, message) =>
-      @test.assert_eq(message, "Syntax Error? (Assumed diagram type: component)")
+      @test.assert_eq(
+        message, "Syntax Error? (Assumed diagram type: component)",
+      )
   } noraise {
     _ => @test.fail("expected empty symbol package error")
   }

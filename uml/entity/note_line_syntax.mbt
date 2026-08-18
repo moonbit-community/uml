@@ -151,22 +151,9 @@ fn note_metadata_from(
 
 ///|
 fn note_metadata(cursor : @parse.Cursor) -> NoteMetadataSyntax {
-  let items = []
-  while true {
-    let item_start = cursor.offset()
-    guard cursor.skip_inline_space1() &&
-      note_metadata_item(cursor) is Some(item) else {
-      ignore(cursor.restore(item_start))
-      break
-    }
-    items.push(item)
-  }
-  let brace_start = cursor.offset()
+  let items = collect_repeated(cursor, note_metadata_item)
   cursor.skip_inline_spaces()
   let braced = cursor.consume('{')
-  if !braced {
-    ignore(cursor.restore(brace_start))
-  }
   note_metadata_from(items, braced)
 }
 
@@ -305,17 +292,13 @@ fn member_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
 ///|
 fn entity_note_target(cursor : @parse.Cursor) -> String? {
   let start = cursor.offset()
-  let explicit_start = cursor.offset()
   if cursor.skip_inline_space1() &&
     consume_inline_keyword(cursor, "of") &&
-    cursor.skip_inline_space1() {
-    if note_entity_name(cursor) is Some(name) {
-      return Some(name)
-    }
-    ignore(cursor.restore(explicit_start))
-  } else {
-    ignore(cursor.restore(explicit_start))
+    cursor.skip_inline_space1() &&
+    note_entity_name(cursor) is Some(name) {
+    return Some(name)
   }
+  ignore(cursor.restore(start))
   if cursor.skip_inline_space1() {
     if note_entity_name(cursor) is Some(name) {
       return Some(name)
@@ -373,17 +356,9 @@ fn link_constraint_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
     ignore(cursor.restore(start))
     return None
   }
-  let color_start = cursor.offset()
   let color = if cursor.skip_inline_space1() {
-    match cursor.take_color_value() {
-      Some(value) => Some(value)
-      None => {
-        ignore(cursor.restore(color_start))
-        None
-      }
-    }
+    cursor.take_color_value()
   } else {
-    ignore(cursor.restore(color_start))
     None
   }
   cursor.skip_inline_spaces()

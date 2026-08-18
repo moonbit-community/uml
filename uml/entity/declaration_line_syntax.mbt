@@ -195,11 +195,7 @@ fn declaration_name_atom(cursor : @parse.Cursor) -> DeclarationNameAtom? {
         }
       }
   }
-  let generic_start = cursor.offset()
   let generic = declaration_generic(cursor)
-  if generic is None {
-    ignore(cursor.restore(generic_start))
-  }
   Some({ value: @parse.unquote_identifier(value), generic, quoted })
 }
 
@@ -336,13 +332,11 @@ fn take_suffix_target_list(
 
 ///|
 fn declaration_suffix(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
-  match take_suffix_target_list(cursor, "extends") {
-    Some(values) => return Some(DeclarationExtends(values))
-    None => ()
+  if take_suffix_target_list(cursor, "extends") is Some(values) {
+    return Some(DeclarationExtends(values))
   }
-  match take_suffix_target_list(cursor, "implements") {
-    Some(values) => return Some(DeclarationImplements(values))
-    None => ()
+  if take_suffix_target_list(cursor, "implements") is Some(values) {
+    return Some(DeclarationImplements(values))
   }
   if declaration_stereotype(cursor) is Some(value) {
     return Some(value)
@@ -356,10 +350,7 @@ fn declaration_suffix(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
   if cursor.take_tag_value() is Some(value) {
     return Some(DeclarationTag(value))
   }
-  match cursor.take_color_value() {
-    Some(color) => Some(DeclarationColor(color))
-    None => None
-  }
+  cursor.take_color_value().map_or(None, color => Some(DeclarationColor(color)))
 }
 
 ///|
@@ -396,17 +387,7 @@ fn declaration_metadata_from(
 fn take_declaration_suffixes(
   cursor : @parse.Cursor,
 ) -> Array[DeclarationSuffixSyntax] {
-  let suffixes = []
-  while true {
-    let suffix_start = cursor.offset()
-    guard cursor.skip_inline_space1() &&
-      declaration_suffix(cursor) is Some(suffix) else {
-      ignore(cursor.restore(suffix_start))
-      break
-    }
-    suffixes.push(suffix)
-  }
-  suffixes
+  collect_repeated(cursor, declaration_suffix)
 }
 
 ///|
@@ -416,6 +397,16 @@ fn take_declaration_name_and_suffixes(
   guard declaration_name_syntax(cursor) is Some(name) else { return None }
   let suffixes = take_declaration_suffixes(cursor)
   Some((name, declaration_metadata_from(suffixes)))
+}
+
+///|
+/// The shared `NAME [suffixes...]` prefix of declarations, package groups, and
+/// multiline element headers, including the mandatory space before the name.
+fn declaration_name_metadata(
+  cursor : @parse.Cursor,
+) -> (DeclarationNameSyntax, DeclarationMetadataSyntax)? {
+  guard cursor.skip_inline_space1() else { return None }
+  take_declaration_name_and_suffixes(cursor)
 }
 
 ///|

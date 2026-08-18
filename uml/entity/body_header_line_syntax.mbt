@@ -62,16 +62,10 @@ fn multiline_element_header(cursor : @parse.Cursor) -> MultilineElementHeader? {
     ignore(cursor.restore(start))
     return None
   }
-  guard cursor.skip_inline_space1() else {
+  guard declaration_name_metadata(cursor) is Some((name, metadata)) else {
     ignore(cursor.restore(start))
     return None
   }
-  guard declaration_name_syntax(cursor) is Some(name) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let suffixes = take_declaration_suffixes(cursor)
-  let metadata = declaration_metadata_from(suffixes)
   guard take_multiline_marker(cursor) is Some(terminator) else {
     ignore(cursor.restore(start))
     return None

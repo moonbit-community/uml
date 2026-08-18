@@ -13,9 +13,8 @@ priv enum ClassCommandLineSyntax {
 /// (handled by `package_line`), the other symbols require a literal `{`
 /// (their `{}` form is rejected by PlantUML).
 let symbol_package_keywords : FixedArray[String] = [
-  "rectangle", "hexagon", "node", "artifact", "folder", "file", "frame",
-  "cloud", "action", "process", "database", "storage", "component", "card",
-  "queue", "stack",
+  "rectangle", "hexagon", "node", "artifact", "folder", "file", "frame", "cloud",
+  "action", "process", "database", "storage", "component", "card", "queue", "stack",
 ]
 
 ///|
@@ -282,7 +281,11 @@ fn Parser::apply_package_declaration(
       } else {
         None
       },
-      symbol: if is_last { group.symbol } else { None },
+      symbol: if is_last {
+        group.symbol
+      } else {
+        None
+      },
     }
     match
       self.packages.search_by(item => item.qualified_name == qualified_name) {
@@ -303,9 +306,8 @@ fn Parser::apply_class_command(
 ) -> Unit raise @parse.ParseError {
   match syntax {
     ParsedPackage(group) => self.apply_package_declaration(group)
-    ParsedInvalidSymbolPackage => {
+    ParsedInvalidSymbolPackage =>
       self.raise_parse_error("Syntax Error? (Assumed diagram type: component)")
-    }
     ParsedStereotypeAssignment(code~, stereotype~) => {
       guard self.set_entity_stereotype(code, stereotype) else {
         self.raise_parse_error("no such class \{code}")

@@ -163,63 +163,6 @@ fn decode_shaped_entity(
     }
     None => ()
   }
-  let value = code.trim()
-  if value.length() >= 3 && value.has_prefix("(") && value.has_suffix(")/") {
-    let inner = @parse.unquote_identifier(
-      value[1:value.length() - 2].trim().to_owned(),
-    )
-    if inner.length() > 0 {
-      return (BusinessUsecase, inner, inner)
-    }
-  }
-  if value.length() >= 2 && value.has_prefix("(") && value.has_suffix(")") {
-    let inner = @parse.unquote_identifier(
-      value[1:value.length() - 1].trim().to_owned(),
-    )
-    if inner.length() > 0 {
-      return (
-        if kind is BusinessUsecase {
-          BusinessUsecase
-        } else {
-          Usecase
-        },
-        inner,
-        inner,
-      )
-    }
-  }
-  if value.length() >= 3 && value.has_prefix(":") && value.has_suffix(":/") {
-    let inner = @parse.unquote_identifier(
-      value[1:value.length() - 2].trim().to_owned(),
-    )
-    if inner.length() > 0 {
-      return (BusinessActor, inner, inner)
-    }
-  }
-  if value.length() >= 2 && value.has_prefix(":") && value.has_suffix(":") {
-    let inner = @parse.unquote_identifier(
-      value[1:value.length() - 1].trim().to_owned(),
-    )
-    if inner.length() > 0 {
-      return (
-        if kind is BusinessActor {
-          BusinessActor
-        } else {
-          Actor
-        },
-        inner,
-        inner,
-      )
-    }
-  }
-  if value.length() >= 2 && value.has_prefix("[") && value.has_suffix("]") {
-    let inner = @parse.unquote_identifier(
-      value[1:value.length() - 1].trim().to_owned(),
-    )
-    if inner.length() > 0 {
-      return (Component, inner, inner)
-    }
-  }
   (kind, display, code)
 }
 

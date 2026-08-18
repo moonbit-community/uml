@@ -71,13 +71,7 @@ fn relation_name(
     return Some({ name: "()" + name, port_base: None, port_value: None })
   }
   ignore(cursor.restore(start))
-  if take_shaped_parentheses(cursor) is Some(name) {
-    return Some({ name, port_base: None, port_value: None })
-  }
-  if take_shaped_actor(cursor) is Some(name) {
-    return Some({ name, port_base: None, port_value: None })
-  }
-  if take_shaped_component(cursor) is Some(name) {
+  if declaration_shaped_name(cursor) is Some(name) {
     return Some({ name, port_base: None, port_value: None })
   }
   if cursor.take_quoted_value() is Some(name) {
@@ -229,17 +223,7 @@ fn relation_endpoint_from(
 
 ///|
 fn take_modifiers(cursor : @parse.Cursor) -> Array[RelationEndpointModifier] {
-  let modifiers = []
-  while true {
-    let modifier_start = cursor.offset()
-    guard cursor.skip_inline_space1() &&
-      relation_modifier(cursor) is Some(modifier) else {
-      ignore(cursor.restore(modifier_start))
-      break
-    }
-    modifiers.push(modifier)
-  }
-  modifiers
+  collect_repeated(cursor, relation_modifier)
 }
 
 ///|
@@ -254,6 +238,11 @@ fn left_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
 ///|
 fn right_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
   let start = cursor.offset()
+  // The arrow separator consumes the leading spaces, so modifiers sit at the
+  // current position and only a trailing space is required. A bracket may be
+  // either a qualifier or a component name: backtrack the whole modifier
+  // prefix when it is not followed by an endpoint, and parse the endpoint
+  // alone.
   let modifiers = []
   while true {
     let modifier_start = cursor.offset()
@@ -336,15 +325,7 @@ fn right_relation_syntax(
 ) -> (RelationEndpointSyntax, Array[RelationMetadataSyntax], String?)? {
   let start = cursor.offset()
   guard right_relation_endpoint(cursor) is Some(endpoint) else { return None }
-  let metadata = []
-  while true {
-    let meta_start = cursor.offset()
-    guard cursor.skip_inline_space1() && relation_metadata(cursor) is Some(item) else {
-      ignore(cursor.restore(meta_start))
-      break
-    }
-    metadata.push(item)
-  }
+  let metadata = collect_repeated(cursor, relation_metadata)
   // Optional label: spaces, a `:` not followed by `:`, spaces, then text.
   let label_start = cursor.offset()
   cursor.skip_inline_spaces()
@@ -394,7 +375,6 @@ fn left_relation_syntax(
       None
     }
   } else {
-    ignore(cursor.restore(weight_start))
     None
   }
   match left_relation_endpoint(cursor) {

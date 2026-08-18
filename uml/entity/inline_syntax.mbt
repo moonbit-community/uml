@@ -21,3 +21,23 @@ fn consume_inline_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
     false
   }
 }
+
+///|
+/// Collect every whitespace-separated item the parser accepts at the cursor.
+/// The repeated "skip a space, parse, or restore and stop" loop shared by the
+/// suffix, modifier, and metadata grammars.
+fn[T] collect_repeated(
+  cursor : @parse.Cursor,
+  parse : (@parse.Cursor) -> T?,
+) -> Array[T] {
+  let items : Array[T] = []
+  while true {
+    let item_start = cursor.offset()
+    guard cursor.skip_inline_space1() && parse(cursor) is Some(item) else {
+      ignore(cursor.restore(item_start))
+      break
+    }
+    items.push(item)
+  }
+  items
+}
