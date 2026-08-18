@@ -105,7 +105,7 @@ test "ignores top-level functions, constants, and values" {
 }
 
 ///|
-test "stereotypes type aliases and marks abstract types" {
+test "drops aliases of undeclared targets and marks abstract types" {
   let source =
     #|@startuml '.mbti
     #|package "demo";
@@ -114,10 +114,43 @@ test "stereotypes type aliases and marks abstract types" {
     #|suberror MyError
     #|@enduml
   let graph = parse(source).graph
-  @test.assert_eq(graph.entity("Alias").unwrap().stereotype, Some("alias"))
-  @test.assert_eq(graph.entity("Alias").unwrap().kind, @entity.Class)
+  @test.assert_eq(graph.has_entity("Alias"), false)
   @test.assert_eq(graph.entity("Abstract").unwrap().kind, @entity.AbstractClass)
   @test.assert_eq(graph.entity("MyError").unwrap().kind, @entity.Exception)
+}
+
+///|
+test "keeps standalone alias nodes on request" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|type Alias = Int
+    #|@enduml
+  let graph = parse(source, standalone_alias=true).graph
+  @test.assert_eq(graph.entity("Alias").unwrap().stereotype, Some("alias"))
+  @test.assert_eq(graph.entity("Alias").unwrap().kind, @entity.Class)
+}
+
+///|
+test "merges aliases into their declared target node" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|struct Point {
+    #|  x : Int
+    #|}
+    #|type Alias = Point
+    #|type Other = Point
+    #|@enduml
+  let graph = parse(source).graph
+  @test.assert_eq(graph.entities.length(), 1)
+  @test.assert_eq(graph.has_entity("Alias"), false)
+  @test.assert_eq(graph.has_entity("Other"), false)
+  @test.assert_eq(
+    graph.entity("Point").unwrap().annotation,
+    Some("alias Alias, Other"),
+  )
+  @test.assert_eq(graph.entity("Point").unwrap().members.length(), 1)
 }
 
 ///|

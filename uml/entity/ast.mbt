@@ -103,6 +103,7 @@ pub(all) struct Entity {
   is_static : Bool
   generic : String?
   stereotype : String?
+  annotation : String?
   is_hidden : Bool
   is_removed : Bool
   fields_hidden : Bool

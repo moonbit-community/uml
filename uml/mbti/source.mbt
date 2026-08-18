@@ -45,7 +45,14 @@ fn has_mbti_marker(line : String) -> Bool {
 ///|
 /// Parse a `@startuml '.mbti` source with the MoonBit .mbti parser and adapt
 /// the resulting interface declarations to the shared entity graph.
-pub fn parse(input : String) -> MbtiDiagram raise @parse.ParseError {
+///
+/// Aliases of types declared in the interface merge into the target node.
+/// Aliases of undeclared targets are dropped unless `standalone_alias` is
+/// set, which keeps a fallback node for them.
+pub fn parse(
+  input : String,
+  standalone_alias? : Bool = false,
+) -> MbtiDiagram raise @parse.ParseError {
   match mbti_body(input) {
     None => raise @parse.SyntaxError(1, "expected @startuml '.mbti")
     Some((body, body_line)) => {
@@ -56,7 +63,7 @@ pub fn parse(input : String) -> MbtiDiagram raise @parse.ParseError {
             report.loc.start.lnum + body_line - 1,
             report.msg,
           )
-        _ => adapt(mbti)
+        _ => adapt(mbti, standalone_alias)
       }
     }
   }

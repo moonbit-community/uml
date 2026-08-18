@@ -415,7 +415,7 @@ fn append_entity(
     _ => ""
   }
   let entity_colors = diagram.style.defaults().entity_colors()
-  let (spot_text, spot_fill) = entity.spot(entity_colors)
+  let (spot_text, spot_fill) = entity.spot(diagram.family, entity_colors)
   let placement = header.placement(width)
   let rect_height = if class_member_collapsible {
     header.height
@@ -443,6 +443,12 @@ fn append_entity(
   }
   output <+
     $|<text x="\{x + placement.title_x}" y="\{y + placement.title_baseline}" class="class-title"\{title_style}>\{@svg.xml_escape(entity.display)}</text>
+  match (header.annotation, placement.annotation_position) {
+    (Some(annotation), Some((annotation_x, annotation_baseline))) =>
+      output <+
+        $|<text x="\{x + annotation_x}" y="\{y + annotation_baseline}" class="class-annotation" fill="\{class_stereotype_font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(annotation)}</text>
+    _ => ()
+  }
   let member_top = y + header.height
   let body_height = body.fields_height + body.methods_height
   if class_member_collapsible {

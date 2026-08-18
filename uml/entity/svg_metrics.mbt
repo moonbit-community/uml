@@ -1,14 +1,23 @@
 ///|
 fn Entity::spot(
   self : Entity,
+  family : EntityFamily,
   defaults : @style.EntityColors,
 ) -> (String, String) {
-  match self.kind {
-    AbstractClass => ("A", defaults.spot_abstract)
-    Interface => ("I", defaults.spot_interface)
-    Enum => ("E", defaults.spot_enum)
-    Annotation => ("@", defaults.spot_annotation)
-    _ => ("C", defaults.spot_class)
+  match (family, self.kind) {
+    (Mbti, Struct) => ("S", defaults.spot_class)
+    (Mbti, Interface) => ("T", defaults.spot_interface)
+    (Mbti, Enum) => ("E", defaults.spot_enum)
+    (Mbti, AbstractClass) => ("A", defaults.spot_abstract)
+    (Mbti, Exception) => ("X", defaults.spot_annotation)
+    _ =>
+      match self.kind {
+        AbstractClass => ("A", defaults.spot_abstract)
+        Interface => ("I", defaults.spot_interface)
+        Enum => ("E", defaults.spot_enum)
+        Annotation => ("@", defaults.spot_annotation)
+        _ => ("C", defaults.spot_class)
+      }
   }
 }
 
@@ -84,6 +93,9 @@ priv struct ClassHeaderLayout {
   stereotype_width : Int
   stereotype_height : Int
   stereotype : String?
+  annotation_width : Int
+  annotation_height : Int
+  annotation : String?
 }
 
 ///|
@@ -92,6 +104,7 @@ priv struct ClassHeaderPlacement {
   title_x : Int
   title_baseline : Int
   stereotype_position : (Int, Int)?
+  annotation_position : (Int, Int)?
 }
 
 ///|
@@ -191,10 +204,26 @@ fn Entity::header_layout(
     }
     _ => (None, 0, 0)
   }
+  let (annotation, annotation_width, annotation_height) = match
+    self.annotation {
+    Some(value) => {
+      let metrics = text_metrics.class_stereotype.measure(value)
+      (
+        Some(value),
+        metrics.width + 2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
+        metrics.height,
+      )
+    }
+    None => (None, 0, 0)
+  }
   {
-    width: circle_width + title_width.max(stereotype_width),
+    width: circle_width +
+    title_width.max(stereotype_width).max(annotation_width),
     height: circle_height.max(
-      stereotype_height + title.height + CLASS_HEADER_VERTICAL_PADDING,
+      stereotype_height +
+      title.height +
+      annotation_height +
+      CLASS_HEADER_VERTICAL_PADDING,
     ),
     circle_width,
     circle_height,
@@ -203,6 +232,9 @@ fn Entity::header_layout(
     stereotype_width,
     stereotype_height,
     stereotype,
+    annotation_width,
+    annotation_height,
+    annotation,
   }
 }
 
@@ -677,7 +709,9 @@ fn ClassHeaderLayout::placement(
   self : ClassHeaderLayout,
   rect_width : Int,
 ) -> ClassHeaderPlacement {
-  let content_width = self.title_width.max(self.stereotype_width)
+  let content_width = self.title_width
+    .max(self.stereotype_width)
+    .max(self.annotation_width)
   let circle_width = self.circle_width.to_double()
   let surplus = (rect_width.to_double() -
   circle_width -
@@ -703,7 +737,8 @@ fn ClassHeaderLayout::placement(
   let content_x = circle_width + h1 + h2
   let vertical_surplus = (self.height -
     self.stereotype_height -
-    self.title_height).to_double() /
+    self.title_height -
+    self.annotation_height).to_double() /
     2.0
   let title_x = (content_x +
     (content_width - self.title_width).to_double() / 2.0 +
@@ -734,7 +769,33 @@ fn ClassHeaderLayout::placement(
       )
     None => None
   }
-  { circle_center, title_x, title_baseline, stereotype_position }
+  let annotation_position = match self.annotation {
+    Some(_) =>
+      Some(
+        (
+          (content_x +
+          (content_width - self.annotation_width).to_double() / 2.0 +
+          CLASS_STEREOTYPE_HORIZONTAL_MARGIN.to_double())
+          .round()
+          .to_int(),
+          (vertical_surplus +
+          self.stereotype_height.to_double() +
+          self.title_height.to_double() +
+          self.annotation_height.to_double() -
+          CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
+          .round()
+          .to_int(),
+        ),
+      )
+    None => None
+  }
+  {
+    circle_center,
+    title_x,
+    title_baseline,
+    stereotype_position,
+    annotation_position,
+  }
 }
 
 ///|

@@ -5,13 +5,12 @@
 /// Declaration kinds map to entity kinds; `impl` and trait inheritance map
 /// to relations (the .mbti grammar has no arrow syntax). Top-level functions,
 /// constants and values are not owned by any type and are not rendered.
-fn adapt(mbti : @mbti_ast.Mbti) -> MbtiDiagram {
+fn adapt(mbti : @mbti_ast.Mbti, standalone_alias : Bool) -> MbtiDiagram {
   let adapter = Adapter::new()
   mbti.sigs.each(fn(sig) {
     match sig.0 {
       Type(sig) => adapter.declare_type(sig)
       Trait(sig) => adapter.declare_trait(sig)
-      Alias(TypeAlias(name~, ..)) => adapter.declare_alias(name)
       _ => ()
     }
   })
@@ -24,6 +23,8 @@ fn adapt(mbti : @mbti_ast.Mbti) -> MbtiDiagram {
       }
       Impl(sig) => adapter.apply_impl(sig)
       Func(sig) => adapter.apply_func(sig)
+      Alias(TypeAlias(name~, type_=ty, ..)) =>
+        adapter.merge_alias(name, ty, standalone_alias)
       _ => ()
     }
   })
@@ -83,6 +84,7 @@ fn Adapter::ensure_entity(
         is_static: false,
         generic: None,
         stereotype,
+        annotation: None,
         is_hidden: false,
         is_removed: false,
         fields_hidden: false,
@@ -123,8 +125,44 @@ fn Adapter::declare_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
 }
 
 ///|
-fn Adapter::declare_alias(self : Adapter, name : @mbti_ast.Name) -> Unit {
-  ignore(self.ensure_entity(name.name, @entity.Class, stereotype=Some("alias")))
+/// An alias of a type declared in the same interface becomes an `alias Name`
+/// annotation on that type's node, rendered below the title. An alias of an
+/// undeclared target is dropped unless `standalone_alias` requests a
+/// fallback node.
+fn Adapter::merge_alias(
+  self : Adapter,
+  name : @mbti_ast.Name,
+  ty : @mbti_ast.Type,
+  standalone_alias : Bool,
+) -> Unit {
+  match type_top_name(ty) {
+    Some(target) =>
+      match self.entity_index(target) {
+        Some(index) => {
+          let entity = self.entities[index]
+          let annotation = match entity.annotation {
+            Some(existing) => existing + ", " + name.name
+            None => "alias " + name.name
+          }
+          self.entities[index] = { ..entity, annotation: Some(annotation) }
+        }
+        None => self.ensure_standalone_alias(name, standalone_alias)
+      }
+    None => self.ensure_standalone_alias(name, standalone_alias)
+  }
+}
+
+///|
+fn Adapter::ensure_standalone_alias(
+  self : Adapter,
+  name : @mbti_ast.Name,
+  standalone_alias : Bool,
+) -> Unit {
+  if standalone_alias {
+    ignore(
+      self.ensure_entity(name.name, @entity.Class, stereotype=Some("alias")),
+    )
+  }
 }
 
 ///|
