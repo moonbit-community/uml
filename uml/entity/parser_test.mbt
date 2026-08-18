@@ -431,6 +431,42 @@ test "accepts the underscore spelling of allow mixing" {
 }
 
 ///|
+test "deployment parser nests symbol groups and parses leaves without allowmixing" {
+  let diagram = parse(
+    "@startuml\nnode \"Web Server\" as web {\ndatabase \"DB\" as db\n}\nnode \"App\" as app\napp --> web\n@enduml",
+    family=DeploymentDiagram,
+  )
+  @test.assert_eq(diagram.entity("web.db").unwrap().kind, Database)
+  @test.assert_eq(diagram.entity("app").unwrap().kind, Node)
+  @test.assert_eq(diagram.relations[0].right, "web")
+  @test.assert_eq(diagram.packages.length(), 1)
+  @test.assert_eq(diagram.packages[0].symbol, Some("node"))
+  @test.assert_eq(diagram.packages[0].display, "Web Server")
+}
+
+///|
+test "deployment parser rejects class-only declarations and body openings" {
+  try parse("@startuml\nnode X\nclass A\n@enduml", family=DeploymentDiagram) catch {
+    SyntaxError(_, message) =>
+      @test.assert_eq(message, "Syntax Error? (Assumed diagram type: component)")
+  } noraise {
+    _ => @test.fail("expected description grammar error")
+  }
+  try parse("@startuml\nusecase X {\n@enduml", family=DeploymentDiagram) catch {
+    SyntaxError(_, message) =>
+      @test.assert_eq(message, "Syntax Error? (Assumed diagram type: component)")
+  } noraise {
+    _ => @test.fail("expected body opening error")
+  }
+  try parse("@startuml\nnode X {}\n@enduml", family=DeploymentDiagram) catch {
+    SyntaxError(_, message) =>
+      @test.assert_eq(message, "Syntax Error? (Assumed diagram type: component)")
+  } noraise {
+    _ => @test.fail("expected empty symbol package error")
+  }
+}
+
+///|
 test "accepts namespace separator directives" {
   let diagram = parse(
     "@startuml\nset namespaceSeparator none\nclass A.B\n@enduml",

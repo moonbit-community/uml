@@ -22,6 +22,11 @@ priv struct EntityFamilyCapability {
   paint_order : EntityPaintOrder
   renders_packages : Bool
   renders_notes : Bool
+  /// Restricts declarations to PlantUML's description grammar
+  /// (`CommandCreateElementFull.ALL_TYPES`), rejecting class-native kinds,
+  /// body-opening declarations, and `mix_` prefixes, like the Java
+  /// `DescriptionDiagramFactory`.
+  description_only : Bool
 }
 
 ///|
@@ -37,6 +42,7 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
         paint_order: RelationsBeforeEntities,
         renders_packages: true,
         renders_notes: true,
+        description_only: false,
       }
     ObjectDiagram =>
       {
@@ -48,6 +54,7 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
         paint_order: RelationsBeforeEntities,
         renders_packages: true,
         renders_notes: true,
+        description_only: false,
       }
     ComponentDiagram =>
       {
@@ -59,6 +66,7 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
         paint_order: RelationsBeforeEntities,
         renders_packages: true,
         renders_notes: true,
+        description_only: false,
       }
     UseCaseDiagram =>
       {
@@ -70,6 +78,19 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
         paint_order: EntitiesBeforeRelations,
         renders_packages: true,
         renders_notes: true,
+        description_only: false,
+      }
+    DeploymentDiagram =>
+      {
+        parser_allow_mixing: true,
+        unclosed_body_message: "unclosed element body",
+        aria_label: "Deployment diagram",
+        usecase_relation_style: false,
+        class_members_collapsible: false,
+        paint_order: EntitiesBeforeRelations,
+        renders_packages: true,
+        renders_notes: true,
+        description_only: true,
       }
     Mbti =>
       {
@@ -81,6 +102,7 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
         paint_order: RelationsBeforeEntities,
         renders_packages: true,
         renders_notes: true,
+        description_only: false,
       }
   }
 }
@@ -162,6 +184,47 @@ priv struct EntityRenderCapability {
   renders_stereotype : Bool
   relation_endpoint : EntityRelationEndpointCapability
   style_role : EntityStyleRole
+}
+
+///|
+/// The declaration kinds of PlantUML's description grammar
+/// (`CommandCreateElementFull.ALL_TYPES` plus the shape-encoded interface,
+/// use-case, actor, and component forms). Kind selection is the only
+/// difference between description and class parsing: the Java description
+/// factory rejects every other declaration without an `allowmixing` fallback.
+fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
+  self is (Person
+  | Artifact
+  | Actor
+  | BusinessActor
+  | Folder
+  | Card
+  | File
+  | Rectangle
+  | Hexagon
+  | Label
+  | Node
+  | Frame
+  | Cloud
+  | Action
+  | Process
+  | Database
+  | Queue
+  | Stack
+  | Storage
+  | Agent
+  | Usecase
+  | BusinessUsecase
+  | Component
+  | Boundary
+  | Control
+  | Entity
+  | Interface
+  | Circle
+  | Collections
+  | Port
+  | PortIn
+  | PortOut)
 }
 
 ///|

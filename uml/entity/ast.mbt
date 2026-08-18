@@ -288,6 +288,10 @@ pub struct Package {
   stereotype : String?
   url : String?
   color : String?
+  /// PlantUML `CommandPackageWithUSymbol` symbol ("node", "cloud", ...) for
+  /// groups opened by a declaration keyword, `None` for plain packages and
+  /// namespaces.
+  symbol : String?
 } derive(Eq, Debug)
 
 ///|
@@ -369,6 +373,7 @@ pub(all) enum EntityFamily {
   ObjectDiagram
   ComponentDiagram
   UseCaseDiagram
+  DeploymentDiagram
   Mbti
 } derive(Eq, Debug)
 
@@ -443,6 +448,7 @@ priv struct GroupDeclaration {
   url : String?
   color : String?
   empty : Bool
+  symbol : String?
 }
 
 ///|

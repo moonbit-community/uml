@@ -6,6 +6,7 @@ pub(all) enum DiagramKind {
   Activity
   State
   Component
+  Deployment
   Object
   UseCase
   Mindmap

@@ -131,6 +131,16 @@ fn Parser::apply_declaration_syntax(
       "use allowmixing to mix classes and other UML elements",
     )
   }
+  if self.family.capability().description_only {
+    // The Java description factory accepts only its registered symbol
+    // keywords; everything else is a syntax error, and `{` bodies exist only
+    // for `CommandPackageWithUSymbol` groups, which never reach this path.
+    guard declaration.kind.is_description_kind() &&
+      !syntax.opens_body &&
+      !syntax.mix_prefixed else {
+      self.raise_parse_error("Syntax Error? (Assumed diagram type: component)")
+    }
+  }
   let qualified_code = self.qualify(declaration.code)
   let exists = self.has_entity(qualified_code)
   if exists &&

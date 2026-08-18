@@ -171,6 +171,7 @@ fn kind_name(kind : @api.DiagramKind) -> String {
     Activity => "activity"
     State => "state"
     Component => "component"
+    Deployment => "deployment"
     Object => "object"
     UseCase => "use case"
     Mindmap => "mindmap"

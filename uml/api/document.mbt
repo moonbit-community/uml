@@ -6,6 +6,7 @@ pub enum Diagram {
   Class(@entity.EntityDiagram)
   Object(@entity.EntityDiagram)
   Component(@entity.EntityDiagram)
+  Deployment(@entity.EntityDiagram)
   UseCase(@entity.EntityDiagram)
   State(@state.StateDiagram)
   Mindmap(@mindmap.MindmapDiagram)
@@ -35,7 +36,8 @@ pub fn Diagram::render_svg(
   match self {
     Sequence(diagram) => diagram.render_svg(color_scheme~)
     Activity(diagram) => diagram.render_svg(color_scheme~)
-    Class(diagram) | Object(diagram) | Component(diagram) | UseCase(diagram) =>
+    Class(diagram) | Object(diagram) | Component(diagram) | UseCase(diagram) |
+    Deployment(diagram) =>
       diagram.render_svg(color_scheme~, class_member_collapsible~)
     State(diagram) => diagram.render_svg(color_scheme~)
     Mindmap(diagram) => diagram.render_svg(color_scheme~)
@@ -55,6 +57,7 @@ pub fn Document::kind(self : Document) -> DiagramKind {
     Class(_) => Class
     Object(_) => Object
     Component(_) => Component
+    Deployment(_) => Deployment
     UseCase(_) => UseCase
     State(_) => State
     Mindmap(_) => Mindmap
@@ -94,6 +97,12 @@ pub fn parse(source : String) -> Document raise {
       {
         diagram: Component(
           @entity.parse(source, family=@entity.ComponentDiagram),
+        ),
+      }
+    _ if is_deployment_source(source) =>
+      {
+        diagram: Deployment(
+          @entity.parse(source, family=@entity.DeploymentDiagram),
         ),
       }
     _ if is_object_source(source) =>
@@ -189,11 +198,14 @@ fn is_class_declaration(line : String) -> Bool {
 
 ///|
 /// Returns whether the source selects PlantUML's state-diagram factory.
+///
+/// `frame X {` bodies claim the source only through their state content:
+/// PlantUML's description factory wins for a bare `frame X`, while a frame
+/// wrapping `state` declarations stays a state diagram.
 pub fn is_state_source(input : String) -> Bool {
   for line in meaningful_source_lines(input) {
     let lower = line.to_lower()
     if lower.has_prefix("state ") ||
-      lower.has_prefix("frame ") ||
       state_start_markers.contains(line) ||
       line.has_prefix("[*] ") ||
       line.has_suffix(" [*]") {
@@ -260,6 +272,42 @@ pub fn is_component_source(input : String) -> Bool {
     }
   }
   false
+}
+
+///|
+fn has_deployment_declaration(line : String) -> Bool {
+  starts_with_keyword(line, deployment_keywords)
+}
+
+///|
+fn is_mixing_directive(line : String) -> Bool {
+  let lower = line.to_lower()
+  lower == "allowmixing" || lower == "allow_mixing"
+}
+
+///|
+fn is_class_only_declaration(line : String) -> Bool {
+  starts_with_keyword(line, class_only_keywords)
+}
+
+///|
+/// Returns whether the source selects PlantUML's description factory, the
+/// grammar behind deployment diagrams.
+///
+/// The Java class factory is tried first: it parses these declarations only
+/// after `allowmixing`, and it parses symbol-keyword groups (`node X {`) even
+/// without it. An `allowmixing` source therefore stays a class diagram, and a
+/// source mixing description elements with class-only declarations either
+/// becomes a class diagram (group content) or an error, never a deployment
+/// diagram.
+pub fn is_deployment_source(input : String) -> Bool {
+  guard !is_sequence_source(input) else { return false }
+  guard !is_usecase_source(input) else { return false }
+  guard !is_component_source(input) else { return false }
+  let lines = meaningful_source_lines(input)
+  lines.any(has_deployment_declaration) &&
+  !lines.any(is_class_only_declaration) &&
+  !lines.any(is_mixing_directive)
 }
 
 ///|

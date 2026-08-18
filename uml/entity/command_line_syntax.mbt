@@ -1,9 +1,22 @@
 ///|
 priv enum ClassCommandLineSyntax {
   ParsedPackage(GroupDeclaration)
+  ParsedInvalidSymbolPackage
   ParsedStereotypeAssignment(code~ : String, stereotype~ : String)
   ParsedUrlAssignment(code~ : String, url~ : String)
 }
+
+///|
+/// The symbols of PlantUML's `CommandPackageWithUSymbol`: a declaration
+/// keyword followed by a name and `{` opens a group rendered with that
+/// symbol instead of a plain package. `package` keeps its empty `{}` form
+/// (handled by `package_line`), the other symbols require a literal `{`
+/// (their `{}` form is rejected by PlantUML).
+let symbol_package_keywords : FixedArray[String] = [
+  "rectangle", "hexagon", "node", "artifact", "folder", "file", "frame",
+  "cloud", "action", "process", "database", "storage", "component", "card",
+  "queue", "stack",
+]
 
 ///|
 fn package_keyword(cursor : @parse.Cursor) -> Bool? {
@@ -14,6 +27,74 @@ fn package_keyword(cursor : @parse.Cursor) -> Bool? {
   } else {
     None
   }
+}
+
+///|
+fn symbol_package_keyword(cursor : @parse.Cursor) -> String? {
+  let start = cursor.offset()
+  guard take_inline_word(cursor) is Some(word) else { return None }
+  let lower = word.to_lower()
+  if symbol_package_keywords.contains(lower) {
+    Some(lower)
+  } else {
+    ignore(cursor.restore(start))
+    None
+  }
+}
+
+///|
+fn symbol_package_body(
+  cursor : @parse.Cursor,
+) -> (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool)? {
+  guard take_declaration_name_and_suffixes(cursor) is Some((name, metadata)) else {
+    return None
+  }
+  cursor.skip_inline_spaces()
+  // Only a literal `{` opens the group: PlantUML rejects the `{}` form for
+  // symbol packages, unlike the empty `package X {}`.
+  if cursor.consume_literal("{}") {
+    return Some((name, metadata, true))
+  }
+  guard cursor.consume('{') else { return None }
+  Some((name, metadata, false))
+}
+
+///|
+fn symbol_package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+  let start = cursor.offset()
+  let visibility = declaration_visibility(cursor)
+  guard symbol_package_keyword(cursor) is Some(symbol) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.skip_inline_space1() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard symbol_package_body(cursor) is Some((name, metadata, empty)) else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  guard cursor.is_eof() else {
+    ignore(cursor.restore(start))
+    return None
+  }
+  if empty {
+    return Some(ParsedInvalidSymbolPackage)
+  }
+  Some(
+    ParsedPackage({
+      code: name.code,
+      display: name.display,
+      is_namespace: false,
+      visibility,
+      stereotype: metadata.stereotype,
+      url: metadata.url,
+      color: metadata.color,
+      empty: false,
+      symbol: Some(symbol),
+    }),
+  )
 }
 
 ///|
@@ -58,6 +139,7 @@ fn package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
       url: metadata.url,
       color: metadata.color,
       empty,
+      symbol: None,
     }),
   )
 }
@@ -146,6 +228,9 @@ fn url_assignment_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
 
 ///|
 fn class_command_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+  if symbol_package_line(cursor) is Some(value) {
+    return Some(value)
+  }
   if package_line(cursor) is Some(value) {
     return Some(value)
   }
@@ -197,6 +282,7 @@ fn Parser::apply_package_declaration(
       } else {
         None
       },
+      symbol: if is_last { group.symbol } else { None },
     }
     match
       self.packages.search_by(item => item.qualified_name == qualified_name) {
@@ -217,6 +303,9 @@ fn Parser::apply_class_command(
 ) -> Unit raise @parse.ParseError {
   match syntax {
     ParsedPackage(group) => self.apply_package_declaration(group)
+    ParsedInvalidSymbolPackage => {
+      self.raise_parse_error("Syntax Error? (Assumed diagram type: component)")
+    }
     ParsedStereotypeAssignment(code~, stereotype~) => {
       guard self.set_entity_stereotype(code, stereotype) else {
         self.raise_parse_error("no such class \{code}")

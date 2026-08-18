@@ -20,6 +20,30 @@ pub let participant_shape_keywords : FixedArray[String] = [
 pub let component_keywords : FixedArray[String] = ["component"]
 
 ///|
+/// Keywords that select PlantUML's description grammar, the factory behind
+/// deployment diagrams.
+///
+/// This is PlantUML's `CommandCreateElementFull.ALL_TYPES` minus the keywords
+/// claimed earlier by the sequence, use-case, and component heuristics, and
+/// minus the class-native kinds (`class`, `entity`, `interface`, `circle`, ...)
+/// which PlantUML's class factory accepts without `allowmixing`. With
+/// `allowmixing` present the class factory wins in PlantUML, so those sources
+/// stay class diagrams.
+pub let deployment_keywords : FixedArray[String] = [
+  "node", "folder", "frame", "cloud", "storage", "agent", "artifact", "card",
+  "rectangle", "hexagon", "label", "action", "process", "stack", "file", "person",
+]
+
+///|
+/// Keywords that only PlantUML's class factory parses, never its description
+/// factory. A source mixing them with description declarations stays an
+/// error unless `allowmixing` moves it to the class grammar.
+pub let class_only_keywords : FixedArray[String] = [
+  "class", "enum", "annotation", "exception", "metaclass", "stereotype",
+  "dataclass", "record", "struct", "protocol", "abstract",
+]
+
+///|
 /// Keywords that select PlantUML's class-diagram grammar.
 pub let class_keywords : FixedArray[String] = [
   "class", "interface", "enum", "annotation", "abstract", "object", "entity", "exception",
@@ -59,9 +83,12 @@ pub let activity_commands : FixedArray[String] = [
 
 ///|
 /// Activity-diagram commands that prefix a line.
+///
+/// `label` is deliberately excluded: PlantUML's description factory parses a
+/// bare `label X` as an element declaration, while activity diagrams reach the
+/// label command through their other markers (`:work;`, `start`, ...).
 pub let activity_command_prefixes : FixedArray[String] = [
   "repeat while ", "if ", "elseif ", "else ", "while ", "switch ", "case ", "goto ",
-  "label ",
 ]
 
 ///|

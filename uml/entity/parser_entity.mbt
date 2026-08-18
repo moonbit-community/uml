@@ -46,6 +46,7 @@ fn Parser::ensure_implicit_namespaces(self : Parser, code : String) -> Unit {
         stereotype: None,
         url: None,
         color: None,
+        symbol: None,
       })
     }
     parent = qualified_name

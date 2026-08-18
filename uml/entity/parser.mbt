@@ -54,7 +54,11 @@ fn parse_with_family(
   input : String,
   family : EntityFamily,
 ) -> EntityDiagram raise @parse.ParseError {
-  let parser = Parser::new(input, allow_mixing=family.allow_mixing())
+  let parser = Parser::new(
+    input,
+    allow_mixing=family.allow_mixing(),
+    family=family,
+  )
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]
     parser.parse_line(line)
@@ -111,13 +115,18 @@ priv struct Parser {
   mut last_entity : String?
   mut namespace_separator : String?
   mut allow_mixing : Bool
+  family : EntityFamily
   mut body_depth : Int
   mut synthetic_sequence : Int
   together_groups : Array[Array[String]]
 }
 
 ///|
-fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
+fn Parser::new(
+  input : String,
+  allow_mixing? : Bool = false,
+  family? : EntityFamily = ClassDiagram,
+) -> Parser {
   {
     lines: @parse.preprocess(input)
     .split("\n")
@@ -140,6 +149,7 @@ fn Parser::new(input : String, allow_mixing? : Bool = false) -> Parser {
     last_entity: None,
     namespace_separator: Some("."),
     allow_mixing,
+    family,
     body_depth: 0,
     synthetic_sequence: 0,
     together_groups: [],

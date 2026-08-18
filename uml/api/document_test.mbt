@@ -100,6 +100,56 @@ test "object declarations dispatch through the object facade" {
 }
 
 ///|
+test "description declarations dispatch through the deployment facade" {
+  @test.assert_eq(
+    parse("@startuml\nnode Web\n@enduml").kind() is Deployment,
+    true,
+  )
+  @test.assert_eq(
+    parse("@startuml\nnode \"Web Server\" as web {\nnode App\n}\n@enduml").kind()
+    is Deployment,
+    true,
+  )
+  @test.assert_eq(
+    parse("@startuml\ncloud Cache\n@enduml").kind() is Deployment,
+    true,
+  )
+}
+
+///|
+test "allowmixing keeps description declarations in the class grammar" {
+  let source = "@startuml\nallowmixing\nnode Web\nclass App\n@enduml"
+  @test.assert_eq(parse(source).kind() is Class, true)
+}
+
+///|
+test "class content decides between class and deployment grammars" {
+  // The Java class factory parses symbol-keyword groups without
+  // allowmixing, so class content inside a node body stays a class diagram.
+  let grouped = "@startuml\nnode X {\nclass A\n}\n@enduml"
+  @test.assert_eq(parse(grouped).kind() is Class, true)
+  @test.assert_eq(
+    parse("@startuml\nnode X\ninterface I\n@enduml").kind() is Deployment,
+    true,
+  )
+  // Class-only declarations next to description leaves are an error in
+  // PlantUML; the class facade reports it as a mixing error.
+  @test.assert_raise(
+    () => ignore(parse("@startuml\nnode X\nclass A\n@enduml")),
+  )
+}
+
+///|
+test "bare frames select deployment, state bodies select state" {
+  @test.assert_eq(
+    parse("@startuml\nframe X\n@enduml").kind() is Deployment,
+    true,
+  )
+  let source = "@startuml\nframe \"Order flow\" as Flow {\nstate Paid\n}\n@enduml"
+  @test.assert_eq(parse(source).kind() is State, true)
+}
+
+///|
 test "class declarations and dotted arrows select the class parser" {
   @test.assert_eq(
     parse("@startuml\nclass User\nUser --> Account\n@enduml").kind() is Class,
