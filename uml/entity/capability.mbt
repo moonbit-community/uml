@@ -71,6 +71,17 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
         renders_packages: true,
         renders_notes: true,
       }
+    Mbti =>
+      {
+        parser_allow_mixing: false,
+        unclosed_body_message: "unclosed type body",
+        aria_label: "Mbti diagram",
+        usecase_relation_style: false,
+        class_members_collapsible: true,
+        paint_order: RelationsBeforeEntities,
+        renders_packages: true,
+        renders_notes: true,
+      }
   }
 }
 

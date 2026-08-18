@@ -9,6 +9,7 @@ pub enum Diagram {
   UseCase(@entity.EntityDiagram)
   State(@state.StateDiagram)
   Mindmap(@mindmap.MindmapDiagram)
+  Mbti(@mbti.MbtiDiagram)
   Json(@structured.StructuredDiagram)
   Yaml(@structured.StructuredDiagram)
   Toml(@structured.StructuredDiagram)
@@ -38,6 +39,8 @@ pub fn Diagram::render_svg(
       diagram.render_svg(color_scheme~, class_member_collapsible~)
     State(diagram) => diagram.render_svg(color_scheme~)
     Mindmap(diagram) => diagram.render_svg(color_scheme~)
+    Mbti(diagram) =>
+      diagram.render_svg(color_scheme~, class_member_collapsible~)
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
       diagram.render_svg(color_scheme~)
     Dot(diagram) => diagram.render_svg()
@@ -55,6 +58,7 @@ pub fn Document::kind(self : Document) -> DiagramKind {
     UseCase(_) => UseCase
     State(_) => State
     Mindmap(_) => Mindmap
+    Mbti(_) => Mbti
     Json(_) => Json
     Yaml(_) => Yaml
     Toml(_) => Toml
@@ -69,6 +73,7 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 /// per-diagram factory selection. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
   match () {
+    _ if @mbti.is_mbti_source(source) => { diagram: Mbti(@mbti.parse(source)) }
     _ if is_json_source(source) =>
       { diagram: Json(@structured.parse_json(source)) }
     _ if is_yaml_source(source) =>

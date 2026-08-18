@@ -1,0 +1,25 @@
+@startuml '.mbti
+package "demo/scheduler";
+trait Task {
+  fn run(Self) -> Unit
+  fn priority(Self) -> Int
+}
+trait Cancellable : Task {
+  fn cancel(Self) -> Unit
+}
+trait Periodic : Task
+struct Worker {
+  id : Int
+  queue : List[Task]
+}
+enum Status {
+  Idle
+  Running
+  Paused(Int)
+}
+impl Cancellable for Worker;
+impl Task for Status;
+fn Worker::dispatch(Self, Task) -> Unit raise SchedulerError
+suberror SchedulerError
+type WorkerId = Int
+@enduml

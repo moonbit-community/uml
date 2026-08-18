@@ -9,6 +9,7 @@ pub(all) enum DiagramKind {
   Object
   UseCase
   Mindmap
+  Mbti
   Json
   Yaml
   Toml

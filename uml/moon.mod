@@ -7,6 +7,8 @@ import {
   "kokic/unicode@0.1.0",
   "moonbit-community/yaml@0.0.6",
   "moonbit-community/graphviz@0.1.3",
+  "moonbitlang/lexer@0.3.15",
+  "moonbitlang/parser@0.3.17",
 }
 
 readme = "README.md"

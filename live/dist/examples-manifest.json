@@ -6,6 +6,10 @@
     "04-grouping.uml",
     "05-advanced.uml"
   ],
+  "mbti": [
+    "01-geometry.uml",
+    "02-scheduler.uml"
+  ],
   "class": [
     "01-basic.uml",
     "02-members-and-kinds.uml",

@@ -76,7 +76,7 @@ pub extend Visibility with Eq::{not_equal, equal}
 pub extend Visibility with Debug::{to_repr}
 
 ///|
-pub struct Member {
+pub(all) struct Member {
   raw : String
   visibility : Visibility
   is_method : Bool
@@ -93,7 +93,7 @@ pub extend Member with Eq::{not_equal, equal}
 pub extend Member with Debug::{to_repr}
 
 ///|
-pub struct Entity {
+pub(all) struct Entity {
   code : String
   qualified_code : String
   display : String
@@ -204,7 +204,7 @@ pub extend RelationDirection with Eq::{not_equal, equal}
 pub extend RelationDirection with Debug::{to_repr}
 
 ///|
-pub struct Relation {
+pub(all) struct Relation {
   left : String
   right : String
   kind : RelationKind
@@ -368,6 +368,7 @@ pub(all) enum EntityFamily {
   ObjectDiagram
   ComponentDiagram
   UseCaseDiagram
+  Mbti
 } derive(Eq, Debug)
 
 ///|
@@ -396,7 +397,7 @@ pub fn EntityFamily::is_usecase(self : EntityFamily) -> Bool {
 }
 
 ///|
-pub struct EntityDiagram {
+pub(all) struct EntityDiagram {
   family : EntityFamily
   entities : Array[Entity]
   relations : Array[Relation]
