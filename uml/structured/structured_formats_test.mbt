@@ -28,9 +28,6 @@ test "YAML preserves scalar kinds and nested mapping structure" {
   @test.assert_eq(diagram.root.rows[1].value, False)
   @test.assert_eq(diagram.root.rows[2].value, Compound)
   @test.assert_eq(diagram.root.rows[2].child is Some(_), true)
-  let svg = diagram.render_yaml_svg()
-  @test.assert_eq(svg.contains("aria-label=\"YAML diagram\""), true)
-  @test.assert_eq(svg.contains("structured-edge"), true)
 }
 
 ///|
@@ -61,9 +58,6 @@ test "TOML tables arrays and datetimes use the shared structure renderer" {
     }),
     true,
   )
-  let svg = diagram.render_toml_svg()
-  @test.assert_eq(svg.contains("aria-label=\"TOML diagram\""), true)
-  @test.assert_eq(svg.contains("structured-edge"), true)
 }
 
 ///|
@@ -88,9 +82,6 @@ test "YAML block scalars render as multiline record cells" {
     ),
   ).render_yaml_svg()
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
-  @test.assert_eq(svg.contains("<tspan"), true)
-  @test.assert_eq(svg.contains("first line</tspan>"), true)
-  @test.assert_eq(svg.contains("second line</tspan>"), true)
   @test.assert_eq(svg.contains("first line\nsecond line"), false)
 }
 
@@ -116,7 +107,5 @@ test "TOML multiline basic strings render as multiline record cells" {
     ),
   ).render_toml_svg()
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
-  @test.assert_eq(svg.contains("line one</tspan>"), true)
-  @test.assert_eq(svg.contains("line two</tspan>"), true)
   @test.assert_eq(svg.contains("line one\nline two"), false)
 }

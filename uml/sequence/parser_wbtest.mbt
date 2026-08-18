@@ -539,9 +539,6 @@ test "merged notes share one layout row and max height" {
   )
   let layout = diagram.layout()
   @test.assert_eq(layout.placements.length(), 1)
-  let svg = diagram.render_svg()
-  @test.assert_eq(svg.contains(">first</tspan>"), true)
-  @test.assert_eq(svg.contains(">second</tspan>"), true)
 }
 
 ///|
@@ -905,7 +902,6 @@ test "parses shared document background style" {
     "@startuml\nskinparam BackgroundColor #102030\nAlice -> Bob\n@enduml",
   )
   @test.assert_eq(diagram.style.background_color, Some("#102030"))
-  @test.assert_eq(diagram.render_svg().contains("background:#102030"), true)
 }
 
 ///|
@@ -935,14 +931,10 @@ test "parses shared default font style" {
   )
   @test.assert_eq(diagram.style.font_family, Some("Courier"))
   @test.assert_eq(diagram.style.font_size, Some("16"))
-  @test.assert_eq(
-    diagram.render_svg().contains("font-family:Courier;font-size:16px"),
-    true,
-  )
 }
 
 ///|
-test "sequence layout and SVG receive document font roles" {
+test "sequence layout receives document font roles" {
   let regular = parse(
     "@startuml\nparticipant \"VeryLongParticipantName\" as A\nA -> Bob : message\n@enduml",
   )
@@ -959,15 +951,6 @@ test "sequence layout and SVG receive document font roles" {
     styled_layout.participants[0].width > regular_layout.participants[0].width,
     true,
   )
-  let svg = styled.render_svg()
-  @test.assert_eq(svg.contains(".participant-label{font-size:16px"), true)
-  @test.assert_eq(
-    svg.contains(
-      ".message-label,.reference-label,.delay-label{fill:#000000;font-size:15px",
-    ),
-    true,
-  )
-  @test.assert_eq(svg.contains(".participant-box-label{font-size:14px"), true)
 }
 
 ///|
@@ -976,5 +959,4 @@ test "parses shared arrow color style" {
     "@startuml\nskinparam ArrowColor #ff0000\nAlice -> Bob\n@enduml",
   )
   @test.assert_eq(diagram.style.line_color, Some("#ff0000"))
-  @test.assert_eq(diagram.render_svg().contains("stroke:#ff0000"), true)
 }

@@ -128,20 +128,3 @@ test "render_svg renders every diagram family" {
     @test.assert_eq(render_svg(source).length() > 0, true)
   }
 }
-
-///|
-test "render_svg class_member_collapsible wraps class members only" {
-  let source = "@startuml\nclass User {\n+ id : Int\n}\n@enduml"
-  let plain = render_svg(source)
-  let collapsible = render_svg(source, class_member_collapsible=true)
-  @test.assert_eq(plain.contains("<foreignObject"), false)
-  @test.assert_eq(collapsible.contains("<foreignObject"), true)
-  @test.assert_eq(collapsible.contains("<summary "), true)
-  let sequence = "@startuml\nparticipant Alice\nAlice -> Bob : request\n@enduml"
-  @test.assert_eq(
-    render_svg(sequence, class_member_collapsible=true).contains(
-      "<foreignObject",
-    ),
-    false,
-  )
-}

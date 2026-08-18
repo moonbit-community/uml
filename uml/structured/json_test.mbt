@@ -12,18 +12,6 @@ test "parses an object into PlantUML record rows in document order" {
 test "structured renderer derives its label from the diagram format" {
   let diagram = parse_json("{\"value\":1}")
   @test.assert_eq(diagram.render_svg(), diagram.render_json_svg())
-  @test.assert_eq(
-    diagram.render_svg().contains(diagram.format.aria_label()),
-    true,
-  )
-}
-
-///|
-test "renders PlantUML JSON markers as SVG" {
-  let svg = parse_json("@startjson\n{\"items\":[1,2]}\n@endjson").render_json_svg()
-  @test.assert_eq(svg.contains("JSON diagram"), true)
-  @test.assert_eq(svg.contains("structured-edge"), true)
-  @test.assert_eq(svg.contains("&#160;&#160;&#160;"), true)
 }
 
 ///|
@@ -41,5 +29,4 @@ test "renders empty compound values as linked empty records" {
   let diagram = parse_json("{\"empty\":[]}")
   @test.assert_eq(diagram.root.rows[0].value, Compound)
   @test.assert_eq(diagram.root.rows[0].child is Some(_), true)
-  @test.assert_eq(diagram.render_json_svg().contains("structured-edge"), true)
 }

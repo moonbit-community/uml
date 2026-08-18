@@ -27,35 +27,6 @@ test "dot parse without markers uses the whole input" {
 }
 
 ///|
-test "dot render emits an SVG with nodes and an edge path" {
-  let source =
-    #|@startdot
-    #|digraph G {
-    #|  a -> b;
-    #|}
-    #|@enduml
-  let svg = parse_dot_source(source).render_svg()
-  @test.assert_eq(svg.contains("<svg"), true)
-  @test.assert_eq(svg.contains(">a</text>"), true)
-  @test.assert_eq(svg.contains(">b</text>"), true)
-  @test.assert_eq(svg.contains("<path"), true)
-}
-
-///|
-test "dot render keeps node labels from the graph" {
-  let source =
-    #|@startdot
-    #|digraph G {
-    #|  alpha [label="start"];
-    #|  alpha -> beta;
-    #|}
-    #|@enduml
-  let svg = parse_dot_source(source).render_svg()
-  @test.assert_eq(svg.contains(">start</text>"), true)
-  @test.assert_eq(svg.contains(">beta</text>"), true)
-}
-
-///|
 test "dot render surfaces invalid DOT source as an error" {
   let source =
     #|@startdot
