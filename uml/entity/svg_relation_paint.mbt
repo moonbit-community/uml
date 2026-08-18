@@ -345,8 +345,14 @@ fn collapsible_relation_style(
       for right_bit in 0..<right_limit {
         output.write_string(
           relation_state_css(
-            left_index, right_index, relation_index, left_bit, right_bit, left_collapsible,
+            left_index,
+            right_index,
+            relation_index,
+            left_bit,
+            right_bit,
+            left_collapsible,
             right_collapsible,
+            relation.url is Some(_),
           ),
         )
       }
@@ -364,6 +370,7 @@ fn relation_state_css(
   right_bit : Int,
   left_collapsible : Bool,
   right_collapsible : Bool,
+  has_url : Bool,
 ) -> String {
   let condition = fn(index : Int, bit : Int, collapsible : Bool) -> String {
     guard collapsible else { return "" }
@@ -373,7 +380,8 @@ fn relation_state_css(
       ":has(.class-node[data-node-index=\"\{index}\"] details[open])"
     }
   }
-  "svg\{condition(left_index, left_bit, left_collapsible)}\{condition(right_index, right_bit, right_collapsible)} > g[data-edge-index=\"\{relation_index}\"] > .edge-state-\{left_bit}\{right_bit}{display:block}\n"
+  let edge_prefix = if has_url { "a > " } else { "" }
+  "svg\{condition(left_index, left_bit, left_collapsible)}\{condition(right_index, right_bit, right_collapsible)} > \{edge_prefix}g[data-edge-index=\"\{relation_index}\"] > .edge-state-\{left_bit}\{right_bit}{display:block}\n"
 }
 
 ///|
