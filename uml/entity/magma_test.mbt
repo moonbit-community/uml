@@ -119,3 +119,71 @@ test "relations to packages do not create phantom entities" {
   let edges = diagram.magma_grid_edges()
   @test.assert_eq(edges.length(), 2)
 }
+
+///|
+/// Plain `port` entities share `LeafType.PORTIN` in PlantUML, so a port
+/// cluster with an incoming link pins its input ports to the source rank and
+/// its output ports to the sink rank: the input ports render on the same row
+/// as the external node.
+test "port clusters pin inputs to the source rank" {
+  let svg = parse(
+    "@startuml\nnode app {\n  port http\n  portin ingress\n  portout egress\n}\nnode client\nclient --> app\n@enduml",
+    family=DeploymentDiagram,
+  ).render_svg()
+  let port_y = fn(code : String) -> Double? {
+    let marker = "class=\"port-node\" data-code=\"\{code}\""
+    match @parse.find_unquoted_literal(svg, marker) {
+      Some(start) => {
+        let segment = svg[start:].to_owned()
+        match @parse.find_unquoted_literal(segment, "y=\"") {
+          Some(y_start) => {
+            let y_value = segment[y_start + 3:]
+            let y_token = y_value.split("\"").nth(0).unwrap_or("")
+            Some(@string.parse_double(y_token) catch { _ => 0.0 })
+          }
+          None => None
+        }
+      }
+      None => None
+    }
+  }
+  let title_y = fn() -> Double? {
+    match @parse.find_unquoted_literal(svg, "class=\"package-title\"") {
+      Some(start) => {
+        // The title's own `y="` sits before its class attribute; scan the
+        // prefix for the last occurrence.
+        let prefix = svg[:start].to_owned()
+        let mut y_pos : Int? = None
+        let mut offset = 0
+        while true {
+          match
+            @parse.find_unquoted_literal(prefix[offset:].to_owned(), "y=\"") {
+            Some(at) => {
+              y_pos = Some(offset + at)
+              offset = offset + at + 3
+            }
+            None => break
+          }
+        }
+        match y_pos {
+          Some(pos) => {
+            let y_value = svg[pos + 3:].to_owned()
+            let y_token = y_value.split("\"").nth(0).unwrap_or("")
+            Some(@string.parse_double(y_token) catch { _ => 0.0 })
+          }
+          None => None
+        }
+      }
+      None => None
+    }
+  }
+  let http_y = port_y("app.http").unwrap_or(-1.0)
+  let ingress_y = port_y("app.ingress").unwrap_or(-1.0)
+  let egress_y = port_y("app.egress").unwrap_or(-1.0)
+  let title = title_y().unwrap_or(-1.0)
+  // Input ports share the top rank with the external node; the output port
+  // lands below the cluster title.
+  @test.assert_eq((http_y - ingress_y).abs() < 4.0, true)
+  @test.assert_eq(http_y < title, true)
+  @test.assert_eq(egress_y > title, true)
+}

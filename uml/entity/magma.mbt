@@ -95,6 +95,16 @@ fn EntityDiagram::package_parent(
 }
 
 ///|
+fn EntityDiagram::package(self : EntityDiagram, code : String) -> Package? {
+  for group in self.packages {
+    if group.qualified_name == code {
+      return Some(group)
+    }
+  }
+  None
+}
+
+///|
 /// Invisible grid edges for standalone entities, one entry per edge as
 /// `(tail, head, minlen)` in entity codes. The caller resolves the codes to
 /// graph nodes and marks the edges `style=invis`, so they steer the dot rank

@@ -73,6 +73,10 @@ fn graphviz_node_name(index : Int) -> String {
 const LINK_NOTE_GAP : Double = 12.0
 
 ///|
+/// PlantUML `ClusterDotString` title node height (the `za` title table).
+const GROUP_POINT_TITLE_HEIGHT : Double = 16.0
+
+///|
 fn graphviz_cluster_name(index : Int) -> String {
   "cluster_package\{index}"
 }
@@ -277,7 +281,9 @@ fn EntityDiagram::graphviz_layout(
   for index, entity in self.entities {
     guard !entity.is_hidden && !entity.is_removed else { continue }
     match entity.kind {
-      PortIn => source_ports.push(graphviz_node_name(index))
+      // PlantUML `CommandCreateElementFull` maps both `port` and `portin`
+      // to `LeafType.PORTIN`, so plain ports pin to the source rank too.
+      Port | PortIn => source_ports.push(graphviz_node_name(index))
       PortOut => sink_ports.push(graphviz_node_name(index))
       _ => ()
     }
@@ -303,9 +309,25 @@ fn EntityDiagram::graphviz_layout(
       None =>
         match package_content_graphs.get(code) {
           Some(cluster) => {
+            // PlantUML `ClusterDotString` emits the cluster title as a node
+            // (`za<uid>`) that receives the edges targeting the group and
+            // reserves the title width inside the cluster.
             let name = "group_point_" + code
             let node = cluster.node(name)
-            @graphviz.set_fixed_node_size(node, 0.72, 0.72, shape="point")
+            let title_width = match self.package(code) {
+              Some(group) =>
+                // PlantUML `USymbolNode.suppWidthBecauseOfShape` pads the
+                // node-symbol title block by 60px.
+                text_metrics.regular.measure(group.display).width.to_double() +
+                (if group.symbol is Some("node") { 60.0 } else { 0.0 })
+              None => 0.72
+            }
+            @graphviz.set_fixed_node_size(
+              node,
+              title_width,
+              GROUP_POINT_TITLE_HEIGHT,
+              shape="rect",
+            )
             group_point_names[code] = name
             Some(name)
           }
