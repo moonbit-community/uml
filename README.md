@@ -17,48 +17,59 @@ gallery (use case, YAML, TOML, dark theming) and API walkthrough.
 
 ## Supported diagrams
 
-Diagram types that render a picture, matching PlantUML's `DiagramType`.
-`usecase` and the legacy sub-diagrams (`timing`, `composite`) are started from
-`@startuml`; `toml` is an extension not present in PlantUML.
+Two families are supported: the standard UML diagrams (OMG UML 2.5) and the
+diagrams that only exist in PlantUML or in this project. Diagram types that
+render a picture match PlantUML's `DiagramType`; `toml` and `mbti` are
+extensions not present in PlantUML.
 
-Done:
+### Standard UML diagrams
 
-- sequence
-- class
-- object
-- usecase
-- mindmap
-- json
-- yaml
-- toml (extension)
-- dot
+PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 
-In progress:
+| Diagram | Kind | Status |
+|---|---|---|
+| Class | structure | done |
+| Object | structure | done |
+| Component | structure | done |
+| Deployment | structure | done |
+| Package | structure | done (class grammar) |
+| Use Case | behavior | done |
+| Activity | behavior | done |
+| State Machine | behavior | done |
+| Sequence | interaction | done |
+| Timing | interaction | parsed, renderer pending |
 
-- state
-- component
-- activity
+### PlantUML extensions (not UML)
 
-Planned:
+| Diagram | Status |
+|---|---|
+| Mindmap | done |
+| WBS | parsed, renderer pending |
+| JSON | done |
+| YAML | done |
+| DOT | done |
+| BPMN | planned |
+| Gantt | planned |
+| Nwdiag family (nwdiag, seqdiag, actdiag, blockdiag, rackdiag) | planned |
+| Salt / Wire | planned |
+| Packet | planned |
+| Chart | planned |
+| Chen / IE entity-relationship | planned |
+| Chronology | planned |
+| Composite (legacy) | planned |
+| EBNF | planned |
+| Regex | planned |
+| Git | planned |
+| Files | planned |
+| Board | planned |
+| HCL | planned |
+| Flow | planned |
+| Ditaa | planned |
+| JCCKit | planned |
 
-- timing
-- composite
-- bpm
-- board
-- chart
-- chronology
-- chen
-- ditaa
-- ebnf
-- flow
-- files
-- gantt
-- git
-- hcl
-- jcckit
-- nwdiag
-- packetdiag
-- regex
-- salt
-- wire
-- wbs
+### Project extensions (not in PlantUML)
+
+| Diagram | Status |
+|---|---|
+| TOML | done |
+| MBTI | done |
