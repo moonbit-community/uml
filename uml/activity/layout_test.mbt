@@ -40,7 +40,8 @@ fn anchor_index(
 fn control_index(layout : ActivityLayout, condition : String) -> Int? {
   for index, node in layout.source_nodes {
     guard (node is ActivityNode::While(value) && value == condition) ||
-      (node is ActivityNode::RepeatWhile(value) && value == condition) else {
+      (node is ActivityNode::RepeatWhile(value) && value == condition) ||
+      (node is ActivityNode::If(value) && value == condition) else {
       continue
     }
     return Some(index)
@@ -166,12 +167,22 @@ test "while exits from its controlling decision rather than its loop body" {
   guard action_index(layout, "Finish") is Some(finish) else {
     @test.fail("missing instruction after loop")
   }
+  guard position_of(layout, while_decision) is Some((_, decision_y)) else {
+    @test.fail("missing while decision layout")
+  }
+  @test.assert_eq(
+    layout.nodes.any(node => {
+      node.node_index != while_decision &&
+      node.y > decision_y &&
+      node.node_index != finish
+    }),
+    true,
+  )
   @test.assert_eq(
     layout.edges.any(edge => {
       edge.from_node_index == while_decision &&
-      edge.to_node_index == finish &&
       edge.label == Some("done") &&
-      edge.route is ActivityEdgeRoute::BackwardLeft
+      edge.route is ActivityEdgeRoute::WhileExitLeft
     }),
     true,
   )
@@ -208,10 +219,19 @@ test "elseif decisions form a horizontal cascade" {
   let layout = parse(
     "if (first?) then (yes)\n:First;\nelseif (second?) then (yes)\n:Second;\nelse (no)\n:Fallback;\nendif",
   ).layout()
-  @test.assert_eq(
-    layout.edges.any(edge => edge.route is ActivityEdgeRoute::Horizontal),
-    true,
-  )
+  guard control_index(layout, "first?") is Some(first) else {
+    @test.fail("missing first decision")
+  }
+  guard control_index(layout, "second?") is Some(second) else {
+    @test.fail("missing second decision")
+  }
+  guard position_of(layout, first) is Some((_, first_y)) else {
+    @test.fail("missing first decision layout")
+  }
+  guard position_of(layout, second) is Some((_, second_y)) else {
+    @test.fail("missing second decision layout")
+  }
+  @test.assert_eq(first_y == second_y, true)
 }
 
 ///|

@@ -14,14 +14,21 @@ fn append_label(
   y : Int,
   label : String,
   font_metrics : @metrics.FontMetrics,
+  anchor? : String = "middle",
+  multiline_center? : Bool = true,
 ) -> Unit {
   output.raw(
     @svg.multiline_text_markup(
       x.to_double(),
       y.to_double(),
       label,
-      [("text-anchor", "middle"), ("class", "activity-label")],
+      [
+        ("text-anchor", anchor),
+        ("class", "activity-label"),
+        ("font-size", font_metrics.font_size.to_string()),
+      ],
       line_height=font_metrics.line_height.to_double(),
+      anchor=if multiline_center { Center } else { Baseline },
       text_metrics=Some(font_metrics),
     ),
   )
@@ -32,7 +39,7 @@ fn append_edge(
   output : @svg.XmlWriter,
   layout : ActivityLayout,
   edge : ActivityEdgeLayout,
-  font_metrics : @metrics.FontMetrics,
+  small_metrics : @metrics.FontMetrics,
 ) -> Unit {
   guard layout_for(layout, edge.from_node_index) is Some(from) else { return }
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return }
@@ -40,22 +47,45 @@ fn append_edge(
   let y1 = from.y + from.height
   let target_x = to.x + to.width / 2
   let y2 = to.y
+  let from_center_y = from.y + from.height / 2
+  let from_is_decision = layout.source_nodes[edge.from_node_index].is_decision()
   let path = match edge.route {
-    Forward => {
-      let middle_y = (y1 + y2) / 2
-      "M \{x} \{y1} V \{middle_y} H \{target_x} V \{y2}"
-    }
+    Forward =>
+      if from_is_decision && target_x != x {
+        let start_x = if target_x < x { from.x } else { from.x + from.width }
+        "M \{start_x} \{from_center_y} H \{target_x} V \{y2}"
+      } else if from_is_decision {
+        "M \{x} \{y1} V \{y1 + 12} H \{target_x} V \{y2}"
+      } else {
+        let middle_y = (y1 + y2) / 2
+        "M \{x} \{y1} V \{middle_y} H \{target_x} V \{y2}"
+      }
     Horizontal =>
       "M \{from.x + from.width} \{from.y + from.height / 2} H \{to.x}"
     Goto => "M \{from.x} \{from.y} H \{to.x} V \{to.y}"
     BackwardLeft => {
-      let route_x = from.x.min(to.x) - LOOP_ROUTE_MARGIN
+      let route_x = from.x.min(to.x) - WHILE_BACK_MARGIN
       "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
     }
     BackwardRight => {
       let route_x = (from.x + from.width).max(to.x + to.width) +
-        LOOP_ROUTE_MARGIN
-      "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
+        WHILE_BACK_MARGIN
+      if from_is_decision {
+        "M \{from.x + from.width} \{from_center_y} H \{route_x} V \{to.y + to.height / 2}"
+      } else {
+        "M \{x} \{y1} V \{y1 + 10} H \{route_x} V \{from_center_y} H \{from.x + from.width}"
+      }
+    }
+    IfDownLeft => "M \{from.x} \{from_center_y} H \{target_x} V \{y2}"
+    IfDownRight =>
+      "M \{from.x + from.width} \{from_center_y} H \{target_x} V \{y2}"
+    SwitchLeft => "M \{from.x} \{from_center_y} H \{target_x} V \{y2}"
+    SwitchRight =>
+      "M \{from.x + from.width} \{from_center_y} H \{target_x} V \{y2}"
+    SwitchMiddle => "M \{x} \{y1} V \{y1 + 12} H \{target_x} V \{y2}"
+    WhileExitLeft => {
+      let route_x = from.x.min(to.x) - WHILE_BACK_MARGIN
+      "M \{from.x} \{from_center_y} H \{route_x} V \{to.y - VERTICAL_GAP} H \{target_x} V \{to.y}"
     }
   }
   output.empty("path", attributes=[
@@ -69,25 +99,65 @@ fn append_edge(
         Goto => "goto"
         BackwardLeft => "backward-left"
         BackwardRight => "backward-right"
+        IfDownLeft => "if-down-left"
+        IfDownRight => "if-down-right"
+        SwitchLeft => "switch-left"
+        SwitchRight => "switch-right"
+        SwitchMiddle => "switch-middle"
+        WhileExitLeft => "while-exit-left"
       },
     ),
     ("marker-end", "url(#activity-arrow)"),
   ])
   match edge.label {
     Some(label) => {
-      let (label_x, label_y) = match edge.route {
-        Forward => ((x + target_x) / 2, (y1 + y2) / 2 - 4)
+      let (label_x, label_y, anchor) = match edge.route {
+        Forward =>
+          if from_is_decision && target_x != x {
+            (target_x + 4, y1 + 11, "start")
+          } else if from_is_decision {
+            (target_x + 4, y1 + 11, "start")
+          } else {
+            (x + 4, y1 + 21, "start")
+          }
         Horizontal =>
-          ((from.x + from.width + to.x) / 2, from.y + from.height / 2 - 4)
-        Goto => ((from.x + to.x) / 2, (from.y + to.y) / 2)
-        BackwardLeft => (from.x.min(to.x) - LOOP_ROUTE_MARGIN, (y1 + y2) / 2)
-        BackwardRight =>
           (
-            (from.x + from.width).max(to.x + to.width) + LOOP_ROUTE_MARGIN,
-            (y1 + y2) / 2,
+            (from.x + from.width + to.x) / 2,
+            from.y + from.height / 2 - 4,
+            "middle",
           )
+        Goto => ((from.x + to.x) / 2, (from.y + to.y) / 2, "middle")
+        BackwardLeft =>
+          (from.x.min(to.x) - WHILE_BACK_MARGIN, (y1 + y2) / 2, "middle")
+        BackwardRight => {
+          let route_x = (from.x + from.width).max(to.x + to.width) +
+            WHILE_BACK_MARGIN
+          (route_x, (y1 + y2) / 2, "middle")
+        }
+        IfDownLeft => {
+          let width = small_metrics.measure(label).width
+          (from.x - width, from_center_y - 2, "end")
+        }
+        IfDownRight => (from.x + from.width, from_center_y - 2, "start")
+        SwitchLeft | SwitchRight | SwitchMiddle => (target_x, y2 - 20, "start")
+        WhileExitLeft => {
+          let width = small_metrics.measure(label).width
+          (from.x - width, from_center_y - 2, "end")
+        }
       }
-      append_label(output, label_x, label_y, label, font_metrics)
+      append_label(
+        output,
+        label_x,
+        label_y,
+        label,
+        small_metrics,
+        anchor=match anchor {
+          "start" => "start"
+          "end" => "end"
+          _ => "middle"
+        },
+        multiline_center=false,
+      )
     }
     None => ()
   }
@@ -125,6 +195,7 @@ fn append_node(
   layout : ActivityLayout,
   node_layout : ActivityNodeLayout,
   font_metrics : @metrics.FontMetrics,
+  small_metrics : @metrics.FontMetrics,
 ) -> Unit {
   let node = layout.source_nodes[node_layout.node_index]
   let x = node_layout.x
@@ -155,7 +226,7 @@ fn append_node(
       output.empty("circle", attributes=[
         ("cx", center_x.to_string()),
         ("cy", center_y.to_string()),
-        ("r", (height / 2 - 4).to_string()),
+        ("r", STOP_INNER.to_string()),
         ("class", "activity-stop-inner"),
       ])
     }
@@ -165,7 +236,16 @@ fn append_node(
         ("y", y.to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
+        ("rx", "2"),
         ("class", "activity-fork"),
+      ])
+    _ if node.is_exit() =>
+      output.empty("path", attributes=[
+        (
+          "d",
+          "M \{center_x} \{y} L \{x + width} \{center_y} L \{center_x} \{y + height} L \{x} \{center_y} Z",
+        ),
+        ("class", "activity-exit"),
       ])
     _ if node.is_decision() => {
       output.empty("path", attributes=[
@@ -177,7 +257,7 @@ fn append_node(
       ])
       match node.label() {
         Some(label) =>
-          append_label(output, center_x, center_y + 4, label, font_metrics)
+          append_label(output, center_x, center_y + 4, label, small_metrics)
         None => ()
       }
     }
@@ -197,7 +277,7 @@ fn append_node(
         ("y", y.to_string()),
         ("width", width.to_string()),
         ("height", height.to_string()),
-        ("rx", "10"),
+        ("rx", BOX_ROUND.to_string()),
         ("class", "activity-action"),
       ])
       append_label(output, center_x, center_y + 4, label, font_metrics)
@@ -224,7 +304,9 @@ pub fn ActivityDiagram::render_svg(
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   let layout = self.layout()
   let output = @svg.XmlWriter::new()
-  let font_metrics = self.style.font_metrics()
+  let family = self.style.font_family()
+  let font_metrics = self.style.font_metrics_for(family, font_size=ACTION_FONT)
+  let small_metrics = self.style.font_metrics_for(family, font_size=SMALL_FONT)
   let defaults = self.style.defaults()
   let line = self.style.diagram_line_color()
   let text = self.style.diagram_text_color()
@@ -260,7 +342,7 @@ pub fn ActivityDiagram::render_svg(
     @svg.separator_dash_pattern() +
     "}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
     line +
-    "}.activity-stop-outer,.activity-action,.activity-decision{fill:" +
+    "}.activity-stop-outer,.activity-action,.activity-decision,.activity-exit{fill:" +
     defaults.node +
     ";stroke:" +
     line +
@@ -296,8 +378,10 @@ pub fn ActivityDiagram::render_svg(
     ("fill", self.style.canvas_color()),
   ])
   layout.regions.each(region => append_region(output, region, font_metrics))
-  layout.edges.each(edge => append_edge(output, layout, edge, font_metrics))
-  layout.nodes.each(node => append_node(output, layout, node, font_metrics))
+  layout.edges.each(edge => append_edge(output, layout, edge, small_metrics))
+  layout.nodes.each(node => {
+    append_node(output, layout, node, font_metrics, small_metrics)
+  })
   output.close()
   output.to_string()
 }

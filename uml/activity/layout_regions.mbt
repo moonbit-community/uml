@@ -144,7 +144,7 @@ fn reposition_swimlanes(
 ) -> Int {
   let names = swimlane_names(nodes)
   guard !names.is_empty() else { return 0 }
-  let widths = names.map(_ => MINIMUM_ACTION_WIDTH + REGION_PADDING * 2)
+  let widths = names.map(_ => REGION_PADDING * 2)
   for layout in layouts {
     guard swimlane_for_node(nodes, layout.node_index) is Some(name) else {
       continue
@@ -153,7 +153,7 @@ fn reposition_swimlanes(
     widths[index] = widths[index].max(layout.width + REGION_PADDING * 2)
   }
   let positions = []
-  let mut cursor_x = CANVAS_PADDING
+  let mut cursor_x = CANVAS_LEFT
   for width in widths {
     positions.push(cursor_x)
     cursor_x += width + SWIMLANE_GAP
@@ -171,7 +171,7 @@ fn reposition_swimlanes(
       height: layout.height,
     }
   }
-  cursor_x - SWIMLANE_GAP + CANVAS_PADDING
+  cursor_x - SWIMLANE_GAP + CANVAS_LEFT
 }
 
 ///|
