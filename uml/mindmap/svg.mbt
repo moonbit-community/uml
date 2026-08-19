@@ -22,7 +22,7 @@ fn append_mindmap_text(
   .split("\n")
   .eachi((index, line) => {
     let text = line.to_owned()
-    let measured = text_metrics.measure(text)
+    let measured = text_metrics.measure(mindmap_visible_text(text))
     let dy = if index == 0 { 0 } else { line_height }
     output.open(
       "tspan",
