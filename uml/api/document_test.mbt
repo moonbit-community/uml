@@ -48,7 +48,12 @@ test "participant shapes classify as sequence only with messages" {
     is Sequence,
     true,
   )
-  @test.assert_eq(parse("@startuml\nactor User\n@enduml").kind() is Class, true)
+  // A bare actor declaration is a description element: PlantUML's class
+  // factory rejects it, so it renders with the use-case facade.
+  @test.assert_eq(
+    parse("@startuml\nactor User\n@enduml").kind() is UseCase,
+    true,
+  )
 }
 
 ///|
@@ -134,9 +139,31 @@ test "class content decides between class and deployment grammars" {
   )
   // Class-only declarations next to description leaves are an error in
   // PlantUML; the class facade reports it as a mixing error.
-  @test.assert_raise(
-    () => ignore(parse("@startuml\nnode X\nclass A\n@enduml")),
-  )
+  @test.assert_raise(() => ignore(parse("@startuml\nnode X\nclass A\n@enduml")))
+}
+
+///|
+test "association classes stay in the class grammar" {
+  // `(Student, Course) -- Enrollment` is an association class, not a
+  // use-case shape: PlantUML renders it with the class factory.
+  let source = "@startuml\n(Student, Course) -- Enrollment\nEnrollment --> Student\n@enduml"
+  @test.assert_eq(parse(source).kind() is Class, true)
+}
+
+///|
+test "deployment symbols win over a use-case declaration" {
+  // A node/cloud/database source mentioning a use case is still a
+  // description (deployment) diagram in PlantUML, never a use-case diagram.
+  let source = "@startuml\nnode Web\nusecase \"Login\" as login\nlogin ..> Web : uses\n@enduml"
+  @test.assert_eq(parse(source).kind() is Deployment, true)
+}
+
+///|
+test "allowmixing keeps description elements in the class grammar" {
+  // With allowmixing the class factory accepts description declarations, so
+  // actor/usecase/component leaves render as a class diagram.
+  let source = "@startuml\nallowmixing\nactor Customer\nusecase \"Pay\" as Pay\ncomponent C\nCustomer --> Pay\n@enduml"
+  @test.assert_eq(parse(source).kind() is Class, true)
 }
 
 ///|

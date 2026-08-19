@@ -36,8 +36,11 @@ pub fn Diagram::render_svg(
   match self {
     Sequence(diagram) => diagram.render_svg(color_scheme~)
     Activity(diagram) => diagram.render_svg(color_scheme~)
-    Class(diagram) | Object(diagram) | Component(diagram) | UseCase(diagram) |
-    Deployment(diagram) =>
+    Class(diagram)
+    | Object(diagram)
+    | Component(diagram)
+    | UseCase(diagram)
+    | Deployment(diagram) =>
       diagram.render_svg(color_scheme~, class_member_collapsible~)
     State(diagram) => diagram.render_svg(color_scheme~)
     Mindmap(diagram) => diagram.render_svg(color_scheme~)
@@ -73,7 +76,8 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 /// Parse a source into the diagram family its syntax selects.
 ///
 /// The `is_*_source` heuristics run in priority order, mirroring PlantUML's
-/// per-diagram factory selection. A source matching none of them fails.
+/// per-diagram factory selection; the entity-grammar facades are selected by
+/// one classifier scan. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
   match () {
     _ if @mbti.is_mbti_source(source) => { diagram: Mbti(@mbti.parse(source)) }
@@ -91,24 +95,35 @@ pub fn parse(source : String) -> Document raise {
     _ if is_activity_source(source) =>
       { diagram: Activity(@activity.parse(source)) }
     _ if is_state_source(source) => { diagram: State(@state.parse(source)) }
-    _ if is_usecase_source(source) =>
-      { diagram: UseCase(@entity.parse(source, family=@entity.UseCaseDiagram)) }
-    _ if is_component_source(source) =>
-      {
-        diagram: Component(
-          @entity.parse(source, family=@entity.ComponentDiagram),
-        ),
+    _ if entity_family_from_lines(meaningful_source_lines(source))
+      is Some(family) =>
+      match family {
+        ClassDiagram =>
+          { diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)) }
+        ObjectDiagram =>
+          {
+            diagram: Object(@entity.parse(source, family=@entity.ObjectDiagram)),
+          }
+        ComponentDiagram =>
+          {
+            diagram: Component(
+              @entity.parse(source, family=@entity.ComponentDiagram),
+            ),
+          }
+        UseCaseDiagram =>
+          {
+            diagram: UseCase(
+              @entity.parse(source, family=@entity.UseCaseDiagram),
+            ),
+          }
+        DeploymentDiagram =>
+          {
+            diagram: Deployment(
+              @entity.parse(source, family=@entity.DeploymentDiagram),
+            ),
+          }
+        Mbti => raise @parse.SyntaxError(1, "unreachable mbti family")
       }
-    _ if is_deployment_source(source) =>
-      {
-        diagram: Deployment(
-          @entity.parse(source, family=@entity.DeploymentDiagram),
-        ),
-      }
-    _ if is_object_source(source) =>
-      { diagram: Object(@entity.parse(source, family=@entity.ObjectDiagram)) }
-    _ if is_class_source(source) =>
-      { diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)) }
     _ => raise @parse.SyntaxError(1, "unknown diagram")
   }
 }
@@ -175,12 +190,64 @@ fn has_component_declaration(line : String) -> Bool {
 }
 
 ///|
+/// Whether a line declares a use-case element: a `usecase`/`actor`
+/// declaration, a `(usecase)` or `:actor:` shape, or a relation pointing at
+/// such a shape. An association-class declaration `(A, B) -- C` is a class
+/// construct and is excluded.
+fn is_usecase_element(line : String) -> Bool {
+  starts_with_keyword(line, actor_keywords) || has_usecase_declaration(line)
+}
+
+///|
+/// A use-case construct that excludes a source from the sequence grammar: a
+/// `usecase` declaration or a `(shape)`/`:actor:` leaf. Bare `actor`
+/// declarations stay ambiguous (sequence participant vs use-case actor) and
+/// are resolved by the message arrows.
 fn has_usecase_declaration(line : String) -> Bool {
   let trimmed = line.trim().to_owned()
   starts_with_keyword(line, usecase_keywords) ||
-  (trimmed.has_prefix("(") && !trimmed.has_prefix("()")) ||
+  (
+    trimmed.has_prefix("(") &&
+    !trimmed.has_prefix("()") &&
+    !is_association_class_declaration(trimmed)
+  ) ||
+  is_actor_shape(trimmed) ||
   trimmed.contains(">(") ||
   trimmed.contains("> (")
+}
+
+///|
+/// Whether the line starts with a `:actor:` shape.
+fn is_actor_shape(line : String) -> Bool {
+  guard line.has_prefix(":") else { return false }
+  let cursor = @parse.Cursor::new(line)
+  ignore(cursor.advance())
+  ignore(cursor.skip_while(char => char != ':'))
+  cursor.consume(':')
+}
+
+///|
+/// An association-class declaration `(A, B) -- C` starts with a parenthesis
+/// pair but belongs to the class grammar: the pair contains a comma and a
+/// relation arrow follows it.
+fn is_association_class_declaration(line : String) -> Bool {
+  let trimmed = line.trim().to_owned()
+  guard trimmed.has_prefix("(") else { return false }
+  let cursor = @parse.Cursor::new(trimmed)
+  ignore(cursor.advance())
+  let mut comma = false
+  while cursor.peek() is Some(char) && char != ')' {
+    if char == ',' {
+      comma = true
+    }
+    ignore(cursor.advance())
+  }
+  guard comma && cursor.consume(')') else { return false }
+  ignore(cursor.skip_while(char => char.is_whitespace()))
+  match cursor.peek() {
+    Some(char) => char == '-' || char == '.' || char == '<' || char == '>'
+    None => false
+  }
 }
 
 ///|
@@ -221,15 +288,6 @@ fn is_object_declaration(line : String) -> Bool {
 }
 
 ///|
-fn is_non_object_entity_declaration(line : String) -> Bool {
-  let lower = line.to_lower()
-  is_class_declaration(line) &&
-  !is_object_declaration(line) &&
-  !lower.has_prefix("package ") &&
-  !lower.has_prefix("namespace ")
-}
-
-///|
 /// Returns whether the source contains a sequence-diagram-specific command.
 ///
 /// This deliberately covers commands that cannot be inferred from an arrow
@@ -253,25 +311,18 @@ pub fn is_sequence_source(input : String) -> Bool {
 }
 
 ///|
-/// Returns whether the source contains an unambiguous component-diagram
-/// construct. Component diagrams share PlantUML's description grammar with
-/// several other families, so sequence-only syntax is checked first.
-pub fn is_component_source(input : String) -> Bool {
-  guard !is_sequence_source(input) else { return false }
-  for line in meaningful_source_lines(input) {
-    if has_component_declaration(line) {
-      return true
-    }
-    let trimmed = line.trim().to_owned()
-    if trimmed.has_prefix("[") &&
-      (
-        has_message_arrow(trimmed) ||
-        @parse.find_unquoted_literal(trimmed, "--") is Some(_)
-      ) {
-      return true
-    }
-  }
-  false
+/// The entity-grammar family a source line belongs to. Lines are classified
+/// once per scan and aggregated by `entity_family_from_lines`, mirroring
+/// PlantUML's per-factory command lists without reparsing the source.
+priv enum EntityLineKind {
+  MixingDirective
+  ClassOnlyDeclaration
+  ObjectDeclaration
+  ComponentDeclaration
+  UseCaseDeclaration
+  DeploymentDeclaration
+  RelationLine
+  CommonLine
 }
 
 ///|
@@ -291,74 +342,98 @@ fn is_class_only_declaration(line : String) -> Bool {
 }
 
 ///|
-/// Returns whether the source selects PlantUML's description factory, the
-/// grammar behind deployment diagrams.
-///
-/// The Java class factory is tried first: it parses these declarations only
-/// after `allowmixing`, and it parses symbol-keyword groups (`node X {`) even
-/// without it. An `allowmixing` source therefore stays a class diagram, and a
-/// source mixing description elements with class-only declarations either
-/// becomes a class diagram (group content) or an error, never a deployment
-/// diagram.
-pub fn is_deployment_source(input : String) -> Bool {
-  guard !is_sequence_source(input) else { return false }
-  guard !is_usecase_source(input) else { return false }
-  guard !is_component_source(input) else { return false }
-  let lines = meaningful_source_lines(input)
-  lines.any(has_deployment_declaration) &&
-  !lines.any(is_class_only_declaration) &&
-  !lines.any(is_mixing_directive)
+fn has_component_arrow(line : String) -> Bool {
+  let trimmed = line.trim().to_owned()
+  trimmed.has_prefix("[") &&
+  (
+    has_message_arrow(trimmed) ||
+    @parse.find_unquoted_literal(trimmed, "--") is Some(_)
+  )
 }
 
 ///|
-/// Returns whether the source contains a use-case-specific declaration.
-pub fn is_usecase_source(input : String) -> Bool {
-  guard !is_sequence_source(input) else { return false }
-  meaningful_source_lines(input).any(has_usecase_declaration)
+/// Classifies a line in a single scan. Keyword and shape checks are ordered
+/// by specificity: association classes and class-only keywords beat shapes,
+/// and `usecase`/`actor`/`(...)` leaves beat plain deployment keywords.
+fn classify_entity_line(line : String) -> EntityLineKind {
+  if is_mixing_directive(line) {
+    return MixingDirective
+  }
+  if is_association_class_declaration(line) ||
+    is_class_only_declaration(line) ||
+    line.trim().has_prefix("<>") ||
+    line.trim().to_lower().has_prefix("mix_") {
+    return ClassOnlyDeclaration
+  }
+  if is_object_declaration(line) {
+    return ObjectDeclaration
+  }
+  if has_component_declaration(line) || has_component_arrow(line) {
+    return ComponentDeclaration
+  }
+  if is_usecase_element(line) {
+    return UseCaseDeclaration
+  }
+  if has_deployment_declaration(line) {
+    return DeploymentDeclaration
+  }
+  if class_relation_arrows.any(arrow => {
+      @parse.find_unquoted_literal(line, arrow) is Some(_)
+    }) {
+    return RelationLine
+  }
+  CommonLine
 }
 
 ///|
-/// Returns whether the first entity declaration selects the object facade.
+/// Selects the entity-grammar family of a source in a single scan.
 ///
-/// Object commands are parsed by PlantUML's class-diagram factory, but this
-/// project retains an object facade so its SVG behavior can evolve separately.
-pub fn is_object_source(input : String) -> Bool {
-  guard !is_sequence_source(input) else { return false }
-  for line in meaningful_source_lines(input) {
-    if is_object_declaration(line) {
-      return true
-    }
-    if is_non_object_entity_declaration(line) {
-      return false
+/// The aggregation mirrors PlantUML's factory order: the class grammar wins
+/// with `allowmixing` or any class-only declaration (a mixing source then
+/// reports the class facade's mixing error), and description elements are
+/// split into the use-case, component, and deployment facades by the
+/// strongest element present.
+fn entity_family_from_lines(lines : Array[String]) -> @entity.EntityFamily? {
+  let mut mixing = false
+  let mut class_only = false
+  let mut object = false
+  let mut component = false
+  let mut usecase = false
+  let mut deployment = false
+  let mut relation = false
+  for line in lines {
+    match classify_entity_line(line) {
+      MixingDirective => mixing = true
+      ClassOnlyDeclaration => class_only = true
+      ObjectDeclaration => object = true
+      ComponentDeclaration => component = true
+      UseCaseDeclaration => usecase = true
+      DeploymentDeclaration => deployment = true
+      RelationLine => relation = true
+      CommonLine => ()
     }
   }
-  false
-}
-
-///|
-/// Returns whether the source contains a class-diagram-specific construct.
-///
-/// PlantUML selects a diagram factory from the first meaningful command. The
-/// facade deliberately uses only unambiguous class constructs here, so a
-/// sequence message such as `Alice -> Bob` remains a sequence diagram.
-pub fn is_class_source(input : String) -> Bool {
-  guard !is_sequence_source(input) else { return false }
-  guard !is_usecase_source(input) else { return false }
-  for line in meaningful_source_lines(input) {
-    let lower = line.to_lower()
-    if is_class_declaration(line) ||
-      class_relation_arrows.any(arrow => {
-        @parse.find_unquoted_literal(line, arrow) is Some(_)
-      }) ||
-      lower.has_prefix("allowmixing") ||
-      lower.has_prefix("mix_") ||
-      lower.has_prefix("note on link") ||
-      lower.has_prefix("constraint on links") ||
-      line.has_prefix("<>") {
-      return true
-    }
+  if mixing || class_only {
+    return Some(@entity.ClassDiagram)
   }
-  false
+  if usecase && !component && !deployment {
+    return Some(@entity.UseCaseDiagram)
+  }
+  if component {
+    return Some(@entity.ComponentDiagram)
+  }
+  if deployment {
+    return Some(@entity.DeploymentDiagram)
+  }
+  if object {
+    return Some(@entity.ObjectDiagram)
+  }
+  // A source with only relations and common lines belongs to the class
+  // grammar, which PlantUML tries before the description factory.
+  if relation {
+    return Some(@entity.ClassDiagram)
+  }
+  None
 }
 
 ///|

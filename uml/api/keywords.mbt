@@ -30,8 +30,8 @@ pub let component_keywords : FixedArray[String] = ["component"]
 /// `allowmixing` present the class factory wins in PlantUML, so those sources
 /// stay class diagrams.
 pub let deployment_keywords : FixedArray[String] = [
-  "node", "folder", "frame", "cloud", "storage", "agent", "artifact", "card",
-  "rectangle", "hexagon", "label", "action", "process", "stack", "file", "person",
+  "node", "folder", "frame", "cloud", "storage", "agent", "artifact", "card", "rectangle",
+  "hexagon", "label", "action", "process", "stack", "file", "person",
 ]
 
 ///|
@@ -39,8 +39,8 @@ pub let deployment_keywords : FixedArray[String] = [
 /// factory. A source mixing them with description declarations stays an
 /// error unless `allowmixing` moves it to the class grammar.
 pub let class_only_keywords : FixedArray[String] = [
-  "class", "enum", "annotation", "exception", "metaclass", "stereotype",
-  "dataclass", "record", "struct", "protocol", "abstract",
+  "class", "enum", "annotation", "exception", "metaclass", "stereotype", "dataclass",
+  "record", "struct", "protocol", "abstract",
 ]
 
 ///|
@@ -61,6 +61,10 @@ pub let object_keywords : FixedArray[String] = ["object", "map", "json"]
 ///|
 /// Keywords that select PlantUML's use-case grammar.
 pub let usecase_keywords : FixedArray[String] = ["usecase", "usecase/"]
+
+///|
+/// Actor keywords of the use-case grammar (`CommandCreateElementFull.ALL_TYPES`).
+pub let actor_keywords : FixedArray[String] = ["actor", "actor/"]
 
 ///|
 /// Arrow dressings that only sequence-message syntax uses.
