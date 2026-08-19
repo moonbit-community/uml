@@ -166,12 +166,13 @@ fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point 
       // The spline endpoint is off the node (graphviz routing already failed):
       // fall back to the boundary facing the node center, then to the closest
       // boundary point.
-      match clip_ray_to_rect_dir(
-        endpoint,
-        bounds.center.x - endpoint.x,
-        bounds.center.y - endpoint.y,
-        bounds,
-      ) {
+      match
+        clip_ray_to_rect_dir(
+          endpoint,
+          bounds.center.x - endpoint.x,
+          bounds.center.y - endpoint.y,
+          bounds,
+        ) {
         Some(hit) => hit
         None => closest_point_on_rect(endpoint, bounds)
       }
@@ -206,10 +207,7 @@ fn clip_ray_to_ellipse(
     let root = discriminant.sqrt()
     let first = (-b - root) / (2.0 * a)
     let second = (-b + root) / (2.0 * a)
-    keep_nearest_nonnegative(
-      keep_nearest_nonnegative(None, first),
-      second,
-    )
+    keep_nearest_nonnegative(keep_nearest_nonnegative(None, first), second)
   } else {
     None
   }
@@ -220,10 +218,7 @@ fn clip_ray_to_ellipse(
       // boundary facing the node center.
       guard normalized > 0.0 else { return endpoint }
       let scale = 1.0 / normalized.sqrt()
-      point(
-        bounds.center.x + px * scale,
-        bounds.center.y + py * scale,
-      )
+      point(bounds.center.x + px * scale, bounds.center.y + py * scale)
     }
   }
 }
