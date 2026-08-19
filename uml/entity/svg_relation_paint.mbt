@@ -467,13 +467,14 @@ fn append_relation(
   class_member_collapsible : Bool,
 ) -> Unit {
   let usecase = diagram.family.is_usecase()
-  guard entity_index(diagram, relation.left) is Some(left_index) else { return }
-  guard entity_index(diagram, relation.right) is Some(right_index) else {
+  let left_index = entity_index(diagram, relation.left)
+  let right_index = entity_index(diagram, relation.right)
+  if left_index is Some(index) && diagram.entities[index].is_removed {
     return
   }
-  let left = diagram.entities[left_index]
-  let right = diagram.entities[right_index]
-  guard !left.is_removed && !right.is_removed else { return }
+  if right_index is Some(index) && diagram.entities[index].is_removed {
+    return
+  }
   let ((x1, y1), (x2, y2)) = relation_endpoints(
     layout, diagram, relation, left_index, right_index, text_metrics,
   )
@@ -523,7 +524,7 @@ fn append_relation(
     None => None
   }
   let (left_endpoint, right_endpoint) = edge_endpoints.unwrap_or(
-    ((x1.to_double(), y1.to_double()), (x2.to_double(), y2.to_double())),
+    ((x1, y1), (x2, y2)),
   )
   match relation.url {
     Some(url) =>
@@ -548,12 +549,20 @@ fn append_relation(
                   point.pair()
                 },
               )
-              let left_header = relation_endpoint_header(
-                layout, diagram, left_index, text_metrics, class_member_collapsible,
-              )
-              let right_header = relation_endpoint_header(
-                layout, diagram, right_index, text_metrics, class_member_collapsible,
-              )
+              let left_header = match left_index {
+                Some(index) =>
+                  relation_endpoint_header(
+                    layout, diagram, index, text_metrics, class_member_collapsible,
+                  )
+                None => None
+              }
+              let right_header = match right_index {
+                Some(index) =>
+                  relation_endpoint_header(
+                    layout, diagram, index, text_metrics, class_member_collapsible,
+                  )
+                None => None
+              }
               let left_contact = graphviz
                 .node(relation.left)
                 .map(node => node.contact(point_from_pair(first_path[0])))
@@ -599,22 +608,22 @@ fn append_relation(
     _ => ()
   }
   if !drew_spline {
-    let left_header = relation_endpoint_header(
-      layout, diagram, left_index, text_metrics, class_member_collapsible,
-    )
-    let right_header = relation_endpoint_header(
-      layout, diagram, right_index, text_metrics, class_member_collapsible,
-    )
-    let left_states = relation_endpoint_states(
-      (x1.to_double(), y1.to_double()),
-      None,
-      left_header,
-    )
-    let right_states = relation_endpoint_states(
-      (x2.to_double(), y2.to_double()),
-      None,
-      right_header,
-    )
+    let left_header = match left_index {
+      Some(index) =>
+        relation_endpoint_header(
+          layout, diagram, index, text_metrics, class_member_collapsible,
+        )
+      None => None
+    }
+    let right_header = match right_index {
+      Some(index) =>
+        relation_endpoint_header(
+          layout, diagram, index, text_metrics, class_member_collapsible,
+        )
+      None => None
+    }
+    let left_states = relation_endpoint_states((x1, y1), None, left_header)
+    let right_states = relation_endpoint_states((x2, y2), None, right_header)
     append_relation_state_groups(
       output,
       relation_index,

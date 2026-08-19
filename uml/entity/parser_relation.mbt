@@ -195,16 +195,34 @@ fn lollipop_arrow(arrow : String, at_start : Bool) -> Bool? {
 }
 
 ///|
+/// The qualified name of a package referenced by a relation endpoint, so the
+/// relation attaches to the group instead of creating a phantom entity
+/// (PlantUML `CommandLinkElement.getDummy` returns the group for group names).
+fn Parser::package_code(self : Parser, raw : String) -> String? {
+  let clean = @parse.unquote_identifier(raw)
+  for group in self.packages {
+    if group.qualified_name == clean || group.name == clean {
+      return Some(group.qualified_name)
+    }
+  }
+  None
+}
+
+///|
 fn Parser::ensure_relation_entity(
   self : Parser,
   raw : String,
   endpoint : RelationEnd,
 ) -> String {
-  match relation_shape(raw) {
-    Some((code, kind)) =>
-      self.ensure_entity_as(@parse.unquote_identifier(code), kind)
-    None if endpoint is Parenthesis => self.ensure_entity_as(raw, Interface)
-    None => self.ensure_entity(raw)
+  match self.package_code(raw) {
+    Some(qualified_name) => qualified_name
+    None =>
+      match relation_shape(raw) {
+        Some((code, kind)) =>
+          self.ensure_entity_as(@parse.unquote_identifier(code), kind)
+        None if endpoint is Parenthesis => self.ensure_entity_as(raw, Interface)
+        None => self.ensure_entity(raw)
+      }
   }
 }
 

@@ -177,92 +177,133 @@ fn ClassLayout::content_bounds(
 }
 
 ///|
+/// The laid-out rectangle of a package (group) referenced by a relation.
+fn ClassLayout::group_rect(
+  self : ClassLayout,
+  diagram : EntityDiagram,
+  code : String,
+) -> (Double, Double, Double, Double)? {
+  match self.graphviz {
+    Some(graphviz) =>
+      for package_index, group in diagram.packages {
+        if group.qualified_name == code {
+          for package in graphviz.packages {
+            if package.package_index == package_index {
+              return Some((package.x, package.y, package.width, package.height))
+            }
+          }
+        }
+      }
+    None => ()
+  }
+  None
+}
+
+///|
 fn relation_endpoints(
   layout : ClassLayout,
   diagram : EntityDiagram,
   relation : Relation,
-  left_index : Int,
-  right_index : Int,
+  left_index : Int?,
+  right_index : Int?,
   text_metrics : ClassTextMetrics,
-) -> ((Int, Int), (Int, Int)) {
-  let (left_x, left_y, left_width, left_height) = layout.entity_rect(
-    diagram, left_index, text_metrics,
-  )
-  let (right_x, right_y, right_width, right_height) = layout.entity_rect(
-    diagram, right_index, text_metrics,
-  )
-  let left_center = (left_x + left_width / 2, left_y + left_height / 2)
-  let right_center = (right_x + right_width / 2, right_y + right_height / 2)
-  let left_endpoint = diagram.entities[left_index].render_capability(
-      diagram.family,
-    ).relation_endpoint
-  let right_endpoint = diagram.entities[right_index].render_capability(
-      diagram.family,
-    ).relation_endpoint
-  let (x1, y1) = match left_endpoint {
+) -> ((Double, Double), (Double, Double)) {
+  let endpoint_center = fn(index : Int?, code : String) -> (Double, Double) {
+    match index {
+      Some(index) => {
+        let (x, y, width, height) = layout.entity_rect(
+          diagram, index, text_metrics,
+        )
+        (
+          x.to_double() + width.to_double() / 2.0,
+          y.to_double() + height.to_double() / 2.0,
+        )
+      }
+      None =>
+        match layout.group_rect(diagram, code) {
+          Some((x, y, width, height)) => (x + width / 2.0, y + height / 2.0)
+          None => (0.0, 0.0)
+        }
+    }
+  }
+  let endpoint_style = fn(index : Int?) -> EntityRelationEndpointCapability {
+    match index {
+      Some(index) =>
+        diagram.entities[index].render_capability(diagram.family).relation_endpoint
+      None => CenterEndpoint
+    }
+  }
+  let left_center = endpoint_center(left_index, relation.left)
+  let right_center = endpoint_center(right_index, relation.right)
+  let boundary_endpoint = fn(
+    index : Int?,
+    port : String?,
+    other_center : (Double, Double),
+  ) -> (Double, Double) {
+    match index {
+      Some(index) => {
+        let (x, y, width, height) = layout.entity_rect(
+          diagram, index, text_metrics,
+        )
+        let target_x = other_center.0.floor().to_int()
+        let target_y = other_center.1.floor().to_int()
+        let endpoint = match
+          diagram.entities[index].map_port_endpoint(
+            port, text_metrics, x, y, width, target_x,
+          ) {
+          Some(endpoint) => endpoint
+          None =>
+            usecase_relation_endpoint(x, y, width, height, target_x, target_y)
+        }
+        (endpoint.0.to_double(), endpoint.1.to_double())
+      }
+      None => other_center
+    }
+  }
+  let (x1, y1) = match endpoint_style(left_index) {
     PortOrShapeBoundaryEndpoint =>
-      match
-        diagram.entities[left_index].map_port_endpoint(
-          relation.left_port,
-          text_metrics,
-          left_x,
-          left_y,
-          left_width,
-          right_center.0,
-        ) {
-        Some(endpoint) => endpoint
-        None =>
-          usecase_relation_endpoint(
+      boundary_endpoint(left_index, relation.left_port, right_center)
+    ShapeBoundaryEndpoint =>
+      match left_index {
+        Some(index) => {
+          let (left_x, left_y, left_width, left_height) = layout.entity_rect(
+            diagram, index, text_metrics,
+          )
+          let endpoint = usecase_relation_endpoint(
             left_x,
             left_y,
             left_width,
             left_height,
-            right_center.0,
-            right_center.1,
+            right_center.0.floor().to_int(),
+            right_center.1.floor().to_int(),
           )
+          (endpoint.0.to_double(), endpoint.1.to_double())
+        }
+        None => left_center
       }
-    ShapeBoundaryEndpoint =>
-      usecase_relation_endpoint(
-        left_x,
-        left_y,
-        left_width,
-        left_height,
-        right_center.0,
-        right_center.1,
-      )
     CenterEndpoint => left_center
   }
-  let (x2, y2) = match right_endpoint {
+  let (x2, y2) = match endpoint_style(right_index) {
     PortOrShapeBoundaryEndpoint =>
-      match
-        diagram.entities[right_index].map_port_endpoint(
-          relation.right_port,
-          text_metrics,
-          right_x,
-          right_y,
-          right_width,
-          left_center.0,
-        ) {
-        Some(endpoint) => endpoint
-        None =>
-          usecase_relation_endpoint(
+      boundary_endpoint(right_index, relation.right_port, left_center)
+    ShapeBoundaryEndpoint =>
+      match right_index {
+        Some(index) => {
+          let (right_x, right_y, right_width, right_height) = layout.entity_rect(
+            diagram, index, text_metrics,
+          )
+          let endpoint = usecase_relation_endpoint(
             right_x,
             right_y,
             right_width,
             right_height,
-            left_center.0,
-            left_center.1,
+            left_center.0.floor().to_int(),
+            left_center.1.floor().to_int(),
           )
+          (endpoint.0.to_double(), endpoint.1.to_double())
+        }
+        None => right_center
       }
-    ShapeBoundaryEndpoint =>
-      usecase_relation_endpoint(
-        right_x,
-        right_y,
-        right_width,
-        right_height,
-        left_center.0,
-        left_center.1,
-      )
     CenterEndpoint => right_center
   }
   ((x1, y1), (x2, y2))

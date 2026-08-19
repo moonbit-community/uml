@@ -672,7 +672,12 @@ fn fallback_relation_label_layout(
     }
   }
   let ((left_x, left_y), (right_x, right_y)) = relation_endpoints(
-    layout, diagram, relation, left_index, right_index, text_metrics,
+    layout,
+    diagram,
+    relation,
+    Some(left_index),
+    Some(right_index),
+    text_metrics,
   )
   relation_label_layout_from_geometry(
     relation_index,
@@ -680,8 +685,8 @@ fn fallback_relation_label_layout(
     text_metrics,
     diagram.family.is_usecase(),
     [],
-    (left_x.to_double(), left_y.to_double()),
-    (right_x.to_double(), right_y.to_double()),
+    (left_x, left_y),
+    (right_x, right_y),
     None,
     None,
     None,

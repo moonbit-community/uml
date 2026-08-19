@@ -154,14 +154,22 @@ fn note_size(note : Note, text_metrics : ClassTextMetrics) -> (Int, Int) {
 }
 
 ///|
-fn Relation::graphviz_minlen(self : Relation) -> Int {
-  let mut segments = 0
-  for char in self.raw_arrow {
-    if char == '-' || char == '.' {
-      segments += 1
+/// PlantUML parity: `CommandLinkElement` collapses the queue to a single
+/// dash whenever an explicit left/right direction word is present, so those
+/// links always carry dot `minlen=0`. Every other link counts its stroke
+/// characters (`-=~.`) and maps `queue.length()` to `minlen = length - 1`.
+pub fn Relation::graphviz_minlen(self : Relation) -> Int {
+  if self.direction is Leftward || self.direction is Rightward {
+    0
+  } else {
+    let mut segments = 0
+    for char in self.raw_arrow {
+      if char == '-' || char == '.' || char == '=' || char == '~' {
+        segments += 1
+      }
     }
+    (segments - 1).max(0)
   }
-  (segments - 1).max(0)
 }
 
 ///|
@@ -264,16 +272,64 @@ fn EntityDiagram::graphviz_layout(
     }
   }
   let relation_names : Map[Int, String] = Map([])
+  let source_ports : Array[String] = []
+  let sink_ports : Array[String] = []
+  for index, entity in self.entities {
+    guard !entity.is_hidden && !entity.is_removed else { continue }
+    match entity.kind {
+      PortIn => source_ports.push(graphviz_node_name(index))
+      PortOut => sink_ports.push(graphviz_node_name(index))
+      _ => ()
+    }
+  }
+  if source_ports.length() > 0 {
+    let rank = graph.subgraph(name="rank_source_ports")
+    rank.set_attr("rank", "source")
+    for name in source_ports {
+      let _ = rank.node(name)
+    }
+  }
+  if sink_ports.length() > 0 {
+    let rank = graph.subgraph(name="rank_sink_ports")
+    rank.set_attr("rank", "sink")
+    for name in sink_ports {
+      let _ = rank.node(name)
+    }
+  }
+  let group_point_names : Map[String, String] = Map([])
+  let group_point_node = fn(code : String) -> String? {
+    match group_point_names.get(code) {
+      Some(name) => Some(name)
+      None =>
+        match package_content_graphs.get(code) {
+          Some(cluster) => {
+            let name = "group_point_" + code
+            let node = cluster.node(name)
+            @graphviz.set_fixed_node_size(node, 0.72, 0.72, shape="point")
+            group_point_names[code] = name
+            Some(name)
+          }
+          None => None
+        }
+    }
+  }
   for relation_index, relation in self.relations {
-    guard node_names.contains(relation.left) &&
-      node_names.contains(relation.right) else {
+    let mut tail_name = node_names.get(relation.left)
+    if tail_name is None {
+      tail_name = group_point_node(relation.left)
+    }
+    let mut head_name = node_names.get(relation.right)
+    if head_name is None {
+      head_name = group_point_node(relation.right)
+    }
+    guard tail_name is Some(tail_name) && head_name is Some(head_name) else {
       continue
     }
     if usecase && relation.dotted && relation.direction is Automatic {
       let rank = graph.subgraph(name="rank_dependency_\{relation_index}")
       rank.set_attr("rank", "same")
-      let _ = rank.node(node_names[relation.left])
-      let _ = rank.node(node_names[relation.right])
+      let _ = rank.node(tail_name)
+      let _ = rank.node(head_name)
     }
     let tail_port = self
       .entity(relation.left)
@@ -283,8 +339,8 @@ fn EntityDiagram::graphviz_layout(
       .entity(relation.right)
       .map(entity => entity.graphviz_port(relation.right_port))
       .unwrap_or(None)
-    let tail = graph.node(node_names[relation.left])
-    let head = graph.node(node_names[relation.right])
+    let tail = graph.node(tail_name)
+    let head = graph.node(head_name)
     let edge = match (tail_port, head_port) {
       (Some(tail_port), Some(head_port)) =>
         graph.edge(
@@ -359,6 +415,18 @@ fn EntityDiagram::graphviz_layout(
     if relation.dotted {
       edge.set_attr("style", "dotted")
     }
+  }
+  let magma_edges = self.magma_grid_edges()
+  for magma_seq in 0..<magma_edges.length() {
+    let (tail, head, minlen) = magma_edges[magma_seq]
+    let edge = graph.edge(
+      graph.node(node_names[tail]),
+      graph.node(node_names[head]),
+      name="magma\{magma_seq}",
+    )
+    edge.set_attr("style", "invis")
+    edge.set_attr("minlen", "\{minlen}")
+    edge.set_attr("dir", "none")
   }
   let note_names : Map[String, Int] = Map([])
   let note_edge_names : Map[Int, String] = Map([])
