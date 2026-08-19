@@ -496,6 +496,7 @@ fn EntityRenderCapability::graphviz_shape(
     (Ellipse, _) => "ellipse"
     (Circle, NoPorts) => "circle"
     (Circle, _) => "circle"
+    (InterfaceCircle, _) => "box"
     (Hexagon, _) => "hexagon"
   }
 }

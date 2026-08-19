@@ -870,6 +870,7 @@ priv enum NodeShape {
   Box
   Ellipse
   Circle
+  InterfaceCircle
   Hexagon
 }
 
@@ -1396,7 +1397,15 @@ fn Entity::node_geometry(
       self.component_geometry(text_metrics)
     (DescriptionHeader, NoBody, DescriptionRenderer) => {
       let (width, height) = self.description_geometry(text_metrics)
-      { width, height, shape: capability.shape }
+      {
+        width,
+        height,
+        shape: if self.description_symbol() is CircleSymbol {
+          InterfaceCircle
+        } else {
+          capability.shape
+        },
+      }
     }
     (DescriptionHeader, NoBody, PortRenderer) =>
       { width: PORT_SIZE, height: PORT_SIZE, shape: Box }

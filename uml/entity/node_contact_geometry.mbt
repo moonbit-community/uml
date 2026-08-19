@@ -106,21 +106,20 @@ fn keep_nearest_nonnegative(current : Double?, candidate : Double) -> Double? {
 }
 
 ///|
-fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point {
+/// Clip a ray (origin `endpoint`, direction `(dx, dy)`) against an
+/// axis-aligned rectangle. Returns the first boundary hit, or `None` when the
+/// ray misses the rectangle.
+fn clip_ray_to_rect_dir(
+  endpoint : Point,
+  dx : Double,
+  dy : Double,
+  bounds : Rect,
+) -> Point? {
   let left = bounds.center.x - bounds.width / 2.0
   let right = bounds.center.x + bounds.width / 2.0
   let top = bounds.center.y - bounds.height / 2.0
   let bottom = bounds.center.y + bounds.height / 2.0
-  let inside = endpoint.x >= left - NOTE_GEOMETRY_EPSILON &&
-    endpoint.x <= right + NOTE_GEOMETRY_EPSILON &&
-    endpoint.y >= top - NOTE_GEOMETRY_EPSILON &&
-    endpoint.y <= bottom + NOTE_GEOMETRY_EPSILON
-  let (dx, dy) = if inside {
-    (adjacent.x - endpoint.x, adjacent.y - endpoint.y)
-  } else {
-    (endpoint.x - adjacent.x, endpoint.y - adjacent.y)
-  }
-  guard dx != 0.0 || dy != 0.0 else { return endpoint }
+  guard dx != 0.0 || dy != 0.0 else { return None }
   let mut best : Double? = None
   if dx != 0.0 {
     for side in [left, right] {
@@ -141,8 +140,41 @@ fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point 
     }
   }
   match best {
-    Some(t) => point(endpoint.x + t * dx, endpoint.y + t * dy)
-    None => endpoint
+    Some(t) => Some(point(endpoint.x + t * dx, endpoint.y + t * dy))
+    None => None
+  }
+}
+
+///|
+fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point {
+  let left = bounds.center.x - bounds.width / 2.0
+  let right = bounds.center.x + bounds.width / 2.0
+  let top = bounds.center.y - bounds.height / 2.0
+  let bottom = bounds.center.y + bounds.height / 2.0
+  let inside = endpoint.x >= left - NOTE_GEOMETRY_EPSILON &&
+    endpoint.x <= right + NOTE_GEOMETRY_EPSILON &&
+    endpoint.y >= top - NOTE_GEOMETRY_EPSILON &&
+    endpoint.y <= bottom + NOTE_GEOMETRY_EPSILON
+  let (dx, dy) = if inside {
+    (adjacent.x - endpoint.x, adjacent.y - endpoint.y)
+  } else {
+    (endpoint.x - adjacent.x, endpoint.y - adjacent.y)
+  }
+  match clip_ray_to_rect_dir(endpoint, dx, dy, bounds) {
+    Some(hit) => hit
+    None =>
+      // The spline endpoint is off the node (graphviz routing already failed):
+      // fall back to the boundary facing the node center, then to the closest
+      // boundary point.
+      match clip_ray_to_rect_dir(
+        endpoint,
+        bounds.center.x - endpoint.x,
+        bounds.center.y - endpoint.y,
+        bounds,
+      ) {
+        Some(hit) => hit
+        None => closest_point_on_rect(endpoint, bounds)
+      }
   }
 }
 
@@ -166,24 +198,33 @@ fn clip_ray_to_ellipse(
     (endpoint.x - adjacent.x, endpoint.y - adjacent.y)
   }
   let a = dx * dx / (radius_x * radius_x) + dy * dy / (radius_y * radius_y)
-  guard a > 0.0 else { return endpoint }
   let b = 2.0 *
     (px * dx / (radius_x * radius_x) + py * dy / (radius_y * radius_y))
-  let c = px * px / (radius_x * radius_x) +
-    py * py / (radius_y * radius_y) -
-    1.0
+  let c = normalized - 1.0
   let discriminant = b * b - 4.0 * a * c
-  guard discriminant >= 0.0 else { return endpoint }
-  let root = discriminant.sqrt()
-  let first = (-b - root) / (2.0 * a)
-  let second = (-b + root) / (2.0 * a)
-  let best = keep_nearest_nonnegative(
-    keep_nearest_nonnegative(None, first),
-    second,
-  )
+  let best = if a > 0.0 && discriminant >= 0.0 {
+    let root = discriminant.sqrt()
+    let first = (-b - root) / (2.0 * a)
+    let second = (-b + root) / (2.0 * a)
+    keep_nearest_nonnegative(
+      keep_nearest_nonnegative(None, first),
+      second,
+    )
+  } else {
+    None
+  }
   match best {
     Some(t) => point(endpoint.x + t * dx, endpoint.y + t * dy)
-    None => endpoint
+    None => {
+      // The spline endpoint misses the node entirely: fall back to the
+      // boundary facing the node center.
+      guard normalized > 0.0 else { return endpoint }
+      let scale = 1.0 / normalized.sqrt()
+      point(
+        bounds.center.x + px * scale,
+        bounds.center.y + py * scale,
+      )
+    }
   }
 }
 
@@ -194,13 +235,32 @@ fn clip_ray_to_node(
   node : GraphvizNodeLayout,
   shape : NodeShape,
 ) -> Point {
-  let bounds = rect(point(node.x, node.y), node.width, node.height)
   match shape {
-    Box => clip_ray_to_rect(endpoint, adjacent, bounds)
-    Ellipse | Circle => clip_ray_to_ellipse(endpoint, adjacent, bounds)
-    Hexagon => clip_ray_to_rect(endpoint, adjacent, bounds)
+    Box => {
+      let bounds = rect(point(node.x, node.y), node.width, node.height)
+      clip_ray_to_rect(endpoint, adjacent, bounds)
+    }
+    Ellipse | Circle => {
+      let bounds = rect(point(node.x, node.y), node.width, node.height)
+      clip_ray_to_ellipse(endpoint, adjacent, bounds)
+    }
+    InterfaceCircle => {
+      // The interface figure is a 16px circle centered 9px below the node
+      // rect's top edge (`CircleSymbol` figure origin), not the full
+      // description rect.
+      let center = point(node.x, node.y - node.height / 2.0 + 9.0)
+      let bounds = rect(center, INTERFACE_CIRCLE_SIZE, INTERFACE_CIRCLE_SIZE)
+      clip_ray_to_ellipse(endpoint, adjacent, bounds)
+    }
+    Hexagon => {
+      let bounds = rect(point(node.x, node.y), node.width, node.height)
+      clip_ray_to_rect(endpoint, adjacent, bounds)
+    }
   }
 }
+
+///|
+const INTERFACE_CIRCLE_SIZE : Double = 16.0
 
 ///|
 /// Closest point on an axis-aligned rectangle to a given point. Used to
