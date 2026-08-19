@@ -3,4 +3,5 @@ members = [
   "./uml",
   "./uml_cli",
   "./unicode",
+  "./profile",
 ]

@@ -43,11 +43,12 @@ fn main {
   let mut skipped = 0
   let mut failed = 0
   for fixture in fixtures {
-    match compare_fixture(
-      fixture,
-      json=matches.flags.get("json").unwrap_or(false),
-      report,
-    ) {
+    match
+      compare_fixture(
+        fixture,
+        json=matches.flags.get("json").unwrap_or(false),
+        report,
+      ) {
       Analyzed => analyzed += 1
       Skipped => skipped += 1
       Failed(message) => {
@@ -147,9 +148,7 @@ fn expand_fixture(path : String) -> Array[String] {
 ///|
 fn uml_files_in(dir : String) -> Array[String] {
   let files = @fs.read_dir(dir) catch { _ => return [] }
-  files
-  .filter(file => file.has_suffix(".uml"))
-  .map(file => "\{dir}/\{file}")
+  files.filter(file => file.has_suffix(".uml")).map(file => "\{dir}/\{file}")
 }
 
 ///|
@@ -192,7 +191,7 @@ fn compare_fixture(
 fn reference_path_of(fixture : String) -> String {
   let slash = fixture.rev_find("/").unwrap_or(-1)
   let dir = if slash >= 0 { fixture[:slash] } else { "." }
-  let base = fixture[slash + 1 :].to_owned()
+  let base = fixture[slash + 1:].to_owned()
   let name = if base.has_suffix(".uml") {
     base[:base.length() - 4]
   } else {
