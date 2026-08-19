@@ -22,6 +22,16 @@ const STATE_CROSS_MARKER_PADDING : Double = 1.0
 const STATE_CROSS_MARKER_DIAGONAL : Double = 4.949747468305833
 
 ///|
+/// Radius of the circle decoration drawn at the target end of a transition
+/// (`A -->o B`), matching PlantUML's `LinkDecor.ARROW_AND_CIRCLE`.
+const STATE_CIRCLE_DECORATION_RADIUS : Double = 5.0
+
+///|
+/// Distance from the path end to the circle decoration center, matching the
+/// PlantUML baseline placement of the circle beyond the clipped path end.
+const STATE_CIRCLE_DECORATION_OFFSET : Double = 8.0
+
+///|
 fn initial_background_color(style : @style.DocumentStyle) -> String {
   style.property_color("ActivityStartColor", style.defaults().line)
 }
@@ -623,6 +633,9 @@ fn append_state_edge(
         ..@svg.line_style_attributes(transition.line_style),
       ],
     )
+    if transition.has_circle_end {
+      append_state_circle_decoration(output, diagram.style, path)
+    }
   }
   match (transition.label, edge.label) {
     (Some(label), Some(position)) =>
@@ -636,6 +649,35 @@ fn append_state_edge(
       )
     _ => ()
   }
+}
+
+///|
+/// Draws the circle decoration at the target end of a transition path. The
+/// circle sits on the node border, offset past the clipped path end along the
+/// end tangent, mirroring PlantUML's `ARROW_AND_CIRCLE` placement.
+fn append_state_circle_decoration(
+  output : @svg.XmlWriter,
+  style : @style.DocumentStyle,
+  path : Array[(Double, Double)],
+) -> Unit {
+  guard path.length() >= 2 else { return }
+  let end = path[path.length() - 1]
+  let previous = path[path.length() - 2]
+  let dx = end.0 - previous.0
+  let dy = end.1 - previous.1
+  let length = (dx * dx + dy * dy).sqrt()
+  guard length > 0.0 else { return }
+  let center_x = end.0 + dx / length * STATE_CIRCLE_DECORATION_OFFSET
+  let center_y = end.1 + dy / length * STATE_CIRCLE_DECORATION_OFFSET
+  output.empty("ellipse", attributes=[
+    ("cx", center_x.to_string()),
+    ("cy", center_y.to_string()),
+    ("rx", STATE_CIRCLE_DECORATION_RADIUS.to_string()),
+    ("ry", STATE_CIRCLE_DECORATION_RADIUS.to_string()),
+    ("fill", style.canvas_color()),
+    ("stroke", style.diagram_line_color()),
+    ("stroke-width", "1.5"),
+  ])
 }
 
 ///|

@@ -218,6 +218,7 @@ fn Parser::apply_line_syntax(
         direction: syntax.direction,
         line_style: syntax.line_style,
         has_cross_start: syntax.has_cross_start,
+        has_circle_end: syntax.has_circle_end,
       })
       true
     }

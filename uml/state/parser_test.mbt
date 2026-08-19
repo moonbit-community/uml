@@ -104,7 +104,9 @@ test "transition arrow splits hyphens and styles around the direction" {
 
 ///|
 test "reverse arrow keeps reversed endpoints and a bare cross marker" {
-  let diagram = parse("@startuml\nA <-left- B\nC <-x D\nE o<-- F\n@enduml")
+  let diagram = parse(
+    "@startuml\nA <-left- B\nC <-x D\nE o<-- F\nG o <-- H\nI -->o J\n@enduml",
+  )
   let transitions = diagram.transitions
   @test.assert_eq(transitions[0].source, "B")
   @test.assert_eq(transitions[0].target, "A")
@@ -112,8 +114,18 @@ test "reverse arrow keeps reversed endpoints and a bare cross marker" {
   @test.assert_eq(transitions[1].source, "D")
   @test.assert_eq(transitions[1].target, "C")
   @test.assert_eq(transitions[1].line_style, None)
+  @test.assert_eq(transitions[1].has_cross_start, true)
+  @test.assert_eq(transitions[1].has_circle_end, false)
   @test.assert_eq(transitions[2].source, "F")
   @test.assert_eq(transitions[2].target, "E")
+  @test.assert_eq(transitions[2].has_circle_end, true)
+  @test.assert_eq(transitions[2].has_cross_start, false)
+  @test.assert_eq(transitions[3].source, "H")
+  @test.assert_eq(transitions[3].target, "G")
+  @test.assert_eq(transitions[3].has_circle_end, true)
+  @test.assert_eq(transitions[4].source, "I")
+  @test.assert_eq(transitions[4].target, "J")
+  @test.assert_eq(transitions[4].has_circle_end, true)
 }
 
 ///|
@@ -193,6 +205,43 @@ fn StateEdgeLayout::has_drawable_path(self : StateEdgeLayout) -> Bool {
     guard path.length() > 1 else { false }
     path[0] != path[path.length() - 1]
   })
+}
+
+///|
+test "circle and cross decorations render at the semantic transition ends" {
+  let svg = render_state_svg(
+    "@startuml\nA x--> B\nC -->o D\nE o <-- F\nG <--x H\n@enduml",
+  )
+  @test.assert_eq(
+    count_substring(svg, "marker-start=\"url(#state-cross-start)\""),
+    2,
+  )
+  @test.assert_eq(count_substring(svg, "<ellipse"), 2)
+  let first = svg[svg.find("<ellipse").unwrap():].to_owned()
+  let after_first = first[first.find("/>").unwrap() + 2:].to_owned()
+  let second = after_first[after_first.find("<ellipse").unwrap():].to_owned()
+  let center = (part : String) => {
+    ellipse_attribute(part, "cx") + "," + ellipse_attribute(part, "cy")
+  }
+  @test.assert_eq(center(first) == center(second), false)
+}
+
+///|
+fn count_substring(haystack : String, needle : String) -> Int {
+  let mut count = 0
+  let mut view = haystack[:]
+  while view.contains(needle) {
+    count += 1
+    view = view[view.find(needle).unwrap() + needle.length():]
+  }
+  count
+}
+
+///|
+fn ellipse_attribute(part : String, name : String) -> String {
+  let start = part.find(name + "=\"").unwrap() + name.length() + 2
+  let rest = part[start:].to_owned()
+  rest[:rest.find("\"").unwrap()].to_owned()
 }
 
 ///|

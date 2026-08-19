@@ -17,6 +17,7 @@ priv struct StateTransitionSyntax {
   direction : TransitionDirection
   line_style : String?
   has_cross_start : Bool
+  has_circle_end : Bool
   label : String?
 }
 
@@ -37,6 +38,7 @@ priv struct TransitionArrowSyntax {
   direction : TransitionDirection
   line_style : String?
   has_cross_start : Bool
+  has_circle_end : Bool
   reversed : Bool
 }
 
@@ -46,6 +48,7 @@ priv struct TransitionArrowParts {
   first_style : String?
   second_style : String?
   has_cross_start : Bool
+  has_circle_end : Bool
   reversed : Bool
 }
 
@@ -324,6 +327,7 @@ fn transition_arrow_from(parts : TransitionArrowParts) -> TransitionArrowSyntax 
     direction: parts.direction.unwrap_or(Automatic),
     line_style,
     has_cross_start: parts.has_cross_start,
+    has_circle_end: parts.has_circle_end,
     reversed: parts.reversed,
   }
 }
@@ -342,18 +346,34 @@ fn forward_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
     ()
   }
   guard cursor.consume('>') else { return None }
+  let arrow_end = cursor.offset()
+  let has_circle_end = if cursor.consume('o') {
+    match cursor.peek() {
+      Some(char) if !char.is_whitespace() => {
+        ignore(cursor.restore(arrow_end))
+        false
+      }
+      _ => true
+    }
+  } else {
+    false
+  }
   Some({
     direction,
     first_style,
     second_style,
     has_cross_start,
+    has_circle_end,
     reversed: false,
   })
 }
 
 ///|
 fn reverse_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
-  ignore(cursor.consume('o'))
+  let has_circle_end = cursor.consume('o')
+  if has_circle_end {
+    ignore(cursor.skip_inline_whitespace())
+  }
   guard cursor.consume('<') else { return None }
   guard cursor.consume('-') else { return None }
   while cursor.consume('-') {
@@ -365,12 +385,13 @@ fn reverse_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
   while cursor.consume('-') {
     ()
   }
-  ignore(cursor.consume('x'))
+  let has_cross_start = cursor.consume('x')
   Some({
     direction,
     first_style,
     second_style,
-    has_cross_start: false,
+    has_cross_start,
+    has_circle_end,
     reversed: true,
   })
 }
@@ -431,6 +452,7 @@ fn state_transition(cursor : @parse.Cursor) -> StateTransitionSyntax? {
     direction: arrow.direction,
     line_style: arrow.line_style,
     has_cross_start: arrow.has_cross_start,
+    has_circle_end: arrow.has_circle_end,
     label,
   })
 }

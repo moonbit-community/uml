@@ -62,6 +62,7 @@ pub struct StateTransition {
   direction : TransitionDirection
   line_style : String?
   has_cross_start : Bool
+  has_circle_end : Bool
 } derive(Eq, Debug)
 
 ///|
