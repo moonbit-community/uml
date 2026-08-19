@@ -87,7 +87,7 @@ fn relation_endpoint_header(
 ) -> Rect? {
   guard class_member_collapsible else { return None }
   let entity = diagram.entities[index]
-  guard entity.render_capability().renderer is ClassRenderer else {
+  guard entity.render_capability(diagram.family).renderer is ClassRenderer else {
     return None
   }
   guard !entity.is_hidden && !entity.is_removed else { return None }

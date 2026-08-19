@@ -248,7 +248,7 @@ fn EntityDiagram::graphviz_layout(
         }
     }
     let geometry = entity.node_geometry(text_metrics, self.family)
-    let capability = entity.render_capability()
+    let capability = entity.render_capability(self.family)
     @graphviz.set_fixed_node_size(
       node,
       geometry.width.to_double(),

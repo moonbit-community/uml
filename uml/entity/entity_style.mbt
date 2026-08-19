@@ -38,7 +38,8 @@ fn EntityStyleRole::background_color(
     UsecaseStyle => usecase_background_color(style)
     ActorStyle => actor_background_color(style)
     LollipopStyle => style.defaults().entity_colors().node
-    ClassStyle | ComponentStyle => class_background_color(style)
+    ClassStyle | ComponentStyle | DescriptionStyle =>
+      class_background_color(style)
   }
 }
 
@@ -52,7 +53,7 @@ fn EntityStyleRole::border_color(
     UsecaseStyle => usecase_border_color(style)
     ActorStyle => actor_border_color(style)
     LollipopStyle => style.diagram_line_color()
-    ClassStyle | ComponentStyle => class_border_color(style)
+    ClassStyle | ComponentStyle | DescriptionStyle => class_border_color(style)
   }
 }
 
@@ -66,7 +67,7 @@ fn EntityStyleRole::font_color(
     UsecaseStyle => usecase_font_color(style)
     ActorStyle => actor_font_color(style)
     LollipopStyle => style.diagram_text_color()
-    ClassStyle | ComponentStyle => style.diagram_text_color()
+    ClassStyle | ComponentStyle | DescriptionStyle => style.diagram_text_color()
   }
 }
 

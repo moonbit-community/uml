@@ -118,6 +118,8 @@ priv enum EntityRendererKind {
   UsecaseRenderer
   ActorRenderer
   ComponentRenderer
+  DescriptionRenderer
+  PortRenderer
 }
 
 ///|
@@ -170,6 +172,7 @@ priv enum EntityStyleRole {
   UsecaseStyle
   ActorStyle
   ComponentStyle
+  DescriptionStyle
 }
 
 ///|
@@ -232,7 +235,15 @@ fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
 /// Mirrors `GeneralImageBuilder`'s `LeafType` image dispatch. Diagram-family
 /// policy is deliberately not used here, so a mixed `object` remains an object
 /// image instead of inheriting class compartments from its surrounding source.
-fn EntityKind::render_capability(self : EntityKind) -> EntityRenderCapability {
+///
+/// `Interface` and `Entity` are the two kinds whose Java `LeafType` differs
+/// across families: the class factory parses them as class-like leaves, while
+/// the description factories (component, deployment, use-case) produce a
+/// `DESCRIPTION` leaf with the corresponding symbol.
+fn EntityKind::render_capability(
+  self : EntityKind,
+  family : EntityFamily,
+) -> EntityRenderCapability {
   match self {
     Object =>
       {
@@ -330,6 +341,87 @@ fn EntityKind::render_capability(self : EntityKind) -> EntityRenderCapability {
         relation_endpoint: CenterEndpoint,
         style_role: LollipopStyle,
       }
+    Interface if family
+      is (ComponentDiagram | DeploymentDiagram | UseCaseDiagram) =>
+      {
+        renderer: DescriptionRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Box,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: true,
+        relation_endpoint: ShapeBoundaryEndpoint,
+        style_role: DescriptionStyle,
+      }
+    Entity if family is (ComponentDiagram | DeploymentDiagram | UseCaseDiagram) =>
+      {
+        renderer: DescriptionRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Box,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: true,
+        relation_endpoint: ShapeBoundaryEndpoint,
+        style_role: DescriptionStyle,
+      }
+    Port | PortIn | PortOut =>
+      {
+        renderer: PortRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Box,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: false,
+        relation_endpoint: ShapeBoundaryEndpoint,
+        style_role: DescriptionStyle,
+      }
+    Person
+    | Artifact
+    | Folder
+    | Card
+    | File
+    | Rectangle
+    | Label
+    | Frame
+    | Action
+    | Process
+    | Stack
+    | Storage
+    | Agent
+    | Boundary
+    | Control
+    | Collections
+    | Database
+    | Queue
+    | Node
+    | Cloud
+    | Circle =>
+      {
+        renderer: DescriptionRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Box,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: true,
+        relation_endpoint: ShapeBoundaryEndpoint,
+        style_role: DescriptionStyle,
+      }
+    Hexagon =>
+      {
+        renderer: DescriptionRenderer,
+        header: DescriptionHeader,
+        body: NoBody,
+        shape: Hexagon,
+        ports: NoPorts,
+        spot: NoSpot,
+        renders_stereotype: true,
+        relation_endpoint: ShapeBoundaryEndpoint,
+        style_role: DescriptionStyle,
+      }
     _ =>
       {
         renderer: ClassRenderer,
@@ -346,8 +438,11 @@ fn EntityKind::render_capability(self : EntityKind) -> EntityRenderCapability {
 }
 
 ///|
-fn Entity::render_capability(self : Entity) -> EntityRenderCapability {
-  self.kind.render_capability()
+fn Entity::render_capability(
+  self : Entity,
+  family : EntityFamily,
+) -> EntityRenderCapability {
+  self.kind.render_capability(family)
 }
 
 ///|
@@ -361,6 +456,7 @@ fn EntityRenderCapability::node_class(self : EntityRenderCapability) -> String {
     UsecaseStyle => "usecase-node"
     ActorStyle => "actor-node"
     ComponentStyle => "component-node"
+    DescriptionStyle => "description-node"
   }
 }
 
@@ -372,6 +468,7 @@ fn EntityRenderCapability::title_class(self : EntityRenderCapability) -> String 
     JsonStyle => "json-title"
     UsecaseStyle | ActorStyle | ComponentStyle => "usecase-title"
     ClassStyle | LollipopStyle => "class-title"
+    DescriptionStyle => "description-title"
   }
 }
 
@@ -385,6 +482,7 @@ fn EntityRenderCapability::stereotype_class(
     JsonStyle => "json-stereotype"
     UsecaseStyle | ActorStyle => "usecase-stereotype"
     ClassStyle | ComponentStyle | LollipopStyle => "class-stereotype"
+    DescriptionStyle => "description-stereotype"
   }
 }
 
@@ -398,5 +496,6 @@ fn EntityRenderCapability::graphviz_shape(
     (Ellipse, _) => "ellipse"
     (Circle, NoPorts) => "circle"
     (Circle, _) => "circle"
+    (Hexagon, _) => "hexagon"
   }
 }

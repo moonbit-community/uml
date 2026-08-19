@@ -17,6 +17,8 @@ fn append_packages(
           continue
         }
         let group = diagram.packages[package_layout.package_index]
+        // Symbol packages are painted by `append_symbol_packages` instead.
+        guard group.symbol is None else { continue }
         let fill = @svg.svg_color(
           group.color,
           package_background_color(diagram.style),
@@ -65,7 +67,7 @@ fn append_entity_image(
   layout : ClassLayout,
   class_member_collapsible : Bool,
 ) -> Unit {
-  match entity.render_capability().renderer {
+  match entity.render_capability(diagram.family).renderer {
     ClassRenderer =>
       append_entity(
         output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
@@ -84,6 +86,12 @@ fn append_entity_image(
       append_usecase_entity(
         output, diagram, entity, index, text_metrics, layout, class_member_collapsible,
       )
+    DescriptionRenderer =>
+      append_description_entity(
+        output, diagram, entity, index, text_metrics, layout,
+      )
+    PortRenderer =>
+      append_port_entity(output, diagram, entity, index, text_metrics, layout)
   }
 }
 
@@ -238,7 +246,7 @@ fn append_object_like_entity(
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
-  let capability = entity.render_capability()
+  let capability = entity.render_capability(diagram.family)
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let is_json = capability.renderer is JsonRenderer
   let header = if is_json {
@@ -429,7 +437,8 @@ fn append_entity(
   }
   output <+
     $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"\{node_index_attribute}><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
-  match (entity.render_capability().spot, placement.circle_center) {
+  match
+    (entity.render_capability(diagram.family).spot, placement.circle_center) {
     (ClassSpot, Some((circle_cx, circle_cy))) =>
       output <+
         $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
@@ -488,7 +497,7 @@ fn append_usecase_entity(
   class_member_collapsible : Bool,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
-  let capability = entity.render_capability()
+  let capability = entity.render_capability(diagram.family)
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let fill = @svg.svg_color(
     entity.color,

@@ -193,8 +193,12 @@ fn relation_endpoints(
   )
   let left_center = (left_x + left_width / 2, left_y + left_height / 2)
   let right_center = (right_x + right_width / 2, right_y + right_height / 2)
-  let left_endpoint = diagram.entities[left_index].render_capability().relation_endpoint
-  let right_endpoint = diagram.entities[right_index].render_capability().relation_endpoint
+  let left_endpoint = diagram.entities[left_index].render_capability(
+      diagram.family,
+    ).relation_endpoint
+  let right_endpoint = diagram.entities[right_index].render_capability(
+      diagram.family,
+    ).relation_endpoint
   let (x1, y1) = match left_endpoint {
     PortOrShapeBoundaryEndpoint =>
       match

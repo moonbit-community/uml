@@ -95,7 +95,7 @@ fn EntityDiagram::render_svg_with_mode(
       $|\{collapse_style}</style>\n
   }
   let has_object_image = self.entities.any(entity => {
-    let renderer = entity.render_capability().renderer
+    let renderer = entity.render_capability(self.family).renderer
     renderer is ObjectRenderer ||
     renderer is MapRenderer ||
     renderer is JsonRenderer
@@ -105,6 +105,15 @@ fn EntityDiagram::render_svg_with_mode(
       $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
     output.write_string(object_style)
   }
+  let has_description_image = self.entities.any(entity => {
+      entity.render_capability(self.family).renderer is DescriptionRenderer
+    }) ||
+    self.packages.any(group => group.symbol is Some(_))
+  if has_description_image {
+    let description_style =
+      $|<style>.description-node > polygon,.description-node > path,.description-node > rect,.description-node > ellipse{stroke-width:\{@svg.standard_border_stroke_width()}}.description-title,.port-title{fill:\{text_color}}.description-stereotype{fill:\{text_color};font-style:italic}.symbol-package{font-weight:bold}.symbol-package > path,.symbol-package > rect,.symbol-package > polygon,.symbol-package > line{fill:none}</style>
+    output.write_string(description_style)
+  }
 
   let style_note =
     $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.package-stereotype{fill:\{text_color};font-style:italic}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
@@ -112,6 +121,7 @@ fn EntityDiagram::render_svg_with_mode(
   if family_capability.renders_packages {
     append_packages(output, self, text_metrics, layout)
   }
+  append_symbol_packages(output, self, text_metrics, layout)
   match family_capability.paint_order {
     EntitiesBeforeRelations => {
       for index, entity in self.entities {

@@ -198,6 +198,7 @@ fn clip_ray_to_node(
   match shape {
     Box => clip_ray_to_rect(endpoint, adjacent, bounds)
     Ellipse | Circle => clip_ray_to_ellipse(endpoint, adjacent, bounds)
+    Hexagon => clip_ray_to_rect(endpoint, adjacent, bounds)
   }
 }
 

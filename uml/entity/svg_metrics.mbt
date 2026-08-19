@@ -386,7 +386,7 @@ fn MapBodyLayout::row(self : MapBodyLayout, key : String) -> MapRowLayout? {
 
 ///|
 fn Entity::graphviz_port(self : Entity, port : String?) -> @cgraph.Port? {
-  guard self.render_capability().ports is MapEntryPorts else { return None }
+  guard self.kind is Map else { return None }
   guard port is Some(key) else { return None }
   guard self.map_entries.any(entry => entry.key == key) else { return None }
   Some({ name: Some(stable_port_identifier(key)), compass: None })
@@ -425,7 +425,7 @@ fn Entity::map_port_endpoint(
   width : Int,
   target_x : Int,
 ) -> (Int, Int)? {
-  guard self.render_capability().ports is MapEntryPorts else { return None }
+  guard self.kind is Map else { return None }
   guard port is Some(key) else { return None }
   guard self.map_body_layout(text_metrics).row(key) is Some(row) else {
     return None
@@ -870,6 +870,7 @@ priv enum NodeShape {
   Box
   Ellipse
   Circle
+  Hexagon
 }
 
 ///|
@@ -1001,6 +1002,10 @@ const LOLLIPOP_SIZE : Int = 10
 ///|
 /// `EntityImageAssociationPoint` is a fixed 4x4 filled circle.
 const ASSOCIATION_POINT_SIZE : Int = 4
+
+///|
+/// `EntityImagePort`: a fixed 12x12 square with the name above or below.
+const PORT_SIZE : Int = 12
 
 ///|
 const USECASE_RELATION_LABEL_FONT_SIZE : Int = 13
@@ -1352,9 +1357,9 @@ fn Entity::component_geometry(
 fn Entity::node_geometry(
   self : Entity,
   text_metrics : ClassTextMetrics,
-  _family : EntityFamily,
+  family : EntityFamily,
 ) -> NodeGeometry {
-  let capability = self.render_capability()
+  let capability = self.render_capability(family)
   match (capability.header, capability.body, capability.renderer) {
     (ObjectHeader, OrderedMembers, ObjectRenderer) =>
       {
@@ -1389,6 +1394,12 @@ fn Entity::node_geometry(
     }
     (DescriptionHeader, NoBody, ComponentRenderer) =>
       self.component_geometry(text_metrics)
+    (DescriptionHeader, NoBody, DescriptionRenderer) => {
+      let (width, height) = self.description_geometry(text_metrics)
+      { width, height, shape: capability.shape }
+    }
+    (DescriptionHeader, NoBody, PortRenderer) =>
+      { width: PORT_SIZE, height: PORT_SIZE, shape: Box }
     (DescriptionHeader, NoBody, LollipopRenderer) =>
       { width: LOLLIPOP_SIZE, height: LOLLIPOP_SIZE, shape: Circle }
     (DescriptionHeader, NoBody, PointRenderer) =>
