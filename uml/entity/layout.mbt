@@ -314,7 +314,7 @@ fn EntityDiagram::graphviz_layout(
             // reserves the title width inside the cluster.
             let name = "group_point_" + code
             let node = cluster.node(name)
-            let title_width = match self.package(code) {
+            let title_width = match self.find_package(code) {
               Some(group) =>
                 // PlantUML `USymbolNode.suppWidthBecauseOfShape` pads the
                 // node-symbol title block by 60px.

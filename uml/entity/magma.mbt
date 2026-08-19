@@ -95,7 +95,7 @@ fn EntityDiagram::package_parent(
 }
 
 ///|
-fn EntityDiagram::package(self : EntityDiagram, code : String) -> Package? {
+fn EntityDiagram::find_package(self : EntityDiagram, code : String) -> Package? {
   for group in self.packages {
     if group.qualified_name == code {
       return Some(group)
@@ -115,8 +115,8 @@ pub fn EntityDiagram::magma_grid_edges(
   let edges : Array[(String, String, Int)] = []
   guard self.family.applies_magma_grid() else { return edges }
   let scopes = [""]
-  for package in self.packages {
-    scopes.push(package.qualified_name)
+  for group in self.packages {
+    scopes.push(group.qualified_name)
   }
   let magmas : Array[Magma] = []
   for scope in scopes {

@@ -187,9 +187,9 @@ fn ClassLayout::group_rect(
     Some(graphviz) =>
       for package_index, group in diagram.packages {
         if group.qualified_name == code {
-          for package in graphviz.packages {
-            if package.package_index == package_index {
-              return Some((package.x, package.y, package.width, package.height))
+          for group in graphviz.packages {
+            if group.package_index == package_index {
+              return Some((group.x, group.y, group.width, group.height))
             }
           }
         }
