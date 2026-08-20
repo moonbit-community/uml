@@ -9,8 +9,9 @@
 /// exists next to it.
 ///
 /// Reports are written under `--output <dir>` when given, and otherwise to
-/// `profiles/uml-vs-plantuml/`. With `--json <path>`, an aggregated summary
-/// grouped by diagram category is additionally written as JSON.
+/// `profiles/uml-vs-plantuml/`. With `--json <dir>`, one JSON summary per
+/// diagram category is written to `<dir>/<category>/<category>.json`,
+/// mirroring the HTML report layout.
 let examples_root : String = "live/public/examples"
 
 ///|
@@ -91,15 +92,7 @@ fn main {
     }
   }
   match matches.values.get("json") {
-    Some([path]) => {
-      @fs.write_string_to_file(path, json_summary(results)) catch {
-        IOError(message) => {
-          println("error: failed to write \{path}: \{message}")
-          @sys.exit(1)
-        }
-      }
-      println("json report written to \{path}")
-    }
+    Some([dir]) => write_json_summaries(dir, results)
     _ => ()
   }
   println(summary_line(analyzed.length(), skipped, failed))
@@ -130,7 +123,7 @@ fn uml_profile_command() -> @argparse.Command {
         "json",
         short='j',
         long="json",
-        about="Write a JSON summary report to this path.",
+        about="Write one JSON summary per diagram category into this directory.",
       ),
     ],
   )
@@ -383,25 +376,33 @@ struct CategorySummary {
 } derive(ToJson)
 
 ///|
-struct ReportTotals {
-  analyzed : Int
-  matched : Int
-  inconclusive : Int
-  differ : Int
-  failed : Int
-  skipped : Int
-} derive(ToJson)
+/// One JSON file per diagram category, mirroring the HTML report layout:
+/// `<dir>/<category>/<category>.json`.
+fn write_json_summaries(
+  dir : String,
+  results : Array[(String, Outcome)],
+) -> Unit {
+  for summary in category_summaries(results) {
+    let path = "\{dir}/\{summary.category}/\{summary.category}.json"
+    let slash = path.rev_find("/").unwrap_or(-1)
+    if slash >= 0 {
+      ignore(@fs.create_dir(path[:slash].to_owned()) catch { _ => () })
+    }
+    @fs.write_string_to_file(path, ToJson::to_json(summary).stringify(indent=2)) catch {
+      IOError(message) => {
+        println("error: failed to write \{path}: \{message}")
+        @sys.exit(1)
+      }
+    }
+    println("json report written to \{path}")
+  }
+}
 
 ///|
-struct JsonSummary {
-  schema_version : String
-  categories : Array[CategorySummary]
-  totals : ReportTotals
-} derive(ToJson)
-
-///|
-/// Build a JSON summary of every fixture, grouped by diagram category.
-fn json_summary(results : Array[(String, Outcome)]) -> String {
+/// Group every fixture by diagram category and summarize each group.
+fn category_summaries(
+  results : Array[(String, Outcome)],
+) -> Array[CategorySummary] {
   let categories : Array[String] = []
   let groups : Map[String, Array[(String, Outcome)]] = Map([])
   for pair in results {
@@ -413,7 +414,7 @@ fn json_summary(results : Array[(String, Outcome)]) -> String {
     groups.set(category, groups.get_or_default(category, []) + [pair])
   }
   categories.sort_by(fn(left, right) { left.lexical_compare(right) })
-  let category_summaries = categories.map(category => {
+  categories.map(category => {
     let entries = groups.get_or_default(category, [])
     let counts = status_counts(entries)
     CategorySummary::{
@@ -427,12 +428,6 @@ fn json_summary(results : Array[(String, Outcome)]) -> String {
       fixtures: entries.map(pair => fixture_summary(pair.0, pair.1)),
     }
   })
-  let summary = JsonSummary::{
-    schema_version: "1.0",
-    categories: category_summaries,
-    totals: report_totals(category_summaries),
-  }
-  ToJson::to_json(summary).stringify(indent=2)
 }
 
 ///|
@@ -444,25 +439,6 @@ fn status_counts(entries : Array[(String, Outcome)]) -> Map[String, Int] {
     counts.set("analyzed", counts.get_or_default("analyzed", 0) + 1)
   }
   counts
-}
-
-///|
-fn report_totals(categories : Array[CategorySummary]) -> ReportTotals {
-  let mut analyzed = 0
-  let mut matched = 0
-  let mut inconclusive = 0
-  let mut differ = 0
-  let mut failed = 0
-  let mut skipped = 0
-  for category in categories {
-    analyzed += category.analyzed
-    matched += category.matched
-    inconclusive += category.inconclusive
-    differ += category.differ
-    failed += category.failed
-    skipped += category.skipped
-  }
-  ReportTotals::{ analyzed, matched, inconclusive, differ, failed, skipped }
 }
 
 ///|
