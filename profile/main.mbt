@@ -363,17 +363,13 @@ fn parse_dimension(value : String) -> Int? {
 }
 
 ///|
-/// One fixture inside a category summary.
+/// One fixture inside a category summary. Analyzed fixtures embed the full
+/// svgdiff StructuredReport; the `status` field is a quick filter.
 struct FixtureSummary {
   fixture : String
   status : String
   error : String?
-  analysis_status : String?
-  atomic_difference_count : Int?
-  event_count : Int?
-  diagnostic_count : Int?
-  canvas_status : String?
-  impact_status : String?
+  report : Json?
 } derive(ToJson)
 
 ///|
@@ -463,36 +459,21 @@ fn fixture_summary(fixture : String, outcome : Outcome) -> FixtureSummary {
         fixture: name,
         status: "skipped",
         error: None,
-        analysis_status: None,
-        atomic_difference_count: None,
-        event_count: None,
-        diagnostic_count: None,
-        canvas_status: None,
-        impact_status: None,
+        report: None,
       }
     Failed(message) =>
       FixtureSummary::{
         fixture: name,
         status: "failed",
         error: Some(message),
-        analysis_status: None,
-        atomic_difference_count: None,
-        event_count: None,
-        diagnostic_count: None,
-        canvas_status: None,
-        impact_status: None,
+        report: None,
       }
     Analyzed(_, report) =>
       FixtureSummary::{
         fixture: name,
         status: summary_status(report),
         error: None,
-        analysis_status: Some(report.analysis_status),
-        atomic_difference_count: Some(report.atomic_differences.length()),
-        event_count: Some(report.events.length()),
-        diagnostic_count: Some(report.diagnostics.length()),
-        canvas_status: Some(report.canvas_outcome.status),
-        impact_status: Some(report.impact_assessment.status),
+        report: Some(ToJson::to_json(report)),
       }
   }
 }
