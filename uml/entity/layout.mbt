@@ -276,31 +276,52 @@ fn EntityDiagram::graphviz_layout(
     }
   }
   let relation_names : Map[Int, String] = Map([])
-  let source_ports : Array[String] = []
-  let sink_ports : Array[String] = []
+  let source_ports : Map[String, Array[String]] = Map([])
+  let sink_ports : Map[String, Array[String]] = Map([])
   for index, entity in self.entities {
     guard !entity.is_hidden && !entity.is_removed else { continue }
     match entity.kind {
       // PlantUML `CommandCreateElementFull` maps both `port` and `portin`
       // to `LeafType.PORTIN`, so plain ports pin to the source rank too.
-      Port | PortIn => source_ports.push(graphviz_node_name(index))
-      PortOut => sink_ports.push(graphviz_node_name(index))
+      Port | PortIn => {
+        let list = match source_ports.get(entity.scope) {
+          Some(value) => value
+          None => []
+        }
+        list.push(graphviz_node_name(index))
+        source_ports[entity.scope] = list
+      }
+      PortOut => {
+        let list = match sink_ports.get(entity.scope) {
+          Some(value) => value
+          None => []
+        }
+        list.push(graphviz_node_name(index))
+        sink_ports[entity.scope] = list
+      }
       _ => ()
     }
   }
-  if source_ports.length() > 0 {
-    let rank = graph.subgraph(name="rank_source_ports")
-    rank.set_attr("rank", "source")
-    for name in source_ports {
-      let _ = rank.node(name)
+  // PlantUML `ClusterDotString.printRanks` emits the port rank pins inside
+  // the cluster subgraph; rank sets outside the cluster make dot remove the
+  // ports from cluster membership (mark_clusters).
+  let pin_port_ranks = fn(scope : String, entries : Array[String], rank : String) -> Unit {
+    guard entries.length() > 0 else { return }
+    let parent = match package_content_graphs.get(scope) {
+      Some(cluster) => cluster
+      None => graph
+    }
+    let subgraph = parent.subgraph(name="rank_\{rank}_ports")
+    subgraph.set_attr("rank", rank)
+    for name in entries {
+      let _ = subgraph.node(name)
     }
   }
-  if sink_ports.length() > 0 {
-    let rank = graph.subgraph(name="rank_sink_ports")
-    rank.set_attr("rank", "sink")
-    for name in sink_ports {
-      let _ = rank.node(name)
-    }
+  for scope, entries in source_ports {
+    pin_port_ranks(scope, entries, "source")
+  }
+  for scope, entries in sink_ports {
+    pin_port_ranks(scope, entries, "sink")
   }
   let group_point_names : Map[String, String] = Map([])
   let group_point_node = fn(code : String) -> String? {

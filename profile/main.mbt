@@ -1,20 +1,20 @@
 ///|
 /// Compare every uml-rendered SVG against its PlantUML reference with the
-/// svgdiff visual-semantic engine and write one report per run.
+/// svgdiff visual-semantic engine and write one interactive HTML report per
+/// fixture plus an index page.
 ///
 /// With no arguments, every `live/public/examples/<diagram>/<fixture>.uml`
 /// is analyzed. Arguments may name individual `.uml` fixtures or diagram
 /// directories. A fixture is skipped when no `puml/<fixture>.svg` reference
 /// exists next to it.
 ///
-/// The report is written to `--output <file>` when given, and otherwise to
-/// `profiles/uml-vs-plantuml.md` (or `.json` with `--json`). `--json` writes
-/// the canonical structured report JSON instead of Markdown.
+/// Reports are written under `--output <dir>` when given, and otherwise to
+/// `profiles/uml-vs-plantuml/`.
 let examples_root : String = "live/public/examples"
 
 ///|
 enum Outcome {
-  Analyzed
+  Analyzed(String)
   Skipped
   Failed(String)
 }
@@ -38,43 +38,55 @@ fn main {
   } else {
     requested.map(expand_fixture).flatten()
   }
-  let report = StringBuilder()
-  let mut analyzed = 0
+  let analyzed : Array[(String, String)] = []
   let mut skipped = 0
   let mut failed = 0
   for fixture in fixtures {
-    match
-      compare_fixture(
-        fixture,
-        json=matches.flags.get("json").unwrap_or(false),
-        report,
-      ) {
-      Analyzed => analyzed += 1
+    match compare_fixture(fixture) {
+      Analyzed(html) => analyzed.push((fixture, html))
       Skipped => skipped += 1
       Failed(message) => {
         failed += 1
-        report.write_string("error: \{fixture}: \{message}\n")
+        println("error: \{fixture}: \{message}")
       }
     }
   }
-  report.write_string("\n")
-  report.write_string(summary_line(analyzed, skipped, failed))
-  report.write_string("\n")
-  let output = match matches.values.get("output") {
+  let report_dir = match matches.values.get("output") {
     Some([path]) => path
     _ => {
       ignore(@fs.create_dir("profiles") catch { _ => () })
-      default_output_path(json=matches.flags.get("json").unwrap_or(false))
+      default_output_path()
     }
   }
-  @fs.write_string_to_file(output, report.to_string()) catch {
+  ignore(@fs.create_dir(report_dir) catch { _ => () })
+  for pair in analyzed {
+    let (fixture, html) = pair
+    let path = html_path_of(report_dir, fixture)
+    let slash = path.rev_find("/").unwrap_or(-1)
+    if slash >= 0 {
+      ignore(@fs.create_dir(path[:slash].to_owned()) catch { _ => () })
+    }
+    @fs.write_string_to_file(path, html) catch {
+      IOError(message) => {
+        println("error: failed to write \{path}: \{message}")
+        @sys.exit(1)
+      }
+    }
+  }
+  let index = index_page(
+    analyzed.map(pair => {
+      let page = html_path_of(report_dir, pair.0)
+      page[report_dir.length() + 1:].to_owned()
+    }),
+  )
+  @fs.write_string_to_file("\{report_dir}/index.html", index) catch {
     IOError(message) => {
-      println("error: failed to write \{output}: \{message}")
+      println("error: failed to write \{report_dir}/index.html: \{message}")
       @sys.exit(1)
     }
   }
-  println(summary_line(analyzed, skipped, failed))
-  println("report written to \{output}")
+  println(summary_line(analyzed.length(), skipped, failed))
+  println("reports written to \{report_dir}/")
   @sys.exit(if failed > 0 { 1 } else { 0 })
 }
 
@@ -95,15 +107,7 @@ fn uml_profile_command() -> @argparse.Command {
         "output",
         short='o',
         long="output",
-        about="Write the report to this file.",
-      ),
-    ],
-    flags=[
-      FlagArg(
-        "json",
-        long="json",
-        about="Write the canonical structured report JSON instead of Markdown.",
-        action=@argparse.FlagAction::SetTrue,
+        about="Write the report directory to this path.",
       ),
     ],
   )
@@ -115,12 +119,60 @@ fn summary_line(analyzed : Int, skipped : Int, failed : Int) -> String {
 }
 
 ///|
-fn default_output_path(json~ : Bool) -> String {
-  if json {
-    "profiles/uml-vs-plantuml.json"
+fn default_output_path() -> String {
+  "profiles/uml-vs-plantuml"
+}
+
+///|
+fn html_path_of(report_dir : String, fixture : String) -> String {
+  let prefix = examples_root + "/"
+  let relative = if fixture.has_prefix(prefix) {
+    fixture[prefix.length():]
   } else {
-    "profiles/uml-vs-plantuml.md"
+    let slash = fixture.rev_find("/").unwrap_or(-1)
+    fixture[slash + 1:]
   }
+  "\{report_dir}/\{relative[:relative.length() - 4]}.html"
+}
+
+///|
+fn index_page(pages : Array[String]) -> String {
+  let categories : Array[String] = []
+  let groups : Map[String, Array[String]] = Map([])
+  for page in pages {
+    let slash = page.find("/").unwrap_or(-1)
+    let category = if slash >= 0 { page[:slash].to_owned() } else { "other" }
+    if !categories.contains(category) {
+      categories.push(category)
+    }
+    groups.set(category, groups.get_or_default(category, []) + [page])
+  }
+  let sections = categories
+    .map(category => {
+      let hrefs = groups.get_or_default(category, [])
+      // String::compare is shortlex (shorter strings sort first); use the
+      // lexicographic comparator for filename ordering.
+      hrefs.sort_by(fn(left, right) { left.lexical_compare(right) })
+      let items = hrefs
+        .map(href => {
+          let slash = href.rev_find("/").unwrap_or(-1)
+          let name = href[slash + 1:href.length() - 5]
+          "<li><a href=\"\{href}\">\{name}</a></li>"
+        })
+        .join("\n")
+      "<h2>\{category}</h2>\n<ul>\n\{items}\n</ul>"
+    })
+    .join("\n")
+  let html =
+    $|
+    $|<!doctype html>
+    $|<html lang="en"><head><meta charset="utf-8">
+    $|<title>uml vs plantuml</title>
+    $|</head><body>
+    $|<h1>uml vs plantuml</h1>
+    $|\{sections}
+    $|</body></html>
+  html
 }
 
 ///|
@@ -152,11 +204,7 @@ fn uml_files_in(dir : String) -> Array[String] {
 }
 
 ///|
-fn compare_fixture(
-  fixture : String,
-  json~ : Bool,
-  sink : StringBuilder,
-) -> Outcome {
+fn compare_fixture(fixture : String) -> Outcome {
   let source = @fs.read_file_to_string(fixture) catch {
     IOError(message) => return Failed("read: \{message}")
   }
@@ -175,15 +223,7 @@ fn compare_fixture(
     puml_svg,
     comparison_profile(uml_svg, puml_svg),
   )
-  if json {
-    sink.write_string(report.to_compact_json_string())
-    sink.write_string("\n")
-  } else {
-    sink.write_string("\n## \{fixture}  vs  \{reference}\n")
-    sink.write_string(@svgdiff.render_markdown_summary(report))
-    sink.write_string("\n")
-  }
-  Analyzed
+  Analyzed(@svgdiff.render_html_report(uml_svg, puml_svg, report, None))
 }
 
 ///|

@@ -735,10 +735,8 @@ fn place_parallel(
 ) -> PlacedTile {
   let columns = measure_fork_columns(branches, nodes, metrics, small_metrics)
   let block_width = columns + FORK_COLUMN_MARGIN * 2
-  let bar_width = (block_width - 4).max(0)
-  let bar_x = x + (block_width - bar_width) / 2
   let branches_y = y + FORK_BAR_HEIGHT + VERTICAL_GAP
-  let mut cursor_x = x + (block_width - columns) / 2
+  let mut cursor_x = x
   let placed = []
   for branch in branches {
     let branch_size = measure_sequence(
@@ -769,16 +767,16 @@ fn place_parallel(
   let exit_y = branches_y + branches_height + VERTICAL_GAP
   layouts.push({
     node_index: entry,
-    x: bar_x,
+    x,
     y,
-    width: bar_width,
+    width: block_width,
     height: FORK_BAR_HEIGHT,
   })
   layouts.push({
     node_index: exit,
-    x: bar_x,
+    x,
     y: exit_y,
-    width: bar_width,
+    width: block_width,
     height: FORK_BAR_HEIGHT,
   })
   for branch in placed {
@@ -856,15 +854,24 @@ pub fn ActivityDiagram::layout(self : ActivityDiagram) -> ActivityLayout {
   let swimlane_width = reposition_swimlanes(source_nodes, layouts)
   append_goto_edges(source_nodes, layouts, edges)
   let regions = regions_from_nodes(source_nodes, layouts)
-  let content_right = layout_content_right(layouts, edges, small_metrics)
-  {
+  let mut result : ActivityLayout = {
     nodes: layouts,
     edges,
     regions,
     source_nodes,
-    width: (content_right + CANVAS_RIGHT).max(swimlane_width),
+    width: 0,
     height: content.height + top_padding + CANVAS_BOTTOM,
   }
+  let has_swimlanes = source_nodes.any(node => node is ActivityNode::Swimlane(_))
+  if !has_swimlanes {
+    result = result.compress_x()
+  }
+  let content_right = layout_content_right(
+    result.nodes,
+    result.edges,
+    small_metrics,
+  )
+  { ..result, width: (content_right + CANVAS_RIGHT).max(swimlane_width) }
 }
 
 ///|

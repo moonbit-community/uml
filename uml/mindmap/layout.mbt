@@ -94,6 +94,41 @@ let boxless_horizontal_margin = 3
 let boxless_vertical_margin = 1
 
 ///|
+/// PlantUML's real-font string bounder counts the space glyph, but the
+/// vendored width table stores zero for it (faithful to PlantUML's own
+/// table). The mindmap adds the reference space advance back: 4.43px at
+/// font size 14, derived from the reference SVGs.
+const MINDMAP_SPACE_ADVANCE_PER_14 : Int = 443
+
+///|
+/// The width table measures a few percent narrower than PlantUML's real
+/// font (the activity engine compensates with an extra emulation size).
+/// The mindmap scales the measured advance only, leaving the line heights
+/// untouched.
+const MINDMAP_WIDTH_SCALE : Int = 110
+
+///|
+fn mindmap_space_advance(font_size : Int) -> Int {
+  font_size * MINDMAP_SPACE_ADVANCE_PER_14 / 14 / 100
+}
+
+///|
+fn mindmap_measure(
+  metrics : @metrics.FontMetrics,
+  text : String,
+) -> @metrics.TextMetrics {
+  let measured = metrics.measure(text)
+  let spaces = text.split(" ").to_array().length() - 1
+  let extra = measured.advance_width * (MINDMAP_WIDTH_SCALE - 100) / 100 +
+    spaces * mindmap_space_advance(metrics.font_size)
+  if extra > 0 {
+    measured.with_extra_advance(extra)
+  } else {
+    measured
+  }
+}
+
+///|
 fn Tee::full_thickness(self : Tee) -> Int {
   self.thickness1.max(self.thickness2)
 }
@@ -164,6 +199,26 @@ fn MindmapDiagram::node_text_metrics(
 }
 
 ///|
+/// Width of the visible label. PlantUML's multi-line labels carry a leading
+/// space on their first line (visible in the reference SVGs); it widens the
+/// box and offsets the first line of text.
+fn MindmapDiagram::node_text_width(self : MindmapDiagram, index : Int) -> Int {
+  let idea = self.ideas[index]
+  let font_size = self.node_font_size(index)
+  let metrics = self.style.font_metrics(font_size~)
+  let visible = mindmap_visible_text(idea.label)
+  let lines = visible.split("\n").to_array()
+  if lines.length() > 1 {
+    let space = mindmap_space_advance(font_size)
+    let first = mindmap_measure(metrics, lines[0].to_owned()).width + space
+    let rest = mindmap_measure(metrics, lines[1:].join("\n")).width
+    first.max(rest)
+  } else {
+    mindmap_measure(metrics, visible).width
+  }
+}
+
+///|
 fn MindmapDiagram::node_base_size(
   self : MindmapDiagram,
   index : Int,
@@ -175,7 +230,7 @@ fn MindmapDiagram::node_base_size(
     Box => {
       let padding_x = node_style.padding_x.unwrap_or(MINDMAP_DEFAULT_PADDING_X)
       let padding_y = node_style.padding_y.unwrap_or(MINDMAP_DEFAULT_PADDING_Y)
-      let width = (metrics.width + padding_x * 2).max(
+      let width = (self.node_text_width(index) + padding_x * 2).max(
         node_style.minimum_width.unwrap_or(0),
       )
       let height = metrics.height + padding_y * 2
@@ -183,7 +238,7 @@ fn MindmapDiagram::node_base_size(
     }
     Boxless =>
       (
-        (metrics.width + boxless_horizontal_margin).max(
+        (self.node_text_width(index) + boxless_horizontal_margin).max(
           node_style.minimum_width.unwrap_or(0),
         ),
         metrics.height + boxless_vertical_margin * 2,
@@ -470,7 +525,7 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
   }
   let nodes = []
   let edges = []
-  let mut next_y = 0
+  let mut next_y = outer_padding_y
   for root_index, root in self.ideas {
     guard root.parent is None else { continue }
     let has_left_children = !self.children_of(root_index, Left).is_empty()
@@ -490,7 +545,16 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
       { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
     }
     let root_height = left.full_thickness().max(right.full_thickness())
-    let root_y = next_y + root_height / 2
+    // PlantUML places the root at the vertical center of its content, which
+    // is the tee span minus the node margins; consecutive roots start where
+    // the previous root's content ends, plus the outer padding.
+    let root_style = self.node_style(root_index)
+    let margin_top = root_style.margin_top.unwrap_or(MINDMAP_DEFAULT_MARGIN)
+    let margin_bottom = root_style.margin_bottom.unwrap_or(
+      MINDMAP_DEFAULT_MARGIN,
+    )
+    let content_half = (root_height - margin_top - margin_bottom) / 2
+    let root_y = next_y + content_half
     if has_left_children && has_right_children {
       append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
       append_finger(self, root_index, Left, 0, root_y, false, nodes, edges)
@@ -499,7 +563,7 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
     } else {
       append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
     }
-    next_y += root_height + outer_padding_y * 2
+    next_y = root_y + content_half + outer_padding_y
   }
   let mut min_x = nodes[0].x
   let mut min_y = nodes[0].y

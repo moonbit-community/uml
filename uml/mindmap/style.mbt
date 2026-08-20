@@ -85,7 +85,7 @@ fn MindmapNodeStyle::empty() -> MindmapNodeStyle {
 }
 
 ///|
-const MINDMAP_DEFAULT_PADDING_X : Int = 12
+const MINDMAP_DEFAULT_PADDING_X : Int = 10
 
 ///|
 const MINDMAP_DEFAULT_PADDING_Y : Int = 10
@@ -106,7 +106,7 @@ fn MindmapNodeStyle::defaults() -> MindmapNodeStyle {
     font_size: None,
     line_thickness: None,
     round_corner: None,
-    alignment: Some(Center),
+    alignment: Some(Left),
   }
 }
 

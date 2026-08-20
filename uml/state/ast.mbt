@@ -109,10 +109,25 @@ pub extend StateNoteTarget with Eq::{not_equal, equal}
 pub extend StateNoteTarget with Debug::{to_repr}
 
 ///|
+pub(all) enum StateNotePosition {
+  NoteLeft
+  NoteRight
+  NoteTop
+  NoteBottom
+} derive(Eq, Debug)
+
+///|
+pub extend StateNotePosition with Eq::{not_equal, equal}
+
+///|
+pub extend StateNotePosition with Debug::{to_repr}
+
+///|
 pub struct StateNote {
   target : StateNoteTarget
   text : String
   color : String?
+  position : StateNotePosition?
 } derive(Eq, Debug)
 
 ///|

@@ -820,23 +820,65 @@ fn append_symbol_packages(
         }
         let group = diagram.packages[package_layout.package_index]
         match group.symbol {
-          Some(symbol) =>
+          Some(symbol) => {
+            // PlantUML `Cluster.manageEntryExitPoint` runs the port centers
+            // through the `FrontierCalculator` so the cluster border passes
+            // through the ports of a node symbol.
+            let (adjusted_y, adjusted_height) = port_frontier(
+              diagram,
+              group.qualified_name,
+              package_layout.y,
+              package_layout.y + package_layout.height,
+              text_metrics,
+              layout,
+            )
             append_symbol_package(
               output,
               diagram,
               group,
               symbol,
               package_layout.x,
-              package_layout.y,
+              adjusted_y,
               package_layout.width,
-              package_layout.height,
+              adjusted_height,
               text_metrics,
             )
+          }
           None => ()
         }
       }
     None => ()
   }
+}
+
+///|
+/// `FrontierCalculator` for ports: the top border moves to the source port
+/// centers and the bottom border to the sink port centers; sides without
+/// ports keep the Graphviz box.
+fn port_frontier(
+  diagram : EntityDiagram,
+  scope : String,
+  box_top : Double,
+  box_bottom : Double,
+  text_metrics : ClassTextMetrics,
+  layout : ClassLayout,
+) -> (Double, Double) {
+  let mut top = box_top
+  let mut bottom = box_bottom
+  for index, entity in diagram.entities {
+    guard entity.scope == scope && !entity.is_hidden && !entity.is_removed else {
+      continue
+    }
+    let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+    match entity.kind {
+      // Source ports sit at the top rank, so their centers are the topmost
+      // frontier; sink ports at the bottom rank anchor the bottom border.
+      Port | PortIn => top = top.max(y.to_double() + height.to_double() / 2.0)
+      PortOut => bottom = bottom.min(y.to_double() + height.to_double() / 2.0)
+      _ => ()
+    }
+  }
+  (top, bottom - top)
 }
 
 ///|

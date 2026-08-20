@@ -23,6 +23,7 @@ priv struct StateTransitionSyntax {
 
 ///|
 priv struct StateEntityNoteSyntax {
+  position : StateNotePosition
   target : String
   color : String?
 }
@@ -458,16 +459,22 @@ fn state_transition(cursor : @parse.Cursor) -> StateTransitionSyntax? {
 }
 
 ///|
-fn note_position(cursor : @parse.Cursor) -> Bool {
-  if cursor.consume_literal("left") ||
-    cursor.consume_literal("right") ||
-    cursor.consume_literal("top") ||
-    cursor.consume_literal("bottom") {
-    ignore(cursor.skip_inline_whitespace())
-    true
+fn note_position(cursor : @parse.Cursor) -> StateNotePosition? {
+  let position = if cursor.consume_literal("left") {
+    Some(NoteLeft)
+  } else if cursor.consume_literal("right") {
+    Some(NoteRight)
+  } else if cursor.consume_literal("top") {
+    Some(NoteTop)
+  } else if cursor.consume_literal("bottom") {
+    Some(NoteBottom)
   } else {
-    false
+    None
   }
+  if position is Some(_) {
+    ignore(cursor.skip_inline_whitespace())
+  }
+  position
 }
 
 ///|
@@ -488,7 +495,7 @@ fn entity_note(cursor : @parse.Cursor) -> StateEntityNoteSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("note") else { return None }
   ignore(cursor.skip_inline_whitespace())
-  guard note_position(cursor) else {
+  guard note_position(cursor) is Some(position) else {
     ignore(cursor.restore(start))
     return None
   }
@@ -509,7 +516,7 @@ fn entity_note(cursor : @parse.Cursor) -> StateEntityNoteSyntax? {
     }
   }
   ignore(cursor.take_while(_ => true))
-  Some({ target, color })
+  Some({ position, target, color })
 }
 
 ///|

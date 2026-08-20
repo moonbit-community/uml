@@ -18,6 +18,20 @@ pub extend TextMetrics with Eq::{not_equal, equal}
 pub extend TextMetrics with Debug::{to_repr}
 
 ///|
+/// A copy whose advance is widened by `extra` pixels, for renderers that
+/// compensate the built-in width table (e.g. the mindmap's space advance).
+pub fn TextMetrics::with_extra_advance(
+  self : TextMetrics,
+  extra : Int,
+) -> TextMetrics {
+  {
+    ..self,
+    width: self.width + extra,
+    advance_width: self.advance_width + extra,
+  }
+}
+
+///|
 /// Coarse built-in width profiles for deterministic cross-platform layout.
 pub(all) enum FontProfile {
   Sans

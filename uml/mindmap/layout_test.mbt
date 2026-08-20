@@ -109,3 +109,38 @@ test "layout represents every parsed parent-child relation once" {
     )
   }
 }
+
+///|
+test "labels are left-aligned at the box padding" {
+  let svg = parse("@startmindmap\n* Root\n** Child\n@endmindmap").render_svg()
+  @test.assert_eq(svg.contains("text-anchor=\"start\""), true)
+  @test.assert_eq(svg.contains("text-anchor=\"middle\""), false)
+}
+
+///|
+test "strikethrough spans split into positioned text elements" {
+  let svg = parse("@startmindmap\n* Root\n** <s>Old</s> New\n@endmindmap").render_svg()
+  @test.assert_eq(svg.contains("text-decoration=\"line-through\""), true)
+  let old_pos = svg.find(">Old<").unwrap_or(-1)
+  let new_pos = svg.find(">New<").unwrap_or(-1)
+  @test.assert_eq(old_pos > 0 && new_pos > old_pos, true)
+}
+
+///|
+test "consecutive roots stack with a modest gap" {
+  let diagram = parse("* First root\n** Deep child\n* Second root\n** Child")
+  let layout = diagram.layout()
+  let first = node_for(layout, 0)
+  let second = node_for(layout, 3)
+  @test.assert_eq(second.y > first.y + first.height, true)
+  @test.assert_eq(second.y - (first.y + first.height) < first.height, true)
+}
+
+///|
+test "width emulation leaves the rendered font size untouched" {
+  let svg = parse(
+    "@startmindmap\n* Root\n** Child with a long label here\n@endmindmap",
+  ).render_svg()
+  @test.assert_eq(svg.contains("font-size=\"14px\""), true)
+  @test.assert_eq(svg.contains("font-size=\"15px\""), false)
+}

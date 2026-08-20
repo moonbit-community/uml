@@ -548,9 +548,22 @@ fn StateDiagram::layout_scope(
     match self.note_anchor(note, scope) {
       Some(anchor) => {
         guard node_names.get(anchor) is Some(anchor_name) else { continue }
-        let edge = graph.edge(node, graph.node(anchor_name))
+        let anchor_node = graph.node(anchor_name)
+        let edge = match note.position {
+          Some(NoteRight) | Some(NoteBottom) => graph.edge(anchor_node, node)
+          _ => graph.edge(node, anchor_node)
+        }
         edge.set_attr("dir", "none")
         edge.set_attr("style", "invis")
+        match note.position {
+          Some(NoteLeft) | Some(NoteRight) => {
+            let same_rank = graph.subgraph()
+            same_rank.set_attr("rank", "same")
+            ignore(same_rank.node(name))
+            ignore(same_rank.node(anchor_name))
+          }
+          _ => ()
+        }
       }
       None => ()
     }
@@ -618,15 +631,121 @@ fn StateDiagram::layout_scope(
     })
   }
   for note in @graphviz.graphviz_notes(laid_out, note_names, bbox) {
-    output.notes.push({
-      note_index: note.note_index,
-      x: note.x,
-      y: note.y,
-      width: note.width,
-      height: note.height,
-    })
+    output.notes.push(self.correct_note_side(scope, output.nodes, note))
   }
-  output
+  let mut min_x = 0.0
+  let mut max_x = 0.0
+  for node in output.nodes {
+    if node.x + node.width > max_x {
+      max_x = node.x + node.width
+    }
+  }
+  for edge in output.edges {
+    for path in edge.paths {
+      for point in path {
+        if point.0 > max_x {
+          max_x = point.0
+        }
+      }
+    }
+    match edge.label {
+      Some(point) if point.0 > max_x => max_x = point.0
+      _ => ()
+    }
+  }
+  for note in output.notes {
+    if note.x < min_x {
+      min_x = note.x
+    }
+    if note.x + note.width > max_x {
+      max_x = note.x + note.width
+    }
+  }
+  let dx = if min_x < 0.0 { -min_x } else { 0.0 }
+  if dx == 0.0 && max_x <= output.width {
+    output
+  } else {
+    {
+      ..output,
+      width: if dx > 0.0 {
+        max_x + dx
+      } else {
+        output.width
+      },
+      nodes: output.nodes.map(node => { ..node, x: node.x + dx }),
+      edges: output.edges.map(edge => {
+        ..edge,
+        paths: edge.paths.map(path => path.map(point => (point.0 + dx, point.1))),
+        label: edge.label.map(point => (point.0 + dx, point.1)),
+      }),
+      regions: output.regions.map(region => { ..region, x: region.x + dx }),
+      notes: output.notes.map(note => { ..note, x: note.x + dx }),
+    }
+  }
+}
+
+///|
+/// Graphviz places a same-rank note beside its anchor, but the flat-edge
+/// ordering is not honored for isolated rank pairs, so the note may land on
+/// the wrong side. Mirror the note across its anchor with the same gap.
+fn StateDiagram::correct_note_side(
+  self : StateDiagram,
+  scope : String?,
+  nodes : Array[StateNodeLayout],
+  note : @graphviz.GraphvizNote,
+) -> StateNoteLayout {
+  let note_index = note.note_index
+  let layout : StateNoteLayout = {
+    note_index,
+    x: note.x,
+    y: note.y,
+    width: note.width,
+    height: note.height,
+  }
+  guard note_index < self.notes.length() else { return layout }
+  let position = self.notes[note_index].position
+  match position {
+    Some(NoteLeft) | Some(NoteRight) => ()
+    _ => return layout
+  }
+  guard self.note_anchor(self.notes[note_index], scope) is Some(anchor) else {
+    return layout
+  }
+  guard note_anchor_rect(nodes, anchor) is Some((anchor_x, anchor_w)) else {
+    return layout
+  }
+  let note_center = note.x + note.width / 2.0
+  let anchor_center = anchor_x + anchor_w / 2.0
+  let on_correct_side = match position {
+    Some(NoteLeft) => note_center <= anchor_center
+    _ => note_center >= anchor_center
+  }
+  if on_correct_side {
+    return layout
+  }
+  let gap = if note_center >= anchor_center {
+    note.x - (anchor_x + anchor_w)
+  } else {
+    anchor_x - (note.x + note.width)
+  }
+  let corrected_x = match position {
+    Some(NoteLeft) => anchor_x - gap - note.width
+    _ => anchor_x + anchor_w + gap
+  }
+  { ..layout, x: corrected_x }
+}
+
+///|
+fn note_anchor_rect(
+  nodes : Array[StateNodeLayout],
+  anchor : String,
+) -> (Double, Double)? {
+  for node in nodes {
+    if node.code == anchor {
+      return Some((node.x, node.width))
+    }
+  }
+  None
 }
 
 ///|

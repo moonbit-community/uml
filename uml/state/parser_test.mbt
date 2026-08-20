@@ -305,6 +305,39 @@ test "state and link notes participate in layout" {
 }
 
 ///|
+test "note position words are preserved on entity notes" {
+  let diagram = parse(
+    "@startuml\nstate A\nstate B\nnote left of A\nleft text\nend note\nnote right of B\nright text\nend note\nnote top of A\ntop text\nend note\nnote bottom of B\nbottom text\nend note\n@enduml",
+  )
+  let positions = diagram.notes.map(note => note.position)
+  @test.assert_eq(positions[0], Some(NoteLeft))
+  @test.assert_eq(positions[1], Some(NoteRight))
+  @test.assert_eq(positions[2], Some(NoteTop))
+  @test.assert_eq(positions[3], Some(NoteBottom))
+}
+
+///|
+test "entity notes land on the requested side of their anchor" {
+  let layout = parse(
+    "@startuml\nstate A\nstate B\nnote left of A\nleft note\nend note\nnote right of B\nright note\nend note\nnote bottom of B\nbottom note\nend note\n@enduml",
+  ).layout()
+  let node_center = (code : String) => {
+    let node = layout.nodes.filter(node => node.code == code)[0]
+    (node.x + node.width / 2.0, node.y + node.height / 2.0)
+  }
+  let note_center = (index : Int) => {
+    let note = layout.notes[index]
+    (note.x + note.width / 2.0, note.y + note.height / 2.0)
+  }
+  let a = node_center("A")
+  let b = node_center("B")
+  @test.assert_eq(note_center(0).0 < a.0, true)
+  @test.assert_eq(note_center(1).0 > b.0, true)
+  @test.assert_eq(note_center(1).1 - b.1 < 1.0, true)
+  @test.assert_eq(note_center(2).1 > b.1, true)
+}
+
+///|
 test "note font metrics participate in Graphviz node sizing" {
   let regular = parse(
       "@startuml\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",

@@ -139,7 +139,7 @@ priv struct PlacedBranch {
 ///|
 /// Canvas margins derived from PlantUML output: content is inset 16px on the
 /// left, 15px on the top and about 20px on the right and bottom.
-const CANVAS_LEFT : Int = 16
+pub const CANVAS_LEFT : Int = 16
 
 ///|
 const CANVAS_TOP : Int = 15

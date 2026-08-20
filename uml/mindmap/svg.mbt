@@ -1,4 +1,8 @@
 ///|
+/// Render one line of a mindmap label. PlantUML emits one `<text>` element
+/// per markup span, positioned at the cumulative advance; the whitespace
+/// between spans is measured but not drawn. The first line of a multi-line
+/// label carries an extra leading space (visible in the reference SVGs).
 fn append_mindmap_text(
   output : @svg.XmlWriter,
   x : Int,
@@ -10,44 +14,62 @@ fn append_mindmap_text(
   font_size : Int,
   text_metrics : @metrics.FontMetrics,
 ) -> Unit {
-  output.open("text", attributes=[
-    ("x", x.to_string()),
-    ("y", y.to_string()),
-    ("text-anchor", anchor),
-    ("fill", fill),
-    ("font-size", font_size.to_string() + "px"),
-    ("class", "mindmap-label"),
-  ])
-  label
-  .split("\n")
-  .eachi((index, line) => {
-    let text = line.to_owned()
-    let measured = text_metrics.measure(mindmap_visible_text(text))
-    let dy = if index == 0 { 0 } else { line_height }
-    output.open(
-      "tspan",
-      attributes=[
-        ("x", x.to_string()),
-        ("dy", dy.to_string()),
-        ..if text.length() > 1 && measured.advance_width > 0 {
-          [
-            ("textLength", measured.advance_width.to_string()),
-            ("lengthAdjust", "spacing"),
-          ]
-        },
-      ],
-    )
-    parse_mindmap_text_line(text).each(span => {
-      let attributes = [
-        ..if span.strike {
-          [("text-decoration", "line-through")]
-        },
-      ]
-      output.text("tspan", span.text, attributes~)
-    })
-    output.close()
+  let lines = label.split("\n").to_array()
+  let space = mindmap_space_advance(font_size)
+  let first_line_extra = if lines.length() > 1 { space } else { 0 }
+  lines.eachi((line_index, line) => {
+    let spans = parse_mindmap_text_line(line.to_owned())
+    let mut cursor_x = x + (if line_index == 0 { first_line_extra } else { 0 })
+    let mut pending_ws = 0
+    for span_index, span in spans {
+      let (text, leading, trailing) = split_whitespace(span.text)
+      if span_index > 0 {
+        cursor_x += pending_ws +
+          mindmap_measure(text_metrics, leading).advance_width
+      }
+      if !text.is_empty() {
+        let measured = mindmap_measure(text_metrics, text)
+        let attributes = [
+          ("x", cursor_x.to_string()),
+          ("y", (y + line_index * line_height).to_string()),
+          ("text-anchor", anchor),
+          ("fill", fill),
+          ("font-size", font_size.to_string() + "px"),
+          ("class", "mindmap-label"),
+          ..if measured.advance_width > 0 {
+            [
+              ("textLength", measured.advance_width.to_string()),
+              ("lengthAdjust", "spacing"),
+            ]
+          },
+          ..if span.strike {
+            [("text-decoration", "line-through")]
+          },
+        ]
+        output.text("text", text, attributes~)
+        cursor_x += measured.advance_width
+      }
+      pending_ws = mindmap_measure(text_metrics, trailing).advance_width
+    }
   })
-  output.close()
+}
+
+///|
+fn split_whitespace(value : String) -> (String, String, String) {
+  let length = value.length()
+  let mut start = 0
+  while start < length && value[start] == ' ' {
+    start = start + 1
+  }
+  let mut end = length
+  while end > start && value[end - 1] == ' ' {
+    end = end - 1
+  }
+  (
+    value[start:end].to_owned(),
+    value[:start].to_owned(),
+    value[end:].to_owned(),
+  )
 }
 
 ///|
@@ -79,9 +101,10 @@ fn append_mindmap_node(
   let node_style = diagram.node_style(node.idea_index)
   let padding_x = node_style.padding_x.unwrap_or(MINDMAP_DEFAULT_PADDING_X)
   let padding_y = node_style.padding_y.unwrap_or(MINDMAP_DEFAULT_PADDING_Y)
-  let (text_x, anchor) = match node_style.alignment.unwrap_or(Center) {
-    Left => (node.x + padding_x, "start")
-    Right => (node.x + node.width - padding_x, "end")
+  let (text_x, anchor) = match node_style.alignment.unwrap_or(Left) {
+    // PlantUML draws every node label at the box's left edge plus the
+    // padding; `HorizontalAlignment Right` does not move it either.
+    Left | Right => (node.x + padding_x, "start")
     Center => (node.x + node.width / 2, "middle")
   }
   let (text_x, anchor, first_baseline) = match idea.shape {
@@ -96,13 +119,7 @@ fn append_mindmap_node(
         Right => node.x + boxless_horizontal_margin
         Left => node.x
       }
-      (
-        text_x,
-        "start",
-        node.y +
-        boxless_vertical_margin +
-        diagram.node_text_metrics(node.idea_index).baseline,
-      )
+      (text_x, "start", node.y + boxless_vertical_margin + font_size)
     }
   }
   let shape_class = match idea.shape {
