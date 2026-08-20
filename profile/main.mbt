@@ -9,9 +9,8 @@
 /// exists next to it.
 ///
 /// Reports are written under `--output <dir>` when given, and otherwise to
-/// `profiles/uml-vs-plantuml/`. With `--json <dir>`, one JSON summary per
-/// diagram category is written to `<dir>/<category>/<category>.json`,
-/// mirroring the HTML report layout.
+/// `profiles/uml-vs-plantuml/`. One JSON summary per diagram category is
+/// written next to the HTML reports as `<report_dir>/<category>/<category>.json`.
 let examples_root : String = "live/public/examples"
 
 ///|
@@ -91,10 +90,7 @@ fn main {
       @sys.exit(1)
     }
   }
-  match matches.values.get("json") {
-    Some([dir]) => write_json_summaries(dir, results)
-    _ => ()
-  }
+  write_json_summaries(report_dir, results)
   println(summary_line(analyzed.length(), skipped, failed))
   println("reports written to \{report_dir}/")
   @sys.exit(if failed > 0 { 1 } else { 0 })
@@ -118,12 +114,6 @@ fn uml_profile_command() -> @argparse.Command {
         short='o',
         long="output",
         about="Write the report directory to this path.",
-      ),
-      OptionArg(
-        "json",
-        short='j',
-        long="json",
-        about="Write one JSON summary per diagram category into this directory.",
       ),
     ],
   )
@@ -376,8 +366,8 @@ struct CategorySummary {
 } derive(ToJson)
 
 ///|
-/// One JSON file per diagram category, mirroring the HTML report layout:
-/// `<dir>/<category>/<category>.json`.
+/// Write one JSON file per diagram category into the report directory,
+/// mirroring the HTML report layout: `<dir>/<category>/<category>.json`.
 fn write_json_summaries(
   dir : String,
   results : Array[(String, Outcome)],
