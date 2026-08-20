@@ -9,8 +9,9 @@
 /// exists next to it.
 ///
 /// Reports are written under `--output <dir>` when given, and otherwise to
-/// `profiles/uml-vs-plantuml/`. One JSON summary per diagram category is
-/// written next to the HTML reports as `<report_dir>/<category>/<category>.json`.
+/// `profiles/uml-vs-plantuml/`. The `--format` option picks one report kind:
+/// `html` (default; one interactive page per fixture plus an index) or `json`
+/// (one summary per diagram category as `<report_dir>/<category>/<category>.json`).
 let examples_root : String = "live/public/examples"
 
 ///|
@@ -63,7 +64,26 @@ fn main {
       default_output_path()
     }
   }
+  let format = matches.values.get("format").unwrap_or(["html"])[0]
   ignore(@fs.create_dir(report_dir) catch { _ => () })
+  match format {
+    "html" => write_html_reports(report_dir, analyzed)
+    "json" => write_json_summaries(report_dir, results)
+    other => {
+      println("error: unknown format \{other}, expected html or json")
+      @sys.exit(2)
+    }
+  }
+  println(summary_line(analyzed.length(), skipped, failed))
+  println("reports written to \{report_dir}/")
+  @sys.exit(if failed > 0 { 1 } else { 0 })
+}
+
+///|
+fn write_html_reports(
+  report_dir : String,
+  analyzed : Array[(String, String)],
+) -> Unit {
   for pair in analyzed {
     let (fixture, html) = pair
     let path = html_path_of(report_dir, fixture)
@@ -90,10 +110,6 @@ fn main {
       @sys.exit(1)
     }
   }
-  write_json_summaries(report_dir, results)
-  println(summary_line(analyzed.length(), skipped, failed))
-  println("reports written to \{report_dir}/")
-  @sys.exit(if failed > 0 { 1 } else { 0 })
 }
 
 ///|
@@ -114,6 +130,13 @@ fn uml_profile_command() -> @argparse.Command {
         short='o',
         long="output",
         about="Write the report directory to this path.",
+      ),
+      OptionArg(
+        "format",
+        short='f',
+        long="format",
+        about="Report format: html (default) or json.",
+        default_values=["html"],
       ),
     ],
   )
