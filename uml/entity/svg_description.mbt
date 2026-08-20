@@ -869,7 +869,7 @@ fn port_frontier(
     guard entity.scope == scope && !entity.is_hidden && !entity.is_removed else {
       continue
     }
-    let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+    let (_, y, _, height) = layout.entity_rect(diagram, index, text_metrics)
     match entity.kind {
       // Source ports sit at the top rank, so their centers are the topmost
       // frontier; sink ports at the bottom rank anchor the bottom border.
