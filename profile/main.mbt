@@ -9,12 +9,14 @@
 /// exists next to it.
 ///
 /// Reports are written under `--output <dir>` when given, and otherwise to
-/// `profiles/uml-vs-plantuml/`.
+/// `profiles/uml-vs-plantuml/`. With `--json <path>`, an aggregated summary
+/// grouped by diagram category is additionally written as JSON.
 let examples_root : String = "live/public/examples"
 
 ///|
 enum Outcome {
-  Analyzed(String)
+  /// The comparison succeeded; the second component is the svgdiff report.
+  Analyzed(String, @svgdiff.StructuredReport)
   Skipped
   Failed(String)
 }
@@ -39,17 +41,20 @@ fn main {
     requested.map(expand_fixture).flatten()
   }
   let analyzed : Array[(String, String)] = []
+  let results : Array[(String, Outcome)] = []
   let mut skipped = 0
   let mut failed = 0
   for fixture in fixtures {
-    match compare_fixture(fixture) {
-      Analyzed(html) => analyzed.push((fixture, html))
+    let outcome = compare_fixture(fixture)
+    match outcome {
+      Analyzed(html, _) => analyzed.push((fixture, html))
       Skipped => skipped += 1
       Failed(message) => {
         failed += 1
         println("error: \{fixture}: \{message}")
       }
     }
+    results.push((fixture, outcome))
   }
   let report_dir = match matches.values.get("output") {
     Some([path]) => path
@@ -85,6 +90,18 @@ fn main {
       @sys.exit(1)
     }
   }
+  match matches.values.get("json") {
+    Some([path]) => {
+      @fs.write_string_to_file(path, json_summary(results)) catch {
+        IOError(message) => {
+          println("error: failed to write \{path}: \{message}")
+          @sys.exit(1)
+        }
+      }
+      println("json report written to \{path}")
+    }
+    _ => ()
+  }
   println(summary_line(analyzed.length(), skipped, failed))
   println("reports written to \{report_dir}/")
   @sys.exit(if failed > 0 { 1 } else { 0 })
@@ -108,6 +125,12 @@ fn uml_profile_command() -> @argparse.Command {
         short='o',
         long="output",
         about="Write the report directory to this path.",
+      ),
+      OptionArg(
+        "json",
+        short='j',
+        long="json",
+        about="Write a JSON summary report to this path.",
       ),
     ],
   )
@@ -223,7 +246,7 @@ fn compare_fixture(fixture : String) -> Outcome {
     puml_svg,
     comparison_profile(uml_svg, puml_svg),
   )
-  Analyzed(@svgdiff.render_html_report(uml_svg, puml_svg, report, None))
+  Analyzed(@svgdiff.render_html_report(uml_svg, puml_svg, report, None), report)
 }
 
 ///|
@@ -331,4 +354,200 @@ fn parse_dimension(value : String) -> Int? {
   guard !digits.is_empty() else { return None }
   let parsed = @string.parse_int(digits.to_string()) catch { _ => return None }
   Some(parsed)
+}
+
+///|
+/// One fixture inside a category summary.
+struct FixtureSummary {
+  fixture : String
+  status : String
+  error : String?
+  analysis_status : String?
+  atomic_difference_count : Int?
+  event_count : Int?
+  diagnostic_count : Int?
+  canvas_status : String?
+  impact_status : String?
+} derive(ToJson)
+
+///|
+struct CategorySummary {
+  category : String
+  analyzed : Int
+  matched : Int
+  inconclusive : Int
+  differ : Int
+  failed : Int
+  skipped : Int
+  fixtures : Array[FixtureSummary]
+} derive(ToJson)
+
+///|
+struct ReportTotals {
+  analyzed : Int
+  matched : Int
+  inconclusive : Int
+  differ : Int
+  failed : Int
+  skipped : Int
+} derive(ToJson)
+
+///|
+struct JsonSummary {
+  schema_version : String
+  categories : Array[CategorySummary]
+  totals : ReportTotals
+} derive(ToJson)
+
+///|
+/// Build a JSON summary of every fixture, grouped by diagram category.
+fn json_summary(results : Array[(String, Outcome)]) -> String {
+  let categories : Array[String] = []
+  let groups : Map[String, Array[(String, Outcome)]] = Map([])
+  for pair in results {
+    let (fixture, _) = pair
+    let category = fixture_category(fixture)
+    if !categories.contains(category) {
+      categories.push(category)
+    }
+    groups.set(category, groups.get_or_default(category, []) + [pair])
+  }
+  categories.sort_by(fn(left, right) { left.lexical_compare(right) })
+  let category_summaries = categories.map(category => {
+    let entries = groups.get_or_default(category, [])
+    let counts = status_counts(entries)
+    CategorySummary::{
+      category,
+      analyzed: counts.get_or_default("analyzed", 0),
+      matched: counts.get_or_default("matched", 0),
+      inconclusive: counts.get_or_default("inconclusive", 0),
+      differ: counts.get_or_default("differ", 0),
+      failed: counts.get_or_default("failed", 0),
+      skipped: counts.get_or_default("skipped", 0),
+      fixtures: entries.map(pair => fixture_summary(pair.0, pair.1)),
+    }
+  })
+  let summary = JsonSummary::{
+    schema_version: "1.0",
+    categories: category_summaries,
+    totals: report_totals(category_summaries),
+  }
+  ToJson::to_json(summary).stringify(indent=2)
+}
+
+///|
+fn status_counts(entries : Array[(String, Outcome)]) -> Map[String, Int] {
+  let counts : Map[String, Int] = Map([])
+  for pair in entries {
+    let key = outcome_status(pair.1)
+    counts.set(key, counts.get_or_default(key, 0) + 1)
+    counts.set("analyzed", counts.get_or_default("analyzed", 0) + 1)
+  }
+  counts
+}
+
+///|
+fn report_totals(categories : Array[CategorySummary]) -> ReportTotals {
+  let mut analyzed = 0
+  let mut matched = 0
+  let mut inconclusive = 0
+  let mut differ = 0
+  let mut failed = 0
+  let mut skipped = 0
+  for category in categories {
+    analyzed += category.analyzed
+    matched += category.matched
+    inconclusive += category.inconclusive
+    differ += category.differ
+    failed += category.failed
+    skipped += category.skipped
+  }
+  ReportTotals::{ analyzed, matched, inconclusive, differ, failed, skipped }
+}
+
+///|
+fn fixture_summary(fixture : String, outcome : Outcome) -> FixtureSummary {
+  let name = relative_fixture(fixture)
+  match outcome {
+    Skipped =>
+      FixtureSummary::{
+        fixture: name,
+        status: "skipped",
+        error: None,
+        analysis_status: None,
+        atomic_difference_count: None,
+        event_count: None,
+        diagnostic_count: None,
+        canvas_status: None,
+        impact_status: None,
+      }
+    Failed(message) =>
+      FixtureSummary::{
+        fixture: name,
+        status: "failed",
+        error: Some(message),
+        analysis_status: None,
+        atomic_difference_count: None,
+        event_count: None,
+        diagnostic_count: None,
+        canvas_status: None,
+        impact_status: None,
+      }
+    Analyzed(_, report) =>
+      FixtureSummary::{
+        fixture: name,
+        status: summary_status(report),
+        error: None,
+        analysis_status: Some(report.analysis_status),
+        atomic_difference_count: Some(report.atomic_differences.length()),
+        event_count: Some(report.events.length()),
+        diagnostic_count: Some(report.diagnostics.length()),
+        canvas_status: Some(report.canvas_outcome.status),
+        impact_status: Some(report.impact_assessment.status),
+      }
+  }
+}
+
+///|
+/// A fixture matches when svgdiff found no atomic differences under a complete
+/// analysis; an empty difference list under partial analysis is inconclusive.
+fn summary_status(report : @svgdiff.StructuredReport) -> String {
+  if report.atomic_differences.is_empty() &&
+    report.analysis_status == "complete" {
+    "matched"
+  } else if report.atomic_differences.is_empty() {
+    "inconclusive"
+  } else {
+    "differ"
+  }
+}
+
+///|
+fn outcome_status(outcome : Outcome) -> String {
+  match outcome {
+    Skipped => "skipped"
+    Failed(_) => "failed"
+    Analyzed(_, report) => summary_status(report)
+  }
+}
+
+///|
+fn relative_fixture(fixture : String) -> String {
+  let prefix = examples_root + "/"
+  if fixture.has_prefix(prefix) {
+    fixture[prefix.length():].to_owned()
+  } else {
+    let slash = fixture.rev_find("/").unwrap_or(-1)
+    fixture[slash + 1:].to_owned()
+  }
+}
+
+///|
+/// The diagram category is the first path component under the examples root.
+fn fixture_category(fixture : String) -> String {
+  let relative = relative_fixture(fixture)
+  match relative.find("/") {
+    Some(slash) => relative[:slash].to_owned()
+    None => "other"
+  }
 }

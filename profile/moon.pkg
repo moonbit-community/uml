@@ -4,6 +4,7 @@ import {
   "Milky2018/svgdiff",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/x/fs",
   "moonbitlang/x/sys",
