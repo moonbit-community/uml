@@ -11,7 +11,7 @@
 /// Reports are written under `--output <dir>` when given, and otherwise to
 /// `profiles/uml-vs-plantuml/`. The `--format` option picks one report kind:
 /// `html` (default; one interactive page per fixture plus an index) or `json`
-/// (one summary per diagram category as `<report_dir>/<category>/<category>.json`).
+/// (one full report per fixture as `<report_dir>/<category>/<fixture>.json`).
 let examples_root : String = "live/public/examples"
 
 ///|
@@ -68,7 +68,7 @@ fn main {
   ignore(@fs.create_dir(report_dir) catch { _ => () })
   match format {
     "html" => write_html_reports(report_dir, analyzed)
-    "json" => write_json_summaries(report_dir, results)
+    "json" => write_json_reports(report_dir, results)
     other => {
       println("error: unknown format \{other}, expected html or json")
       @sys.exit(2)
@@ -136,7 +136,6 @@ fn uml_profile_command() -> @argparse.Command {
         short='f',
         long="format",
         about="Report format: html (default) or json.",
-        default_values=["html"],
       ),
     ],
   )
@@ -363,8 +362,44 @@ fn parse_dimension(value : String) -> Int? {
 }
 
 ///|
-/// One fixture inside a category summary. Analyzed fixtures embed the full
-/// svgdiff StructuredReport; the `status` field is a quick filter.
+/// One JSON file per analyzed fixture, mirroring the HTML report layout:
+/// `<report_dir>/<category>/<fixture>.json`. The file embeds the full svgdiff
+/// StructuredReport plus the fixture path and a quick `status` filter.
+fn write_json_reports(dir : String, results : Array[(String, Outcome)]) -> Unit {
+  for pair in results {
+    let (fixture, outcome) = pair
+    match outcome {
+      Analyzed(_, report) => {
+        let path = json_path_of(dir, fixture)
+        let slash = path.rev_find("/").unwrap_or(-1)
+        if slash >= 0 {
+          ignore(@fs.create_dir(path[:slash].to_owned()) catch { _ => () })
+        }
+        let content = FixtureSummary::{
+          fixture: relative_fixture(fixture),
+          status: summary_status(report),
+          error: None,
+          report: Some(ToJson::to_json(report)),
+        }
+        @fs.write_string_to_file(
+          path,
+          ToJson::to_json(content).stringify(indent=2),
+        ) catch {
+          IOError(message) => {
+            println("error: failed to write \{path}: \{message}")
+            @sys.exit(1)
+          }
+        }
+        println("json report written to \{path}")
+      }
+      Skipped | Failed(_) => ()
+    }
+  }
+}
+
+///|
+/// One analyzed fixture: its relative path, a quick status filter, and the
+/// full svgdiff StructuredReport.
 struct FixtureSummary {
   fixture : String
   status : String
@@ -373,109 +408,15 @@ struct FixtureSummary {
 } derive(ToJson)
 
 ///|
-struct CategorySummary {
-  category : String
-  analyzed : Int
-  matched : Int
-  inconclusive : Int
-  differ : Int
-  failed : Int
-  skipped : Int
-  fixtures : Array[FixtureSummary]
-} derive(ToJson)
-
-///|
-/// Write one JSON file per diagram category into the report directory,
-/// mirroring the HTML report layout: `<dir>/<category>/<category>.json`.
-fn write_json_summaries(
-  dir : String,
-  results : Array[(String, Outcome)],
-) -> Unit {
-  for summary in category_summaries(results) {
-    let path = "\{dir}/\{summary.category}/\{summary.category}.json"
-    let slash = path.rev_find("/").unwrap_or(-1)
-    if slash >= 0 {
-      ignore(@fs.create_dir(path[:slash].to_owned()) catch { _ => () })
-    }
-    @fs.write_string_to_file(path, ToJson::to_json(summary).stringify(indent=2)) catch {
-      IOError(message) => {
-        println("error: failed to write \{path}: \{message}")
-        @sys.exit(1)
-      }
-    }
-    println("json report written to \{path}")
+fn json_path_of(report_dir : String, fixture : String) -> String {
+  let prefix = examples_root + "/"
+  let relative = if fixture.has_prefix(prefix) {
+    fixture[prefix.length():]
+  } else {
+    let slash = fixture.rev_find("/").unwrap_or(-1)
+    fixture[slash + 1:]
   }
-}
-
-///|
-/// Group every fixture by diagram category and summarize each group.
-fn category_summaries(
-  results : Array[(String, Outcome)],
-) -> Array[CategorySummary] {
-  let categories : Array[String] = []
-  let groups : Map[String, Array[(String, Outcome)]] = Map([])
-  for pair in results {
-    let (fixture, _) = pair
-    let category = fixture_category(fixture)
-    if !categories.contains(category) {
-      categories.push(category)
-    }
-    groups.set(category, groups.get_or_default(category, []) + [pair])
-  }
-  categories.sort_by(fn(left, right) { left.lexical_compare(right) })
-  categories.map(category => {
-    let entries = groups.get_or_default(category, [])
-    let counts = status_counts(entries)
-    CategorySummary::{
-      category,
-      analyzed: counts.get_or_default("analyzed", 0),
-      matched: counts.get_or_default("matched", 0),
-      inconclusive: counts.get_or_default("inconclusive", 0),
-      differ: counts.get_or_default("differ", 0),
-      failed: counts.get_or_default("failed", 0),
-      skipped: counts.get_or_default("skipped", 0),
-      fixtures: entries.map(pair => fixture_summary(pair.0, pair.1)),
-    }
-  })
-}
-
-///|
-fn status_counts(entries : Array[(String, Outcome)]) -> Map[String, Int] {
-  let counts : Map[String, Int] = Map([])
-  for pair in entries {
-    let key = outcome_status(pair.1)
-    counts.set(key, counts.get_or_default(key, 0) + 1)
-    counts.set("analyzed", counts.get_or_default("analyzed", 0) + 1)
-  }
-  counts
-}
-
-///|
-fn fixture_summary(fixture : String, outcome : Outcome) -> FixtureSummary {
-  let name = relative_fixture(fixture)
-  match outcome {
-    Skipped =>
-      FixtureSummary::{
-        fixture: name,
-        status: "skipped",
-        error: None,
-        report: None,
-      }
-    Failed(message) =>
-      FixtureSummary::{
-        fixture: name,
-        status: "failed",
-        error: Some(message),
-        report: None,
-      }
-    Analyzed(_, report) =>
-      FixtureSummary::{
-        fixture: name,
-        status: summary_status(report),
-        error: None,
-        report: Some(ToJson::to_json(report)),
-      }
-  }
+  "\{report_dir}/\{relative[:relative.length() - 4]}.json"
 }
 
 ///|
@@ -493,15 +434,6 @@ fn summary_status(report : @svgdiff.StructuredReport) -> String {
 }
 
 ///|
-fn outcome_status(outcome : Outcome) -> String {
-  match outcome {
-    Skipped => "skipped"
-    Failed(_) => "failed"
-    Analyzed(_, report) => summary_status(report)
-  }
-}
-
-///|
 fn relative_fixture(fixture : String) -> String {
   let prefix = examples_root + "/"
   if fixture.has_prefix(prefix) {
@@ -509,15 +441,5 @@ fn relative_fixture(fixture : String) -> String {
   } else {
     let slash = fixture.rev_find("/").unwrap_or(-1)
     fixture[slash + 1:].to_owned()
-  }
-}
-
-///|
-/// The diagram category is the first path component under the examples root.
-fn fixture_category(fixture : String) -> String {
-  let relative = relative_fixture(fixture)
-  match relative.find("/") {
-    Some(slash) => relative[:slash].to_owned()
-    None => "other"
   }
 }
