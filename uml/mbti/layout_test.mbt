@@ -125,9 +125,37 @@ test "mindmap layout hangs base entities directly under the package root" {
 }
 
 ///|
+/// Relations that lose the tree race are dropped from the painting: the SVG
+/// draws exactly the packed parent-child edges, so every non-root node keeps
+/// a single edge and never connects to sibling or otherwise unrelated nodes.
+test "mindmap layout paints only tree edges" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|trait Eq
+    #|struct Point {
+    #|  x : Int
+    #|}
+    #|struct Line {
+    #|  start : Point
+    #|  end : Point
+    #|}
+    #|impl Eq for Line;
+    #|@enduml
+  let diagram = parse(source)
+  let layout = diagram.graph.mindmap_layout(diagram.package_name)
+  let svg = diagram.render_svg() catch {
+    _ => @test.fail("svg rendering failed")
+  }
+  let painted_edges = svg.split("class=\"relation\"").length() - 1
+  @test.assert_eq(painted_edges, layout.edges.length())
+  @test.assert_eq(svg.contains("class=\"relation-label\""), false)
+}
+
+///|
 /// The class-member collapse machinery works on the mindmap layout too: the
-/// member bodies wrap in a `<details>` disclosure and every edge emits
-/// open/closed endpoint states.
+/// member bodies wrap in a `<details>` disclosure (open by default in the
+/// mbti family) and every edge emits open/closed endpoint states.
 test "mindmap layout renders collapsible class nodes and edges" {
   let source =
     #|@startuml '.mbti
@@ -141,7 +169,10 @@ test "mindmap layout renders collapsible class nodes and edges" {
   let svg = parse(source).render_svg(class_member_collapsible=true) catch {
     _ => @test.fail("svg rendering failed")
   }
-  @test.assert_eq(svg.contains("details"), true)
+  @test.assert_eq(
+    svg.contains("<details xmlns=\"http://www.w3.org/1999/xhtml\" open style"),
+    true,
+  )
   @test.assert_eq(svg.contains("edge-state"), true)
   @test.assert_eq(svg.contains("data-edge-index"), true)
 }

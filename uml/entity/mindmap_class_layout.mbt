@@ -3,6 +3,10 @@
 /// algorithm: the package name is the single root, every entity hangs under
 /// the target of its first relation, and entities that nothing points at
 /// (or whose relations would form a cycle) hang under the package root.
+///
+/// Only the packed tree edges are painted: every non-root node keeps exactly
+/// one edge (its parent -> child), and relations that lose the tree race are
+/// dropped instead of connecting nodes with extra beziers.
 priv struct MindmapClassLayout {
   layout : @mindmap.MindmapLayout
   root_rect : (Int, Int, Int, Int)
@@ -10,9 +14,6 @@ priv struct MindmapClassLayout {
   rects : Array[(Int, Int, Int, Int)]
   /// Tree edges from the packing (including the package root's children).
   structure_edges : Array[MindmapClassEdge]
-  /// Per relation: a bezier for relations that are not tree edges, `None`
-  /// when the relation already appears as a structure edge.
-  extra_edges : Array[MindmapClassEdge?]
 }
 
 ///|
@@ -141,43 +142,7 @@ fn EntityDiagram::mindmap_class_layout(
       Some(edge.child_index - 1)
     },
   })
-  let extra_edges : Array[MindmapClassEdge?] = []
-  for relation in self.relations {
-    let source = entity_index(self, relation.left)
-    let target = entity_index(self, relation.right)
-    match (source, target) {
-      (Some(source), Some(target)) => {
-        let source_node = source + 1
-        let target_node = target + 1
-        // The tree edge connects the relation target (parent) to its source
-        // (child); the relation is a structure edge when it won the race.
-        let is_tree_edge = layout.edges.any(edge => {
-          edge.parent_index == target_node && edge.child_index == source_node
-        })
-        if is_tree_edge {
-          extra_edges.push(None)
-        } else {
-          let edge = bezier_between(rects[source], rects[target])
-          extra_edges.push(
-            Some({
-              ..edge,
-              left_entity: Some(source),
-              right_entity: Some(target),
-            }),
-          )
-        }
-      }
-      _ => extra_edges.push(None)
-    }
-  }
-  {
-    layout,
-    root_rect,
-    package_label: package_name,
-    rects,
-    structure_edges,
-    extra_edges,
-  }
+  { layout, root_rect, package_label: package_name, rects, structure_edges }
 }
 
 ///|
@@ -234,47 +199,6 @@ fn append_mindmap_root(
         CLASS_TEXT_BASELINE_BOTTOM_GAP
       output <+
         $|<g class="class-node" data-code="\{@svg.xml_escape(package_label)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}" style="stroke:\{stroke};stroke-width:1.2"/><text x="\{title_x}" y="\{title_baseline}" class="class-title">\{@svg.xml_escape(package_label)}</text></g>
-    }
-    None => ()
-  }
-}
-
-///|
-/// Paint one mbti relation as a mindmap-style bezier curve with its label at
-/// the curve midpoint.
-fn append_mindmap_relation(
-  output : StringBuilder,
-  diagram : EntityDiagram,
-  relation_index : Int,
-  relation : Relation,
-  edge : MindmapClassEdge,
-  text_metrics : ClassTextMetrics,
-  layout : ClassLayout,
-  class_member_collapsible : Bool,
-) -> Unit {
-  let relation_color = @svg.svg_color(
-    relation.color,
-    diagram.style.diagram_line_color(),
-  )
-  let line_attributes = @svg.stroke_style(relation.line_style, default_width="")
-  let dash = if relation.dotted {
-    @svg.line_style_attributes_markup(Some("dashed"))
-  } else {
-    ""
-  }
-  append_mindmap_edge_states(
-    output, diagram, text_metrics, layout, edge, relation_index, relation_color,
-    line_attributes, dash, class_member_collapsible,
-  )
-  match relation.label {
-    Some(label) => {
-      let x = (edge.x1 + 3 * edge.control1_x + 3 * edge.control2_x + edge.x2) /
-        8
-      let y = (edge.y1 + 3 * edge.control1_y + 3 * edge.control2_y + edge.y2) /
-        8
-      let label_color = diagram.style.diagram_text_color()
-      output <+
-        $|<text x="\{x}" y="\{y}" class="relation-label" fill="\{label_color}">\{@svg.xml_escape(label)}</text>
     }
     None => ()
   }
@@ -369,59 +293,4 @@ fn append_mindmap_edge_state(
   output.write_string(@svg.spline_path_data(visible_path))
   output <+
     $|" class="relation" style="stroke:\{relation_color};\{line_attributes}"\{dash}/>
-}
-
-///|
-/// A mindmap-style bezier between two boxes: from the left box's right edge
-/// center to the right box's left edge center, with control points offset by
-/// the mindmap's 25px elbow. When the boxes overlap horizontally (a vertical
-/// connection), the elbow offsets along the vertical axis instead so the
-/// curve never folds back.
-fn bezier_between(
-  source : (Int, Int, Int, Int),
-  target : (Int, Int, Int, Int),
-) -> MindmapClassEdge {
-  let (sx, sy, sw, sh) = source
-  let (tx, ty, tw, th) = target
-  let source_center = sx + sw / 2
-  let target_center = tx + tw / 2
-  let syc = sy + sh / 2
-  let tyc = ty + th / 2
-  let left_first = source_center <= target_center
-  let (x1, y1, x2, y2) = if left_first {
-    (sx + sw, syc, tx, tyc)
-  } else {
-    (tx + tw, tyc, sx, syc)
-  }
-  // The horizontal elbow would cross the facing box span when the gap is
-  // narrow, so offset the control points along the direction of travel.
-  let gap = (x2 - x1).abs()
-  if gap < 50 {
-    let sign = if y2 >= y1 { 1 } else { -1 }
-    {
-      x1,
-      y1,
-      control1_x: x1,
-      control1_y: y1 + 25 * sign,
-      control2_x: x2,
-      control2_y: y2 - 25 * sign,
-      x2,
-      y2,
-      left_entity: None,
-      right_entity: None,
-    }
-  } else {
-    {
-      x1,
-      y1,
-      control1_x: x1 + 25,
-      control1_y: y1,
-      control2_x: x2 - 25,
-      control2_y: y2,
-      x2,
-      y2,
-      left_entity: None,
-      right_entity: None,
-    }
-  }
 }

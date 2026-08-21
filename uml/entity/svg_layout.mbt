@@ -133,33 +133,6 @@ fn ClassLayout::content_bounds(
         )
         bounds = include_point(bounds, edge.x2.to_double(), edge.y2.to_double())
       }
-      for edge in mindmap.extra_edges {
-        match edge {
-          Some(edge) => {
-            bounds = include_point(
-              bounds,
-              edge.x1.to_double(),
-              edge.y1.to_double(),
-            )
-            bounds = include_point(
-              bounds,
-              edge.control1_x.to_double(),
-              edge.control1_y.to_double(),
-            )
-            bounds = include_point(
-              bounds,
-              edge.control2_x.to_double(),
-              edge.control2_y.to_double(),
-            )
-            bounds = include_point(
-              bounds,
-              edge.x2.to_double(),
-              edge.y2.to_double(),
-            )
-          }
-          None => ()
-        }
-      }
     }
     None =>
       match self.graphviz {

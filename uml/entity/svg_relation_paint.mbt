@@ -506,18 +506,9 @@ fn append_relation(
   class_member_collapsible : Bool,
 ) -> Unit {
   match layout.mindmap {
-    Some(mindmap) => {
-      guard relation_index < mindmap.extra_edges.length() else { return }
-      match mindmap.extra_edges[relation_index] {
-        Some(edge) =>
-          append_mindmap_relation(
-            output, diagram, relation_index, relation, edge, text_metrics, layout,
-            class_member_collapsible,
-          )
-        None => ()
-      }
-      return
-    }
+    // The mindmap tree edges are painted as structure edges; every other
+    // relation is dropped so non-root nodes keep exactly one edge.
+    Some(_) => return
     None => ()
   }
   let usecase = diagram.family.is_usecase()
