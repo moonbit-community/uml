@@ -1,0 +1,13 @@
+@startuml
+node "Production" as prod {
+  database "Orders DB" as orders
+  node "API" as api
+  queue "Notifications" as queue
+}
+frame "Staging" as staging {
+  node "Worker" as worker
+}
+cloud "Public Cloud" as cloud {
+  storage "Backups" as backups
+}
+@enduml

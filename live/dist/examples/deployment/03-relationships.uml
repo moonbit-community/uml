@@ -1,0 +1,18 @@
+@startuml
+node "Client" as client
+node "Gateway" as gateway
+node "Service A" as a
+node "Service B" as b
+database "Primary DB" as primary
+database "Replica DB" as replica
+queue "Event Bus" as bus
+
+client --> gateway : https
+gateway --> a : rpc
+gateway --> b : rpc
+a --> primary : read-write
+b --> primary : read-write
+primary --> replica : replicate
+a --> bus : publish
+b ..> bus : consume
+@enduml

@@ -1,0 +1,16 @@
+@startuml
+node "Frontend" as fe <<browser>>
+node "API Gateway" as gw <<infra>>
+database "PostgreSQL" as pg <<storage>>
+() "REST API" as rest
+interface "Events" as events
+usecase "Login" as login
+actor "Operator" as operator
+cloud "CDN" as cdn <<edge>>
+fe --> gw : https
+gw --> rest : json
+gw --> pg : sql
+gw --> events : emit
+login ..> gw : uses
+operator --> cdn : manage
+@enduml

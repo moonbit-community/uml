@@ -1,0 +1,24 @@
+@startuml
+node "Web Server" as web
+node "Database Server" as db
+frame "Admin UI" as admin
+cloud "Internet" as internet
+storage "Archive" as archive
+queue "Jobs" as jobs
+database "Cache" as cache
+agent "Monitor" as monitor
+artifact "app.jar" as jar
+folder "logs" as logs
+card "card1" as card
+file "config.yml" as conf
+rectangle "K8s Cluster" as k8s
+hexagon "Hex" as hex
+label "caption" as caption
+action "Deploy" as deploy
+process "Build" as build
+boundary "Edge" as edge
+control "Router" as router
+entity "Account" as account
+collections "Docs" as docs
+person "Ops" as ops
+@enduml
