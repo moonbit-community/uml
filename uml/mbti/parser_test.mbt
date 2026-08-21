@@ -201,3 +201,105 @@ test "renders the adapted graph to svg" {
   @test.assert_eq(svg.contains("Point"), true)
   @test.assert_eq(svg.contains("Eq"), true)
 }
+
+///|
+test "draws association edges for members whose type is declared" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|struct Point {
+    #|  x : Int
+    #|}
+    #|struct Line {
+    #|  start : Point
+    #|  end : Point
+    #|}
+    #|enum Shape {
+    #|  Circle(Point)
+    #|}
+    #|@enduml
+  let graph = parse(source).graph
+  let member_edges = graph.relations.filter(r => r.kind == @entity.Association)
+  @test.assert_eq(member_edges.length(), 3)
+  @test.assert_eq(member_edges[0].left, "Line")
+  @test.assert_eq(member_edges[0].right, "Point")
+  @test.assert_eq(member_edges[0].label, Some("start"))
+  @test.assert_eq(member_edges[1].label, Some("end"))
+  @test.assert_eq(member_edges[2].left, "Shape")
+  @test.assert_eq(member_edges[2].right, "Point")
+  @test.assert_eq(member_edges[2].label, None)
+}
+
+///|
+test "skips member edges for undeclared member types" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|struct Point {
+    #|  x : Int
+    #|  y : Array[String]
+    #|}
+    #|@enduml
+  let graph = parse(source).graph
+  @test.assert_eq(graph.relations.length(), 0)
+}
+
+///|
+test "optionally disables each edge family" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|struct Point {
+    #|  x : Int
+    #|}
+    #|struct Line {
+    #|  start : Point
+    #|}
+    #|trait Eq
+    #|trait Show : Eq {
+    #|  fn to_string(Self) -> String
+    #|}
+    #|impl Show for Line;
+    #|@enduml
+  let graph = parse(source).graph
+  @test.assert_eq(
+    graph.relations.filter(r => r.kind == @entity.Association).length(),
+    1,
+  )
+  @test.assert_eq(
+    graph.relations.filter(r => r.kind == @entity.Extension).length(),
+    1,
+  )
+  @test.assert_eq(
+    graph.relations.filter(r => r.kind == @entity.Realization).length(),
+    1,
+  )
+  let no_member = parse(source, options={
+      trait_inheritance_edges: true,
+      impl_edges: true,
+      member_type_edges: false,
+    }).graph
+  @test.assert_eq(
+    no_member.relations.filter(r => r.kind == @entity.Association).length(),
+    0,
+  )
+  @test.assert_eq(no_member.relations.length(), 2)
+  let no_inheritance = parse(source, options={
+      trait_inheritance_edges: false,
+      impl_edges: true,
+      member_type_edges: true,
+    }).graph
+  @test.assert_eq(
+    no_inheritance.relations.filter(r => r.kind == @entity.Extension).length(),
+    0,
+  )
+  let no_impl = parse(source, options={
+      trait_inheritance_edges: true,
+      impl_edges: false,
+      member_type_edges: true,
+    }).graph
+  @test.assert_eq(
+    no_impl.relations.filter(r => r.kind == @entity.Realization).length(),
+    0,
+  )
+}

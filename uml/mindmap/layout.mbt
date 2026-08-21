@@ -48,6 +48,27 @@ pub struct MindmapLayout {
 } derive(Eq, Debug)
 
 ///|
+/// A generic tree node for the mindmap packing algorithm: its size, margins,
+/// and children per side. Both the mindmap and the mbti families build this
+/// structure and pack it with `layout_tree`.
+pub(all) struct LayoutItem {
+  width : Int
+  height : Int
+  margin_left : Int
+  margin_right : Int
+  margin_top : Int
+  margin_bottom : Int
+  left_children : Array[Int]
+  right_children : Array[Int]
+} derive(Eq, Debug)
+
+///|
+pub extend LayoutItem with Eq::{not_equal, equal}
+
+///|
+pub extend LayoutItem with Debug::{to_repr}
+
+///|
 pub extend MindmapLayout with Eq::{not_equal, equal}
 
 ///|
@@ -154,6 +175,11 @@ fn PositionedTee::max_y(self : PositionedTee) -> Int {
 }
 
 ///|
+fn MindmapDiagram::has_children(self : MindmapDiagram, index : Int) -> Bool {
+  self.ideas.any(idea => idea.parent == Some(index))
+}
+
+///|
 fn MindmapDiagram::children_of(
   self : MindmapDiagram,
   parent : Int,
@@ -166,11 +192,6 @@ fn MindmapDiagram::children_of(
     }
   }
   children
-}
-
-///|
-fn MindmapDiagram::has_children(self : MindmapDiagram, index : Int) -> Bool {
-  self.ideas.any(idea => idea.parent == Some(index))
 }
 
 ///|
@@ -264,21 +285,28 @@ fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
 }
 
 ///|
-/// The node margins participate in packing, but are outside the rectangle.
-fn MindmapDiagram::node_thickness(self : MindmapDiagram, index : Int) -> Int {
-  let (_, height) = self.node_size(index)
-  let style = self.node_style(index)
-  height +
-  style.margin_top.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
-  style.margin_bottom.unwrap_or(MINDMAP_DEFAULT_MARGIN)
-}
-
-///|
-fn MindmapDiagram::branch_gap(self : MindmapDiagram, index : Int) -> Int {
-  let node_style = self.node_style(index)
-  node_style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
-  node_style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
-  MINDMAP_BRANCH_GAP
+/// Calculate PlantUML-style, symmetric mindmap geometry without rendering it.
+pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
+  let items = []
+  let roots = []
+  for index, idea in self.ideas {
+    let (width, height) = self.node_size(index)
+    let style = self.node_style(index)
+    items.push({
+      width,
+      height,
+      margin_left: style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN),
+      margin_right: style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN),
+      margin_top: style.margin_top.unwrap_or(MINDMAP_DEFAULT_MARGIN),
+      margin_bottom: style.margin_bottom.unwrap_or(MINDMAP_DEFAULT_MARGIN),
+      left_children: self.children_of(index, Left),
+      right_children: self.children_of(index, Right),
+    })
+    if idea.parent is None {
+      roots.push(index)
+    }
+  }
+  layout_tree(items, roots)
 }
 
 ///|
@@ -382,29 +410,52 @@ fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
 }
 
 ///|
-fn MindmapDiagram::finger_tee(
-  self : MindmapDiagram,
+fn item_children(
+  items : Array[LayoutItem],
+  index : Int,
+  direction : Direction,
+) -> Array[Int] {
+  match direction {
+    Left => items[index].left_children
+    Right => items[index].right_children
+  }
+}
+
+///|
+fn item_thickness(item : LayoutItem) -> Int {
+  item.height + item.margin_top + item.margin_bottom
+}
+
+///|
+fn item_branch_gap(item : LayoutItem) -> Int {
+  item.margin_left + item.margin_right + MINDMAP_BRANCH_GAP
+}
+
+///|
+fn finger_tee(
+  items : Array[LayoutItem],
   index : Int,
   direction : Direction,
 ) -> Tee {
-  let (width, _) = self.node_size(index)
-  let thickness = self.node_thickness(index)
-  let node_style = self.node_style(index)
-  let child_tees = self
-    .children_of(index, direction)
-    .map(child => self.finger_tee(child, direction))
+  let item = items[index]
+  let thickness = item_thickness(item)
+  let child_tees = item_children(items, index, direction).map(child => {
+    finger_tee(items, child, direction)
+  })
   let packed = pack_tees(child_tees)
   if packed.positions.is_empty() {
-    { thickness1: thickness, elongation1: width, thickness2: 0, elongation2: 0 }
+    {
+      thickness1: thickness,
+      elongation1: item.width,
+      thickness2: 0,
+      elongation2: 0,
+    }
   } else {
     {
       thickness1: thickness,
-      elongation1: width +
-      node_style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN),
+      elongation1: item.width + item.margin_left,
       thickness2: packed.height,
-      elongation2: node_style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
-      MINDMAP_BRANCH_GAP +
-      packed.width,
+      elongation2: item.margin_right + MINDMAP_BRANCH_GAP + packed.width,
     }
   }
 }
@@ -412,30 +463,28 @@ fn MindmapDiagram::finger_tee(
 ///|
 /// This matches PlantUML's reverse root when both branches are present: its
 /// phalanx is hidden, but its children still participate in packing.
-fn MindmapDiagram::hidden_finger_tee(
-  self : MindmapDiagram,
+fn hidden_finger_tee(
+  items : Array[LayoutItem],
   index : Int,
   direction : Direction,
 ) -> Tee {
-  let node_style = self.node_style(index)
+  let item = items[index]
   let packed = pack_tees(
-    self
-    .children_of(index, direction)
-    .map(child => self.finger_tee(child, direction)),
+    item_children(items, index, direction).map(child => {
+      finger_tee(items, child, direction)
+    }),
   )
   {
     thickness1: 0,
-    elongation1: node_style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN),
+    elongation1: item.margin_left,
     thickness2: packed.height,
-    elongation2: node_style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN) +
-    MINDMAP_BRANCH_GAP +
-    packed.width,
+    elongation2: item.margin_right + MINDMAP_BRANCH_GAP + packed.width,
   }
 }
 
 ///|
 fn append_finger(
-  diagram : MindmapDiagram,
+  items : Array[LayoutItem],
   index : Int,
   direction : Direction,
   origin_x : Int,
@@ -444,9 +493,11 @@ fn append_finger(
   nodes : Array[NodeLayout],
   edges : Array[EdgeLayout],
 ) -> Unit {
-  let (width, height) = diagram.node_size(index)
+  let item = items[index]
+  let width = item.width
+  let height = item.height
   let phalanx_width = if draw_node { width } else { 0 }
-  let branch_gap = diagram.branch_gap(index)
+  let branch_gap = item_branch_gap(item)
   let sign = match direction {
     Right => 1
     Left => -1
@@ -464,9 +515,9 @@ fn append_finger(
       height,
     })
   }
-  let children = diagram.children_of(index, direction)
+  let children = item_children(items, index, direction)
   let packed = pack_tees(
-    children.map(child => diagram.finger_tee(child, direction)),
+    children.map(child => finger_tee(items, child, direction)),
   )
   for child_index, child in children {
     let child_y = origin_y + packed.positions[child_index].y
@@ -483,9 +534,7 @@ fn append_finger(
       x2: child_x,
       y2: child_y,
     })
-    append_finger(
-      diagram, child, direction, child_x, child_y, true, nodes, edges,
-    )
+    append_finger(items, child, direction, child_x, child_y, true, nodes, edges)
   }
 }
 
@@ -513,9 +562,15 @@ fn MindmapLayout::translated(
 }
 
 ///|
-/// Calculate PlantUML-style, symmetric mindmap geometry without rendering it.
-pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
-  guard !self.ideas.is_empty() else {
+/// Calculate PlantUML-style, symmetric mindmap geometry for a generic tree.
+///
+/// Each item carries its own size, margins, and per-side children; `roots`
+/// lists the item indices with no parent, stacked vertically.
+pub fn layout_tree(
+  items : Array[LayoutItem],
+  roots : Array[Int],
+) -> MindmapLayout {
+  guard !items.is_empty() else {
     {
       nodes: [],
       edges: [],
@@ -526,21 +581,20 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
   let nodes = []
   let edges = []
   let mut next_y = outer_padding_y
-  for root_index, root in self.ideas {
-    guard root.parent is None else { continue }
-    let has_left_children = !self.children_of(root_index, Left).is_empty()
-    let has_right_children = !self.children_of(root_index, Right).is_empty()
+  for root_index in roots {
+    let has_left_children = !items[root_index].left_children.is_empty()
+    let has_right_children = !items[root_index].right_children.is_empty()
     let left = if has_left_children {
       if has_right_children {
-        self.hidden_finger_tee(root_index, Left)
+        hidden_finger_tee(items, root_index, Left)
       } else {
-        self.finger_tee(root_index, Left)
+        finger_tee(items, root_index, Left)
       }
     } else {
       { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
     }
     let right = if has_right_children || !has_left_children {
-      self.finger_tee(root_index, Right)
+      finger_tee(items, root_index, Right)
     } else {
       { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
     }
@@ -548,20 +602,18 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
     // PlantUML places the root at the vertical center of its content, which
     // is the tee span minus the node margins; consecutive roots start where
     // the previous root's content ends, plus the outer padding.
-    let root_style = self.node_style(root_index)
-    let margin_top = root_style.margin_top.unwrap_or(MINDMAP_DEFAULT_MARGIN)
-    let margin_bottom = root_style.margin_bottom.unwrap_or(
-      MINDMAP_DEFAULT_MARGIN,
-    )
+    let item = items[root_index]
+    let margin_top = item.margin_top
+    let margin_bottom = item.margin_bottom
     let content_half = (root_height - margin_top - margin_bottom) / 2
     let root_y = next_y + content_half
     if has_left_children && has_right_children {
-      append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
-      append_finger(self, root_index, Left, 0, root_y, false, nodes, edges)
+      append_finger(items, root_index, Right, 0, root_y, true, nodes, edges)
+      append_finger(items, root_index, Left, 0, root_y, false, nodes, edges)
     } else if has_left_children {
-      append_finger(self, root_index, Left, 0, root_y, true, nodes, edges)
+      append_finger(items, root_index, Left, 0, root_y, true, nodes, edges)
     } else {
-      append_finger(self, root_index, Right, 0, root_y, true, nodes, edges)
+      append_finger(items, root_index, Right, 0, root_y, true, nodes, edges)
     }
     next_y = root_y + content_half + outer_padding_y
   }

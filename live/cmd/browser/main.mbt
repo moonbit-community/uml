@@ -85,9 +85,8 @@ fn toggle_theme(state : AppState) -> AppState {
 ///|
 fn apply_theme(theme : Theme) -> @cmd.Cmd {
   @cmd.custom_cmd(_ => {
-    match @dom.document().get_document_element() {
-      Some(element) => element.set_attribute("data-theme", theme.css_name())
-      None => ()
+    if @dom.document().get_document_element() is Some(element) {
+      element.set_attribute("data-theme", theme.css_name())
     }
   })
 }

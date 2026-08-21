@@ -243,6 +243,7 @@ fn append_notes(
   diagram : EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
+  collapsible : Bool,
 ) -> Unit {
   let note_layouts = match layout.graphviz {
     Some(graphviz) => graphviz.notes
@@ -257,6 +258,7 @@ fn append_notes(
     let mut path = normal_note_path(note_layout)
     let corner_path = note_corner_path(note_layout)
     let mut path_class = ""
+    let mut closed_path : String? = None
     if note.target_kind is EntityNote || note.target_kind is MemberTip {
       match layout.graphviz {
         Some(graphviz) =>
@@ -275,6 +277,38 @@ fn append_notes(
                     Some(attachment) => {
                       path = opale_note_path(note_layout, attachment)
                       path_class = " class=\"note-opale-link\""
+                      match entity_index(diagram, note.target) {
+                        Some(target_index) =>
+                          match
+                            relation_endpoint_header(
+                              layout, diagram, target_index, text_metrics, collapsible,
+                            ) {
+                            Some(header) =>
+                              match
+                                note_opale_attachment(
+                                  note_layout,
+                                  edge,
+                                  {
+                                    code: target.code,
+                                    x: header.center.x,
+                                    y: header.center.y,
+                                    width: header.width,
+                                    height: header.height,
+                                  },
+                                  Box,
+                                ) {
+                                Some(closed_attachment) =>
+                                  closed_path = Some(
+                                    opale_note_path(
+                                      note_layout, closed_attachment,
+                                    ),
+                                  )
+                                None => ()
+                              }
+                            None => ()
+                          }
+                        None => ()
+                      }
                     }
                     None => ()
                   }
@@ -286,8 +320,14 @@ fn append_notes(
         None => ()
       }
     }
-    output <+
-      $|<g class="class-note" style="stroke:\{note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
+    match closed_path {
+      Some(closed) =>
+        output <+
+          $|<g class="class-note" data-note-index="\{note_layout.note_index}" style="stroke:\{note_border_color(diagram.style)}"><g class="note-state note-state-0"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g><g class="note-state note-state-1"><path d="\{closed}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g></g>
+      None =>
+        output <+
+          $|<g class="class-note" style="stroke:\{note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
+    }
     for line_index, line in note.text.split("\n") {
       let line_text = line.to_owned()
       output.write_string(
@@ -305,4 +345,47 @@ fn append_notes(
       output.write_char('\n')
     }
   }
+}
+
+///|
+/// CSS that switches each note to its closed variant when its attached class
+/// node collapses its members, mirroring `collapsible_relation_style`. The
+/// open state targets the full node boundary while the closed state
+/// re-anchors the pointer onto the header strip.
+fn collapsible_note_style(
+  diagram : EntityDiagram,
+  layout : ClassLayout,
+  text_metrics : ClassTextMetrics,
+  collapsible : Bool,
+) -> String {
+  guard collapsible else { return "" }
+  let output = StringBuilder()
+  output.write_string("g[data-note-index] > .note-state{display:none}\n")
+  for note_index, note in diagram.notes {
+    guard note.target_kind is EntityNote || note.target_kind is MemberTip else {
+      continue
+    }
+    match entity_index(diagram, note.target) {
+      Some(target_index) =>
+        match
+          relation_endpoint_header(
+            layout, diagram, target_index, text_metrics, collapsible,
+          ) {
+          Some(_) =>
+            for bit in 0..<2 {
+              let condition = if bit == 1 {
+                ":has(.class-node[data-node-index=\"\{target_index}\"] details:not([open]))"
+              } else {
+                ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
+              }
+              output.write_string(
+                "svg\{condition} > g[data-note-index=\"\{note_index}\"] > .note-state-\{bit}{display:block}\n",
+              )
+            }
+          None => ()
+        }
+      None => ()
+    }
+  }
+  output.to_string()
 }

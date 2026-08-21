@@ -5,6 +5,7 @@ priv struct ClassLayout {
   cell_height : Int
   width : Int
   graphviz : GraphvizLayout?
+  mindmap : MindmapClassLayout?
 }
 
 ///|
@@ -26,6 +27,7 @@ fn EntityDiagram::layout(
     cell_height,
     width: 24 + columns * cell_width,
     graphviz: None,
+    mindmap: None,
   }
 }
 
@@ -36,6 +38,10 @@ fn ClassLayout::entity_rect(
   index : Int,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, Int, Int) {
+  match self.mindmap {
+    Some(mindmap) => return mindmap.rects[index]
+    None => ()
+  }
   match self.graphviz {
     Some(layout) => {
       let code = diagram.entities[index].qualified_code
@@ -109,68 +115,117 @@ fn ClassLayout::content_bounds(
     bounds = include_point(bounds, x, y)
     bounds = include_point(bounds, x + w, y + h)
   }
-  match self.graphviz {
-    Some(graphviz) => {
-      for edge in graphviz.edges {
-        for spline in edge.splines {
-          for point in spline.points {
-            let x = point.x
-            let y = point.y
-            bounds = include_point(bounds, x, y)
-          }
-        }
-      }
-      for edge in graphviz.note_edges {
-        for spline in edge.splines {
-          for point in spline.points {
-            let x = point.x
-            let y = point.y
-            bounds = include_point(bounds, x, y)
-          }
-        }
-      }
-      for p in graphviz.packages {
-        guard p.package_index < diagram.packages.length() else { continue }
-        bounds = include_point(bounds, p.x, p.y)
-        bounds = include_point(bounds, p.x + p.width, p.y + p.height)
-      }
-      for note in graphviz.notes {
-        guard note.note_index < diagram.notes.length() else { continue }
+  match self.mindmap {
+    Some(mindmap) => {
+      let (x, y, w, h) = mindmap.root_rect
+      bounds = include_point(bounds, x.to_double(), y.to_double())
+      bounds = include_point(bounds, (x + w).to_double(), (y + h).to_double())
+      for edge in mindmap.structure_edges {
+        bounds = include_point(bounds, edge.x1.to_double(), edge.y1.to_double())
         bounds = include_point(
           bounds,
-          note.x - note.width / 2.0,
-          note.y - note.height / 2.0,
+          edge.control1_x.to_double(),
+          edge.control1_y.to_double(),
         )
         bounds = include_point(
           bounds,
-          note.x + note.width / 2.0,
-          note.y + note.height / 2.0,
+          edge.control2_x.to_double(),
+          edge.control2_y.to_double(),
         )
+        bounds = include_point(bounds, edge.x2.to_double(), edge.y2.to_double())
       }
-      for label_layout in graphviz.relation_labels {
-        for text_box in label_layout.boxes() {
-          bounds = include_point(bounds, text_box.x, text_box.y)
-          bounds = include_point(
-            bounds,
-            text_box.x + text_box.width,
-            text_box.y + text_box.height,
-          )
+      for edge in mindmap.extra_edges {
+        match edge {
+          Some(edge) => {
+            bounds = include_point(
+              bounds,
+              edge.x1.to_double(),
+              edge.y1.to_double(),
+            )
+            bounds = include_point(
+              bounds,
+              edge.control1_x.to_double(),
+              edge.control1_y.to_double(),
+            )
+            bounds = include_point(
+              bounds,
+              edge.control2_x.to_double(),
+              edge.control2_y.to_double(),
+            )
+            bounds = include_point(
+              bounds,
+              edge.x2.to_double(),
+              edge.y2.to_double(),
+            )
+          }
+          None => ()
         }
       }
     }
     None =>
-      for relation_index, relation in diagram.relations {
-        let label_layout = self.relation_label_layout(
-          diagram, relation_index, relation, text_metrics,
-        )
-        for text_box in label_layout.boxes() {
-          bounds = include_point(bounds, text_box.x, text_box.y)
-          bounds = include_point(
-            bounds,
-            text_box.x + text_box.width,
-            text_box.y + text_box.height,
-          )
+      match self.graphviz {
+        Some(graphviz) => {
+          for edge in graphviz.edges {
+            for spline in edge.splines {
+              for point in spline.points {
+                let x = point.x
+                let y = point.y
+                bounds = include_point(bounds, x, y)
+              }
+            }
+          }
+          for edge in graphviz.note_edges {
+            for spline in edge.splines {
+              for point in spline.points {
+                let x = point.x
+                let y = point.y
+                bounds = include_point(bounds, x, y)
+              }
+            }
+          }
+          for p in graphviz.packages {
+            guard p.package_index < diagram.packages.length() else { continue }
+            bounds = include_point(bounds, p.x, p.y)
+            bounds = include_point(bounds, p.x + p.width, p.y + p.height)
+          }
+          for note in graphviz.notes {
+            guard note.note_index < diagram.notes.length() else { continue }
+            bounds = include_point(
+              bounds,
+              note.x - note.width / 2.0,
+              note.y - note.height / 2.0,
+            )
+            bounds = include_point(
+              bounds,
+              note.x + note.width / 2.0,
+              note.y + note.height / 2.0,
+            )
+          }
+          for label_layout in graphviz.relation_labels {
+            for text_box in label_layout.boxes() {
+              bounds = include_point(bounds, text_box.x, text_box.y)
+              bounds = include_point(
+                bounds,
+                text_box.x + text_box.width,
+                text_box.y + text_box.height,
+              )
+            }
+          }
         }
+        None =>
+          for relation_index, relation in diagram.relations {
+            let label_layout = self.relation_label_layout(
+              diagram, relation_index, relation, text_metrics,
+            )
+            for text_box in label_layout.boxes() {
+              bounds = include_point(bounds, text_box.x, text_box.y)
+              bounds = include_point(
+                bounds,
+                text_box.x + text_box.width,
+                text_box.y + text_box.height,
+              )
+            }
+          }
       }
   }
   bounds.unwrap_or({ min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 })

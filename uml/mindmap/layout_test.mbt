@@ -111,6 +111,63 @@ test "layout represents every parsed parent-child relation once" {
 }
 
 ///|
+test "generic layout_tree packs explicit items without overlap" {
+  let items : Array[LayoutItem] = [
+    {
+      width: 60,
+      height: 30,
+      margin_left: 10,
+      margin_right: 10,
+      margin_top: 10,
+      margin_bottom: 10,
+      left_children: [],
+      right_children: [1, 2],
+    },
+    {
+      width: 40,
+      height: 20,
+      margin_left: 10,
+      margin_right: 10,
+      margin_top: 10,
+      margin_bottom: 10,
+      left_children: [],
+      right_children: [3],
+    },
+    {
+      width: 50,
+      height: 25,
+      margin_left: 10,
+      margin_right: 10,
+      margin_top: 10,
+      margin_bottom: 10,
+      left_children: [],
+      right_children: [],
+    },
+    {
+      width: 30,
+      height: 15,
+      margin_left: 10,
+      margin_right: 10,
+      margin_top: 10,
+      margin_bottom: 10,
+      left_children: [],
+      right_children: [],
+    },
+  ]
+  let layout = layout_tree(items, [0])
+  @test.assert_eq(layout.nodes.length(), items.length())
+  @test.assert_eq(layout.edges.length(), 3)
+  for left_index in 0..<layout.nodes.length() {
+    for right_index in (left_index + 1)..<layout.nodes.length() {
+      @test.assert_eq(
+        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
+        false,
+      )
+    }
+  }
+}
+
+///|
 test "labels are left-aligned at the box padding" {
   let svg = parse("@startmindmap\n* Root\n** Child\n@endmindmap").render_svg()
   @test.assert_eq(svg.contains("text-anchor=\"start\""), true)
@@ -143,4 +200,55 @@ test "width emulation leaves the rendered font size untouched" {
   ).render_svg()
   @test.assert_eq(svg.contains("font-size=\"14px\""), true)
   @test.assert_eq(svg.contains("font-size=\"15px\""), false)
+}
+
+///|
+test "generic layout_tree keeps one edge per non-root node" {
+  // 17 nodes: 0 = root, children of 0 = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15},
+  // node 1 has children {16}, etc. Mirror the mbti 05-activity shape.
+  let items : Array[LayoutItem] = []
+  // root
+  items.push({
+    width: 100,
+    height: 30,
+    margin_left: 10,
+    margin_right: 10,
+    margin_top: 10,
+    margin_bottom: 10,
+    left_children: [],
+    right_children: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  })
+  for _ in 0..<15 {
+    items.push({
+      width: 60,
+      height: 30,
+      margin_left: 10,
+      margin_right: 10,
+      margin_top: 10,
+      margin_bottom: 10,
+      left_children: [],
+      right_children: [],
+    })
+  }
+  items.push({
+    width: 60,
+    height: 30,
+    margin_left: 10,
+    margin_right: 10,
+    margin_top: 10,
+    margin_bottom: 10,
+    left_children: [],
+    right_children: [],
+  })
+  items[1] = { ..items[1], right_children: [16] }
+  let layout = layout_tree(items, [0])
+  @test.assert_eq(layout.edges.length(), items.length() - 1)
+  // every non-root node appears as a child exactly once
+  let child_seen : Array[Int] = Array::make(items.length(), 0)
+  for edge in layout.edges {
+    child_seen[edge.child_index] += 1
+  }
+  for index in 1..<items.length() {
+    @test.assert_eq(child_seen[index], 1)
+  }
 }

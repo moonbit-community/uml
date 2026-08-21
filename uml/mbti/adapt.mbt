@@ -5,8 +5,12 @@
 /// Declaration kinds map to entity kinds; `impl` and trait inheritance map
 /// to relations (the .mbti grammar has no arrow syntax). Top-level functions,
 /// constants and values are not owned by any type and are not rendered.
-fn adapt(mbti : @mbti_ast.Mbti, standalone_alias : Bool) -> MbtiDiagram {
-  let adapter = Adapter::new()
+fn adapt(
+  mbti : @mbti_ast.Mbti,
+  standalone_alias : Bool,
+  options : MbtiOptions,
+) -> MbtiDiagram {
+  let adapter = Adapter::new(options)
   mbti.sigs.each(fn(sig) {
     match sig.0 {
       Type(sig) => adapter.declare_type(sig)
@@ -49,11 +53,12 @@ priv struct Adapter {
   entities : Array[@entity.Entity]
   entity_indices : Map[String, Int]
   relations : Array[@entity.Relation]
+  options : MbtiOptions
 }
 
 ///|
-fn Adapter::new() -> Adapter {
-  { entities: [], entity_indices: Map([]), relations: [] }
+fn Adapter::new(options : MbtiOptions) -> Adapter {
+  { entities: [], entity_indices: Map([]), relations: [], options }
 }
 
 ///|
@@ -183,14 +188,17 @@ fn Adapter::fill_type(self : Adapter, sig : @mbti_ast.TypeSig) -> Unit {
             false,
           ),
         )
+        self.member_type_edge(sig.name.name, field.ty, field.name.label)
       }
     Variant(constructors) | ExtensibleEnum(constructors) =>
       for constr in constructors {
         self.entities[index].members.push(constructor_entity_member(constr))
+        self.payload_type_edges(sig.name.name, constr)
       }
     ExtendEnum(constructors~, ..) =>
       for constr in constructors {
         self.entities[index].members.push(constructor_entity_member(constr))
+        self.payload_type_edges(sig.name.name, constr)
       }
     _ => ()
   }
@@ -213,6 +221,7 @@ fn Adapter::fill_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
 ///|
 /// `trait Sub : Super1 + Super2` renders as extension edges `Sub --|> Super`.
 fn Adapter::inherit_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
+  guard self.options.trait_inheritance_edges else { return }
   let sub = sig.name.name
   ignore(self.ensure_entity(sub, @entity.Interface))
   for super_trait in sig.super_traits {
@@ -225,6 +234,7 @@ fn Adapter::inherit_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
 ///|
 /// `impl Trait for T` renders as the realization edge `T ..|> Trait`.
 fn Adapter::apply_impl(self : Adapter, sig : @mbti_ast.ImplSig) -> Unit {
+  guard self.options.impl_edges else { return }
   match (type_top_name(sig.type_), qualified_name_to_string(sig.trait_name)) {
     (Some(sub), super_) => {
       ignore(self.ensure_entity(sub, @entity.Class))
@@ -232,6 +242,67 @@ fn Adapter::apply_impl(self : Adapter, sig : @mbti_ast.ImplSig) -> Unit {
       self.relations.push(extension_relation(sub, super_, "..|>"))
     }
     _ => ()
+  }
+}
+
+///|
+/// A struct field whose type is declared in the interface renders as the
+/// association edge `Struct --> Type` labeled with the field name.
+fn Adapter::member_type_edge(
+  self : Adapter,
+  source : String,
+  ty : @mbti_ast.Type,
+  label : String,
+) -> Unit {
+  guard self.options.member_type_edges else { return }
+  match type_top_name(ty) {
+    Some(target) if self.entity_index(target) is Some(_) =>
+      self.push_association(source, target, Some(label))
+    _ => ()
+  }
+}
+
+///|
+/// An enum constructor whose payload types are declared in the interface
+/// renders one association edge per payload parameter, labeled with the
+/// parameter label when it has one.
+fn Adapter::payload_type_edges(
+  self : Adapter,
+  source : String,
+  constr : @mbti_ast.ConstrDecl,
+) -> Unit {
+  guard self.options.member_type_edges else { return }
+  match constr.args {
+    Some(args) =>
+      for param in args {
+        match type_top_name(param.ty) {
+          Some(target) if self.entity_index(target) is Some(_) => {
+            let label = match param.label {
+              Some(label) => Some(label.name)
+              None => None
+            }
+            self.push_association(source, target, label)
+          }
+          _ => ()
+        }
+      }
+    None => ()
+  }
+}
+
+///|
+/// Push an association edge, dropping an exact duplicate so repeated payload
+/// types (e.g. `Rect(Point, Point)`) stay a single edge.
+fn Adapter::push_association(
+  self : Adapter,
+  left : String,
+  right : String,
+  label : String?,
+) -> Unit {
+  guard self.relations.any(r => {
+    r.left == left && r.right == right && r.label == label
+  }) else {
+    self.relations.push(association_relation(left, right, label))
   }
 }
 
@@ -275,6 +346,43 @@ fn extension_relation(
     raw_arrow: arrow,
     left_end: @entity.Plain,
     right_end: @entity.Extension,
+    direction: @entity.Automatic,
+    line_style: None,
+    color: None,
+    url: None,
+    stereotype: None,
+    weight: None,
+    inside: None,
+    left_port: None,
+    right_port: None,
+    left_couple: None,
+    right_couple: None,
+  }
+}
+
+///|
+/// A member referencing another interface type renders as the directed
+/// association edge `Struct --> Type` with the member name as its label.
+fn association_relation(
+  left : String,
+  right : String,
+  label : String?,
+) -> @entity.Relation {
+  {
+    left,
+    right,
+    kind: @entity.RelationKind::Association,
+    left_cardinality: None,
+    right_cardinality: None,
+    left_role: None,
+    right_role: None,
+    left_qualifier: None,
+    right_qualifier: None,
+    label,
+    dotted: false,
+    raw_arrow: "-->",
+    left_end: @entity.Plain,
+    right_end: @entity.Arrow,
     direction: @entity.Automatic,
     line_style: None,
     color: None,

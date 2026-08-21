@@ -322,43 +322,86 @@ fn collapsible_relation_style(
   let output = StringBuilder()
   output.write_string("g[data-edge-index] > .edge-state{display:none}\n")
   for relation_index, relation in diagram.relations {
-    guard entity_index(diagram, relation.left) is Some(left_index) else {
-      continue
-    }
-    guard entity_index(diagram, relation.right) is Some(right_index) else {
-      continue
-    }
-    let left = diagram.entities[left_index]
-    let right = diagram.entities[right_index]
-    guard !left.is_removed && !right.is_removed else { continue }
-    let left_collapsible = relation_endpoint_header(
-        layout, diagram, left_index, text_metrics, class_member_collapsible,
-      )
-      is Some(_)
-    let right_collapsible = relation_endpoint_header(
-        layout, diagram, right_index, text_metrics, class_member_collapsible,
-      )
-      is Some(_)
-    let left_limit = if left_collapsible { 2 } else { 1 }
-    let right_limit = if right_collapsible { 2 } else { 1 }
-    for left_bit in 0..<left_limit {
-      for right_bit in 0..<right_limit {
+    output.write_string(
+      collapsible_edge_css(
+        diagram,
+        layout,
+        text_metrics,
+        class_member_collapsible,
+        relation_index,
+        entity_index(diagram, relation.left),
+        entity_index(diagram, relation.right),
+        relation.url is Some(_),
+      ),
+    )
+  }
+  match layout.mindmap {
+    Some(mindmap) =>
+      for structure_index, edge in mindmap.structure_edges {
         output.write_string(
-          relation_state_css(
-            left_index,
-            right_index,
-            relation_index,
-            left_bit,
-            right_bit,
-            left_collapsible,
-            right_collapsible,
-            relation.url is Some(_),
+          collapsible_edge_css(
+            diagram,
+            layout,
+            text_metrics,
+            class_member_collapsible,
+            -1 - structure_index,
+            edge.left_entity,
+            edge.right_entity,
+            false,
           ),
         )
       }
-    }
+    None => ()
   }
   output.to_string()
+}
+
+///|
+/// The CSS that switches one edge to its closed variant when an attached
+/// class node collapses. A `None` endpoint (the package root) is never
+/// collapsible.
+fn collapsible_edge_css(
+  diagram : EntityDiagram,
+  layout : ClassLayout,
+  text_metrics : ClassTextMetrics,
+  class_member_collapsible : Bool,
+  edge_index : Int,
+  left_entity : Int?,
+  right_entity : Int?,
+  has_url : Bool,
+) -> String {
+  let left_collapsible = match left_entity {
+    Some(index) =>
+      relation_endpoint_header(
+        layout, diagram, index, text_metrics, class_member_collapsible,
+      )
+      is Some(_)
+    None => false
+  }
+  let right_collapsible = match right_entity {
+    Some(index) =>
+      relation_endpoint_header(
+        layout, diagram, index, text_metrics, class_member_collapsible,
+      )
+      is Some(_)
+    None => false
+  }
+  let left_index = left_entity.unwrap_or(-1)
+  let right_index = right_entity.unwrap_or(-1)
+  let left_limit = if left_collapsible { 2 } else { 1 }
+  let right_limit = if right_collapsible { 2 } else { 1 }
+  let out = StringBuilder()
+  for left_bit in 0..<left_limit {
+    for right_bit in 0..<right_limit {
+      out.write_string(
+        relation_state_css(
+          left_index, right_index, edge_index, left_bit, right_bit, left_collapsible,
+          right_collapsible, has_url,
+        ),
+      )
+    }
+  }
+  out.to_string()
 }
 
 ///|
@@ -466,6 +509,21 @@ fn append_relation(
   layout : ClassLayout,
   class_member_collapsible : Bool,
 ) -> Unit {
+  match layout.mindmap {
+    Some(mindmap) => {
+      guard relation_index < mindmap.extra_edges.length() else { return }
+      match mindmap.extra_edges[relation_index] {
+        Some(edge) =>
+          append_mindmap_relation(
+            output, diagram, relation_index, relation, edge, text_metrics, layout,
+            class_member_collapsible,
+          )
+        None => ()
+      }
+      return
+    }
+    None => ()
+  }
   let usecase = diagram.family.is_usecase()
   let left_index = entity_index(diagram, relation.left)
   let right_index = entity_index(diagram, relation.right)

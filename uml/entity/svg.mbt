@@ -1,6 +1,7 @@
 ///|
 fn EntityDiagram::render_svg_with_mode(
   self : EntityDiagram,
+  package_name : String,
   class_member_collapsible : Bool,
 ) -> String raise @dot_layout.DotLayoutError {
   let family_capability = self.family.capability()
@@ -14,19 +15,27 @@ fn EntityDiagram::render_svg_with_mode(
   let text_color = self.style.diagram_text_color()
   let text_metrics = ClassTextMetrics::new(self.style)
   let fallback_layout = self.layout(text_metrics)
-  let layout = @graphviz.layout_or_fallback(
-    () => {
-      let graphviz = self.graphviz_layout(text_metrics)
-      {
-        columns: fallback_layout.columns,
-        cell_width: fallback_layout.cell_width,
-        cell_height: fallback_layout.cell_height,
-        width: fallback_layout.width,
-        graphviz: Some(graphviz),
-      }
-    },
-    Some(() => fallback_layout),
-  )
+  let layout = if self.family is Mbti {
+    {
+      ..fallback_layout,
+      mindmap: Some(self.mindmap_class_layout(text_metrics, package_name)),
+    }
+  } else {
+    @graphviz.layout_or_fallback(
+      () => {
+        let graphviz = self.graphviz_layout(text_metrics)
+        {
+          columns: fallback_layout.columns,
+          cell_width: fallback_layout.cell_width,
+          cell_height: fallback_layout.cell_height,
+          width: fallback_layout.width,
+          graphviz: Some(graphviz),
+          mindmap: None,
+        }
+      },
+      Some(() => fallback_layout),
+    )
+  }
   let bounds = layout.content_bounds(self, text_metrics)
   let top_blocks = self.chrome_blocks(true)
   let bottom_blocks = self.chrome_blocks(false)
@@ -86,8 +95,9 @@ fn EntityDiagram::render_svg_with_mode(
     $|</style>
   output.write_string(relations_style)
   let collapse_style = collapsible_relation_style(
-    self, layout, text_metrics, collapsible,
-  )
+      self, layout, text_metrics, collapsible,
+    ) +
+    collapsible_note_style(self, layout, text_metrics, collapsible)
   if collapse_style != "" {
     output <+
       $|<style>
@@ -124,6 +134,7 @@ fn EntityDiagram::render_svg_with_mode(
   append_symbol_packages(output, self, text_metrics, layout)
   match family_capability.paint_order {
     EntitiesBeforeRelations => {
+      append_mindmap_root(output, self, text_metrics, layout)
       for index, entity in self.entities {
         append_entity_image(
           output, self, entity, index, text_metrics, layout, collapsible,
@@ -136,11 +147,15 @@ fn EntityDiagram::render_svg_with_mode(
       }
     }
     RelationsBeforeEntities => {
+      append_mindmap_structure_edges(
+        output, self, text_metrics, layout, collapsible,
+      )
       for relation_index, relation in self.relations {
         append_relation(
           output, self, relation_index, relation, text_metrics, layout, collapsible,
         )
       }
+      append_mindmap_root(output, self, text_metrics, layout)
       for index, entity in self.entities {
         append_entity_image(
           output, self, entity, index, text_metrics, layout, collapsible,
@@ -149,7 +164,7 @@ fn EntityDiagram::render_svg_with_mode(
     }
   }
   if family_capability.renders_notes {
-    append_notes(output, self, text_metrics, layout)
+    append_notes(output, self, text_metrics, layout, collapsible)
   }
   append_chrome_stack(
     output,
@@ -183,5 +198,19 @@ pub fn EntityDiagram::render_svg(
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
-  self.render_svg_with_mode(class_member_collapsible)
+  self.render_svg_with_mode("", class_member_collapsible)
+}
+
+///|
+/// Render the mbti family with the mindmap tree layout. The package name is
+/// the single root node, so it is threaded through the render call instead of
+/// living in the entity graph.
+pub fn EntityDiagram::render_mbti_svg(
+  self : EntityDiagram,
+  package_name : String,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible? : Bool = false,
+) -> String raise @dot_layout.DotLayoutError {
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  self.render_svg_with_mode(package_name, class_member_collapsible)
 }

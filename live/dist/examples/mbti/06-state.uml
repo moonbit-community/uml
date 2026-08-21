@@ -1,0 +1,191 @@
+@startuml '.mbti
+// Generated using `moon info`, DON'T EDIT IT
+package "kokic/uml/state"
+
+import {
+  "kokic/uml/core/parse",
+  "kokic/uml/core/style",
+  "moonbit-community/graphviz/layout/dot",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse(String) -> StateDiagram raise @parse.ParseError
+
+pub fn render_state_svg(String, color_scheme? : @style.ColorScheme) -> String raise
+
+// Errors
+
+// Types and methods
+pub struct StateDiagram {
+  states : Array[StateNode]
+  transitions : Array[StateTransition]
+  notes : Array[StateNote]
+  concurrent_regions : Array[String]
+  regions : Array[StateRegion]
+  style : @style.DocumentStyle
+} derive(Eq, @debug.Debug)
+pub fn StateDiagram::equal(Self, Self) -> Bool
+pub fn StateDiagram::layout(Self) -> StateLayout raise @dot.DotLayoutError
+pub fn StateDiagram::not_equal(Self, Self) -> Bool
+pub fn StateDiagram::render_svg(Self, color_scheme? : @style.ColorScheme) -> String raise @dot.DotLayoutError
+pub fn StateDiagram::state(Self, String) -> StateNode?
+pub fn StateDiagram::to_repr(Self) -> @debug.Repr
+
+pub struct StateEdgeLayout {
+  transition_index : Int
+  paths : Array[Array[(Double, Double)]]
+  label : (Double, Double)?
+} derive(Eq, @debug.Debug)
+pub fn StateEdgeLayout::equal(Self, Self) -> Bool
+pub fn StateEdgeLayout::not_equal(Self, Self) -> Bool
+pub fn StateEdgeLayout::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateKind {
+  Normal
+  Initial
+  Final
+  History
+  DeepHistory
+  Synchronization
+  Choice
+} derive(Eq, @debug.Debug)
+pub fn StateKind::equal(Self, Self) -> Bool
+pub fn StateKind::not_equal(Self, Self) -> Bool
+pub fn StateKind::to_repr(Self) -> @debug.Repr
+
+pub struct StateLayout {
+  width : Double
+  height : Double
+  nodes : Array[StateNodeLayout]
+  edges : Array[StateEdgeLayout]
+  regions : Array[StateRegionLayout]
+  notes : Array[StateNoteLayout]
+} derive(Eq, @debug.Debug)
+pub fn StateLayout::equal(Self, Self) -> Bool
+pub fn StateLayout::not_equal(Self, Self) -> Bool
+pub fn StateLayout::to_repr(Self) -> @debug.Repr
+
+pub struct StateNode {
+  code : String
+  display : String
+  kind : StateKind
+  parent : String?
+  region_index : Int
+  description : String?
+  stereotype : String?
+  url : String?
+  color : String?
+} derive(Eq, @debug.Debug)
+pub fn StateNode::equal(Self, Self) -> Bool
+pub fn StateNode::not_equal(Self, Self) -> Bool
+pub fn StateNode::to_repr(Self) -> @debug.Repr
+
+pub struct StateNodeLayout {
+  code : String
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+pub fn StateNodeLayout::equal(Self, Self) -> Bool
+pub fn StateNodeLayout::not_equal(Self, Self) -> Bool
+pub fn StateNodeLayout::to_repr(Self) -> @debug.Repr
+
+pub struct StateNote {
+  target : StateNoteTarget
+  text : String
+  color : String?
+  position : StateNotePosition?
+} derive(Eq, @debug.Debug)
+pub fn StateNote::equal(Self, Self) -> Bool
+pub fn StateNote::not_equal(Self, Self) -> Bool
+pub fn StateNote::to_repr(Self) -> @debug.Repr
+
+pub struct StateNoteLayout {
+  note_index : Int
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+pub fn StateNoteLayout::equal(Self, Self) -> Bool
+pub fn StateNoteLayout::not_equal(Self, Self) -> Bool
+pub fn StateNoteLayout::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateNotePosition {
+  NoteLeft
+  NoteRight
+  NoteTop
+  NoteBottom
+} derive(Eq, @debug.Debug)
+pub fn StateNotePosition::equal(Self, Self) -> Bool
+pub fn StateNotePosition::not_equal(Self, Self) -> Bool
+pub fn StateNotePosition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateNoteTarget {
+  StateNote(String)
+  TransitionNote(Int)
+} derive(Eq, @debug.Debug)
+pub fn StateNoteTarget::equal(Self, Self) -> Bool
+pub fn StateNoteTarget::not_equal(Self, Self) -> Bool
+pub fn StateNoteTarget::to_repr(Self) -> @debug.Repr
+
+pub struct StateRegion {
+  parent : String
+  separator : StateRegionSeparator?
+  index : Int
+} derive(Eq, @debug.Debug)
+pub fn StateRegion::equal(Self, Self) -> Bool
+pub fn StateRegion::not_equal(Self, Self) -> Bool
+pub fn StateRegion::to_repr(Self) -> @debug.Repr
+
+pub struct StateRegionLayout {
+  parent : String
+  region_index : Int
+  separator : StateRegionSeparator?
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+pub fn StateRegionLayout::equal(Self, Self) -> Bool
+pub fn StateRegionLayout::not_equal(Self, Self) -> Bool
+pub fn StateRegionLayout::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateRegionSeparator {
+  Horizontal
+  Vertical
+} derive(Eq, @debug.Debug)
+pub fn StateRegionSeparator::equal(Self, Self) -> Bool
+pub fn StateRegionSeparator::not_equal(Self, Self) -> Bool
+pub fn StateRegionSeparator::to_repr(Self) -> @debug.Repr
+
+pub struct StateTransition {
+  source : String
+  target : String
+  label : String?
+  direction : TransitionDirection
+  line_style : String?
+  has_cross_start : Bool
+  has_circle_end : Bool
+} derive(Eq, @debug.Debug)
+pub fn StateTransition::equal(Self, Self) -> Bool
+pub fn StateTransition::not_equal(Self, Self) -> Bool
+pub fn StateTransition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum TransitionDirection {
+  Automatic
+  Leftward
+  Rightward
+  Upward
+  Downward
+} derive(Eq, @debug.Debug)
+pub fn TransitionDirection::equal(Self, Self) -> Bool
+pub fn TransitionDirection::not_equal(Self, Self) -> Bool
+pub fn TransitionDirection::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
+@enduml

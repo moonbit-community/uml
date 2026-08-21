@@ -1,0 +1,226 @@
+@startuml '.mbti
+// Generated using `moon info`, DON'T EDIT IT
+package "kokic/uml/activity"
+
+import {
+  "kokic/uml/core/parse",
+  "kokic/uml/core/style",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const CANVAS_LEFT : Int = 16
+
+pub fn parse(String) -> ActivityDiagram raise @parse.ParseError
+
+pub fn reduce(Array[ActivityNode]) -> Array[ActivityInstruction]
+
+// Errors
+
+// Types and methods
+pub struct ActivityBranch {
+  condition : String?
+  incoming : ActivityEdgeLabel
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityBranch::equal(Self, Self) -> Bool
+pub fn ActivityBranch::not_equal(Self, Self) -> Bool
+pub fn ActivityBranch::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityDiagram {
+  nodes : Array[ActivityNode]
+  instructions : Array[ActivityInstruction]
+  style : @style.DocumentStyle
+} derive(Eq, @debug.Debug)
+pub fn ActivityDiagram::equal(Self, Self) -> Bool
+pub fn ActivityDiagram::layout(Self) -> ActivityLayout
+pub fn ActivityDiagram::not_equal(Self, Self) -> Bool
+pub fn ActivityDiagram::render_svg(Self, color_scheme? : @style.ColorScheme) -> String
+pub fn ActivityDiagram::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityEdgeLabel {
+  text : String?
+} derive(Eq, @debug.Debug)
+pub fn ActivityEdgeLabel::equal(Self, Self) -> Bool
+pub fn ActivityEdgeLabel::not_equal(Self, Self) -> Bool
+pub fn ActivityEdgeLabel::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityEdgeLayout {
+  from_node_index : Int
+  to_node_index : Int
+  route : ActivityEdgeRoute
+  label : String?
+} derive(Eq, @debug.Debug)
+pub fn ActivityEdgeLayout::equal(Self, Self) -> Bool
+pub fn ActivityEdgeLayout::not_equal(Self, Self) -> Bool
+pub fn ActivityEdgeLayout::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ActivityEdgeRoute {
+  Forward
+  Horizontal
+  Goto
+  BackwardLeft
+  BackwardRight
+  IfDownLeft
+  IfDownRight
+  SwitchLeft
+  SwitchRight
+  SwitchMiddle
+  WhileExitLeft
+} derive(Eq, @debug.Debug)
+pub fn ActivityEdgeRoute::equal(Self, Self) -> Bool
+pub fn ActivityEdgeRoute::not_equal(Self, Self) -> Bool
+pub fn ActivityEdgeRoute::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityFork {
+  branches : Array[Array[ActivityInstruction]]
+} derive(Eq, @debug.Debug)
+pub fn ActivityFork::equal(Self, Self) -> Bool
+pub fn ActivityFork::not_equal(Self, Self) -> Bool
+pub fn ActivityFork::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityIfChain {
+  branches : Array[ActivityBranch]
+} derive(Eq, @debug.Debug)
+pub fn ActivityIfChain::equal(Self, Self) -> Bool
+pub fn ActivityIfChain::not_equal(Self, Self) -> Bool
+pub fn ActivityIfChain::to_repr(Self) -> @debug.Repr
+
+pub enum ActivityInstruction {
+  Start
+  Stop
+  End
+  Kill
+  Action(String)
+  Note(String)
+  Edge(ActivityEdgeLabel)
+  IfChain(ActivityIfChain)
+  While(ActivityWhile)
+  Repeat(ActivityRepeat)
+  Fork(ActivityFork)
+  Switch(ActivitySwitch)
+  Partition(ActivityPartition)
+  Swimlane(String)
+  Label(String)
+  Goto(String)
+} derive(Eq, @debug.Debug)
+pub fn ActivityInstruction::equal(Self, Self) -> Bool
+pub fn ActivityInstruction::not_equal(Self, Self) -> Bool
+pub fn ActivityInstruction::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityLayout {
+  nodes : Array[ActivityNodeLayout]
+  edges : Array[ActivityEdgeLayout]
+  regions : Array[ActivityRegionLayout]
+  source_nodes : Array[ActivityNode]
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn ActivityLayout::compress_x(Self) -> Self
+pub fn ActivityLayout::equal(Self, Self) -> Bool
+pub fn ActivityLayout::not_equal(Self, Self) -> Bool
+pub fn ActivityLayout::to_repr(Self) -> @debug.Repr
+
+pub enum ActivityNode {
+  Start
+  Stop
+  End
+  Kill
+  Action(String)
+  Arrow(String)
+  If(String)
+  ElseIf(String)
+  Else(String)
+  EndIf
+  While(String)
+  EndWhile(String)
+  Repeat
+  RepeatWhile(String)
+  Fork
+  ForkAgain
+  EndFork
+  Switch(String)
+  Case(String)
+  EndSwitch
+  Swimlane(String)
+  Partition(String)
+  EndPartition
+  Note(String)
+  Label(String)
+  Goto(String)
+} derive(Eq, @debug.Debug)
+pub fn ActivityNode::equal(Self, Self) -> Bool
+pub fn ActivityNode::not_equal(Self, Self) -> Bool
+pub fn ActivityNode::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityNodeLayout {
+  node_index : Int
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn ActivityNodeLayout::equal(Self, Self) -> Bool
+pub fn ActivityNodeLayout::not_equal(Self, Self) -> Bool
+pub fn ActivityNodeLayout::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityPartition {
+  label : String
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityPartition::equal(Self, Self) -> Bool
+pub fn ActivityPartition::not_equal(Self, Self) -> Bool
+pub fn ActivityPartition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ActivityRegionKind {
+  Partition
+  Swimlane
+} derive(Eq, @debug.Debug)
+pub fn ActivityRegionKind::equal(Self, Self) -> Bool
+pub fn ActivityRegionKind::not_equal(Self, Self) -> Bool
+pub fn ActivityRegionKind::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityRegionLayout {
+  kind : ActivityRegionKind
+  label : String
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn ActivityRegionLayout::equal(Self, Self) -> Bool
+pub fn ActivityRegionLayout::not_equal(Self, Self) -> Bool
+pub fn ActivityRegionLayout::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityRepeat {
+  condition : String
+  retry : ActivityEdgeLabel
+  exit : ActivityEdgeLabel
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityRepeat::equal(Self, Self) -> Bool
+pub fn ActivityRepeat::not_equal(Self, Self) -> Bool
+pub fn ActivityRepeat::to_repr(Self) -> @debug.Repr
+
+pub struct ActivitySwitch {
+  condition : String
+  branches : Array[ActivityBranch]
+} derive(Eq, @debug.Debug)
+pub fn ActivitySwitch::equal(Self, Self) -> Bool
+pub fn ActivitySwitch::not_equal(Self, Self) -> Bool
+pub fn ActivitySwitch::to_repr(Self) -> @debug.Repr
+
+pub struct ActivityWhile {
+  condition : String
+  enter : ActivityEdgeLabel
+  exit : ActivityEdgeLabel
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityWhile::equal(Self, Self) -> Bool
+pub fn ActivityWhile::not_equal(Self, Self) -> Bool
+pub fn ActivityWhile::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
+@enduml

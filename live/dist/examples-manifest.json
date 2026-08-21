@@ -8,7 +8,11 @@
   ],
   "mbti": [
     "01-geometry.uml",
-    "02-scheduler.uml"
+    "02-scheduler.uml",
+    "03-api.uml",
+    "04-entity.uml",
+    "05-activity.uml",
+    "06-state.uml"
   ],
   "class": [
     "01-basic.uml",

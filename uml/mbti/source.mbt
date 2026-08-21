@@ -49,9 +49,12 @@ fn has_mbti_marker(line : String) -> Bool {
 /// Aliases of types declared in the interface merge into the target node.
 /// Aliases of undeclared targets are dropped unless `standalone_alias` is
 /// set, which keeps a fallback node for them.
+///
+/// `options` controls which structural connections become graph relations.
 pub fn parse(
   input : String,
   standalone_alias? : Bool = false,
+  options? : MbtiOptions = MbtiOptions::default(),
 ) -> MbtiDiagram raise @parse.ParseError {
   match mbti_body(input) {
     None => raise @parse.SyntaxError(1, "expected @startuml '.mbti")
@@ -63,7 +66,7 @@ pub fn parse(
             report.loc.start.lnum + body_line - 1,
             report.msg,
           )
-        _ => adapt(mbti, standalone_alias)
+        _ => adapt(mbti, standalone_alias, options)
       }
     }
   }

@@ -1,0 +1,415 @@
+@startuml '.mbti
+// Generated using `moon info`, DON'T EDIT IT
+package "kokic/uml/entity"
+
+import {
+  "kokic/uml/core/graphviz",
+  "kokic/uml/core/parse",
+  "kokic/uml/core/style",
+  "moonbit-community/graphviz/layout/dot",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn magma_bottom_left_index(Int) -> Int
+
+pub fn magma_branch(Int) -> Int
+
+pub fn parse(String, family? : EntityFamily) -> EntityDiagram raise @parse.ParseError
+
+pub fn[T] put_in_square(Array[T], (T, T) -> Unit, (T, T) -> Unit) -> Unit
+
+// Errors
+
+// Types and methods
+pub(all) struct Entity {
+  code : String
+  qualified_code : String
+  display : String
+  kind : EntityKind
+  scope : String
+  visibility : Visibility
+  is_static : Bool
+  generic : String?
+  stereotype : String?
+  annotation : String?
+  is_hidden : Bool
+  is_removed : Bool
+  fields_hidden : Bool
+  methods_hidden : Bool
+  stereotype_hidden : Bool
+  circle_hidden : Bool
+  url : String?
+  color : String?
+  line_color : String?
+  line_style : String?
+  tags : Array[String]
+  members : Array[Member]
+  map_entries : Array[MapEntry]
+  json_data : String?
+  json_tree : JsonNode?
+} derive(Eq, @debug.Debug)
+pub fn Entity::equal(Self, Self) -> Bool
+pub fn Entity::not_equal(Self, Self) -> Bool
+pub fn Entity::to_repr(Self) -> @debug.Repr
+
+pub(all) struct EntityDiagram {
+  family : EntityFamily
+  entities : Array[Entity]
+  relations : Array[Relation]
+  packages : Array[Package]
+  notes : Array[Note]
+  constraints : Array[LinkConstraint]
+  together_groups : Array[Array[String]]
+  style : @style.DocumentStyle
+} derive(Eq, @debug.Debug)
+pub fn EntityDiagram::entity(Self, String) -> Entity?
+pub fn EntityDiagram::equal(Self, Self) -> Bool
+pub fn EntityDiagram::has_entity(Self, String) -> Bool
+pub fn EntityDiagram::magma_grid_edges(Self) -> Array[(String, String, Int)]
+pub fn EntityDiagram::not_equal(Self, Self) -> Bool
+pub fn EntityDiagram::render_svg(Self, color_scheme? : @style.ColorScheme, class_member_collapsible? : Bool) -> String raise @dot.DotLayoutError
+pub fn EntityDiagram::to_repr(Self) -> @debug.Repr
+
+pub(all) enum EntityFamily {
+  ClassDiagram
+  ObjectDiagram
+  ComponentDiagram
+  UseCaseDiagram
+  DeploymentDiagram
+  Mbti
+} derive(Eq, @debug.Debug)
+pub fn EntityFamily::allow_mixing(Self) -> Bool
+pub fn EntityFamily::equal(Self, Self) -> Bool
+pub fn EntityFamily::is_usecase(Self) -> Bool
+pub fn EntityFamily::not_equal(Self, Self) -> Bool
+pub fn EntityFamily::to_repr(Self) -> @debug.Repr
+pub fn EntityFamily::unclosed_body_message(Self) -> String
+
+pub(all) enum EntityKind {
+  Class
+  AbstractClass
+  Interface
+  Enum
+  Annotation
+  Object
+  Entity
+  Protocol
+  Struct
+  Circle
+  Usecase
+  BusinessUsecase
+  Exception
+  Metaclass
+  Stereotype
+  Dataclass
+  Record
+  Map
+  Json
+  NamedNote
+  Diamond
+  Component
+  Actor
+  BusinessActor
+  Person
+  Artifact
+  Card
+  Rectangle
+  Hexagon
+  Label
+  Frame
+  Action
+  Process
+  Stack
+  Storage
+  Agent
+  Boundary
+  Control
+  Collections
+  Port
+  PortIn
+  PortOut
+  Database
+  Queue
+  Folder
+  File
+  Node
+  Cloud
+  State
+  LollipopFull
+  LollipopHalf
+  Point
+} derive(Eq, @debug.Debug)
+pub fn EntityKind::equal(Self, Self) -> Bool
+pub fn EntityKind::not_equal(Self, Self) -> Bool
+pub fn EntityKind::to_repr(Self) -> @debug.Repr
+
+pub struct GraphvizLayout {
+  width : Double
+  height : Double
+  nodes : Array[GraphvizNodeLayout]
+  edges : Array[@graphviz.GraphvizEdge]
+  note_edges : Array[@graphviz.GraphvizEdge]
+  relation_labels : Array[RelationLabelLayout]
+  packages : Array[GraphvizPackageLayout]
+  notes : Array[@graphviz.GraphvizNote]
+} derive(Eq, @debug.Debug)
+pub fn GraphvizLayout::equal(Self, Self) -> Bool
+pub fn GraphvizLayout::not_equal(Self, Self) -> Bool
+pub fn GraphvizLayout::to_repr(Self) -> @debug.Repr
+
+pub struct GraphvizNodeLayout {
+  code : String
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+pub fn GraphvizNodeLayout::equal(Self, Self) -> Bool
+pub fn GraphvizNodeLayout::not_equal(Self, Self) -> Bool
+pub fn GraphvizNodeLayout::to_repr(Self) -> @debug.Repr
+
+pub struct GraphvizPackageLayout {
+  package_index : Int
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+pub fn GraphvizPackageLayout::equal(Self, Self) -> Bool
+pub fn GraphvizPackageLayout::not_equal(Self, Self) -> Bool
+pub fn GraphvizPackageLayout::to_repr(Self) -> @debug.Repr
+
+pub(all) struct JsonMember {
+  key : String
+  value : JsonNode
+} derive(Eq, @debug.Debug)
+pub fn JsonMember::equal(Self, Self) -> Bool
+pub fn JsonMember::not_equal(Self, Self) -> Bool
+pub fn JsonMember::to_repr(Self) -> @debug.Repr
+
+pub(all) enum JsonNode {
+  JsonObject(Array[JsonMember])
+  JsonArray(Array[JsonNode])
+  JsonString(String)
+  JsonNumber(String)
+  JsonBoolean(Bool)
+  JsonNull
+} derive(Eq, @debug.Debug)
+pub fn JsonNode::equal(Self, Self) -> Bool
+pub fn JsonNode::not_equal(Self, Self) -> Bool
+pub fn JsonNode::to_repr(Self) -> @debug.Repr
+
+pub struct LinkConstraint {
+  first_relation : Int
+  second_relation : Int
+  text : String
+  color : String?
+} derive(Eq, @debug.Debug)
+pub fn LinkConstraint::equal(Self, Self) -> Bool
+pub fn LinkConstraint::not_equal(Self, Self) -> Bool
+pub fn LinkConstraint::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Magma {
+  standalones : Array[String]
+  container : String?
+}
+
+pub struct MapEntry {
+  key : String
+  value : String?
+  link_target : String?
+  raw : String
+} derive(Eq, @debug.Debug)
+pub fn MapEntry::equal(Self, Self) -> Bool
+pub fn MapEntry::not_equal(Self, Self) -> Bool
+pub fn MapEntry::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Member {
+  raw : String
+  visibility : Visibility
+  is_method : Bool
+  is_static : Bool
+  is_abstract : Bool
+  is_separator : Bool
+  is_hidden : Bool
+} derive(Eq, @debug.Debug)
+pub fn Member::equal(Self, Self) -> Bool
+pub fn Member::not_equal(Self, Self) -> Bool
+pub fn Member::to_repr(Self) -> @debug.Repr
+
+pub struct Note {
+  target : String
+  position : NotePosition
+  text : String
+  target_kind : NoteTargetKind
+  relation_index : Int?
+  member_name : String?
+  code : String?
+  color : String?
+  url : String?
+  stereotype : String?
+  tags : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn Note::equal(Self, Self) -> Bool
+pub fn Note::not_equal(Self, Self) -> Bool
+pub fn Note::to_repr(Self) -> @debug.Repr
+
+pub(all) enum NotePosition {
+  Left
+  Right
+  Top
+  Bottom
+} derive(Eq, @debug.Debug)
+pub fn NotePosition::equal(Self, Self) -> Bool
+pub fn NotePosition::not_equal(Self, Self) -> Bool
+pub fn NotePosition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum NoteTargetKind {
+  EntityNote
+  LinkNote
+  MemberTip
+  FloatingNote
+} derive(Eq, @debug.Debug)
+pub fn NoteTargetKind::equal(Self, Self) -> Bool
+pub fn NoteTargetKind::not_equal(Self, Self) -> Bool
+pub fn NoteTargetKind::to_repr(Self) -> @debug.Repr
+
+pub struct Package {
+  name : String
+  qualified_name : String
+  display : String
+  parent : String
+  is_namespace : Bool
+  visibility : Visibility
+  stereotype : String?
+  url : String?
+  color : String?
+  symbol : String?
+} derive(Eq, @debug.Debug)
+pub fn Package::equal(Self, Self) -> Bool
+pub fn Package::not_equal(Self, Self) -> Bool
+pub fn Package::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Relation {
+  left : String
+  right : String
+  kind : RelationKind
+  left_cardinality : String?
+  right_cardinality : String?
+  left_role : String?
+  right_role : String?
+  left_qualifier : String?
+  right_qualifier : String?
+  label : String?
+  dotted : Bool
+  raw_arrow : String
+  left_end : RelationEnd
+  right_end : RelationEnd
+  direction : RelationDirection
+  line_style : String?
+  color : String?
+  url : String?
+  stereotype : String?
+  weight : String?
+  inside : String?
+  left_port : String?
+  right_port : String?
+  left_couple : (String, String)?
+  right_couple : (String, String)?
+} derive(Eq, @debug.Debug)
+pub fn Relation::equal(Self, Self) -> Bool
+pub fn Relation::graphviz_minlen(Self) -> Int
+pub fn Relation::not_equal(Self, Self) -> Bool
+pub fn Relation::to_repr(Self) -> @debug.Repr
+
+pub(all) enum RelationDirection {
+  Automatic
+  Leftward
+  Rightward
+  Upward
+  Downward
+} derive(Eq, @debug.Debug)
+pub fn RelationDirection::equal(Self, Self) -> Bool
+pub fn RelationDirection::not_equal(Self, Self) -> Bool
+pub fn RelationDirection::to_repr(Self) -> @debug.Repr
+
+pub(all) enum RelationEnd {
+  Plain
+  Arrow
+  Extension
+  CompositionEnd
+  AggregationEnd
+  NotNavigable
+  Redefines
+  DefinedBy
+  Crowfoot
+  CircleCrowfoot
+  CircleLine
+  DoubleLine
+  LineCrowfoot
+  TriangleArrow
+  CircleEnd
+  FilledCircle
+  CircleConnect
+  Parenthesis
+  Square
+  Plus
+  HalfArrowUp
+  HalfArrowDown
+} derive(Eq, @debug.Debug)
+pub fn RelationEnd::equal(Self, Self) -> Bool
+pub fn RelationEnd::not_equal(Self, Self) -> Bool
+pub fn RelationEnd::to_repr(Self) -> @debug.Repr
+
+pub(all) enum RelationKind {
+  Association
+  Dependency
+  Extension
+  Aggregation
+  Composition
+  Realization
+} derive(Eq, @debug.Debug)
+pub fn RelationKind::equal(Self, Self) -> Bool
+pub fn RelationKind::not_equal(Self, Self) -> Bool
+pub fn RelationKind::to_repr(Self) -> @debug.Repr
+
+pub struct RelationLabelLayout {
+  relation_index : Int
+  label : RelationTextBox?
+  left_cardinality : RelationTextBox?
+  right_cardinality : RelationTextBox?
+  left_role : RelationTextBox?
+  right_role : RelationTextBox?
+} derive(Eq, @debug.Debug)
+pub fn RelationLabelLayout::equal(Self, Self) -> Bool
+pub fn RelationLabelLayout::not_equal(Self, Self) -> Bool
+pub fn RelationLabelLayout::to_repr(Self) -> @debug.Repr
+
+pub struct RelationTextBox {
+  text : String
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+  baseline : Double
+} derive(Eq, @debug.Debug)
+pub fn RelationTextBox::equal(Self, Self) -> Bool
+pub fn RelationTextBox::not_equal(Self, Self) -> Bool
+pub fn RelationTextBox::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Visibility {
+  Public
+  Private
+  Protected
+  Package
+  Unknown
+} derive(Eq, @debug.Debug)
+pub fn Visibility::equal(Self, Self) -> Bool
+pub fn Visibility::not_equal(Self, Self) -> Bool
+pub fn Visibility::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
+@enduml
