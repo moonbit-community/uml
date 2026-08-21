@@ -37,9 +37,10 @@ fn append_line(
   x2 : Int,
   y2 : Int,
   class_name : String,
+  fill? : String = "none",
 ) -> Unit {
   output <+
-    $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" class="\{class_name}"/>
+    $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" fill="\{fill}" class="\{class_name}"/>
 }
 
 ///|

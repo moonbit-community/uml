@@ -27,14 +27,15 @@ fn append_svg_preamble(
   let svg_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
-    $|.participant rect,.activation,.note,.divider-title{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
+    $|.participant rect{stroke:\{line_color};stroke-width:0.5}
+    $|.activation{stroke:\{line_color};stroke-width:1}
+    $|.note,.divider-title{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
     $|.participant-label{font-size:\{base_font_size}px;font-weight:bold;fill:\{text_color}}
-    $|.participant-icon{fill:none;stroke:\{line_color};stroke-width:\{@svg.secondary_structure_stroke_width()}}
-    $|.participant-box-group{fill-opacity:.16;stroke:\{line_color};stroke-width:\{@svg.secondary_structure_stroke_width()}}
+    $|.participant-icon{stroke:\{line_color};stroke-width:0.5}
+    $|.participant-box-group{stroke:\{line_color};stroke-width:0.5}
     $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:\{text_color}}
-    $|.lifeline{stroke:\{defaults.lifeline};stroke-width:1;stroke-dasharray:\{@svg.lifeline_dash_pattern()}}
-    $|.activation{fill:\{defaults.activation}}
-    $|.message,.cross,.destroy{fill:none;stroke:\{line_color};stroke-width:1.3}
+    $|.lifeline{stroke:\{defaults.lifeline};stroke-width:0.5;stroke-dasharray:\{@svg.lifeline_dash_pattern()}}
+    $|.message,.cross{fill:none;stroke:\{line_color};stroke-width:1.3}
     $|.message.dotted{stroke-dasharray:\{@svg.dotted_message_dash_pattern()}}
     $|.arrow-fill{fill:\{line_color}}
     $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:\{@svg.emphasized_stroke_width()}}
@@ -43,25 +44,23 @@ fn append_svg_preamble(
     $|.note-label{fill:\{text_color};font-size:\{base_font_size}px}
     $|.note,.note-fold{stroke:\{line_color};stroke-width:.5}
     $|.partial-arrow{fill:\{line_color}}
-    $|.group-body{fill-opacity:.18;stroke:\{line_color};stroke-width:\{@svg.secondary_structure_stroke_width()}}
-    $|.group-body-colored,.group-branch{fill-opacity:1}
+    $|.group-body{stroke:#000000;stroke-width:1.5}
     $|.group-branch{stroke:none}
     $|.group-header{stroke:\{line_color};stroke-width:\{@svg.secondary_structure_stroke_width()}}
     $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:\{text_color}}
-    $|.note{fill:\{defaults.note}}
     $|.hex-note{stroke-dasharray:\{@svg.hex_note_dash_pattern()}}
     $|.box-note{rx:0}
     $|.divider{stroke:\{defaults.divider};stroke-width:1}
     $|.divider-title{fill:\{defaults.divider_title}}
     $|.divider-label{font-size:\{body_font_size}px;font-weight:bold}
     $|.delay{stroke:\{defaults.delay};stroke-dasharray:\{@svg.delay_dash_pattern()}}
-    $|.reference{fill:\{background};stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
-    $|.reference-tab{fill:\{defaults.reference_tab};stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
+    $|.reference{fill:none;stroke:#000000;stroke-width:1.5}
+    $|.reference-tab{fill:\{defaults.reference_tab};stroke:#000000;stroke-width:2}
     $|.reference-tab-label{fill:\{text_color};font-size:\{body_font_size}px;font-weight:bold}
     $|.group-separator{stroke:\{line_color};stroke-dasharray:\{@svg.separator_dash_pattern()}}
     $|.page-break{stroke:\{defaults.page_break};stroke-width:\{@svg.standard_border_stroke_width()};stroke-dasharray:\{@svg.page_break_dash_pattern()}}
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
-    $|.destroy{stroke-width:2}
+    $|.destroy{fill:none;stroke:#A80036;stroke-width:2}
     $|</style>
   output.write_string(svg_style)
 }

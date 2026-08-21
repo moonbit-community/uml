@@ -8,11 +8,11 @@ svg{font-family:Arial, sans-serif;font-size:13px;background:none}
 .relation-decoration{stroke-width:1;stroke-linejoin:miter}
 .class-node > line,.relation{fill:none}
 .class-title{fill:#000000}
-.class-stereotype{fill:#000000;font-style:italic}
+.class-stereotype{font-style:italic}
 .class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:#000000}
 .usecase-title{fill:#000000;text-anchor:middle}
-.usecase-stereotype{fill:#000000;text-anchor:middle;font-style:italic}
-.member,.relation-label{fill:#000000}
+.usecase-stereotype{text-anchor:middle;font-style:italic}
+.member{fill:#000000}
 .relation-label{text-anchor:middle;font-size:13px}
 </style><style>.package path,.package line{stroke:#181818;stroke-width:1.2}.package-title{fill:#000000;font-weight:bold}.package-stereotype{fill:#000000;font-style:italic}.class-note rect,.class-note path{stroke:#181818;stroke-width:1.2}.note-text{fill:#000000;font-size:13px}</style><g class="actor-node" data-code="Customer"><circle cx="120" cy="9" r="8" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><path d="M 120 17 L 120 43 M 107 27 L 133 27 M 120 43 L 107 62 M 120 43 L 133 62" fill="none" stroke="#181818" style="stroke-width:1.2"/><text x="120" y="72" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Customer</text></g>
 <g class="usecase-node" data-code="Browse catalog"><ellipse cx="69" cy="155" rx="69" ry="16" fill="#F1F1F1" stroke="#181818" style="stroke-width:1.2"/><text x="69" y="159" class="usecase-title" fill="#000000" font-family="Arial, sans-serif" font-size="14">Browse catalog</text></g>

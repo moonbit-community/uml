@@ -167,10 +167,17 @@ fn is_sequence_command(line : String) -> Bool {
   lower.has_prefix("box ") ||
   lower.has_prefix("autonumber") ||
   lower.has_prefix("autoactivate") ||
+  lower.has_prefix("activate ") ||
+  lower.has_prefix("deactivate") ||
+  lower.has_prefix("destroy ") ||
+  lower.has_prefix("hnote ") ||
+  lower.has_prefix("rnote ") ||
+  lower.has_prefix("ref over ") ||
+  lower.has_prefix("ignore newpage") ||
   lower == "hide footbox" ||
   lower == "show footbox" ||
-  lower.has_prefix("ref over ") ||
-  lower.has_prefix("ignore newpage")
+  lower.has_prefix("==") ||
+  lower.has_prefix("...")
 }
 
 ///|

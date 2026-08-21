@@ -77,11 +77,11 @@ fn EntityDiagram::render_svg_with_mode(
     $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
     $|.class-node > line,.relation{fill:none}
     $|.class-title{fill:\{text_color}}
-    $|.class-stereotype{fill:\{text_color};font-style:italic}
+    $|.class-stereotype{font-style:italic}
     $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
     $|.usecase-title{fill:\{text_color};text-anchor:middle}
-    $|.usecase-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}
-    $|.member,.relation-label{fill:\{text_color}}
+    $|.usecase-stereotype{text-anchor:middle;font-style:italic}
+    $|.member{fill:\{text_color}}
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)

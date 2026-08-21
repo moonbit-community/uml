@@ -37,15 +37,15 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
   for group in layout.groups {
     let (x, width) = layout.group_bounds(group)
     let height = (group.end_y - group.start_y).max(1)
-    let body_class = match group.color {
-      Some(_) => "group-body group-body-colored"
-      None => "group-body"
-    }
     output <+
       $|<g class="group" data-keyword="\{group.keyword.label()}">
     if !group.parallel {
+      let body_fill = match group.color {
+        Some(_) => svg_color(group.color, layout.defaults)
+        None => "none"
+      }
       output <+
-        $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="\{body_class}" fill="\{svg_color(group.color, layout.defaults)}"/>
+        $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="group-body" fill="\{body_fill}"/>
     }
     for branch_index, branch in group.branches {
       match branch.color {

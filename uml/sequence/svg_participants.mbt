@@ -16,8 +16,8 @@ fn append_participant(
     $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{@svg.xml_escape(layout.participant.code)}">
   match layout.participant.typ {
     Actor | Boundary | Control | Entity | Database =>
-      append_vertical_participant(output, layout, y, is_tail)
-    Queue => append_queue_participant(output, layout, y)
+      append_vertical_participant(output, layout, y, is_tail, fill)
+    Queue => append_queue_participant(output, layout, y, fill)
     Collections => append_collections_participant(output, layout, y, fill)
     Participant => {
       output <+
@@ -46,6 +46,7 @@ fn append_vertical_participant(
   layout : ParticipantLayout,
   y : Int,
   is_tail : Bool,
+  fill : String,
 ) -> Unit {
   let symbol_height = layout.participant.typ.symbol_height()
   let symbol_y = if is_tail { y + 16 } else { y }
@@ -55,6 +56,8 @@ fn append_vertical_participant(
     layout.participant.typ,
     layout.center_x,
     symbol_y,
+    fill,
+    layout.defaults.line,
   )
   append_text(
     output,
@@ -73,12 +76,13 @@ fn append_queue_participant(
   output : StringBuilder,
   layout : ParticipantLayout,
   y : Int,
+  fill : String,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
   let right = left + layout.width
   let middle = y + 13
   output <+
-    $|<path d="M\{left + 5} \{y}H\{right - 5}C\{right} \{y} \{right} \{middle} \{right} \{middle}C\{right} \{middle} \{right} \{y + 26} \{right - 5} \{y + 26}H\{left + 5}C\{left} \{y + 26} \{left} \{middle} \{left} \{middle}C\{left} \{middle} \{left} \{y} \{left + 5} \{y}Z" class="participant-icon"/>
+    $|<path d="M\{left + 5} \{y}H\{right - 5}C\{right} \{y} \{right} \{middle} \{right} \{middle}C\{right} \{middle} \{right} \{y + 26} \{right - 5} \{y + 26}H\{left + 5}C\{left} \{y + 26} \{left} \{middle} \{left} \{middle}C\{left} \{middle} \{left} \{y} \{left + 5} \{y}Z" fill="\{fill}" class="participant-icon"/>
   append_text(
     output,
     layout.center_x,
@@ -121,11 +125,13 @@ fn append_participant_symbol(
   typ : ParticipantType,
   x : Int,
   y : Int,
+  fill : String,
+  line : String,
 ) -> Unit {
   match typ {
     Actor => {
       output <+
-        $|<circle cx="\{x}" cy="\{y + 9}" r="8" class="participant-icon"/>
+        $|<circle cx="\{x}" cy="\{y + 9}" r="8" fill="\{fill}" class="participant-icon"/>
       append_line(output, x, y + 17, x, y + 44, "participant-icon")
       append_line(output, x - 13, y + 25, x + 13, y + 25, "participant-icon")
       append_line(output, x, y + 44, x - 13, y + 59, "participant-icon")
@@ -133,28 +139,28 @@ fn append_participant_symbol(
     }
     Boundary => {
       output <+
-        $|<circle cx="\{x + 9}" cy="\{y + 16}" r="12" class="participant-icon"/>
+        $|<circle cx="\{x + 9}" cy="\{y + 16}" r="12" fill="\{fill}" class="participant-icon"/>
       append_line(output, x - 20, y + 4, x - 20, y + 28, "participant-icon")
       append_line(output, x - 20, y + 16, x - 3, y + 16, "participant-icon")
     }
     Control => {
       output <+
-        $|<circle cx="\{x}" cy="\{y + 16}" r="12" class="participant-icon"/>
+        $|<circle cx="\{x}" cy="\{y + 16}" r="12" fill="\{fill}" class="participant-icon"/>
       output <+
-        $|<path d="M\{x + 8} \{y + 4}l6 -5 -2 5 2 5z" class="participant-icon"/>
+        $|<path d="M\{x + 8} \{y + 4}l6 -5 -2 5 2 5z" fill="\{line}" class="participant-icon"/>
     }
     Entity => {
       output <+
-        $|<ellipse cx="\{x}" cy="\{y + 16}" rx="12" ry="12" class="participant-icon"/>
+        $|<ellipse cx="\{x}" cy="\{y + 16}" rx="12" ry="12" fill="\{fill}" class="participant-icon"/>
       append_line(output, x - 12, y + 30, x + 12, y + 30, "participant-icon")
     }
     Database => {
       output <+
-        $|<ellipse cx="\{x}" cy="\{y + 10}" rx="18" ry="10" class="participant-icon"/>
+        $|<ellipse cx="\{x}" cy="\{y + 10}" rx="18" ry="10" fill="\{fill}" class="participant-icon"/>
       output <+
-        $|<path d="M\{x - 18} \{y + 10}v31c0 7 36 7 36 0V\{y + 10}" class="participant-icon"/>
+        $|<path d="M\{x - 18} \{y + 10}v31c0 7 36 7 36 0V\{y + 10}" fill="\{fill}" class="participant-icon"/>
       output <+
-        $|<path d="M\{x - 18} \{y + 10}c0 13 36 13 36 0" class="participant-icon"/>
+        $|<path d="M\{x - 18} \{y + 10}c0 13 36 13 36 0" fill="none" class="participant-icon"/>
     }
     Participant | Queue | Collections => ()
   }

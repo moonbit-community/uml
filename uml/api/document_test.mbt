@@ -75,6 +75,28 @@ test "sequence grouping with else branches stays sequence" {
 }
 
 ///|
+test "life-event commands alone select the sequence parser" {
+  let source = "@startuml\nAlice -> Bob\nactivate Bob #FF0000\nBob --> Alice\n@enduml"
+  @test.assert_eq(parse(source).kind() is Sequence, true)
+}
+
+///|
+test "divider and delay lines alone select the sequence parser" {
+  @test.assert_eq(
+    parse("@startuml\nAlice -> Bob\n== checkpoint ==\n... wait ...\n@enduml").kind()
+    is Sequence,
+    true,
+  )
+  @test.assert_eq(
+    parse(
+      "@startuml\nhnote over Alice #lightgreen : colored hex\nrnote over Carol #lightcoral : colored box\n@enduml",
+    ).kind()
+    is Sequence,
+    true,
+  )
+}
+
+///|
 test "activity partition blocks stay activity" {
   let source = "@startuml\nstart\npartition A {\n:work;\n}\nstop\n@enduml"
   @test.assert_eq(parse(source).kind() is Activity, true)

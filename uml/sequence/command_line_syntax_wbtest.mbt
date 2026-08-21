@@ -171,3 +171,37 @@ test "life events require a whole identifier or a closed quote" {
     @test.fail("unclosed quote accepted")
   }
 }
+
+///|
+test "life event with color parses and carries the color" {
+  let src =
+    #|@startuml
+    #|Alice -> Bob
+    #|activate Bob #FF0000
+    #|Bob --> Alice
+    #|@enduml
+  let diagram = parse(src)
+  let has_colored_activation = diagram.events.exists(event => {
+    match event {
+      LifeEvent({ participant_code, event_type: Activate, color }) =>
+        participant_code == "Bob" && color == Some("FF0000")
+      _ => false
+    }
+  })
+  @test.assert_eq(has_colored_activation, true)
+}
+
+///|
+test "colored notes and activations keep their fill in the svg" {
+  let src =
+    #|@startuml
+    #|Alice -> Bob
+    #|activate Bob #lightgreen
+    #|hnote over Alice #lightgreen : colored hex
+    #|rnote over Carol #lightcoral : colored box
+    #|Bob --> Alice
+    #|@enduml
+  let svg = render_sequence_svg(src)
+  @test.assert_eq(svg.contains("fill=\"#90EE90\""), true)
+  @test.assert_eq(svg.contains("fill=\"#F08080\""), true)
+}
