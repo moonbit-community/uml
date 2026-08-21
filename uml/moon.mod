@@ -1,6 +1,6 @@
 name = "kokic/uml"
 
-version = "0.1.6"
+version = "0.1.7"
 
 import {
   "bobzhang/toml@0.4.3",
