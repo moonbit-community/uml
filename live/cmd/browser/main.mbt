@@ -171,7 +171,7 @@ fn app_state_tag(state : AppState) -> String {
 
 ///|
 fn file_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
-  let file_item = fn(cat : String, file : String) -> Html {
+  let file_item = (cat : String, file : String) => {
     let path = "\{cat}/\{file}"
     li(
       class=if state.active_file == path {
@@ -310,7 +310,7 @@ fn workspace(state : AppState, emit : @rabbita.Emit[Msg]) -> Val[Html] {
 ///|
 fn app() -> Val[Html] {
   let (state, emit) = @rabbita.create_state_with_init(
-    init=fn(emit) { (initial_state(), fetch_manifest_cmd(emit)) },
+    init=emit => (initial_state(), fetch_manifest_cmd(emit)),
     update~,
   )
   state.switch_by(state => workspace(state, emit), by=app_state_tag)

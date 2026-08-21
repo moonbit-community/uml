@@ -335,7 +335,7 @@ fn match_color_keyword(cursor : @parse.Cursor) -> String? {
 fn match_multi_color(cursor : @parse.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
-  let try_prefix = fn(prefix : Bool) -> Bool {
+  let try_prefix = (prefix : Bool) => {
     if prefix {
       guard take_color_word(cursor) is Some(_) else { return false }
       guard cursor.consume(';') else { return false }

@@ -151,7 +151,7 @@ fn Parser::consume_entity_note(
   }
   let mut index = self.index + 1
   guard @parse.collect_lines_until(
-      fn() {
+      () => {
         guard index < self.lines.length() else { return None }
         let line = @parse.strip_line_comment(self.lines[index])
           .trim()
@@ -309,13 +309,13 @@ pub fn parse(input : String) -> StateDiagram raise @parse.ParseError {
     if line.to_lower() == "skinparam {" {
       parser.index += 1
       let closed = @style.consume_skinparam_body(
-        fn() {
+        () => {
           guard parser.index < parser.lines.length() else { return None }
           let line = @parse.strip_line_comment(parser.lines[parser.index])
           parser.index += 1
           Some(line)
         },
-        fn(directive) { parser.style.apply(directive) },
+        directive => parser.style.apply(directive),
       )
       guard closed else {
         raise SyntaxError(parser.lines.length(), "unclosed skinparam")

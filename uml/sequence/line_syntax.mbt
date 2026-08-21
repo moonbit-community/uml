@@ -13,7 +13,7 @@ fn take_block_text(
   terminator : (String) -> Bool,
 ) -> String? {
   @parse.collect_lines_until(
-    fn() {
+    () => {
       guard !source.is_eof() else { return None }
       Some(source.take_line())
     },

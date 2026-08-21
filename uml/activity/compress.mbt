@@ -97,7 +97,7 @@ fn merge_slots(layout : ActivityLayout) -> Array[Slot] {
   for region in layout.regions {
     ranges.push((region.x, region.x + region.width))
   }
-  ranges.sort_by(fn(a, b) { a.0.compare(b.0) })
+  ranges.sort_by((a, b) => a.0.compare(b.0))
   let merged : Array[Slot] = []
   for range in ranges {
     if merged.is_empty() || range.0 > merged[merged.length() - 1].end {

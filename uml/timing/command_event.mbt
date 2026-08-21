@@ -5,7 +5,7 @@ fn parse_at_time(
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
   guard cursor.consume('@') else { return false }
-  guard with_time_expr(cursor, fn(expr) {
+  guard with_time_expr(cursor, expr => {
       let code = if space_one_or_more(cursor) {
         guard match_keyword(cursor, "as") else { return None }
         guard space_one_or_more(cursor) else { return None }
@@ -53,7 +53,7 @@ fn parse_at_player(
 fn parse_optional_time(cursor : @parse.Cursor) -> TimeExpr? {
   let checkpoint = cursor.offset()
   guard cursor.consume('@') else { return None }
-  match with_time_expr(cursor, fn(expr) { Some(expr) }) {
+  match with_time_expr(cursor, expr => Some(expr)) {
     Some(expr) => Some(expr)
     None => {
       ignore(cursor.restore(checkpoint))
@@ -174,7 +174,7 @@ fn parse_note(
   guard space_one_or_more(cursor) else { return false }
   guard match_keyword(cursor, "of") else { return false }
   guard space_one_or_more(cursor) else { return false }
-  guard with_player_code(cursor, fn(code) {
+  guard with_player_code(cursor, code => {
       skip_spaces(cursor)
       let checkpoint = cursor.offset()
       if parse_tags(cursor) {
@@ -265,7 +265,7 @@ fn parse_note_long(
 /// Removes common leading space and tab columns from non-empty lines,
 /// mirroring `BlocLines.removeEmptyColumns`.
 fn remove_empty_columns(lines : Array[String]) -> Unit {
-  let removable = fn() -> Bool {
+  let removable = () => {
     let mut all_empty = true
     for line in lines {
       if line.length() == 0 {
@@ -301,7 +301,7 @@ fn parse_constraint(
     parse_player_code(cursor)
   }
   guard cursor.consume('@') else { return false }
-  guard with_time_expr(cursor, fn(expr1) {
+  guard with_time_expr(cursor, expr1 => {
       skip_spaces(cursor)
       guard cursor.consume('<') else { return None }
       let dashes = cursor.take_while(char => char == '-')
@@ -317,7 +317,7 @@ fn parse_constraint(
       guard cursor.consume('>') else { return None }
       skip_spaces(cursor)
       guard cursor.consume('@') else { return None }
-      with_time_expr(cursor, fn(expr2) {
+      with_time_expr(cursor, expr2 => {
         skip_spaces(cursor)
         let message = if cursor.consume(':') {
           skip_spaces(cursor)
@@ -436,11 +436,11 @@ fn parse_highlight(parser : Parser, cursor : @parse.Cursor) -> Bool {
   skip_spaces(cursor)
   guard match_keyword(cursor, "highlight") else { return false }
   guard space_one_or_more(cursor) else { return false }
-  guard with_time_expr(cursor, fn(from) {
+  guard with_time_expr(cursor, from => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "to") else { return None }
       guard space_one_or_more(cursor) else { return None }
-      with_time_expr(cursor, fn(to) {
+      with_time_expr(cursor, to => {
         skip_spaces(cursor)
         let color = parse_color(cursor)
         skip_spaces(cursor)

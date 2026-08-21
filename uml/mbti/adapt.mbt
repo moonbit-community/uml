@@ -11,14 +11,14 @@ fn adapt(
   options : MbtiOptions,
 ) -> MbtiDiagram {
   let adapter = Adapter::new(options)
-  mbti.sigs.each(fn(sig) {
+  mbti.sigs.each(sig => {
     match sig.0 {
       Type(sig) => adapter.declare_type(sig)
       Trait(sig) => adapter.declare_trait(sig)
       _ => ()
     }
   })
-  mbti.sigs.each(fn(sig) {
+  mbti.sigs.each(sig => {
     match sig.0 {
       Type(sig) => adapter.fill_type(sig)
       Trait(sig) => {

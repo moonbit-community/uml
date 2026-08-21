@@ -481,7 +481,7 @@ fn Parser::consume_note_syntax(
     NoteBlock => {
       let mut index = self.index + 1
       guard @parse.collect_lines_until(
-          fn() {
+          () => {
             guard index < self.lines.length() else { return None }
             let line = self.lines[index]
             index += 1

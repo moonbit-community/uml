@@ -305,11 +305,7 @@ fn EntityDiagram::graphviz_layout(
   // PlantUML `ClusterDotString.printRanks` emits the port rank pins inside
   // the cluster subgraph; rank sets outside the cluster make dot remove the
   // ports from cluster membership (mark_clusters).
-  let pin_port_ranks = fn(
-    scope : String,
-    entries : Array[String],
-    rank : String,
-  ) -> Unit {
+  let pin_port_ranks = (scope : String, entries : Array[String], rank : String) => {
     guard entries.length() > 0 else { return }
     let parent = match package_content_graphs.get(scope) {
       Some(cluster) => cluster
@@ -328,7 +324,7 @@ fn EntityDiagram::graphviz_layout(
     pin_port_ranks(scope, entries, "sink")
   }
   let group_point_names : Map[String, String] = Map([])
-  let group_point_node = fn(code : String) -> String? {
+  let group_point_node = (code : String) => {
     match group_point_names.get(code) {
       Some(name) => Some(name)
       None =>

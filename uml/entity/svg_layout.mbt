@@ -263,7 +263,7 @@ fn relation_endpoints(
   right_index : Int?,
   text_metrics : ClassTextMetrics,
 ) -> ((Double, Double), (Double, Double)) {
-  let endpoint_center = fn(index : Int?, code : String) -> (Double, Double) {
+  let endpoint_center = (index : Int?, code : String) => {
     match index {
       Some(index) => {
         let (x, y, width, height) = layout.entity_rect(
@@ -281,7 +281,7 @@ fn relation_endpoints(
         }
     }
   }
-  let endpoint_style = fn(index : Int?) -> EntityRelationEndpointCapability {
+  let endpoint_style = (index : Int?) => {
     match index {
       Some(index) =>
         diagram.entities[index].render_capability(diagram.family).relation_endpoint
@@ -290,11 +290,11 @@ fn relation_endpoints(
   }
   let left_center = endpoint_center(left_index, relation.left)
   let right_center = endpoint_center(right_index, relation.right)
-  let boundary_endpoint = fn(
+  let boundary_endpoint = (
     index : Int?,
     port : String?,
     other_center : (Double, Double),
-  ) -> (Double, Double) {
+  ) => {
     match index {
       Some(index) => {
         let (x, y, width, height) = layout.entity_rect(

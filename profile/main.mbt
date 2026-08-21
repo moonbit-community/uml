@@ -180,7 +180,7 @@ fn index_page(pages : Array[String]) -> String {
       let hrefs = groups.get_or_default(category, [])
       // String::compare is shortlex (shorter strings sort first); use the
       // lexicographic comparator for filename ordering.
-      hrefs.sort_by(fn(left, right) { left.lexical_compare(right) })
+      hrefs.sort_by((left, right) => left.lexical_compare(right))
       let items = hrefs
         .map(href => {
           let slash = href.rev_find("/").unwrap_or(-1)
@@ -210,7 +210,7 @@ fn discover_fixtures(root : String) -> Array[String] {
     .filter(category => !category.has_prefix("."))
     .map(category => uml_files_in("\{root}/\{category}"))
     .flatten()
-  fixtures.sort_by(fn(left, right) { left.compare(right) })
+  fixtures.sort_by((left, right) => left.compare(right))
   fixtures
 }
 

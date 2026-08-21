@@ -127,7 +127,7 @@ test "shared block collector consumes the terminator exactly once" {
   let source = ["first", "second", "end note", "after"]
   let mut index = 0
   let lines = collect_lines_until(
-    fn() {
+    () => {
       guard index < source.length() else { return None }
       let line = source[index]
       index += 1

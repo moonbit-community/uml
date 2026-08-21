@@ -415,7 +415,7 @@ fn relation_state_css(
   right_collapsible : Bool,
   has_url : Bool,
 ) -> String {
-  let condition = fn(index : Int, bit : Int, collapsible : Bool) -> String {
+  let condition = (index : Int, bit : Int, collapsible : Bool) => {
     guard collapsible else { return "" }
     if bit == 1 {
       ":has(.class-node[data-node-index=\"\{index}\"] details:not([open]))"

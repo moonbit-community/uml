@@ -33,7 +33,7 @@ fn[T] validated_whole_line(
 
 ///|
 fn class_control_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
-  validated_whole_line(cursor, fn(line) {
+  validated_whole_line(cursor, line => {
     match line.to_lower() {
       "allowmixing" | "allow_mixing" => Some(ParsedAllowMixing)
       "}" | "};" | "end package" | "end namespace" => Some(ParsedPackageClose)
@@ -47,7 +47,7 @@ fn class_control_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
 
 ///|
 fn ignored_class_directive(cursor : @parse.Cursor) -> ClassLineSyntax? {
-  validated_whole_line(cursor, fn(line) {
+  validated_whole_line(cursor, line => {
     let lower = line.to_lower()
     if lower.has_prefix("skinparam ") ||
       lower.has_prefix("set namespace_separator ") ||
@@ -304,7 +304,7 @@ fn Parser::consume_skinparam_block(
 ) -> Unit raise @parse.ParseError {
   self.index += 1
   let closed = @style.consume_skinparam_body(
-    fn() {
+    () => {
       guard self.index < self.lines.length() else { return None }
       let line = @parse.strip_line_comment(self.lines[self.index])
       if line.trim() != "}" {
@@ -312,7 +312,7 @@ fn Parser::consume_skinparam_block(
       }
       Some(line)
     },
-    fn(directive) { self.style.apply(directive) },
+    directive => self.style.apply(directive),
   )
   guard closed else { self.raise_parse_error("unclosed skinparam") }
 }

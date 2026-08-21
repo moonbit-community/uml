@@ -58,7 +58,7 @@ fn parse_note(
 ) -> (String, Int) raise @parse.ParseError {
   let mut index = start + 1
   guard @parse.collect_lines_until(
-      fn() {
+      () => {
         guard index < lines.length() else { return None }
         let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
         index += 1
@@ -106,13 +106,13 @@ pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
     }
     if lower == "skinparam {" {
       let closed = @style.consume_skinparam_body(
-        fn() {
+        () => {
           guard index < lines.length() else { return None }
           let line = lines[index]
           index += 1
           Some(@parse.strip_line_comment(line).trim().to_owned())
         },
-        fn(directive) { style.apply(directive) },
+        directive => style.apply(directive),
       )
       guard closed else {
         raise SyntaxError(lines.length(), "unclosed skinparam")

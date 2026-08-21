@@ -67,7 +67,7 @@ fn parse_clock(parser : Parser, cursor : @parse.Cursor) -> Bool {
     guard take_full_as(cursor) is Some(full) else { return false }
     title = full
   }
-  guard with_full_code(cursor, fn(code) {
+  guard with_full_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "with") else { return None }
       guard space_one_or_more(cursor) else { return None }
@@ -246,7 +246,7 @@ fn parse_define_state_short(
   parser : Parser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
-  guard with_player_code(cursor, fn(code) {
+  guard with_player_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "has") else { return None }
       guard space_one_or_more(cursor) else { return None }
@@ -282,7 +282,7 @@ fn parse_define_state_long(
   parser : Parser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
-  guard with_player_code(cursor, fn(code) {
+  guard with_player_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "has") else { return None }
       guard space_one_or_more(cursor) else { return None }
@@ -334,11 +334,11 @@ fn parse_change_state_by_player_code(
   parser : Parser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
-  guard with_player_code(cursor, fn(code) {
+  guard with_player_code(cursor, code => {
       skip_spaces(cursor)
       guard match_keyword(cursor, "is") else { return None }
       skip_spaces(cursor)
-      with_state_spec(cursor, fn(states) {
+      with_state_spec(cursor, states => {
         guard parse_change_state_tail(cursor) is Some((color, comment)) else {
           return None
         }
@@ -362,7 +362,7 @@ fn parse_ticks(
   parser : Parser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
-  guard with_full_code(cursor, fn(code) {
+  guard with_full_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "ticks") else { return None }
       guard space_one_or_more(cursor) else { return None }
@@ -397,7 +397,7 @@ fn parse_pixel_height(
   parser : Parser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
-  guard with_full_code(cursor, fn(code) {
+  guard with_full_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "is") else { return None }
       guard space_one_or_more(cursor) else { return None }

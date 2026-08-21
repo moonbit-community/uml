@@ -162,7 +162,7 @@ fn reduce_flow(
             node,
             index + 1,
             [ElseIf, Else, EndIf],
-            fn(header, body) {
+            (header, body) => {
               let (condition, incoming) = match header {
                 ActivityNode::If(value) | ActivityNode::ElseIf(value) => {
                   let (condition, incoming) = split_test_and_label(
@@ -175,7 +175,7 @@ fn reduce_flow(
               }
               { condition, incoming, instructions: body }
             },
-            fn(next) {
+            next => {
               match next {
                 ActivityNode::ElseIf(_) | ActivityNode::Else(_) => Some(next)
                 _ => None
@@ -230,8 +230,8 @@ fn reduce_flow(
             node,
             index + 1,
             [ForkAgain, EndFork],
-            fn(_header, body) { body },
-            fn(next) {
+            (_header, body) => body,
+            next => {
               match next {
                 ActivityNode::ForkAgain => Some(next)
                 _ => None
@@ -253,14 +253,14 @@ fn reduce_flow(
                 node,
                 index + 2,
                 [Case, EndSwitch],
-                fn(header, body) {
+                (header, body) => {
                   let incoming = match header {
                     ActivityNode::Case(value) => edge_label(value)
                     _ => { text: None }
                   }
                   { condition: None, incoming, instructions: body }
                 },
-                fn(next) {
+                next => {
                   match next {
                     ActivityNode::Case(_) => Some(next)
                     _ => None

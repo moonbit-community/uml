@@ -333,12 +333,12 @@ fn RelationEnd::decoration_geometry(
   guard RelationDecorationFrame::new(endpoint, adjacent) is Some(frame) else {
     return None
   }
-  let segment = fn(
+  let segment = (
     start_along : Double,
     start_normal : Double,
     end_along : Double,
     end_normal : Double,
-  ) {
+  ) => {
     relation_decoration_segment(
       frame.point(start_along, start_normal),
       frame.point(end_along, end_normal),

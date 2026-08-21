@@ -130,7 +130,7 @@ test "port clusters pin inputs to the source rank" {
     "@startuml\nnode app {\n  port http\n  portin ingress\n  portout egress\n}\nnode client\nclient --> app\n@enduml",
     family=DeploymentDiagram,
   ).render_svg()
-  let port_y = fn(code : String) -> Double? {
+  let port_y = (code : String) => {
     let marker = "class=\"port-node\" data-code=\"\{code}\""
     match @parse.find_unquoted_literal(svg, marker) {
       Some(start) => {
@@ -147,7 +147,7 @@ test "port clusters pin inputs to the source rank" {
       None => None
     }
   }
-  let title_y = fn() -> Double? {
+  let title_y = () => {
     match @parse.find_unquoted_literal(svg, "class=\"package-title\"") {
       Some(start) => {
         // The title's own `y="` sits before its class attribute; scan the

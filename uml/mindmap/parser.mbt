@@ -275,13 +275,13 @@ pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
     if trimmed.equal_ignore_ascii_case("skinparam {") {
       index += 1
       let closed = @style.consume_skinparam_body(
-        fn() {
+        () => {
           guard index < lines.length() else { return None }
           let line = lines[index]
           index += 1
           Some(line)
         },
-        fn(directive) {
+        directive => {
           style.apply(directive)
           mindmap_style.apply_skinparam(directive)
         },

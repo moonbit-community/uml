@@ -77,7 +77,7 @@ fn relation_name(
   if cursor.take_quoted_value() is Some(name) {
     return Some({ name, port_base: None, port_value: None })
   }
-  let name_character = fn(char : Char) -> Bool {
+  let name_character = (char : Char) => {
     !char.is_whitespace() &&
     char != ':' &&
     char != '[' &&

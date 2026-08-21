@@ -348,13 +348,13 @@ fn Parser::consume_common_directive(
   if lower == "skinparam {" {
     self.index += 1
     let closed = @style.consume_skinparam_body(
-      fn() {
+      () => {
         guard self.index < self.lines.length() else { return None }
         let line = @parse.strip_line_comment(self.lines[self.index])
         self.index += 1
         Some(line)
       },
-      fn(directive) { self.diagram.style.apply(directive) },
+      directive => self.diagram.style.apply(directive),
     )
     guard closed else {
       raise @parse.SyntaxError(self.line_number(), "unclosed skinparam")

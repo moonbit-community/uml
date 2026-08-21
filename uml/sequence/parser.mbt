@@ -10,11 +10,11 @@ fn ParseCtx::consume_style_directive(
   if line.trim().to_lower() == "skinparam {" {
     self.source.skip_line()
     let closed = @style.consume_skinparam_body(
-      fn() {
+      () => {
         guard !self.source.is_eof() else { return None }
         Some(@parse.strip_line_comment(self.source.take_line()))
       },
-      fn(directive) { self.style.apply(directive) },
+      directive => self.style.apply(directive),
     )
     guard closed else { self.source.raise_parse_error("unclosed skinparam") }
     return true

@@ -97,7 +97,7 @@ fn marker_direction(marker : String) -> Direction {
 
 ///|
 fn parse_modifiers(cursor : @parse.Cursor) -> (NodeShape, Direction?, Int) {
-  let parse_direction = fn() -> Direction? {
+  let parse_direction = () => {
     match cursor.peek() {
       Some('<') => {
         ignore(cursor.advance())
@@ -669,13 +669,13 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
   if lower == "skinparam {" {
     self.index += 1
     let closed = @style.consume_skinparam_body(
-      fn() {
+      () => {
         guard self.index < self.lines.length() else { return None }
         let next = @parse.strip_line_comment(self.lines[self.index])
         self.index += 1
         Some(next)
       },
-      fn(directive) { self.style.apply(directive) },
+      directive => self.style.apply(directive),
     )
     guard closed else {
       raise SyntaxError(self.lines.length(), "unclosed skinparam")

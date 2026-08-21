@@ -24,9 +24,7 @@ pub fn collect_lines_until(
   is_terminator : (String) -> Bool,
 ) -> Array[String]? {
   let lines = []
-  guard consume_lines_until(next_line, is_terminator, fn(line) {
-    lines.push(line)
-  }) else {
+  guard consume_lines_until(next_line, is_terminator, line => lines.push(line)) else {
     return None
   }
   Some(lines)
