@@ -14,19 +14,13 @@ fn activation_color(
 ///|
 fn note_color(
   color : String?,
-  stereotype : String?,
+  _stereotype : String?,
   defaults : @style.SequenceColors,
 ) -> String {
   // Java resolves stereotype-tagged noteBackground/noteBorder skinparam
   // colors (`Colors.applyStereotypeForNote`); the modeled style set has no
   // stereotype variants, so both resolve to the shared note color.
-  @svg.svg_color(
-    color,
-    match stereotype {
-      Some(_) => defaults.note
-      None => defaults.note
-    },
-  )
+  @svg.svg_color(color, defaults.note)
 }
 
 ///|
@@ -88,10 +82,10 @@ fn DiagramLayout::participant_head_y(
   self : DiagramLayout,
   participant : ParticipantLayout,
 ) -> Int {
-  match participant.birth_y {
-    Some(birth_y) => birth_y + 9 - participant.participant.typ.header_height()
-    None => self.body_top - participant.participant.typ.header_height()
-  }
+  participant.birth_y.map_or(
+    self.body_top - participant.participant.typ.header_height(),
+    birth_y => birth_y + 9 - participant.participant.typ.header_height(),
+  )
 }
 
 ///|

@@ -101,10 +101,10 @@ priv enum Tile {
   LabelAnchor(Int)
   GotoAnchor(Int)
   Partition(Array[Tile])
-  Swimlane(Int)
+  Swimlane
   IfChain(Array[BranchTiles], Int)
   WhileLoop(Int, Array[Tile], Int, String?, String?)
-  RepeatLoop(Int, Array[Tile], Int, String?, String?)
+  RepeatLoop(Array[Tile], Int, String?, String?)
   Parallel(Int, Array[BranchTiles], Int)
   Switch(Int, Array[BranchTiles], Int)
 }
@@ -303,17 +303,16 @@ fn tiles_from_instructions(
         )
       ActivityInstruction::IfChain(chain) => {
         guard chain.branches.length() > 0 else { continue }
-        let branches = []
-        for branch in chain.branches {
+        let branches = chain.branches.map(branch => {
           let decision = branch.condition.map(condition => {
             add_layout_node(nodes, ActivityNode::If(condition))
           })
-          branches.push({
+          {
             decision,
             tiles: tiles_from_instructions(branch.instructions, nodes),
             label: branch.incoming.text,
-          })
-        }
+          }
+        })
         let exit = add_layout_node(nodes, ActivityNode::EndIf)
         tiles.push(Tile::IfChain(branches, exit))
       }
@@ -334,14 +333,12 @@ fn tiles_from_instructions(
         )
       }
       ActivityInstruction::Repeat(repeat_instruction) => {
-        let entry = add_layout_node(nodes, ActivityNode::Repeat)
         let exit = add_layout_node(
           nodes,
           ActivityNode::RepeatWhile(repeat_instruction.condition),
         )
         tiles.push(
           Tile::RepeatLoop(
-            entry,
             tiles_from_instructions(repeat_instruction.instructions, nodes),
             exit,
             repeat_instruction.retry.text,
@@ -351,14 +348,11 @@ fn tiles_from_instructions(
       }
       ActivityInstruction::Fork(fork) => {
         let entry = add_layout_node(nodes, ActivityNode::Fork)
-        let branches = []
-        for branch in fork.branches {
-          branches.push({
-            decision: None,
-            tiles: tiles_from_instructions(branch, nodes),
-            label: None,
-          })
-        }
+        let branches = fork.branches.map(branch => {
+          decision: None,
+          tiles: tiles_from_instructions(branch, nodes),
+          label: None,
+        })
         let exit = add_layout_node(nodes, ActivityNode::EndFork)
         tiles.push(Tile::Parallel(entry, branches, exit))
       }
@@ -367,14 +361,11 @@ fn tiles_from_instructions(
           nodes,
           ActivityNode::Switch(switch.condition),
         )
-        let branches = []
-        for branch in switch.branches {
-          branches.push({
-            decision: None,
-            tiles: tiles_from_instructions(branch.instructions, nodes),
-            label: branch.incoming.text,
-          })
-        }
+        let branches = switch.branches.map(branch => {
+          decision: None,
+          tiles: tiles_from_instructions(branch.instructions, nodes),
+          label: branch.incoming.text,
+        })
         let exit = add_layout_node(nodes, ActivityNode::EndSwitch)
         tiles.push(Tile::Switch(entry, branches, exit))
       }
@@ -388,10 +379,10 @@ fn tiles_from_instructions(
         )
         add_layout_node(nodes, ActivityNode::EndPartition) |> ignore
       }
-      ActivityInstruction::Swimlane(name) =>
-        tiles.push(
-          Tile::Swimlane(add_layout_node(nodes, ActivityNode::Swimlane(name))),
-        )
+      ActivityInstruction::Swimlane(name) => {
+        add_layout_node(nodes, ActivityNode::Swimlane(name)) |> ignore
+        tiles.push(Tile::Swimlane)
+      }
       ActivityInstruction::Label(name) =>
         tiles.push(
           Tile::LabelAnchor(add_layout_node(nodes, ActivityNode::Label(name))),
@@ -454,8 +445,7 @@ fn ActivityNode::size(
     _ if self.is_decision() => {
       let label_width = self
         .label()
-        .map(label => small_metrics.measure(label).width)
-        .unwrap_or(0)
+        .map_or(0, label => small_metrics.measure(label).width)
       { width: label_width + DIAMOND_TEXT_PADDING, height: DIAMOND_HEIGHT }
     }
     Note(label) => {
@@ -499,11 +489,9 @@ fn measure_sequence(
     let size = measure_tile(tile, nodes, metrics, small_metrics)
     guard size.height > 0 else { continue }
     if found {
-      height += match pending_label {
-        Some(label) =>
-          EDGE_LABEL_GAP + EDGE_LABEL_LINE * (line_count(label) - 1)
-        None => VERTICAL_GAP
-      }
+      height += pending_label.map_or(VERTICAL_GAP, label => {
+        EDGE_LABEL_GAP + EDGE_LABEL_LINE * (line_count(label) - 1)
+      })
     }
     width = width.max(size.width)
     height += size.height
@@ -574,9 +562,9 @@ fn measure_if_chain(
   let mut body_height = 0
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    let decision = branch.decision
-      .map(index => nodes[index].size(metrics, small_metrics))
-      .unwrap_or({ width: 0, height: 0 })
+    let decision = branch.decision.map_or({ width: 0, height: 0 }, index => {
+      nodes[index].size(metrics, small_metrics)
+    })
     if index > 0 {
       width += BRANCH_GAP
     }
@@ -607,10 +595,7 @@ fn measure_tile(
     Leaf(index) => nodes[index].size(metrics, small_metrics)
     LabelAnchor(_) | GotoAnchor(_) => { width: 0, height: 0 }
     Partition(tiles) => measure_sequence(tiles, nodes, metrics, small_metrics)
-    Swimlane(index) => {
-      let _ = index
-      { width: 0, height: 0 }
-    }
+    Swimlane(_) => { width: 0, height: 0 }
     IfChain(branches, _) if is_if_down(branches) => {
       let branches_size = measure_if_down(
         branches, nodes, metrics, small_metrics,
@@ -656,8 +641,7 @@ fn measure_tile(
         exit_size.height,
       }
     }
-    RepeatLoop(entry, body, exit, _, exit_label) => {
-      let _ = entry
+    RepeatLoop(body, exit, _, exit_label) => {
       let body_size = measure_sequence(body, nodes, metrics, small_metrics)
       let exit_size = nodes[exit].size(metrics, small_metrics)
       {
@@ -668,9 +652,7 @@ fn measure_tile(
         (if exit_label is Some(_) { DOWN_LABEL_GAP } else { DIAMOND_BODY_GAP }),
       }
     }
-    Parallel(entry, branches, exit) => {
-      let _ = entry
-      let _ = exit
+    Parallel(_, branches, _) => {
       let branches_width = measure_fork_columns(
         branches, nodes, metrics, small_metrics,
       )

@@ -674,20 +674,16 @@ fn ObjectHeaderLayout::placement(
   let title_baseline = self.stereotype_height +
     self.title_height -
     OBJECT_TEXT_BASELINE_BOTTOM_GAP
-  let stereotype_position = match self.stereotype {
-    Some(_) =>
-      Some(
-        (
-          content_x +
-          ((content_width - self.stereotype_width).to_double() / 2.0)
-          .round()
-          .to_int() +
-          OBJECT_TEXT_HORIZONTAL_PADDING,
-          self.stereotype_height - OBJECT_TEXT_BASELINE_BOTTOM_GAP,
-        ),
-      )
-    None => None
-  }
+  let stereotype_position = self.stereotype.map(_ => {
+    (
+      content_x +
+      ((content_width - self.stereotype_width).to_double() / 2.0)
+      .round()
+      .to_int() +
+      OBJECT_TEXT_HORIZONTAL_PADDING,
+      self.stereotype_height - OBJECT_TEXT_BASELINE_BOTTOM_GAP,
+    )
+  })
   (title_x, title_baseline, stereotype_position)
 }
 
@@ -751,44 +747,36 @@ fn ClassHeaderLayout::placement(
     CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
     .round()
     .to_int()
-  let stereotype_position = match self.stereotype {
-    Some(_) =>
-      Some(
-        (
-          (content_x +
-          (content_width - self.stereotype_width).to_double() / 2.0 +
-          CLASS_STEREOTYPE_HORIZONTAL_MARGIN.to_double())
-          .round()
-          .to_int(),
-          (vertical_surplus +
-          self.stereotype_height.to_double() -
-          CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
-          .round()
-          .to_int(),
-        ),
-      )
-    None => None
-  }
-  let annotation_position = match self.annotation {
-    Some(_) =>
-      Some(
-        (
-          (content_x +
-          (content_width - self.annotation_width).to_double() / 2.0 +
-          CLASS_STEREOTYPE_HORIZONTAL_MARGIN.to_double())
-          .round()
-          .to_int(),
-          (vertical_surplus +
-          self.stereotype_height.to_double() +
-          self.title_height.to_double() +
-          self.annotation_height.to_double() -
-          CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
-          .round()
-          .to_int(),
-        ),
-      )
-    None => None
-  }
+  let stereotype_position = self.stereotype.map(_ => {
+    (
+      (content_x +
+      (content_width - self.stereotype_width).to_double() / 2.0 +
+      CLASS_STEREOTYPE_HORIZONTAL_MARGIN.to_double())
+      .round()
+      .to_int(),
+      (vertical_surplus +
+      self.stereotype_height.to_double() -
+      CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
+      .round()
+      .to_int(),
+    )
+  })
+  let annotation_position = self.annotation.map(_ => {
+    (
+      (content_x +
+      (content_width - self.annotation_width).to_double() / 2.0 +
+      CLASS_STEREOTYPE_HORIZONTAL_MARGIN.to_double())
+      .round()
+      .to_int(),
+      (vertical_surplus +
+      self.stereotype_height.to_double() +
+      self.title_height.to_double() +
+      self.annotation_height.to_double() -
+      CLASS_TEXT_BASELINE_BOTTOM_GAP.to_double())
+      .round()
+      .to_int(),
+    )
+  })
   {
     circle_center,
     title_x,

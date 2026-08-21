@@ -251,10 +251,11 @@ fn is_association_class_declaration(line : String) -> Bool {
   }
   guard comma && cursor.consume(')') else { return false }
   ignore(cursor.skip_while(char => char.is_whitespace()))
-  match cursor.peek() {
-    Some(char) => char == '-' || char == '.' || char == '<' || char == '>'
-    None => false
-  }
+  cursor
+  .peek()
+  .map_or(false, char => {
+    char == '-' || char == '.' || char == '<' || char == '>'
+  })
 }
 
 ///|

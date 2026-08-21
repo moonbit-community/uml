@@ -68,17 +68,17 @@ fn region_for(
   let mut max_y : Int? = None
   for layout in layouts {
     guard select(layout) else { continue }
-    min_x = Some(min_x.map(value => value.min(layout.x)).unwrap_or(layout.x))
-    min_y = Some(min_y.map(value => value.min(layout.y)).unwrap_or(layout.y))
+    min_x = Some(min_x.map_or(layout.x, value => value.min(layout.x)))
+    min_y = Some(min_y.map_or(layout.y, value => value.min(layout.y)))
     max_x = Some(
-      max_x
-      .map(value => value.max(layout.x + layout.width))
-      .unwrap_or(layout.x + layout.width),
+      max_x.map_or(layout.x + layout.width, value => {
+        value.max(layout.x + layout.width)
+      }),
     )
     max_y = Some(
-      max_y
-      .map(value => value.max(layout.y + layout.height))
-      .unwrap_or(layout.y + layout.height),
+      max_y.map_or(layout.y + layout.height, value => {
+        value.max(layout.y + layout.height)
+      }),
     )
   }
   match (min_x, min_y, max_x, max_y) {

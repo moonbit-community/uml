@@ -146,11 +146,11 @@ fn smart_level(
 fn ending_stereotype(label : String) -> (String, String?) {
   let value = label.trim_end().to_owned()
   guard value.has_suffix(">>") else { return (value, None) }
-  match value.rev_find("<<") {
-    Some(index) =>
-      (value[:index].trim_end().to_owned(), Some(value[index:].to_owned()))
-    None => (value, None)
-  }
+  value
+  .rev_find("<<")
+  .map_or((value, None), index => {
+    (value[:index].trim_end().to_owned(), Some(value[index:].to_owned()))
+  })
 }
 
 ///|

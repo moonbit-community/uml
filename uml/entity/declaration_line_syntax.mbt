@@ -283,10 +283,7 @@ fn declaration_stereotype(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
 
 ///|
 fn declaration_url(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
-  match cursor.take_url_value() {
-    Some(url) => Some(DeclarationUrl(url))
-    None => None
-  }
+  cursor.take_url_value().map(url => DeclarationUrl(url))
 }
 
 ///|

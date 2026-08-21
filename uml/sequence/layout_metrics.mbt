@@ -292,11 +292,10 @@ fn Event::participant_span(
             match between(first, last) {
               Some((left, right)) =>
                 span = Some(
-                  match span {
-                    Some((span_left, span_right)) =>
-                      (span_left.min(left), span_right.max(right))
-                    None => (left, right)
-                  },
+                  span.map_or((left, right), pair => {
+                    let (span_left, span_right) = pair
+                    (span_left.min(left), span_right.max(right))
+                  }),
                 )
               None => ()
             }
@@ -390,9 +389,9 @@ fn Message::gap_requirement(
 
 ///|
 fn Message::rendered_label(self : Message, number : String?) -> String {
-  number
-  .map(number => "\{number} \{self.display_label()}")
-  .unwrap_or_else(() => self.display_label())
+  number.map_or_else(() => self.display_label(), number => {
+    "\{number} \{self.display_label()}"
+  })
 }
 
 ///|
@@ -400,10 +399,9 @@ fn ParticipantBox::minimum_width(
   self : ParticipantBox,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
-  match self.label {
-    Some(label) => TextSize::of_with(label, text_metrics.small_bold).width + 16
-    None => 0
-  }
+  self.label.map_or(0, label => {
+    TextSize::of_with(label, text_metrics.small_bold).width + 16
+  })
 }
 
 ///|

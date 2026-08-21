@@ -215,10 +215,9 @@ fn Parser::resolve(self : Parser, code : String) -> String {
   if self.ambiguous_entity_codes.contains(code) {
     return qualified
   }
-  match self.entity_code_indices.get(code) {
-    Some(index) => self.entities[index].qualified_code
-    None => qualified
-  }
+  self.entity_code_indices
+  .get(code)
+  .map_or(qualified, index => self.entities[index].qualified_code)
 }
 
 ///|

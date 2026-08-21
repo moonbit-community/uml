@@ -162,10 +162,9 @@ fn Parser::apply_declaration_syntax(
     self.raise_parse_error("\{kind} already exists: \{declaration.code}")
   }
   let declaration = if exists && declaration.kind is Object && syntax.opens_body {
-    let existing_kind = match self.entity_index(qualified_code) {
-      Some(index) => self.entities[index].kind
-      None => Object
-    }
+    let existing_kind = self
+      .entity_index(qualified_code)
+      .map_or(Object, index => self.entities[index].kind)
     { ..declaration, kind: existing_kind }
   } else {
     declaration

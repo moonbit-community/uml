@@ -570,10 +570,9 @@ fn append_usecase_entity(
         appearance,
         business=entity.kind is BusinessActor,
       )
-      let stereotype_height = match stereotype {
-        Some(value) => text_metrics.actor_italic.measure(value).height
-        None => 0
-      }
+      let stereotype_height = stereotype.map_or(0, value => {
+        text_metrics.actor_italic.measure(value).height
+      })
       let figure_top = y + stereotype_height
       let label_y = figure_top + figure_height + title.baseline
       match stereotype {

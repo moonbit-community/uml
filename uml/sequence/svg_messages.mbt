@@ -97,9 +97,8 @@ fn append_message(
   // Java merges the stereotype into the arrow style signature
   // (AbstractMessage.getStyleSignature); the modeled style set has no
   // stereotype-tagged arrow styles, so the tag changes nothing visible.
-  match message.stereotype {
-    Some(_) => ()
-    None => ()
+  if message.stereotype is Some(_) {
+    ()
   }
   // Java's `AbstractMessage.getUrl()` falls back to the URL of an attached
   // on-arrow note, wrapping the arrow in the note's link as well.
@@ -242,9 +241,9 @@ fn append_exo_message(
   output <+
     $|<line x1="\{start_x}" y1="\{y}" x2="\{end_x}" y2="\{y}" class="message\{dotted}"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>
   let raw_label = message.label.unwrap_or("")
-  let label = placement.number
-    .map(number => "\{number} \{raw_label}")
-    .unwrap_or_else(() => raw_label)
+  let label = placement.number.map_or_else(() => raw_label, number => {
+    "\{number} \{raw_label}"
+  })
   append_text(
     output,
     start_x.min(end_x) + 7,

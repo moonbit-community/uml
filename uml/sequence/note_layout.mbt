@@ -100,16 +100,15 @@ fn DiagramLayout::note_geometry(
   } else {
     match note.position {
       Left =>
-        match note.participant_codes.get(0) {
-          Some(code) =>
-            self.participant_segment(code, placement.y).0 - component.width
-          None => center - component.width
-        }
+        note.participant_codes
+        .get(0)
+        .map_or(center - component.width, code => {
+          self.participant_segment(code, placement.y).0 - component.width
+        })
       Right =>
-        match note.participant_codes.get(0) {
-          Some(code) => self.participant_segment(code, placement.y).1
-          None => center
-        }
+        note.participant_codes
+        .get(0)
+        .map_or(center, code => self.participant_segment(code, placement.y).1)
       Bottom | Top | Over => center - component.width / 2
       OverSeveral =>
         match (note.participant_codes.get(0), note.participant_codes.last()) {

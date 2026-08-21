@@ -374,19 +374,19 @@ fn parse_ticks(
         guard match_keyword(cursor, "multiple") else { return None }
       }
       guard space_one_or_more(cursor) else { return None }
-      let num = cursor.take_while(char => char >= '0' && char <= '9')
-      guard num.length() > 0 else { return None }
+      let digits = cursor.take_while(char => char >= '0' && char <= '9')
+      guard digits.length() > 0 else { return None }
       guard cursor.is_eof() else { return None }
-      Some((code, num))
+      Some((code, digits))
     })
-    is Some((code, num)) else {
+    is Some((code, digits)) else {
     return false
   }
   guard parser.player(code) is Some(player) else {
     raise parser.error("No such participant " + code)
   }
   if player.kind is Analog {
-    player.ticks_every = Some(parse_positive_int(num))
+    player.ticks_every = Some(parse_positive_int(digits))
   }
   true
 }
@@ -401,22 +401,22 @@ fn parse_pixel_height(
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "is") else { return None }
       guard space_one_or_more(cursor) else { return None }
-      let num = cursor.take_while(char => char >= '0' && char <= '9')
-      guard num.length() > 0 else { return None }
+      let digits = cursor.take_while(char => char >= '0' && char <= '9')
+      guard digits.length() > 0 else { return None }
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "pixel") else { return None }
       ignore(cursor.consume('s'))
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "height") else { return None }
       guard cursor.is_eof() else { return None }
-      Some((code, num))
+      Some((code, digits))
     })
-    is Some((code, num)) else {
+    is Some((code, digits)) else {
     return false
   }
   guard parser.player(code) is Some(player) else {
     raise parser.error("No such participant " + code)
   }
-  player.height = Some(parse_positive_int(num))
+  player.height = Some(parse_positive_int(digits))
   true
 }

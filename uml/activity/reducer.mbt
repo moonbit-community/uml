@@ -28,14 +28,14 @@ fn split_test_and_label(
   separator : String,
 ) -> (String, ActivityEdgeLabel) {
   let lower = value.to_lower()
-  match lower.find(separator) {
-    Some(index) =>
-      (
-        edge_label(value[:index].to_owned()).text.unwrap_or(""),
-        edge_label(value[index + separator.length():].to_owned()),
-      )
-    None => (edge_label(value).text.unwrap_or(""), { text: None })
-  }
+  lower
+  .find(separator)
+  .map_or((edge_label(value).text.unwrap_or(""), { text: None }), index => {
+    (
+      edge_label(value[:index].to_owned()).text.unwrap_or(""),
+      edge_label(value[index + separator.length():].to_owned()),
+    )
+  })
 }
 
 ///|
@@ -55,15 +55,16 @@ fn repeat_labels(
   guard rest.length() > 0 else {
     return (condition, { text: None }, { text: None })
   }
-  match rest.to_lower().find(" not ") {
-    Some(index) =>
-      (
-        condition,
-        edge_label(rest[:index].to_owned()),
-        edge_label(rest[index + 5:].to_owned()),
-      )
-    None => (condition, edge_label(rest), { text: None })
-  }
+  rest
+  .to_lower()
+  .find(" not ")
+  .map_or((condition, edge_label(rest), { text: None }), index => {
+    (
+      condition,
+      edge_label(rest[:index].to_owned()),
+      edge_label(rest[index + 5:].to_owned()),
+    )
+  })
 }
 
 ///|

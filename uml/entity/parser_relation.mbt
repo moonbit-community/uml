@@ -346,13 +346,13 @@ fn Parser::apply_relation_syntax(
     inside: relation_inside(arrow),
     left_port,
     right_port,
-    left_couple: match syntax.left.couple {
-      Some((first, second)) => Some((self.resolve(first), self.resolve(second)))
-      None => None
-    },
-    right_couple: match syntax.right.couple {
-      Some((first, second)) => Some((self.resolve(first), self.resolve(second)))
-      None => None
-    },
+    left_couple: syntax.left.couple.map(pair => {
+      let (first, second) = pair
+      (self.resolve(first), self.resolve(second))
+    }),
+    right_couple: syntax.right.couple.map(pair => {
+      let (first, second) = pair
+      (self.resolve(first), self.resolve(second))
+    }),
   })
 }

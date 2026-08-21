@@ -74,10 +74,9 @@ fn take_signed_integer(cursor : @parse.Cursor) -> Int? {
 fn title_line_syntax(cursor : @parse.Cursor) -> SequenceTextSyntax? {
   guard take_keyword(cursor, "title") else { return None }
   let rest = cursor.take_while(_ => true)
-  match @parse.normalize_label(rest) {
-    Some(text) => Some(Inline(text))
-    None => Some(Multiline)
-  }
+  @parse.normalize_label(rest).map_or(Some(Multiline), text => {
+    Some(Inline(text))
+  })
 }
 
 ///|
@@ -105,10 +104,7 @@ fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
     return Some(ParsedParticipant(participant))
   }
   ignore(cursor.restore(0))
-  match title_line_syntax(cursor) {
-    Some(text) => Some(ParsedTitle(text))
-    None => None
-  }
+  title_line_syntax(cursor).map(text => ParsedTitle(text))
 }
 
 ///|

@@ -5,13 +5,13 @@ fn DiagramLayout::note_anchor_center(
   arrow_anchor : Message?,
 ) -> Int {
   guard note.on_arrow else {
-    match note.participant_codes.get(0) {
-      Some(code) =>
-        self
-        .participant_at(code)
-        .map_or(self.width / 2, participant => participant.center_x)
-      None => self.width / 2
-    }
+    note.participant_codes
+    .get(0)
+    .map_or(self.width / 2, code => {
+      self
+      .participant_at(code)
+      .map_or(self.width / 2, participant => participant.center_x)
+    })
   }
   match arrow_anchor {
     Some(message) => {

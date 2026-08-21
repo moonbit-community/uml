@@ -20,10 +20,7 @@ fn place_sequence(
         layouts.push({ node_index: index, x, y: cursor_y, width: 0, height: 0 })
         continue
       }
-      Swimlane(index) => {
-        let _ = index
-        continue
-      }
+      Swimlane(_) => continue
       Leaf(index) if nodes[index] is ActivityNode::Arrow(value) => {
         pending_label = arrow_label(value).text
         continue
@@ -115,14 +112,12 @@ fn sequence_gap(
       }
     None => VERTICAL_GAP
   }
-  match pending_label {
-    Some(label) =>
-      base +
-      EDGE_LABEL_GAP -
-      VERTICAL_GAP +
-      EDGE_LABEL_LINE * (line_count(label) - 1)
-    None => base
-  }
+  pending_label.map_or(base, label => {
+    base +
+    EDGE_LABEL_GAP -
+    VERTICAL_GAP +
+    EDGE_LABEL_LINE * (line_count(label) - 1)
+  })
 }
 
 ///|
@@ -224,10 +219,8 @@ fn place_tile(
       { entry: None, exit: None, outgoing_label: None, outgoing_route: Forward }
     Partition(tiles) =>
       place_sequence(tiles, nodes, metrics, small_metrics, x, y, layouts, edges)
-    Swimlane(index) => {
-      let _ = index
+    Swimlane(_) =>
       { entry: None, exit: None, outgoing_label: None, outgoing_route: Forward }
-    }
     IfChain(branches, exit) if is_if_down(branches) =>
       place_if_down(
         branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
@@ -245,10 +238,10 @@ fn place_tile(
         entry, body, exit, enter_label, exit_label, nodes, metrics, small_metrics,
         x, y, layouts, edges,
       )
-    RepeatLoop(entry, body, exit, retry_label, exit_label) =>
+    RepeatLoop(body, exit, retry_label, exit_label) =>
       place_repeat(
-        entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
-        x, y, layouts, edges,
+        body, exit, retry_label, exit_label, nodes, metrics, small_metrics, x, y,
+        layouts, edges,
       )
     Parallel(entry, branches, exit) =>
       place_parallel(
@@ -395,9 +388,9 @@ fn place_if_chain(
       metrics,
       small_metrics,
     )
-    let decision_size = branch.decision
-      .map(index => nodes[index].size(metrics, small_metrics))
-      .unwrap_or({ width: 0, height: 0 })
+    let decision_size = branch.decision.map_or({ width: 0, height: 0 }, index => {
+      nodes[index].size(metrics, small_metrics)
+    })
     let branch_width = body_size.width.max(decision_size.width)
     match branch.decision {
       Some(decision) =>
@@ -488,9 +481,9 @@ fn measure_chain_width(
   let mut width = 0
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    let decision = branch.decision
-      .map(index => nodes[index].size(metrics, small_metrics))
-      .unwrap_or({ width: 0, height: 0 })
+    let decision = branch.decision.map_or({ width: 0, height: 0 }, index => {
+      nodes[index].size(metrics, small_metrics)
+    })
     if index > 0 {
       width += BRANCH_GAP
     }
@@ -675,7 +668,6 @@ fn place_while(
 
 ///|
 fn place_repeat(
-  entry : Int,
   body : Array[Tile],
   exit : Int,
   retry_label : String?,
@@ -688,7 +680,6 @@ fn place_repeat(
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
-  let _ = entry
   let body_size = measure_sequence(body, nodes, metrics, small_metrics)
   let exit_size = nodes[exit].size(metrics, small_metrics)
   let body_placed = place_sequence(

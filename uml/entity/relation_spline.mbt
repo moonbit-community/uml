@@ -341,11 +341,8 @@ fn move_relation_spline_start(
   let drop_first = cubic &&
     path.length() > 4 &&
     relation_point_distance_squared(path[0], path[3]).sqrt() <= distance
-  let moved : Array[(Double, Double)] = []
   let start_index = if drop_first { 3 } else { 0 }
-  for index in start_index..<path.length() {
-    moved.push(path[index])
-  }
+  let moved : Array[(Double, Double)] = path[start_index:].to_owned()
   guard moved.length() > 0 else { return path.copy() }
   let original_start = path[0]
   let dx = original_start.0 + move_x - moved[0].0

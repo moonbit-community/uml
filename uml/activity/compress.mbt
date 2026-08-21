@@ -100,11 +100,12 @@ fn merge_slots(layout : ActivityLayout) -> Array[Slot] {
   ranges.sort_by((a, b) => a.0.compare(b.0))
   let merged : Array[Slot] = []
   for range in ranges {
-    if merged.is_empty() || range.0 > merged[merged.length() - 1].end {
+    let last_index = merged.length() - 1
+    if merged.is_empty() || range.0 > merged[last_index].end {
       merged.push({ start: range.0, end: range.1 })
     } else {
-      let last = merged[merged.length() - 1]
-      merged[merged.length() - 1] = { ..last, end: last.end.max(range.1) }
+      let last = merged[last_index]
+      merged[last_index] = { ..last, end: last.end.max(range.1) }
     }
   }
   merged

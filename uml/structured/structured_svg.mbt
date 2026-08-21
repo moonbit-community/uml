@@ -87,10 +87,7 @@ fn append_multiline_text(
     font_size=STRUCTURED_FONT_SIZE,
     line_height=STRUCTURED_LINE_HEIGHT,
   )
-  let attributes = match class {
-    Some(class) => [("class", class)]
-    None => []
-  }
+  let attributes = class.map_or([], class => [("class", class)])
   output.write_string(
     @svg.multiline_text_markup(
       x.to_double(),

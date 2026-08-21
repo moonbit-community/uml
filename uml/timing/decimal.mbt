@@ -204,14 +204,12 @@ pub fn Decimal::add(self : Decimal, other : Decimal) -> Decimal {
   let scale = self.scale.max(other.scale)
   let a = self.scaled(scale)
   let b = other.scaled(scale)
-  let (sign, coeff) = match self.sign == other.sign {
-    true => (self.sign, add_digits(a, b))
-    false =>
-      if digits_longer(a, b) {
-        (self.sign, sub_digits(a, b))
-      } else {
-        (other.sign, sub_digits(b, a))
-      }
+  let (sign, coeff) = if self.sign == other.sign {
+    (self.sign, add_digits(a, b))
+  } else if digits_longer(a, b) {
+    (self.sign, sub_digits(a, b))
+  } else {
+    (other.sign, sub_digits(b, a))
   }
   { sign, coeff: normalize_digits(coeff), scale }
 }

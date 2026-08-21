@@ -245,10 +245,10 @@ fn append_notes(
   layout : ClassLayout,
   collapsible : Bool,
 ) -> Unit {
-  let note_layouts = match layout.graphviz {
-    Some(graphviz) => graphviz.notes
-    None => fallback_note_layouts(diagram, text_metrics, layout)
-  }
+  let note_layouts = layout.graphviz.map_or(
+    fallback_note_layouts(diagram, text_metrics, layout),
+    graphviz => graphviz.notes,
+  )
   for note_layout in note_layouts {
     guard note_layout.note_index < diagram.notes.length() else { continue }
     let note = diagram.notes[note_layout.note_index]

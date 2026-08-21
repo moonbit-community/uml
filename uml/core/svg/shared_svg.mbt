@@ -193,14 +193,8 @@ pub fn arrow_marker_markup(
   path_class? : String,
 ) -> String {
   let extra = [
-    ..match path_fill {
-      Some(fill) => [" fill=\"\{xml_escape(fill)}\""]
-      None => []
-    },
-    ..match path_class {
-      Some(class) => [" class=\"\{xml_escape(class)}\""]
-      None => []
-    },
+    ..path_fill.map_or([], fill => [" fill=\"\{xml_escape(fill)}\""]),
+    ..path_class.map_or([], class => [" class=\"\{xml_escape(class)}\""]),
   ].join("")
   "<marker id=\"\{id}\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"\{marker_width}\" markerHeight=\"\{marker_height}\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\"\{extra}/></marker>"
 }

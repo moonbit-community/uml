@@ -75,7 +75,7 @@ fn apply_activation_spec(
       start_activation(
         activations, active, participant_code, caller_code, y, color,
       )
-    Some(Create) => ()
+    Some(Create) | None => ()
     Some(Deactivate) => {
       let _ = finish_activation(activations, active, participant_code, y)
       ()
@@ -84,7 +84,6 @@ fn apply_activation_spec(
       let _ = finish_activation(activations, active, participant_code, y)
       destroys.push({ participant_code, y })
     }
-    None => ()
   }
 }
 

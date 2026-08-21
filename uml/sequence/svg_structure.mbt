@@ -40,10 +40,9 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
     output <+
       $|<g class="group" data-keyword="\{group.keyword.label()}">
     if !group.parallel {
-      let body_fill = match group.color {
-        Some(_) => svg_color(group.color, layout.defaults)
-        None => "none"
-      }
+      let body_fill = group.color.map_or("none", _ => {
+        svg_color(group.color, layout.defaults)
+      })
       output <+
         $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="group-body" fill="\{body_fill}"/>
     }

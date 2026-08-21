@@ -213,10 +213,7 @@ fn StateDiagram::scope_path(
   let mut current = self.state(code)
   while current is Some(state) {
     path.push(state.code)
-    current = match state.parent {
-      Some(parent) => self.state(parent)
-      None => None
-    }
+    current = state.parent.bind(parent => self.state(parent))
   }
   let output : Array[String] = []
   for entry in path {
@@ -398,10 +395,9 @@ fn StateNode::leaf_size(
           (name.1 + STATE_EMPTY_NODE_PADDING).max(STATE_EMPTY_NODE_MIN_HEIGHT),
         )
       } else {
-        let description = match self.description {
-          Some(text) => state_text_size(text, description_metrics)
-          None => (0.0, 0.0)
-        }
+        let description = self.description.map_or((0.0, 0.0), text => {
+          state_text_size(text, description_metrics)
+        })
         (
           (name.0.max(description.0) + STATE_COMPARTMENT_PADDING).max(
             STATE_COMPARTMENT_MIN_WIDTH,
@@ -484,8 +480,13 @@ fn StateDiagram::layout_scope(
     let name = state_graphviz_node_name(index)
     node_names[visible.state.code] = name
     let node = graph.node(name)
-    let (width, height) = match visible.child {
-      Some(child) =>
+    let (width, height) = visible.child.map_or(
+      visible.state.leaf_size(
+        name_metrics,
+        description_metrics,
+        self.hide_empty_description(),
+      ),
+      child => {
         (
           (child.width + STATE_INTERNAL_PADDING * 2.0).max(
             visible.state.leaf_size(
@@ -496,13 +497,8 @@ fn StateDiagram::layout_scope(
           ),
           child.height + STATE_HEADER_HEIGHT + STATE_INTERNAL_PADDING,
         )
-      None =>
-        visible.state.leaf_size(
-          name_metrics,
-          description_metrics,
-          self.hide_empty_description(),
-        )
-    }
+      },
+    )
     @graphviz.set_fixed_node_size(node, width, height)
   }
   let transition_names : Map[Int, String] = Map([])

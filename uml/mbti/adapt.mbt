@@ -430,10 +430,9 @@ fn constructor_entity_member(constr : @mbti_ast.ConstrDecl) -> @entity.Member {
 
 ///|
 fn constructor_param_to_string(param : @mbti_ast.ConstrParam) -> String {
-  match param.label {
-    Some(label) => label.name + ": " + type_to_string(param.ty)
-    None => type_to_string(param.ty)
-  }
+  param.label.map_or(type_to_string(param.ty), label => {
+    label.name + ": " + type_to_string(param.ty)
+  })
 }
 
 ///|
@@ -474,10 +473,7 @@ fn parameter_to_string(param : @mbti_ast.Parameter) -> String {
 
 ///|
 fn param_type_to_string(ty : @mbti_ast.Type?) -> String {
-  match ty {
-    Some(ty) => type_to_string(ty)
-    None => "_"
-  }
+  ty.map_or("_", type_to_string)
 }
 
 ///|

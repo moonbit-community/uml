@@ -157,6 +157,7 @@ fn append_return(
 ) -> Unit {
   guard layout.participants.length() >= 2 else { return }
   let y = placement.y + MESSAGE_ARROW_OFFSET
+  let last_participant = layout.participants[layout.participants.length() - 1]
   let activation = layout.activations.fold(init=None, (activation, candidate) => {
     if candidate.start_y <= y && y <= candidate.end_y {
       Some(candidate)
@@ -167,31 +168,21 @@ fn append_return(
   let (from, to) = match activation {
     Some(span) =>
       (
-        layout
-        .participant_at(span.participant_code)
-        .unwrap_or(layout.participants[layout.participants.length() - 1]),
-        match span.caller_code {
-          Some(caller) =>
-            layout.participant_at(caller).unwrap_or(layout.participants[0])
-          None => layout.participants[0]
-        },
+        layout.participant_at(span.participant_code).unwrap_or(last_participant),
+        span.caller_code.map_or(layout.participants[0], caller => {
+          layout.participant_at(caller).unwrap_or(layout.participants[0])
+        }),
       )
     None =>
       match preceding_message {
         Some(message) =>
           (
-            layout
-            .participant_at(message.to_code)
-            .unwrap_or(layout.participants[layout.participants.length() - 1]),
+            layout.participant_at(message.to_code).unwrap_or(last_participant),
             layout
             .participant_at(message.from_code)
             .unwrap_or(layout.participants[0]),
           )
-        None =>
-          (
-            layout.participants[layout.participants.length() - 1],
-            layout.participants[0],
-          )
+        None => (last_participant, layout.participants[0])
       }
   }
   let return_value = value.value.unwrap_or("")

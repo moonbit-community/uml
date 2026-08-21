@@ -156,10 +156,7 @@ fn relation_target(
     return Some((name, Some(couple)))
   }
   ignore(cursor.restore(start))
-  match relation_name(cursor, stop_at_arrow) {
-    Some(name) => Some((name, None))
-    None => None
-  }
+  relation_name(cursor, stop_at_arrow).map(name => (name, None))
 }
 
 ///|
@@ -257,10 +254,10 @@ fn right_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
     return Some(relation_endpoint_from(name, couple, modifiers))
   }
   ignore(cursor.restore(start))
-  match relation_target(cursor, false) {
-    Some((name, couple)) => Some(relation_endpoint_from(name, couple, []))
-    None => None
-  }
+  relation_target(cursor, false).map(pair => {
+    let (name, couple) = pair
+    relation_endpoint_from(name, couple, [])
+  })
 }
 
 ///|
@@ -286,26 +283,17 @@ fn relation_separator(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn relation_color(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
-  match cursor.take_color_value() {
-    Some(value) => Some(RelationColor(value))
-    None => None
-  }
+  cursor.take_color_value().map(value => RelationColor(value))
 }
 
 ///|
 fn relation_url(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
-  match cursor.take_url_value() {
-    Some(value) => Some(RelationUrl(value))
-    None => None
-  }
+  cursor.take_url_value().map(value => RelationUrl(value))
 }
 
 ///|
 fn relation_stereotype(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
-  match cursor.take_stereotype_value() {
-    Some(value) => Some(RelationStereotype(value))
-    None => None
-  }
+  cursor.take_stereotype_value().map(value => RelationStereotype(value))
 }
 
 ///|
@@ -377,10 +365,7 @@ fn left_relation_syntax(
   } else {
     None
   }
-  match left_relation_endpoint(cursor) {
-    Some(endpoint) => Some((weight, endpoint))
-    None => None
-  }
+  left_relation_endpoint(cursor).map(endpoint => (weight, endpoint))
 }
 
 ///|

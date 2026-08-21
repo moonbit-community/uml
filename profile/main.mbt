@@ -276,11 +276,10 @@ fn comparison_profile(
   after : String,
 ) -> @svgdiff.ComparisonProfile {
   let default = @svgdiff.ComparisonProfile::v1_default()
-  match viewport_dimensions(before, after) {
-    Some((width, height)) =>
-      { ..default, viewport_width: width, viewport_height: height }
-    None => default
-  }
+  viewport_dimensions(before, after).map_or(default, dims => {
+    let (width, height) = dims
+    { ..default, viewport_width: width, viewport_height: height }
+  })
 }
 
 ///|
@@ -326,10 +325,7 @@ fn attr_value(source : String, name : String) -> String? {
   }
   let value_start = offset + spaced.length()
   let rest = source[value_start:].to_owned()
-  match @parse.find_literal(rest, "\"") {
-    Some(end) => Some(rest[:end].to_owned())
-    None => None
-  }
+  @parse.find_literal(rest, "\"").map(end => rest[:end].to_owned())
 }
 
 ///|

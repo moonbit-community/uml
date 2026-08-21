@@ -114,21 +114,17 @@ pub fn EntityDiagram::magma_grid_edges(
 ) -> Array[(String, String, Int)] {
   let edges : Array[(String, String, Int)] = []
   guard self.family.applies_magma_grid() else { return edges }
-  let scopes = [""]
-  for group in self.packages {
-    scopes.push(group.qualified_name)
-  }
+  let scopes = [""] + self.packages.map(group => group.qualified_name)
   let magmas : Array[Magma] = []
   for scope in scopes {
-    let standalones = []
-    for entity in self.entities {
-      if !entity.is_hidden &&
+    let standalones = self.entities
+      .filter(entity => {
+        !entity.is_hidden &&
         !entity.is_removed &&
         entity.scope == scope &&
-        self.is_grid_standalone(entity.qualified_code) {
-        standalones.push(entity.qualified_code)
-      }
-    }
+        self.is_grid_standalone(entity.qualified_code)
+      })
+      .map(entity => entity.qualified_code)
     guard standalones.length() >= 3 else { continue }
     let container = if scope == "" { None } else { self.package_parent(scope) }
     put_in_square(standalones, (top, down) => edges.push((top, down, 1)), (

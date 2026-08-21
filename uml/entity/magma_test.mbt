@@ -155,15 +155,10 @@ test "port clusters pin inputs to the source rank" {
         let prefix = svg[:start].to_owned()
         let mut y_pos : Int? = None
         let mut offset = 0
-        while true {
-          match
-            @parse.find_unquoted_literal(prefix[offset:].to_owned(), "y=\"") {
-            Some(at) => {
-              y_pos = Some(offset + at)
-              offset = offset + at + 3
-            }
-            None => break
-          }
+        while @parse.find_unquoted_literal(prefix[offset:].to_owned(), "y=\"")
+              is Some(at) {
+          y_pos = Some(offset + at)
+          offset = offset + at + 3
         }
         match y_pos {
           Some(pos) => {

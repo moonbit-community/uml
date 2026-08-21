@@ -190,10 +190,7 @@ fn EntityDiagram::graphviz_layout(
   let package_content_graphs : Map[String, @cgraph.Graph] = Map([])
   let package_indices : Map[String, Int] = Map([])
   for package_index, group in self.packages {
-    let parent = match package_content_graphs.get(group.parent) {
-      Some(parent) => parent
-      None => graph
-    }
+    let parent = package_content_graphs.get(group.parent).unwrap_or(graph)
     let cluster_name = graphviz_cluster_name(package_index)
     // Java ClusterDotString places normal package nodes in nested p0/p1
     // protection clusters. These clusters affect sibling ordering in dot.
@@ -202,11 +199,9 @@ fn EntityDiagram::graphviz_layout(
     let cluster = protection_before.subgraph(name=cluster_name)
     // The stereotype line reserves cluster height for the package attribute,
     // matching Java's Cluster.getTitleAndAttributeHeight.
-    let cluster_label = match group.stereotype {
-      Some(stereotype) =>
-        group.display + "\n" + @parse.display_stereotype(stereotype)
-      None => group.display
-    }
+    let cluster_label = group.stereotype.map_or(group.display, stereotype => {
+      group.display + "\n" + @parse.display_stereotype(stereotype)
+    })
     cluster.set_attr("label", cluster_label)
     cluster.set_attr("style", "rounded")
     cluster.set_attr("fontname", "Arial Bold")
@@ -284,18 +279,12 @@ fn EntityDiagram::graphviz_layout(
       // PlantUML `CommandCreateElementFull` maps both `port` and `portin`
       // to `LeafType.PORTIN`, so plain ports pin to the source rank too.
       Port | PortIn => {
-        let list = match source_ports.get(entity.scope) {
-          Some(value) => value
-          None => []
-        }
+        let list = source_ports.get(entity.scope).unwrap_or([])
         list.push(graphviz_node_name(index))
         source_ports[entity.scope] = list
       }
       PortOut => {
-        let list = match sink_ports.get(entity.scope) {
-          Some(value) => value
-          None => []
-        }
+        let list = sink_ports.get(entity.scope).unwrap_or([])
         list.push(graphviz_node_name(index))
         sink_ports[entity.scope] = list
       }
@@ -307,10 +296,7 @@ fn EntityDiagram::graphviz_layout(
   // ports from cluster membership (mark_clusters).
   let pin_port_ranks = (scope : String, entries : Array[String], rank : String) => {
     guard entries.length() > 0 else { return }
-    let parent = match package_content_graphs.get(scope) {
-      Some(cluster) => cluster
-      None => graph
-    }
+    let parent = package_content_graphs.get(scope).unwrap_or(graph)
     let subgraph = parent.subgraph(name="rank_\{rank}_ports")
     subgraph.set_attr("rank", rank)
     for name in entries {
@@ -376,12 +362,10 @@ fn EntityDiagram::graphviz_layout(
     }
     let tail_port = self
       .entity(relation.left)
-      .map(entity => entity.graphviz_port(relation.left_port))
-      .unwrap_or(None)
+      .map_or(None, entity => entity.graphviz_port(relation.left_port))
     let head_port = self
       .entity(relation.right)
-      .map(entity => entity.graphviz_port(relation.right_port))
-      .unwrap_or(None)
+      .map_or(None, entity => entity.graphviz_port(relation.right_port))
     let tail = graph.node(tail_name)
     let head = graph.node(head_name)
     let edge = match (tail_port, head_port) {
@@ -586,10 +570,9 @@ fn EntityDiagram::graphviz_layout(
         continue
       }
       let anchor_x = edge.splines[0].points[0].x
-      let anchor_y = match edge.label {
-        Some(point) => point.y
-        None => edge.splines[0].points[0].y
-      }
+      let anchor_y = edge.label.map_or(edge.splines[0].points[0].y, point => {
+        point.y
+      })
       notes.push({
         note_index,
         x: anchor_x + LINK_NOTE_GAP + width.to_double() / 2.0,

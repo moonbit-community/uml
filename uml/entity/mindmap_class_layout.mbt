@@ -83,10 +83,7 @@ fn EntityDiagram::mindmap_class_layout(
     children.push([])
   }
   for entity_index, p in parent {
-    let parent_node = match p {
-      Some(parent) => parent + 1
-      None => 0
-    }
+    let parent_node = p.map_or(0, parent => parent + 1)
     children[parent_node].push(entity_index + 1)
   }
   let items : Array[@mindmap.LayoutItem] = []
@@ -124,29 +121,26 @@ fn EntityDiagram::mindmap_class_layout(
       rects[node.idea_index - 1] = (node.x, node.y, node.width, node.height)
     }
   }
-  let structure_edges : Array[MindmapClassEdge] = []
-  for edge in layout.edges {
-    structure_edges.push({
-      x1: edge.x1,
-      y1: edge.y1,
-      control1_x: edge.control1_x,
-      control1_y: edge.control1_y,
-      control2_x: edge.control2_x,
-      control2_y: edge.control2_y,
-      x2: edge.x2,
-      y2: edge.y2,
-      left_entity: if edge.parent_index == 0 {
-        None
-      } else {
-        Some(edge.parent_index - 1)
-      },
-      right_entity: if edge.child_index == 0 {
-        None
-      } else {
-        Some(edge.child_index - 1)
-      },
-    })
-  }
+  let structure_edges : Array[MindmapClassEdge] = layout.edges.map(edge => {
+    x1: edge.x1,
+    y1: edge.y1,
+    control1_x: edge.control1_x,
+    control1_y: edge.control1_y,
+    control2_x: edge.control2_x,
+    control2_y: edge.control2_y,
+    x2: edge.x2,
+    y2: edge.y2,
+    left_entity: if edge.parent_index == 0 {
+      None
+    } else {
+      Some(edge.parent_index - 1)
+    },
+    right_entity: if edge.child_index == 0 {
+      None
+    } else {
+      Some(edge.child_index - 1)
+    },
+  })
   let extra_edges : Array[MindmapClassEdge?] = []
   for relation in self.relations {
     let source = entity_index(self, relation.left)
@@ -302,20 +296,16 @@ fn append_mindmap_edge_states(
   dash : String,
   class_member_collapsible : Bool,
 ) -> Unit {
-  let left_header = match edge.left_entity {
-    Some(index) =>
-      relation_endpoint_header(
-        layout, diagram, index, text_metrics, class_member_collapsible,
-      )
-    None => None
-  }
-  let right_header = match edge.right_entity {
-    Some(index) =>
-      relation_endpoint_header(
-        layout, diagram, index, text_metrics, class_member_collapsible,
-      )
-    None => None
-  }
+  let left_header = edge.left_entity.bind(index => {
+    relation_endpoint_header(
+      layout, diagram, index, text_metrics, class_member_collapsible,
+    )
+  })
+  let right_header = edge.right_entity.bind(index => {
+    relation_endpoint_header(
+      layout, diagram, index, text_metrics, class_member_collapsible,
+    )
+  })
   let left_states = relation_endpoint_states(
     (edge.x1.to_double(), edge.y1.to_double()),
     None,

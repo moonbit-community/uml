@@ -139,10 +139,7 @@ fn clip_ray_to_rect_dir(
       }
     }
   }
-  match best {
-    Some(t) => Some(point(endpoint.x + t * dx, endpoint.y + t * dy))
-    None => None
-  }
+  best.map(t => point(endpoint.x + t * dx, endpoint.y + t * dy))
 }
 
 ///|
@@ -166,16 +163,12 @@ fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point 
       // The spline endpoint is off the node (graphviz routing already failed):
       // fall back to the boundary facing the node center, then to the closest
       // boundary point.
-      match
-        clip_ray_to_rect_dir(
-          endpoint,
-          bounds.center.x - endpoint.x,
-          bounds.center.y - endpoint.y,
-          bounds,
-        ) {
-        Some(hit) => hit
-        None => closest_point_on_rect(endpoint, bounds)
-      }
+      clip_ray_to_rect_dir(
+        endpoint,
+        bounds.center.x - endpoint.x,
+        bounds.center.y - endpoint.y,
+        bounds,
+      ).unwrap_or(closest_point_on_rect(endpoint, bounds))
   }
 }
 

@@ -140,10 +140,9 @@ test "note across grammar matches the plantuml across factory oracle" {
     fail("across oracle corpus mismatch")
   }
   for index, line in cases {
-    let signature = match note_line_syntax(@parse.Cursor::new(line)) {
-      Some(syntax) => note_across_signature(syntax)
-      None => "N"
-    }
+    let signature = note_line_syntax(@parse.Cursor::new(line)).map_or(
+      "N", note_across_signature,
+    )
     if signature != expected[index] {
       @test.fail(
         "line \{index} [\{line}] got \{signature} want \{expected[index]}",
@@ -243,8 +242,5 @@ fn activation_string(message : Message) -> String {
 
 ///|
 fn color_string(message : Message) -> String {
-  match message.life_color {
-    Some(color) => "#" + color
-    None => ""
-  }
+  message.life_color.map_or("", color => "#" + color)
 }

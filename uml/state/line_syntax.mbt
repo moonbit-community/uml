@@ -571,8 +571,5 @@ fn parse_line_syntax(line : String) -> StateLineSyntax? {
     return Some(EntityNote(syntax))
   }
   ignore(cursor.restore(0))
-  match link_note(cursor) {
-    Some(syntax) => Some(LinkNote(syntax))
-    None => None
-  }
+  link_note(cursor).map(syntax => LinkNote(syntax))
 }

@@ -42,10 +42,9 @@ fn selector_for_tokens(tokens : Array[String]) -> EntitySelector {
   if raw.to_lower() == "abstract" {
     return KindEntities(AbstractClass)
   }
-  match declaration_kind(raw) {
-    Some(kind) => KindEntities(kind)
-    None => NamedEntity(@parse.unquote_identifier(raw))
-  }
+  declaration_kind(raw).map_or(NamedEntity(@parse.unquote_identifier(raw)), kind => {
+    KindEntities(kind)
+  })
 }
 
 ///|
@@ -282,13 +281,13 @@ fn Parser::apply_portion_rule(self : Parser, rule : PortionRule) -> Unit {
         MemberPortion => {
           if !entity.has_portion(FieldPortion) {
             self.entities[entity_index] = {
-              ..self.entities[entity_index],
+              ..entity,
               fields_hidden: !rule.show,
             }
           }
           if !entity.has_portion(MethodPortion) {
             self.entities[entity_index] = {
-              ..self.entities[entity_index],
+              ..entity,
               methods_hidden: !rule.show,
             }
           }

@@ -98,10 +98,9 @@ fn ClassLayout::content_bounds(
 ) -> ContentBounds {
   let mut bounds : ContentBounds? = None
   let include_point = (bounds : ContentBounds?, x : Double, y : Double) => {
-    match bounds {
-      None => Some({ min_x: x, min_y: y, max_x: x, max_y: y })
-      Some(current) => Some(current.point(x, y))
-    }
+    bounds.map_or(Some({ min_x: x, min_y: y, max_x: x, max_y: y }), current => {
+      Some(current.point(x, y))
+    })
   }
   for index, entity in diagram.entities {
     guard !entity.is_hidden && !entity.is_removed else { continue }
@@ -282,11 +281,9 @@ fn relation_endpoints(
     }
   }
   let endpoint_style = (index : Int?) => {
-    match index {
-      Some(index) =>
-        diagram.entities[index].render_capability(diagram.family).relation_endpoint
-      None => CenterEndpoint
-    }
+    index.map_or(CenterEndpoint, index => {
+      diagram.entities[index].render_capability(diagram.family).relation_endpoint
+    })
   }
   let left_center = endpoint_center(left_index, relation.left)
   let right_center = endpoint_center(right_index, relation.right)

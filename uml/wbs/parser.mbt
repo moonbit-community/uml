@@ -316,14 +316,11 @@ fn parse_item_line(line : String) -> ItemLine? {
 fn ending_stereotype(label : String) -> (String, String?) {
   let value = label.trim_end().to_owned()
   guard value.has_suffix(">>") else { return (value, None) }
-  match value.rev_find("<<") {
-    Some(start) =>
-      (
-        value[:start].trim_end().to_owned(),
-        Some(value[start:].trim().to_owned()),
-      )
-    None => (value, None)
-  }
+  value
+  .rev_find("<<")
+  .map_or((value, None), start => {
+    (value[:start].trim_end().to_owned(), Some(value[start:].trim().to_owned()))
+  })
 }
 
 ///|

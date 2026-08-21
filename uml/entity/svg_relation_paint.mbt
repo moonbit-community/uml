@@ -370,22 +370,18 @@ fn collapsible_edge_css(
   right_entity : Int?,
   has_url : Bool,
 ) -> String {
-  let left_collapsible = match left_entity {
-    Some(index) =>
-      relation_endpoint_header(
-        layout, diagram, index, text_metrics, class_member_collapsible,
-      )
-      is Some(_)
-    None => false
-  }
-  let right_collapsible = match right_entity {
-    Some(index) =>
-      relation_endpoint_header(
-        layout, diagram, index, text_metrics, class_member_collapsible,
-      )
-      is Some(_)
-    None => false
-  }
+  let left_collapsible = left_entity.map_or(false, index => {
+    relation_endpoint_header(
+      layout, diagram, index, text_metrics, class_member_collapsible,
+    )
+    is Some(_)
+  })
+  let right_collapsible = right_entity.map_or(false, index => {
+    relation_endpoint_header(
+      layout, diagram, index, text_metrics, class_member_collapsible,
+    )
+    is Some(_)
+  })
   let left_index = left_entity.unwrap_or(-1)
   let right_index = right_entity.unwrap_or(-1)
   let left_limit = if left_collapsible { 2 } else { 1 }
@@ -632,16 +628,14 @@ fn append_relation(
                   )
                 })
               let left_states = relation_endpoint_states(
-                left_contact
-                .map(value => value.point.pair())
-                .unwrap_or(first_path[0]),
+                left_contact.map_or(first_path[0], value => value.point.pair()),
                 left_contact.map(value => value.side),
                 left_header,
               )
               let right_states = relation_endpoint_states(
-                right_contact
-                .map(value => value.point.pair())
-                .unwrap_or(last_path[last_path.length() - 1]),
+                right_contact.map_or(last_path[last_path.length() - 1], value => {
+                  value.point.pair()
+                }),
                 right_contact.map(value => value.side),
                 right_header,
               )
@@ -666,20 +660,16 @@ fn append_relation(
     _ => ()
   }
   if !drew_spline {
-    let left_header = match left_index {
-      Some(index) =>
-        relation_endpoint_header(
-          layout, diagram, index, text_metrics, class_member_collapsible,
-        )
-      None => None
-    }
-    let right_header = match right_index {
-      Some(index) =>
-        relation_endpoint_header(
-          layout, diagram, index, text_metrics, class_member_collapsible,
-        )
-      None => None
-    }
+    let left_header = left_index.bind(index => {
+      relation_endpoint_header(
+        layout, diagram, index, text_metrics, class_member_collapsible,
+      )
+    })
+    let right_header = right_index.bind(index => {
+      relation_endpoint_header(
+        layout, diagram, index, text_metrics, class_member_collapsible,
+      )
+    })
     let left_states = relation_endpoint_states((x1, y1), None, left_header)
     let right_states = relation_endpoint_states((x2, y2), None, right_header)
     append_relation_state_groups(

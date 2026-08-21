@@ -505,10 +505,8 @@ fn take_part_ref(cursor : @parse.Cursor) -> PartRef? {
     ignore(cursor.restore(start))
     return None
   }
-  match take_alias_display(cursor) {
-    Some(display) => Some({ code, display })
-    None => Some({ code, display: code })
-  }
+  let display = take_alias_display(cursor).unwrap_or(code)
+  Some({ code, display })
 }
 
 ///|
@@ -593,11 +591,10 @@ fn take_message_tail(
   } else {
     None
   }
-  match activation {
-    Some((spec, second)) =>
-      (Some(spec), second, life_color, stereotype, url, label)
-    None => (None, None, life_color, stereotype, url, label)
-  }
+  activation.map_or((None, None, life_color, stereotype, url, label), pair => {
+    let (spec, second) = pair
+    (Some(spec), second, life_color, stereotype, url, label)
+  })
 }
 
 ///|
@@ -718,10 +715,9 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
     }
   }
   let (left, body, right) = dressing
-  let (participant_circle, participant_cross) = match take_o_x_space(cursor) {
-    Some((circle, cross)) => (circle, cross)
-    None => (false, false)
-  }
+  let (participant_circle, participant_cross) = take_o_x_space(cursor).unwrap_or(
+    (false, false),
+  )
   cursor.skip_inline_spaces()
   let participant = match take_exo_participant(cursor) {
     Some(part) => part
@@ -787,10 +783,9 @@ fn right_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
       return None
     }
   }
-  let (participant_circle, participant_cross) = match take_space_o_x(cursor) {
-    Some((circle, cross)) => (circle, cross)
-    None => (false, false)
-  }
+  let (participant_circle, participant_cross) = take_space_o_x(cursor).unwrap_or(
+    (false, false),
+  )
   cursor.skip_inline_spaces()
   let dressing = match take_exo_arrow_dressing(cursor) {
     Some(dressing) => dressing
