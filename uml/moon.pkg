@@ -1,5 +1,5 @@
 import {
   "kokic/uml/api",
-  "kokic/uml/core/style",
+  "kokic/uml/style",
   "moonbitlang/core/test",
 } for "test"

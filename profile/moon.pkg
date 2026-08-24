@@ -1,6 +1,6 @@
 import {
   "kokic/uml/api",
-  "kokic/uml/core/parse",
+  "kokic/uml/parse",
   "Milky2018/svgdiff",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",

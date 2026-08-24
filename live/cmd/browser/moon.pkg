@@ -6,7 +6,7 @@ import {
   "moonbit-community/rabbita/http",
   "Yoorkin/rui",
   "kokic/uml/api",
-  "kokic/uml/core/style",
+  "kokic/uml/style",
   "moonbitlang/core/test",
 }
 
