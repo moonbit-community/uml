@@ -1,15 +1,35 @@
 ///|
+/// The bold kind word the mbti family draws next to a node title instead of
+/// the class circled letter.
+fn mbti_spot_word(kind : EntityKind) -> String {
+  match kind {
+    Struct => "struct"
+    Interface => "trait"
+    Enum => "enum"
+    AbstractClass => "abstract"
+    Exception => "suberror"
+    _ => "type"
+  }
+}
+
+///|
 fn Entity::spot(
   self : Entity,
   family : EntityFamily,
   defaults : @style.EntityColors,
 ) -> (String, String) {
   match (family, self.kind) {
-    (Mbti, Struct) => ("S", defaults.spot_class)
-    (Mbti, Interface) => ("T", defaults.spot_interface)
-    (Mbti, Enum) => ("E", defaults.spot_enum)
-    (Mbti, AbstractClass) => ("A", defaults.spot_abstract)
-    (Mbti, Exception) => ("X", defaults.spot_annotation)
+    (Mbti, kind) =>
+      (
+        mbti_spot_word(kind),
+        match kind {
+          Interface => defaults.spot_interface
+          Enum => defaults.spot_enum
+          AbstractClass => defaults.spot_abstract
+          Exception => defaults.spot_annotation
+          _ => defaults.spot_class
+        },
+      )
     _ =>
       match self.kind {
         AbstractClass => ("A", defaults.spot_abstract)
@@ -88,6 +108,9 @@ priv struct ClassHeaderLayout {
   height : Int
   circle_width : Int
   circle_height : Int
+  /// Half width of the spot glyph: the circle radius for class diagrams, or
+  /// half the measured kind word for the mbti family.
+  spot_half_width : Int
   title_width : Int
   title_height : Int
   stereotype_width : Int
@@ -177,14 +200,25 @@ fn body_section_height(
 fn Entity::header_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
+  family : EntityFamily,
 ) -> ClassHeaderLayout {
   let title_metrics = self.title_metrics(text_metrics)
   let title = title_metrics.measure(self.display)
   let title_width = title.width + 2 * CLASS_NAME_HORIZONTAL_MARGIN
+  // The mbti family replaces the circled letter with the kind word (struct,
+  // trait, ...) drawn in bold, so its spot slot spans the measured word.
+  let spot_word = if family is Mbti {
+    Some(mbti_spot_word(self.kind))
+  } else {
+    None
+  }
+  let spot_half_width = spot_word.map_or(CLASS_SPOT_RADIUS, word => {
+    (text_metrics.class_spot.measure(word).width + 1) / 2
+  })
   let circle_width = if self.circle_hidden {
     0
   } else {
-    2 * CLASS_SPOT_RADIUS + CLASS_SPOT_LEFT_MARGIN + CLASS_SPOT_RIGHT_MARGIN
+    2 * spot_half_width + CLASS_SPOT_LEFT_MARGIN + CLASS_SPOT_RIGHT_MARGIN
   }
   let circle_height = if self.circle_hidden {
     0
@@ -227,6 +261,7 @@ fn Entity::header_layout(
     ),
     circle_width,
     circle_height,
+    spot_half_width,
     title_width,
     title_height: title.height,
     stereotype_width,
@@ -719,7 +754,9 @@ fn ClassHeaderLayout::placement(
   } else {
     Some(
       (
-        (h1 + CLASS_SPOT_LEFT_MARGIN.to_double() + CLASS_SPOT_RADIUS.to_double())
+        (h1 +
+        CLASS_SPOT_LEFT_MARGIN.to_double() +
+        self.spot_half_width.to_double())
         .round()
         .to_int(),
         ((self.height - self.circle_height).to_double() / 2.0 +
@@ -824,7 +861,7 @@ fn Entity::height(
   text_metrics : ClassTextMetrics,
   family : EntityFamily,
 ) -> Int {
-  let header = self.header_layout(text_metrics)
+  let header = self.header_layout(text_metrics, family)
   let body = self.body_layout(text_metrics, family)
   header.height + body.fields_height + body.methods_height
 }
@@ -848,6 +885,9 @@ priv struct ClassTextMetrics {
   italic : @metrics.FontMetrics
   class_stereotype : @metrics.FontMetrics
   class_stereotype_font_family : String
+  /// Bold 12px font of the class spot; the mbti family measures its kind word
+  /// (struct, trait, ...) with it.
+  class_spot : @metrics.FontMetrics
   usecase_regular : @metrics.FontMetrics
   usecase_italic : @metrics.FontMetrics
   actor_regular : @metrics.FontMetrics
@@ -911,6 +951,10 @@ const CLASS_SPOT_RIGHT_MARGIN : Int = 0
 
 ///|
 const CLASS_SPOT_VERTICAL_MARGIN : Int = 5
+
+///|
+/// Font size of the class spot, matching the `.class-spot` CSS rule.
+const CLASS_SPOT_FONT_SIZE : Int = 12
 
 ///|
 const CLASS_TEXT_BASELINE_BOTTOM_GAP : Int = 3
@@ -1074,6 +1118,10 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
       font_style=Italic,
     ),
     class_stereotype_font_family,
+    class_spot: style.font_metrics(
+      font_size=CLASS_SPOT_FONT_SIZE,
+      font_weight=700,
+    ),
     usecase_regular: style.font_metrics_for(
       usecase_font_family,
       font_size=usecase_font_size,
@@ -1141,7 +1189,7 @@ fn Entity::width(
   text_metrics : ClassTextMetrics,
   family : EntityFamily,
 ) -> Int {
-  let mut width = self.header_layout(text_metrics).width
+  let mut width = self.header_layout(text_metrics, family).width
   let body = self.body_layout(text_metrics, family)
   for entry in body.fields {
     width = width.max(text_metrics.regular.measure(entry.raw).width + 28)

@@ -92,7 +92,7 @@ fn relation_endpoint_header(
   }
   guard !entity.is_hidden && !entity.is_removed else { return None }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
-  let header_height = entity.header_layout(text_metrics).height
+  let header_height = entity.header_layout(text_metrics, diagram.family).height
   guard header_height > 0 && header_height < height else { return None }
   Some(
     rect(

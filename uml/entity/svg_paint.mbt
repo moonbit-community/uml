@@ -407,7 +407,7 @@ fn append_entity(
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
-  let header = entity.header_layout(text_metrics)
+  let header = entity.header_layout(text_metrics, diagram.family)
   let body = entity.body_layout(text_metrics, diagram.family)
   let row_height = text_metrics.row_height()
   let fill = @svg.svg_color(entity.color, class_background_color(diagram.style))
@@ -439,6 +439,11 @@ fn append_entity(
     $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"\{node_index_attribute}><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
   match
     (entity.render_capability(diagram.family).spot, placement.circle_center) {
+    (ClassSpot, Some((circle_cx, circle_cy))) if diagram.family is Mbti =>
+      // The mbti family labels the node with the bold kind word instead of a
+      // circled letter; the shared `.class-spot` style already bolds it.
+      output <+
+        $|<text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
     (ClassSpot, Some((circle_cx, circle_cy))) =>
       output <+
         $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
