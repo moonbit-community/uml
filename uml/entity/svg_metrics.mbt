@@ -310,7 +310,7 @@ fn Entity::object_body_layout(
 
 ///|
 fn stable_port_identifier(value : String) -> String {
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   output.write_string("p")
   for char in value {
     output.write_char('_')
@@ -401,7 +401,7 @@ fn Entity::map_graphviz_port_label(
   width : Int,
 ) -> String {
   let body = self.map_body_layout(text_metrics)
-  let output = StringBuilder::new()
+  let output = StringBuilder()
   output <+
     $|<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0"><TR><TD WIDTH="\{width}" HEIGHT="\{self.object_header_layout(text_metrics).height}"></TD></TR>
   for row in body.rows {
