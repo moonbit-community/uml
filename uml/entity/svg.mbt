@@ -1,7 +1,6 @@
 ///|
 fn EntityDiagram::render_svg_with_mode(
   self : EntityDiagram,
-  package_name : String,
   class_member_collapsible : Bool,
 ) -> String raise @dot_layout.DotLayoutError {
   let family_capability = self.family.capability()
@@ -18,7 +17,7 @@ fn EntityDiagram::render_svg_with_mode(
   let layout = if self.family is Mbti {
     {
       ..fallback_layout,
-      mindmap: Some(self.mindmap_class_layout(text_metrics, package_name)),
+      mindmap: Some(self.mindmap_class_layout(text_metrics)),
     }
   } else {
     @graphviz.layout_or_fallback(
@@ -81,7 +80,6 @@ fn EntityDiagram::render_svg_with_mode(
     $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
     $|.class-node foreignObject line{stroke-width:\{@svg.standard_border_stroke_width()};fill:none}
     $|.class-node foreignObject rect{stroke-width:\{@svg.standard_border_stroke_width()}}
-    $|.class-node:has(details:not([open])) > rect{stroke:transparent !important}
     $|.relation{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
     $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
     $|.class-node > line,.relation{fill:none}
@@ -134,7 +132,6 @@ fn EntityDiagram::render_svg_with_mode(
   append_symbol_packages(output, self, text_metrics, layout)
   match family_capability.paint_order {
     EntitiesBeforeRelations => {
-      append_mindmap_root(output, self, text_metrics, layout)
       for index, entity in self.entities {
         append_entity_image(
           output, self, entity, index, text_metrics, layout, collapsible,
@@ -155,7 +152,6 @@ fn EntityDiagram::render_svg_with_mode(
           output, self, relation_index, relation, text_metrics, layout, collapsible,
         )
       }
-      append_mindmap_root(output, self, text_metrics, layout)
       for index, entity in self.entities {
         append_entity_image(
           output, self, entity, index, text_metrics, layout, collapsible,
@@ -198,19 +194,16 @@ pub fn EntityDiagram::render_svg(
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
-  self.render_svg_with_mode("", class_member_collapsible)
+  self.render_svg_with_mode(class_member_collapsible)
 }
 
 ///|
-/// Render the mbti family with the mindmap tree layout. The package name is
-/// the single root node, so it is threaded through the render call instead of
-/// living in the entity graph.
+/// Render the mbti family with the mindmap tree layout.
 pub fn EntityDiagram::render_mbti_svg(
   self : EntityDiagram,
-  package_name : String,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
-  self.render_svg_with_mode(package_name, class_member_collapsible)
+  self.render_svg_with_mode(class_member_collapsible)
 }

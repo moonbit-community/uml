@@ -2,9 +2,13 @@
 /// Adapt a parsed .mbti interface to the shared entity graph so the class
 /// diagram layout and SVG pipeline render it unchanged.
 ///
-/// Declaration kinds map to entity kinds; `impl` and trait inheritance map
-/// to relations (the .mbti grammar has no arrow syntax). Top-level functions,
-/// constants and values are not owned by any type and are not rendered.
+/// Only declarations owned by this interface become nodes: structs, enums,
+/// traits (and abstract, error and newtype declarations). Types and traits
+/// referenced but not declared here (imports) get no node, and impls, trait
+/// inheritance and extension methods only connect declared entities. Top-level
+/// functions, constants and values are not owned by any type and are not
+/// rendered. Trait and extension methods are only listed when the
+/// `show_methods` option is set.
 fn adapt(
   mbti : @mbti_ast.Mbti,
   standalone_alias : Bool,
@@ -67,8 +71,9 @@ fn Adapter::entity_index(self : Adapter, code : String) -> Int? {
 }
 
 ///|
-/// Return the index of the entity for `code`, creating an implicit one when
-/// the interface references a type declared elsewhere.
+/// Return the index of the entity for `code`. Entities are created when a
+/// declaration owns the code; references to undeclared codes must be checked
+/// with `entity_index` before calling this.
 fn Adapter::ensure_entity(
   self : Adapter,
   code : String,
@@ -205,8 +210,11 @@ fn Adapter::fill_type(self : Adapter, sig : @mbti_ast.TypeSig) -> Unit {
 }
 
 ///|
+/// Fill the trait node; its methods are only listed when `show_methods` is
+/// set.
 fn Adapter::fill_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
   let index = self.ensure_entity(sig.name.name, @entity.Interface)
+  guard self.options.show_methods else { return }
   for method_sig in sig.methods {
     self.entities[index].members.push(
       entity_member(
@@ -219,28 +227,30 @@ fn Adapter::fill_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
 }
 
 ///|
-/// `trait Sub : Super1 + Super2` renders as extension edges `Sub --|> Super`.
+/// `trait Sub : Super1 + Super2` renders as extension edges `Sub --|> Super`,
+/// but only for supers declared in this interface: an inherited external
+/// trait gets no node and no edge.
 fn Adapter::inherit_trait(self : Adapter, sig : @mbti_ast.TraitSig) -> Unit {
   guard self.options.trait_inheritance_edges else { return }
   let sub = sig.name.name
-  ignore(self.ensure_entity(sub, @entity.Interface))
   for super_trait in sig.super_traits {
     let super_ = qualified_name_to_string(super_trait)
-    ignore(self.ensure_entity(super_, @entity.Interface))
-    self.relations.push(extension_relation(sub, super_, "--|>"))
+    if self.entity_index(super_) is Some(_) {
+      self.relations.push(extension_relation(sub, super_, "--|>"))
+    }
   }
 }
 
 ///|
-/// `impl Trait for T` renders as the realization edge `T ..|> Trait`.
+/// `impl Trait for T` renders as the realization edge `T ..|> Trait`, but
+/// only when both endpoints are declared in this interface: an impl
+/// involving an external trait or type gets no node and no edge.
 fn Adapter::apply_impl(self : Adapter, sig : @mbti_ast.ImplSig) -> Unit {
   guard self.options.impl_edges else { return }
   match (type_top_name(sig.type_), qualified_name_to_string(sig.trait_name)) {
-    (Some(sub), super_) => {
-      ignore(self.ensure_entity(sub, @entity.Class))
-      ignore(self.ensure_entity(super_, @entity.Interface))
+    (Some(sub), super_) if self.entity_index(sub) is Some(_) &&
+      self.entity_index(super_) is Some(_) =>
       self.relations.push(extension_relation(sub, super_, "..|>"))
-    }
     _ => ()
   }
 }
@@ -307,16 +317,21 @@ fn Adapter::push_association(
 }
 
 ///|
-/// `fn T::method(...)` attaches a method member to the entity for `T`.
-/// Top-level functions have no owning type and are ignored.
+/// `fn T::method(...)` attaches a method member to the entity for `T` when
+/// `T` is declared in this interface and `show_methods` is set. Top-level
+/// functions have no owning type and are ignored; extension methods on
+/// undeclared types are dropped.
 fn Adapter::apply_func(self : Adapter, sig : @mbti_ast.FuncSig) -> Unit {
+  guard self.options.show_methods else { return }
   match sig.type_name {
-    Some(type_name) => {
-      let index = self.ensure_entity(type_name.name, @entity.Class)
-      self.entities[index].members.push(
-        entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
-      )
-    }
+    Some(type_name) =>
+      match self.entity_index(type_name.name) {
+        Some(index) =>
+          self.entities[index].members.push(
+            entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
+          )
+        None => ()
+      }
     None => ()
   }
 }

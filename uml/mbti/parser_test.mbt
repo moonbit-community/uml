@@ -68,7 +68,10 @@ test "attaches fields, constructors, and methods as members" {
     #|}
     #|fn Point::dist(Self, Point) -> Double
     #|@enduml
-  let graph = parse(source).graph
+  let graph = parse(source, options={
+      ..MbtiOptions::default(),
+      show_methods: true,
+    }).graph
   let point = graph.entity("Point").unwrap()
   @test.assert_eq(point.members.length(), 3)
   @test.assert_eq(point.members.filter(m => m.is_method).length(), 1)
@@ -83,6 +86,28 @@ test "attaches fields, constructors, and methods as members" {
   @test.assert_eq(color.members.length(), 2)
   @test.assert_eq(color.members[0].raw, "Red")
   @test.assert_eq(color.members[1].raw.has_prefix("Blue(Int, String)"), true)
+}
+
+///|
+/// Methods are hidden by default: only fields and constructors remain, so
+/// the nodes render as type skeletons.
+test "hides trait and extension methods by default" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|trait Show : Eq {
+    #|  fn to_string(Self) -> String
+    #|}
+    #|struct Point {
+    #|  x : Int
+    #|}
+    #|fn Point::dist(Self, Point) -> Double
+    #|@enduml
+  let graph = parse(source).graph
+  @test.assert_eq(graph.entity("Show").unwrap().members.length(), 0)
+  let point = graph.entity("Point").unwrap()
+  @test.assert_eq(point.members.length(), 1)
+  @test.assert_eq(point.members.filter(m => m.is_method).length(), 0)
 }
 
 ///|
@@ -154,18 +179,17 @@ test "merges aliases into their declared target node" {
 }
 
 ///|
-test "creates implicit entities for external impl endpoints" {
+/// An impl whose endpoints are not declared in this interface gets no nodes
+/// and no edge: external terms are referenced, never drawn.
+test "drops impls whose endpoints are not declared here" {
   let source =
     #|@startuml '.mbti
     #|package "demo";
     #|impl @std.Show for Point;
     #|@enduml
   let graph = parse(source).graph
-  @test.assert_eq(graph.relations.length(), 1)
-  @test.assert_eq(graph.relations[0].left, "Point")
-  @test.assert_eq(graph.relations[0].right, "std.Show")
-  @test.assert_eq(graph.entity("Point").unwrap().kind, @entity.Class)
-  @test.assert_eq(graph.entity("std.Show").unwrap().kind, @entity.Interface)
+  @test.assert_eq(graph.entities.length(), 0)
+  @test.assert_eq(graph.relations.length(), 0)
 }
 
 ///|
@@ -275,8 +299,7 @@ test "optionally disables each edge family" {
     1,
   )
   let no_member = parse(source, options={
-      trait_inheritance_edges: true,
-      impl_edges: true,
+      ..MbtiOptions::default(),
       member_type_edges: false,
     }).graph
   @test.assert_eq(
@@ -285,18 +308,16 @@ test "optionally disables each edge family" {
   )
   @test.assert_eq(no_member.relations.length(), 2)
   let no_inheritance = parse(source, options={
+      ..MbtiOptions::default(),
       trait_inheritance_edges: false,
-      impl_edges: true,
-      member_type_edges: true,
     }).graph
   @test.assert_eq(
     no_inheritance.relations.filter(r => r.kind == @entity.Extension).length(),
     0,
   )
   let no_impl = parse(source, options={
-      trait_inheritance_edges: true,
+      ..MbtiOptions::default(),
       impl_edges: false,
-      member_type_edges: true,
     }).graph
   @test.assert_eq(
     no_impl.relations.filter(r => r.kind == @entity.Realization).length(),

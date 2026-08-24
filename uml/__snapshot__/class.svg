@@ -3,7 +3,6 @@ svg{font-family:Arial, sans-serif;font-size:13px;background:none}
 .class-node > rect,.class-node > line{stroke:#181818;stroke-width:1.2}
 .class-node foreignObject line{stroke-width:1.2;fill:none}
 .class-node foreignObject rect{stroke-width:1.2}
-.class-node:has(details:not([open])) > rect{stroke:transparent !important}
 .relation{stroke:#181818;stroke-width:1.2}
 .relation-decoration{stroke-width:1;stroke-linejoin:miter}
 .class-node > line,.relation{fill:none}

@@ -251,10 +251,10 @@ fn clip_ray_to_node(
 const INTERFACE_CIRCLE_SIZE : Double = 16.0
 
 ///|
-/// Closest point on an axis-aligned rectangle to a given point. Used to
-/// re-anchor a relation onto the header strip of a collapsed class node: the
-/// projected point stays on the header boundary, and the segment from any
-/// outside point to its projection never crosses the rectangle interior.
+/// Closest point on an axis-aligned rectangle to a given point. The segment
+/// from any outside point to its projection never crosses the rectangle
+/// interior; the result also feeds `rect_contact_side` to tell which edge a
+/// relation approaches.
 fn closest_point_on_rect(target : Point, bounds : Rect) -> Point {
   let left = bounds.center.x - bounds.width / 2.0
   let right = bounds.center.x + bounds.width / 2.0
@@ -284,4 +284,21 @@ fn rect_contact_side(point : Point, bounds : Rect) -> RelationContactSide {
     }
   }
   closest.1
+}
+
+///|
+/// The midpoint of the rectangle edge for a contact side. A collapsed class
+/// node re-anchors its relations here: the edge lands on the middle of the
+/// header-strip side it approaches instead of drifting to a corner.
+fn rect_edge_midpoint(bounds : Rect, side : RelationContactSide) -> Point {
+  let left = bounds.center.x - bounds.width / 2.0
+  let right = bounds.center.x + bounds.width / 2.0
+  let top = bounds.center.y - bounds.height / 2.0
+  let bottom = bounds.center.y + bounds.height / 2.0
+  match side {
+    ContactWest => point(left, bounds.center.y)
+    ContactEast => point(right, bounds.center.y)
+    ContactNorth => point(bounds.center.x, top)
+    ContactSouth => point(bounds.center.x, bottom)
+  }
 }

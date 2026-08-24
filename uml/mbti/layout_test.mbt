@@ -11,9 +11,9 @@ fn mbti_rects_overlap(
 }
 
 ///|
-/// The mindmap layout puts the package name at node 0 and every entity at a
-/// distinct node, with no two boxes overlapping.
-test "mindmap layout places the package at the root with disjoint boxes" {
+/// The mindmap layout puts every entity at a distinct node, with no two boxes
+/// overlapping.
+test "mindmap layout places every entity in a disjoint box" {
   let source =
     #|@startuml '.mbti
     #|package "demo";
@@ -24,9 +24,8 @@ test "mindmap layout places the package at the root with disjoint boxes" {
     #|impl Eq for Point;
     #|@enduml
   let diagram = parse(source)
-  let layout = diagram.graph.mindmap_layout(diagram.package_name)
-  @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length() + 1)
-  @test.assert_eq(layout.nodes[0].idea_index, 0)
+  let layout = diagram.graph.mindmap_layout()
+  @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length())
   for left_index in 0..<layout.nodes.length() {
     for right_index in (left_index + 1)..<layout.nodes.length() {
       let left = layout.nodes[left_index]
@@ -60,7 +59,7 @@ test "mindmap layout connects every relation as a tree edge" {
     #|impl Show for Point;
     #|@enduml
   let diagram = parse(source)
-  let layout = diagram.graph.mindmap_layout(diagram.package_name)
+  let layout = diagram.graph.mindmap_layout()
   // Each non-root node hangs under exactly one parent.
   @test.assert_eq(layout.edges.length(), layout.nodes.length() - 1)
   for edge in layout.edges {
@@ -82,7 +81,7 @@ test "mindmap layout connects every relation as a tree edge" {
 
 ///|
 /// A struct with a field of its own type does not loop the tree building:
-/// the self relation is skipped and the struct still renders.
+/// the self relation is skipped and the struct still renders as its own root.
 test "mindmap layout survives a self-referencing struct" {
   let source =
     #|@startuml '.mbti
@@ -92,10 +91,10 @@ test "mindmap layout survives a self-referencing struct" {
     #|}
     #|@enduml
   let diagram = parse(source)
-  let layout = diagram.graph.mindmap_layout(diagram.package_name)
-  @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length() + 1)
-  // The self relation is skipped, so Node hangs directly under the root.
-  @test.assert_eq(layout.edges.length(), 1)
+  let layout = diagram.graph.mindmap_layout()
+  @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length())
+  // The self relation is skipped, so Node is a root with no incoming edge.
+  @test.assert_eq(layout.edges.length(), 0)
   let svg = diagram.render_svg() catch {
     _ => @test.fail("svg rendering failed")
   }
@@ -103,9 +102,9 @@ test "mindmap layout survives a self-referencing struct" {
 }
 
 ///|
-/// Entities that no relation points to (the base traits) hang directly under
-/// the package root, so their tree edge has the root as its parent.
-test "mindmap layout hangs base entities directly under the package root" {
+/// Entities that no relation points to (the base traits) are forest roots,
+/// so no tree edge points at them.
+test "mindmap layout makes base entities forest roots" {
   let source =
     #|@startuml '.mbti
     #|package "demo";
@@ -116,12 +115,14 @@ test "mindmap layout hangs base entities directly under the package root" {
     #|impl Eq for Point;
     #|@enduml
   let diagram = parse(source)
-  let layout = diagram.graph.mindmap_layout(diagram.package_name)
-  let root_child_count = layout.edges
-    .filter(edge => edge.parent_index == 0)
+  let layout = diagram.graph.mindmap_layout()
+  let root_count = layout.nodes
+    .filter(node => {
+      layout.edges.all(edge => edge.child_index != node.idea_index)
+    })
     .length()
-  // Point's relation target is Eq, so only Eq hangs directly under the root.
-  @test.assert_eq(root_child_count, 1)
+  // Point's relation target is Eq, so only Eq is a root.
+  @test.assert_eq(root_count, 1)
 }
 
 ///|
@@ -143,7 +144,7 @@ test "mindmap layout paints only tree edges" {
     #|impl Eq for Line;
     #|@enduml
   let diagram = parse(source)
-  let layout = diagram.graph.mindmap_layout(diagram.package_name)
+  let layout = diagram.graph.mindmap_layout()
   let svg = diagram.render_svg() catch {
     _ => @test.fail("svg rendering failed")
   }
@@ -178,10 +179,10 @@ test "mindmap layout renders collapsible class nodes and edges" {
 }
 
 ///|
-/// The package-root structure edge is collapsible too: it gets its own edge
-/// group with open/closed states so it stays visible when a child node
+/// The structure edge between entities is collapsible too: it gets its own
+/// edge group with open/closed states so it stays visible when a child node
 /// collapses.
-test "mindmap layout keeps the package-root edge collapsible" {
+test "mindmap layout keeps structure edges collapsible" {
   let source =
     #|@startuml '.mbti
     #|package "demo";

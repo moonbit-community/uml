@@ -115,10 +115,7 @@ fn ClassLayout::content_bounds(
     bounds = include_point(bounds, x + w, y + h)
   }
   match self.mindmap {
-    Some(mindmap) => {
-      let (x, y, w, h) = mindmap.root_rect
-      bounds = include_point(bounds, x.to_double(), y.to_double())
-      bounds = include_point(bounds, (x + w).to_double(), (y + h).to_double())
+    Some(mindmap) =>
       for edge in mindmap.structure_edges {
         bounds = include_point(bounds, edge.x1.to_double(), edge.y1.to_double())
         bounds = include_point(
@@ -133,7 +130,6 @@ fn ClassLayout::content_bounds(
         )
         bounds = include_point(bounds, edge.x2.to_double(), edge.y2.to_double())
       }
-    }
     None =>
       match self.graphviz {
         Some(graphviz) => {

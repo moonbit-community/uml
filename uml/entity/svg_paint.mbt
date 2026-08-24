@@ -408,7 +408,7 @@ fn append_entity(
   guard !entity.is_hidden && !entity.is_removed else { return }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let header = entity.header_layout(text_metrics)
-  let body = entity.body_layout(text_metrics)
+  let body = entity.body_layout(text_metrics, diagram.family)
   let row_height = text_metrics.row_height()
   let fill = @svg.svg_color(entity.color, class_background_color(diagram.style))
   let stroke = @svg.svg_color(
@@ -474,6 +474,8 @@ fn append_entity(
     } else {
       body.methods_height
     }
+    // The mbti family collapses empty portions: no separator, no strip.
+    guard section_height > 0 else { continue }
     output <+
       $|<line x1="\{x}" y1="\{section_y}" x2="\{x + width}" y2="\{section_y}"\{line_attributes}/>
     for member_index, entry in section {

@@ -108,8 +108,10 @@ fn relation_endpoint_header(
 
 ///|
 /// Relation endpoint alternatives for one side: always the open boundary
-/// contact, plus the closed header-strip projection when the attached node is
-/// collapsible.
+/// contact, plus the closed header-strip contact when the attached node is
+/// collapsible. The closed endpoint lands on the midpoint of the strip edge
+/// the relation approaches, so a collapsed edge joins the node's side rather
+/// than its corner.
 fn relation_endpoint_states(
   endpoint : (Double, Double),
   side : RelationContactSide?,
@@ -117,12 +119,13 @@ fn relation_endpoint_states(
 ) -> Array[RelationEndpointState] {
   match header {
     Some(bounds) => {
-      let closed = closest_point_on_rect(point_from_pair(endpoint), bounds)
+      let projected = closest_point_on_rect(point_from_pair(endpoint), bounds)
+      let closed_side = rect_contact_side(projected, bounds)
       [
         { endpoint, side },
         {
-          endpoint: closed.pair(),
-          side: Some(rect_contact_side(closed, bounds)),
+          endpoint: rect_edge_midpoint(bounds, closed_side).pair(),
+          side: Some(closed_side),
         },
       ]
     }
@@ -345,8 +348,8 @@ fn collapsible_relation_style(
             text_metrics,
             class_member_collapsible,
             -1 - structure_index,
-            edge.left_entity,
-            edge.right_entity,
+            Some(edge.left_entity),
+            Some(edge.right_entity),
             false,
           ),
         )
@@ -358,8 +361,8 @@ fn collapsible_relation_style(
 
 ///|
 /// The CSS that switches one edge to its closed variant when an attached
-/// class node collapses. A `None` endpoint (the package root) is never
-/// collapsible.
+/// class node collapses. A `None` endpoint (not an entity, e.g. a package)
+/// is never collapsible.
 fn collapsible_edge_css(
   diagram : EntityDiagram,
   layout : ClassLayout,

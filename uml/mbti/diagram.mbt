@@ -19,16 +19,12 @@ pub extend MbtiDiagram with Debug::{to_repr}
 
 ///|
 /// Render the adapted interface graph to SVG with the mindmap tree layout:
-/// the package name is the single root and every class hangs under the
-/// target of its first relation.
+/// entities with no incoming relation are the roots and every other class
+/// hangs under the target of its first relation.
 pub fn MbtiDiagram::render_svg(
   self : MbtiDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
-  self.graph.render_mbti_svg(
-    self.package_name,
-    color_scheme~,
-    class_member_collapsible~,
-  )
+  self.graph.render_mbti_svg(color_scheme~, class_member_collapsible~)
 }

@@ -787,29 +787,45 @@ fn ClassHeaderLayout::placement(
 }
 
 ///|
+/// The fields and methods portions of the class body. MethodsOrFieldsArea
+/// always contributes its separator and vertical margins for the class
+/// family, even when that portion has no visible members; the mbti family
+/// collapses an empty portion so its type skeletons keep no spare strip.
 fn Entity::body_layout(
   self : Entity,
   text_metrics : ClassTextMetrics,
+  family : EntityFamily,
 ) -> ClassBodyLayout {
   let visible = self.members.filter(entry => {
     self.entry_visible(entry) && !entry.is_separator
   })
   let fields = visible.filter(entry => !entry.is_method)
   let methods = visible.filter(entry => entry.is_method)
-  // MethodsOrFieldsArea always contributes its separator and vertical margins,
-  // even when that portion has no visible members.
+  let skeleton = family is Mbti
   {
     fields,
     methods,
-    fields_height: body_section_height(fields, text_metrics),
-    methods_height: body_section_height(methods, text_metrics),
+    fields_height: if skeleton && fields.is_empty() {
+      0
+    } else {
+      body_section_height(fields, text_metrics)
+    },
+    methods_height: if skeleton && methods.is_empty() {
+      0
+    } else {
+      body_section_height(methods, text_metrics)
+    },
   }
 }
 
 ///|
-fn Entity::height(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+fn Entity::height(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+  family : EntityFamily,
+) -> Int {
   let header = self.header_layout(text_metrics)
-  let body = self.body_layout(text_metrics)
+  let body = self.body_layout(text_metrics, family)
   header.height + body.fields_height + body.methods_height
 }
 
@@ -1120,9 +1136,13 @@ fn actor_figure_geometry(
 }
 
 ///|
-fn Entity::width(self : Entity, text_metrics : ClassTextMetrics) -> Int {
+fn Entity::width(
+  self : Entity,
+  text_metrics : ClassTextMetrics,
+  family : EntityFamily,
+) -> Int {
   let mut width = self.header_layout(text_metrics).width
-  let body = self.body_layout(text_metrics)
+  let body = self.body_layout(text_metrics, family)
   for entry in body.fields {
     width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
   }
@@ -1407,8 +1427,8 @@ fn Entity::node_geometry(
       }
     (ClassHeader, ClassCompartments, ClassRenderer) =>
       {
-        width: self.width(text_metrics),
-        height: self.height(text_metrics),
+        width: self.width(text_metrics, family),
+        height: self.height(text_metrics, family),
         shape: capability.shape,
       }
     _ => panic()
