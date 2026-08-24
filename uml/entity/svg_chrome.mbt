@@ -23,56 +23,46 @@ fn EntityDiagram::chrome_blocks(
 ) -> Array[ChromeBlock] {
   let blocks : Array[ChromeBlock] = []
   if top {
-    match self.style.title {
-      Some(text) =>
-        blocks.push({
-          text,
-          block_class: "title",
-          metrics: self.style.font_metrics(font_weight=700),
-          bold: true,
-        })
-      None => ()
+    if self.style.title is Some(text) {
+      blocks.push({
+        text,
+        block_class: "title",
+        metrics: self.style.font_metrics(font_weight=700),
+        bold: true,
+      })
     }
-    match self.style.header {
-      Some(text) =>
-        blocks.push({
-          text,
-          block_class: "header",
-          metrics: self.style.font_metrics(),
-          bold: false,
-        })
-      None => ()
+    if self.style.header is Some(text) {
+      blocks.push({
+        text,
+        block_class: "header",
+        metrics: self.style.font_metrics(),
+        bold: false,
+      })
     }
   } else {
-    match self.style.caption {
-      Some(text) =>
-        blocks.push({
-          text,
-          block_class: "caption",
-          metrics: self.style.font_metrics(),
-          bold: false,
-        })
-      None => ()
+    if self.style.caption is Some(text) {
+      blocks.push({
+        text,
+        block_class: "caption",
+        metrics: self.style.font_metrics(),
+        bold: false,
+      })
     }
-    match self.style.legend {
-      Some(text) =>
-        blocks.push({
-          text,
-          block_class: "legend",
-          metrics: self.style.font_metrics(),
-          bold: false,
-        })
-      None => ()
+    if self.style.legend is Some(text) {
+      blocks.push({
+        text,
+        block_class: "legend",
+        metrics: self.style.font_metrics(),
+        bold: false,
+      })
     }
-    match self.style.footer {
-      Some(text) =>
-        blocks.push({
-          text,
-          block_class: "footer",
-          metrics: self.style.font_metrics(),
-          bold: false,
-        })
-      None => ()
+    if self.style.footer is Some(text) {
+      blocks.push({
+        text,
+        block_class: "footer",
+        metrics: self.style.font_metrics(),
+        bold: false,
+      })
     }
   }
   blocks

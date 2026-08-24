@@ -44,9 +44,8 @@ fn take_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
 /// Matches a quoted value, falling back to an unquoted identifier token.
 fn take_quoted_or_ident(cursor : @parse.Cursor) -> String? {
   if cursor.peek() == Some('"') {
-    match cursor.take_quoted_value() {
-      Some(value) => return Some(value)
-      None => ()
+    if cursor.take_quoted_value() is Some(value) {
+      return Some(value)
     }
   }
   let value = take_ident(cursor)

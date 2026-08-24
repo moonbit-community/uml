@@ -92,10 +92,9 @@ fn state_style_property(
 ) -> String? {
   match state.stereotype {
     Some(stereotype) =>
-      match style.property(key + stereotype) {
-        Some(value) => Some(value)
-        None => style.property(key)
-      }
+      style
+      .property(key + stereotype)
+      .map_or(style.property(key), value => Some(value))
     None => style.property(key)
   }
 }
@@ -362,14 +361,12 @@ fn append_state_node(
       },
     ),
   ]
-  match state.stereotype {
-    Some(stereotype) => group_attributes.push(("data-stereotype", stereotype))
-    None => ()
+  if state.stereotype is Some(stereotype) {
+    group_attributes.push(("data-stereotype", stereotype))
   }
   output.open("g", attributes=group_attributes)
-  match state.url {
-    Some(url) => output.open("a", attributes=[("href", url)])
-    None => ()
+  if state.url is Some(url) {
+    output.open("a", attributes=[("href", url)])
   }
   if composite {
     let corner = STATE_CORNER_RADIUS

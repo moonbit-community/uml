@@ -86,32 +86,17 @@ fn ParseCtx::declare_participant(
       ..participant,
       display: reference.display,
       typ: declaration.typ,
-      color: match declaration.color {
-        Some(value) => Some(value)
-        None => participant.color
-      },
-      url: match declaration.url {
-        Some(value) => Some(value)
-        None => participant.url
-      },
-      order: match declaration.order {
-        Some(value) => Some(value)
-        None => participant.order
-      },
+      color: declaration.color.map_or(participant.color, value => Some(value)),
+      url: declaration.url.map_or(participant.url, value => Some(value)),
+      order: declaration.order.map_or(participant.order, value => Some(value)),
       boxes: self.box_stack.copy(),
     }
     return
   }
   self.ensure_participant(reference.code, reference.display, declaration.typ)
   let existing = self.participants[reference.code]
-  let color = match declaration.color {
-    Some(color) => Some(color)
-    None => existing.color
-  }
-  let order = match declaration.order {
-    Some(order) => Some(order)
-    None => existing.order
-  }
+  let color = declaration.color.map_or(existing.color, value => Some(value))
+  let order = declaration.order.map_or(existing.order, value => Some(value))
   self.participants[reference.code] = {
     ..existing,
     display: reference.display,
@@ -177,17 +162,12 @@ fn ParseCtx::validate_event(
   self : ParseCtx,
   event : Event,
 ) -> Unit raise @parse.ParseError {
-  match self.pending_create {
-    Some(code) =>
-      match event {
-        Message(message) if message.to_code == code =>
-          self.pending_create = None
-        _ =>
-          self.source.raise_parse_error(
-            "after create, send a message to \{code}",
-          )
-      }
-    None => ()
+  if self.pending_create is Some(code) {
+    match event {
+      Message(message) if message.to_code == code => self.pending_create = None
+      _ =>
+        self.source.raise_parse_error("after create, send a message to \{code}")
+    }
   }
   match event {
     GroupingStart(_) => self.grouping_depth += 1

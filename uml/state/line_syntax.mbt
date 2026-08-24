@@ -88,9 +88,8 @@ priv struct StateMetadataValues {
 /// grammar.
 fn state_identifier(cursor : @parse.Cursor) -> StateIdentifier? {
   if cursor.peek() == Some('"') {
-    match cursor.take_quoted_value() {
-      Some(value) => return Some({ value, quoted: true })
-      None => ()
+    if cursor.take_quoted_value() is Some(value) {
+      return Some({ value, quoted: true })
     }
   }
   let value = cursor.take_while(char => {
@@ -320,10 +319,9 @@ fn transition_style(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn transition_arrow_from(parts : TransitionArrowParts) -> TransitionArrowSyntax {
-  let line_style = match parts.second_style {
-    Some(value) => Some(value)
-    None => parts.first_style
-  }
+  let line_style = parts.second_style.map_or(parts.first_style, value => {
+    Some(value)
+  })
   {
     direction: parts.direction.unwrap_or(Automatic),
     line_style,

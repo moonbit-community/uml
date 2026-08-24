@@ -42,41 +42,33 @@ fn DiagramLayout::content_horizontal_bounds(
     match event {
       Message(message) => {
         if message.is_self() {
-          match self.participant_at(message.from_code) {
-            Some(participant) =>
-              max_x = max_x.max(
-                participant.center_x +
-                40 +
-                TextSize::of_with(
-                  message.display_label(),
-                  self.text_metrics.body,
-                ).width,
-              )
-            None => ()
+          if self.participant_at(message.from_code) is Some(participant) {
+            max_x = max_x.max(
+              participant.center_x +
+              40 +
+              TextSize::of_with(message.display_label(), self.text_metrics.body).width,
+            )
           }
         }
         arrow_anchor = Some(message)
       }
       MessageExo(message) =>
-        match self.participant_at(message.participant_code) {
-          Some(participant) => {
-            let label_width = TextSize::of_with(
-                message.label.unwrap_or(""),
-                self.text_metrics.body,
-              ).width
-            let extent = if message.short_arrow {
-              40
-            } else {
-              (label_width + 32).max(90)
-            }
-            match message.exo_type {
-              FromLeft | ToLeft =>
-                min_x = min_x.min(participant.center_x - extent)
-              FromRight | ToRight =>
-                max_x = max_x.max(participant.center_x + extent)
-            }
+        if self.participant_at(message.participant_code) is Some(participant) {
+          let label_width = TextSize::of_with(
+              message.label.unwrap_or(""),
+              self.text_metrics.body,
+            ).width
+          let extent = if message.short_arrow {
+            40
+          } else {
+            (label_width + 32).max(90)
           }
-          None => ()
+          match message.exo_type {
+            FromLeft | ToLeft =>
+              min_x = min_x.min(participant.center_x - extent)
+            FromRight | ToRight =>
+              max_x = max_x.max(participant.center_x + extent)
+          }
         }
       Note(note) => {
         let geometry = self.note_geometry(

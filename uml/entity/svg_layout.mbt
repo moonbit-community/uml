@@ -38,9 +38,8 @@ fn ClassLayout::entity_rect(
   index : Int,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, Int, Int) {
-  match self.mindmap {
-    Some(mindmap) => return mindmap.rects[index]
-    None => ()
+  if self.mindmap is Some(mindmap) {
+    return mindmap.rects[index]
   }
   match self.graphviz {
     Some(layout) => {
@@ -206,18 +205,16 @@ fn ClassLayout::group_rect(
   diagram : EntityDiagram,
   code : String,
 ) -> (Double, Double, Double, Double)? {
-  match self.graphviz {
-    Some(graphviz) =>
-      for package_index, group in diagram.packages {
-        if group.qualified_name == code {
-          for group in graphviz.packages {
-            if group.package_index == package_index {
-              return Some((group.x, group.y, group.width, group.height))
-            }
+  if self.graphviz is Some(graphviz) {
+    for package_index, group in diagram.packages {
+      if group.qualified_name == code {
+        for group in graphviz.packages {
+          if group.package_index == package_index {
+            return Some((group.x, group.y, group.width, group.height))
           }
         }
       }
-    None => ()
+    }
   }
   None
 }

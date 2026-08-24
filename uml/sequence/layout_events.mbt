@@ -53,9 +53,10 @@ fn finish_activation(
 /// target the second participant, `--` the first one, mirroring Java's
 /// `manageActivations`.
 fn message_target(message : Message, spec : ActivationSpec?) -> String {
-  match spec {
-    Some(Deactivate) => message.from_code
-    _ => message.to_code
+  if spec is Some(Deactivate) {
+    message.from_code
+  } else {
+    message.to_code
   }
 }
 
@@ -279,10 +280,14 @@ fn layout_events(
             groups[index] = { ..group, end_y, branches }
             let _ = group_stack.pop()
           } else {
-            let branch_color = match leaf.back_color {
-              Some(color) => Some(color)
-              None => if group.parallel { group.color } else { None }
-            }
+            let branch_color = leaf.back_color.map_or(
+              if group.parallel {
+                group.color
+              } else {
+                None
+              },
+              color => Some(color),
+            )
             branches.push({
               start_y: y,
               end_y: y,

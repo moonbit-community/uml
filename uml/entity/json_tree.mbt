@@ -224,10 +224,10 @@ fn JsonTreeCursor::parse_string(
             let code_point = hex.fold(init=0, (value, digit) => {
               value * 16 + digit.to_int()
             })
-            match code_point.to_char() {
-              Some(char) => output.write_char(char)
-              None => json_tree_error("invalid \\u escape")
+            guard code_point.to_char() is Some(char) else {
+              json_tree_error("invalid \\u escape")
             }
+            output.write_char(char)
             self.index += 4
           }
           _ => json_tree_error("invalid string escape")

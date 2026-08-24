@@ -21,10 +21,9 @@ fn Parser::parse_line(
   match @parse.parse_namespace_separator(line) {
     Some(separator) => {
       self.namespace_separator = separator
-      match separator {
-        Some(value) => self.style.apply(Property("namespace separator", value))
-        None => self.style.apply(Property("namespace separator", "none"))
-      }
+      self.style.apply(
+        Property("namespace separator", separator.unwrap_or("none")),
+      )
       return
     }
     None => ()
@@ -43,10 +42,10 @@ fn Parser::parse_line(
     self.consume_entity_body_line(entity_index, line)
     return
   }
-  match parse_class_line(line) {
-    Some(syntax) => self.apply_class_line_syntax(syntax)
-    None => self.raise_parse_error(line)
+  guard parse_class_line(line) is Some(syntax) else {
+    self.raise_parse_error(line)
   }
+  self.apply_class_line_syntax(syntax)
 }
 
 ///|

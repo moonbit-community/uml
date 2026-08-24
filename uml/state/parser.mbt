@@ -287,10 +287,8 @@ fn Parser::parse_line(
       parent,
       Some(if line == "||" { Vertical } else { Horizontal }),
     )
-    match self.stack.last() {
-      Some(scope) =>
-        self.stack[self.stack.length() - 1] = { ..scope, region_index, }
-      None => ()
+    if self.stack.last() is Some(scope) {
+      self.stack[self.stack.length() - 1] = { ..scope, region_index, }
     }
     return
   }

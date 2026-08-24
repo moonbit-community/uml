@@ -287,19 +287,16 @@ fn Event::participant_span(
     Notes(notes) => {
       let mut span : (Int, Int)? = None
       for note in notes {
-        match (note.participant_codes.get(0), note.participant_codes.last()) {
-          (Some(first), Some(last)) =>
-            match between(first, last) {
-              Some((left, right)) =>
-                span = Some(
-                  span.map_or((left, right), pair => {
-                    let (span_left, span_right) = pair
-                    (span_left.min(left), span_right.max(right))
-                  }),
-                )
-              None => ()
-            }
-          _ => ()
+        if (note.participant_codes.get(0), note.participant_codes.last())
+          is (Some(first), Some(last)) {
+          if between(first, last) is Some((left, right)) {
+            span = Some(
+              span.map_or((left, right), pair => {
+                let (span_left, span_right) = pair
+                (span_left.min(left), span_right.max(right))
+              }),
+            )
+          }
         }
       }
       span

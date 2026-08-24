@@ -117,22 +117,17 @@ fn append_package_layouts(
   root_bbox : @geom.Rect,
   package_indices : Map[String, Int],
 ) -> Unit {
-  match layout.graph.name() {
-    Some(name) =>
-      match package_indices.get(name) {
-        Some(package_index) => {
-          let bbox = layout.bbox
-          output.push({
-            package_index,
-            x: bbox.llx - root_bbox.llx,
-            y: root_bbox.ury - bbox.ury,
-            width: bbox.urx - bbox.llx,
-            height: bbox.ury - bbox.lly,
-          })
-        }
-        None => ()
-      }
-    None => ()
+  if layout.graph.name() is Some(name) {
+    if package_indices.get(name) is Some(package_index) {
+      let bbox = layout.bbox
+      output.push({
+        package_index,
+        x: bbox.llx - root_bbox.llx,
+        y: root_bbox.ury - bbox.ury,
+        width: bbox.urx - bbox.llx,
+        height: bbox.ury - bbox.lly,
+      })
+    }
   }
   for child in layout.subgraphs {
     append_package_layouts(output, child, root_bbox, package_indices)
@@ -480,36 +475,31 @@ fn EntityDiagram::graphviz_layout(
         }
       FloatingNote => None
     }
-    match target {
-      Some(target) =>
-        match node_names.get(target) {
-          Some(target_name) => {
-            let position = note.position.with_rankdir(self.style)
-            let (left_name, right_name, minlen, rank_same) = match position {
-              Right => (target_name, name, 0, true)
-              Left => (name, target_name, 0, true)
-              Bottom => (target_name, name, 1, false)
-              Top => (name, target_name, 1, false)
-            }
-            if rank_same {
-              let rank = graph.subgraph(name="rank_note_\{note_index}")
-              rank.set_attr("rank", "same")
-              let _ = rank.node(left_name)
-              let _ = rank.node(right_name)
-            }
-            let edge = graph.edge(
-              graph.node(left_name),
-              graph.node(right_name),
-              name="note_edge\{note_index}",
-            )
-            note_edge_names[edge.id()] = "\{note_index}"
-            edge.set_attr("dir", "none")
-            edge.set_attr("style", "invis")
-            edge.set_attr("minlen", "\{minlen}")
-          }
-          None => ()
+    if target is Some(target) {
+      if node_names.get(target) is Some(target_name) {
+        let position = note.position.with_rankdir(self.style)
+        let (left_name, right_name, minlen, rank_same) = match position {
+          Right => (target_name, name, 0, true)
+          Left => (name, target_name, 0, true)
+          Bottom => (target_name, name, 1, false)
+          Top => (name, target_name, 1, false)
         }
-      None => ()
+        if rank_same {
+          let rank = graph.subgraph(name="rank_note_\{note_index}")
+          rank.set_attr("rank", "same")
+          let _ = rank.node(left_name)
+          let _ = rank.node(right_name)
+        }
+        let edge = graph.edge(
+          graph.node(left_name),
+          graph.node(right_name),
+          name="note_edge\{note_index}",
+        )
+        note_edge_names[edge.id()] = "\{note_index}"
+        edge.set_attr("dir", "none")
+        edge.set_attr("style", "invis")
+        edge.set_attr("minlen", "\{minlen}")
+      }
     }
   }
   let laid_out = @graphviz.layout_dot(

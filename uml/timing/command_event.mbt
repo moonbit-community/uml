@@ -336,10 +336,10 @@ fn parse_constraint(
   let player = if part1 is Some(code) {
     parser.require_player(code)
   } else {
-    match parser.diagram.last_player {
-      Some(code) => parser.require_player(code)
-      None => raise parser.error("You have to provide a participant")
+    guard parser.diagram.last_player is Some(code) else {
+      raise parser.error("You have to provide a participant")
     }
+    parser.require_player(code)
   }
   guard resolve_time_expr(parser, Some(expr1)) is Some(tick1) else {
     raise parser.error("Unknown time label")

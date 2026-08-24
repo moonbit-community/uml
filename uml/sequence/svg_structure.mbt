@@ -64,20 +64,18 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
           branch.start_y,
           "group-separator",
         )
-        match branch.label {
-          Some(label) =>
-            append_text(
-              output,
-              x + 8,
-              branch.start_y + 12,
-              "[\{label}]",
-              "group-label",
-              layout.defaults,
-              anchor="start",
-              line_height=layout.text_metrics.body_bold.line_height,
-              font_metrics=Some(layout.text_metrics.body_bold),
-            )
-          None => ()
+        if branch.label is Some(label) {
+          append_text(
+            output,
+            x + 8,
+            branch.start_y + 12,
+            "[\{label}]",
+            "group-label",
+            layout.defaults,
+            anchor="start",
+            line_height=layout.text_metrics.body_bold.line_height,
+            font_metrics=Some(layout.text_metrics.body_bold),
+          )
         }
       }
     }

@@ -42,27 +42,14 @@ fn place_sequence(
       layouts,
       edges,
     )
-    match previous {
-      Some(previous) =>
-        match pending_label {
-          Some(label) =>
-            append_layout_edge(
-              edges,
-              previous.exit,
-              placed.entry,
-              previous.outgoing_route,
-              label=Some(label),
-            )
-          None =>
-            append_layout_edge(
-              edges,
-              previous.exit,
-              placed.entry,
-              previous.outgoing_route,
-              label=previous.outgoing_label,
-            )
-        }
-      None => ()
+    if previous is Some(previous) {
+      append_layout_edge(
+        edges,
+        previous.exit,
+        placed.entry,
+        previous.outgoing_route,
+        label=pending_label.map_or(previous.outgoing_label, label => Some(label)),
+      )
     }
     pending_label = None
     if entry is None {
@@ -392,19 +379,17 @@ fn place_if_chain(
       nodes[index].size(metrics, small_metrics)
     })
     let branch_width = body_size.width.max(decision_size.width)
-    match branch.decision {
-      Some(decision) =>
-        place_leaf(
-          decision,
-          nodes,
-          metrics,
-          small_metrics,
-          cursor_x + (branch_width - decision_size.width) / 2,
-          y,
-          layouts,
-        )
-        |> ignore
-      None => ()
+    if branch.decision is Some(decision) {
+      place_leaf(
+        decision,
+        nodes,
+        metrics,
+        small_metrics,
+        cursor_x + (branch_width - decision_size.width) / 2,
+        y,
+        layouts,
+      )
+      |> ignore
     }
     let body = place_sequence(
       branch.tiles,
@@ -416,16 +401,14 @@ fn place_if_chain(
       layouts,
       edges,
     )
-    match branch.decision {
-      Some(decision) =>
-        append_layout_edge(
-          edges,
-          Some(decision),
-          body.entry,
-          Forward,
-          label=branch.label,
-        )
-      None => ()
+    if branch.decision is Some(decision) {
+      append_layout_edge(
+        edges,
+        Some(decision),
+        body.entry,
+        Forward,
+        label=branch.label,
+      )
     }
     placed.push({ tile: body, label: branch.label })
     cursor_x += branch_width + BRANCH_GAP
@@ -878,9 +861,8 @@ fn layout_content_right(
     right = right.max(layout.x + layout.width)
   }
   for edge in edges {
-    match edge_label_extent(edge, layouts, small_metrics) {
-      Some(end) => right = right.max(end)
-      None => ()
+    if edge_label_extent(edge, layouts, small_metrics) is Some(end) {
+      right = right.max(end)
     }
   }
   right

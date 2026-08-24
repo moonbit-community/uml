@@ -262,10 +262,8 @@ fn append_node(
         ),
         ("class", "activity-decision"),
       ])
-      match node.label() {
-        Some(label) =>
-          append_label(output, center_x, center_y + 4, label, small_metrics)
-        None => ()
+      if node.label() is Some(label) {
+        append_label(output, center_x, center_y + 4, label, small_metrics)
       }
     }
     Note(label) => {

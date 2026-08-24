@@ -215,10 +215,7 @@ fn declaration_name_syntax(cursor : @parse.Cursor) -> DeclarationNameSyntax? {
   }
   match alternate {
     Some(second) => {
-      let generic = match first.generic {
-        Some(value) => Some(value)
-        None => second.generic
-      }
+      let generic = first.generic.map_or(second.generic, value => Some(value))
       if second.quoted {
         Some({ display: second.value, code: first.value, generic })
       } else {
@@ -269,10 +266,8 @@ fn declaration_stereotype(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
   guard cursor.consume_literal("<<") else { return None }
   let parts = StringBuilder()
   while !cursor.is_eof() && !cursor.starts_with_literal(">>") {
-    match cursor.advance() {
-      Some(char) => parts.write_char(char)
-      None => break
-    }
+    guard cursor.advance() is Some(char) else { break }
+    parts.write_char(char)
   }
   guard cursor.consume_literal(">>") else {
     ignore(cursor.restore(start))

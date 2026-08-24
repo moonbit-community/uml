@@ -123,10 +123,7 @@ fn participant_decl_ref(cursor : @parse.Cursor) -> PartRef? {
       ignore(cursor.restore(saved))
       alias_ref(cursor, name)
     }
-    match reference {
-      Some(value) => Some(value)
-      None => Some({ code: name, display: name })
-    }
+    Some(reference.unwrap_or({ code: name, display: name }))
   }
 }
 

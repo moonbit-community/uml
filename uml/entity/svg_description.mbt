@@ -337,11 +337,9 @@ fn append_description_entity(
   )
   output <+
     $|<g class="description-node" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  match entity.url {
-    Some(url) =>
-      output <+
-        $|<a href="\{@svg.xml_escape(url)}">
-    None => ()
+  if entity.url is Some(url) {
+    output <+
+      $|<a href="\{@svg.xml_escape(url)}">
   }
   match entity.description_symbol() {
     NodeSymbol =>
@@ -483,9 +481,8 @@ fn append_description_entity(
     output, entity, text_metrics, text_color, x, y, label_position, stereotype_position,
     text,
   )
-  match entity.url {
-    Some(_) => output.write_string("</a>")
-    None => ()
+  if entity.url is Some(_) {
+    output.write_string("</a>")
   }
   output.write_string("</g>\n")
 }
@@ -502,11 +499,9 @@ fn append_description_text(
   stereotype_position : (Int, Int)?,
   text : DescriptionTextLayout,
 ) -> Unit {
-  match stereotype_position {
-    Some((stereotype_x, stereotype_baseline)) =>
-      output <+
-        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="description-stereotype" fill="\{text_color}" font-size="\{text_metrics.regular.font_size}">\{@svg.xml_escape(text.stereotype.unwrap())}</text>
-    None => ()
+  if stereotype_position is Some((stereotype_x, stereotype_baseline)) {
+    output <+
+      $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="description-stereotype" fill="\{text_color}" font-size="\{text_metrics.regular.font_size}">\{@svg.xml_escape(text.stereotype.unwrap())}</text>
   }
   output <+
     $|<text x="\{x + label_position.0}" y="\{y + label_position.1}" class="description-title" fill="\{text_color}">\{@svg.xml_escape(entity.display)}</text>
@@ -812,42 +807,37 @@ fn append_symbol_packages(
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
-  match layout.graphviz {
-    Some(graphviz) =>
-      for package_layout in graphviz.packages {
-        guard package_layout.package_index < diagram.packages.length() else {
-          continue
-        }
-        let group = diagram.packages[package_layout.package_index]
-        match group.symbol {
-          Some(symbol) => {
-            // PlantUML `Cluster.manageEntryExitPoint` runs the port centers
-            // through the `FrontierCalculator` so the cluster border passes
-            // through the ports of a node symbol.
-            let (adjusted_y, adjusted_height) = port_frontier(
-              diagram,
-              group.qualified_name,
-              package_layout.y,
-              package_layout.y + package_layout.height,
-              text_metrics,
-              layout,
-            )
-            append_symbol_package(
-              output,
-              diagram,
-              group,
-              symbol,
-              package_layout.x,
-              adjusted_y,
-              package_layout.width,
-              adjusted_height,
-              text_metrics,
-            )
-          }
-          None => ()
-        }
+  if layout.graphviz is Some(graphviz) {
+    for package_layout in graphviz.packages {
+      guard package_layout.package_index < diagram.packages.length() else {
+        continue
       }
-    None => ()
+      let group = diagram.packages[package_layout.package_index]
+      if group.symbol is Some(symbol) {
+        // PlantUML `Cluster.manageEntryExitPoint` runs the port centers
+        // through the `FrontierCalculator` so the cluster border passes
+        // through the ports of a node symbol.
+        let (adjusted_y, adjusted_height) = port_frontier(
+          diagram,
+          group.qualified_name,
+          package_layout.y,
+          package_layout.y + package_layout.height,
+          text_metrics,
+          layout,
+        )
+        append_symbol_package(
+          output,
+          diagram,
+          group,
+          symbol,
+          package_layout.x,
+          adjusted_y,
+          package_layout.width,
+          adjusted_height,
+          text_metrics,
+        )
+      }
+    }
   }
 }
 

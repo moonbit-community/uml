@@ -29,10 +29,7 @@ fn parse_robust_concise(parser : Parser, cursor : @parse.Cursor) -> Bool {
   guard parse_full_code(cursor) is Some(code) else { return false }
   let (stereotype2, color) = parse_declaration_tail(cursor)
   guard cursor.is_eof() else { return false }
-  let stereotype = match stereotype {
-    Some(_) => stereotype
-    None => stereotype2
-  }
+  let stereotype = stereotype.map_or(stereotype2, value => Some(value))
   ignore(parser.declare_player(code, title, kind, compact, stereotype, color))
   true
 }
@@ -190,10 +187,7 @@ fn parse_analog(parser : Parser, cursor : @parse.Cursor) -> Bool {
   let stereotype2 = parse_stereotype(cursor)
   skip_spaces(cursor)
   guard cursor.is_eof() else { return false }
-  let stereotype = match stereotype {
-    Some(_) => stereotype
-    None => stereotype2
-  }
+  let stereotype = stereotype.map_or(stereotype2, value => Some(value))
   let player = parser.declare_player(
     code,
     title,
@@ -232,10 +226,7 @@ fn parse_binary(parser : Parser, cursor : @parse.Cursor) -> Bool {
   let stereotype2 = parse_stereotype(cursor)
   skip_spaces(cursor)
   guard cursor.is_eof() else { return false }
-  let stereotype = match stereotype {
-    Some(_) => stereotype
-    None => stereotype2
-  }
+  let stereotype = stereotype.map_or(stereotype2, value => Some(value))
   ignore(parser.declare_player(code, title, Binary, compact, stereotype, None))
   true
 }

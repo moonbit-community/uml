@@ -282,21 +282,16 @@ fn Adapter::payload_type_edges(
   constr : @mbti_ast.ConstrDecl,
 ) -> Unit {
   guard self.options.member_type_edges else { return }
-  match constr.args {
-    Some(args) =>
-      for param in args {
-        match type_top_name(param.ty) {
-          Some(target) if self.entity_index(target) is Some(_) => {
-            let label = match param.label {
-              Some(label) => Some(label.name)
-              None => None
-            }
-            self.push_association(source, target, label)
-          }
-          _ => ()
+  if constr.args is Some(args) {
+    for param in args {
+      match type_top_name(param.ty) {
+        Some(target) if self.entity_index(target) is Some(_) => {
+          let label = param.label.map(label => label.name)
+          self.push_association(source, target, label)
         }
+        _ => ()
       }
-    None => ()
+    }
   }
 }
 
@@ -323,16 +318,12 @@ fn Adapter::push_association(
 /// undeclared types are dropped.
 fn Adapter::apply_func(self : Adapter, sig : @mbti_ast.FuncSig) -> Unit {
   guard self.options.show_methods else { return }
-  match sig.type_name {
-    Some(type_name) =>
-      match self.entity_index(type_name.name) {
-        Some(index) =>
-          self.entities[index].members.push(
-            entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
-          )
-        None => ()
-      }
-    None => ()
+  if sig.type_name is Some(type_name) {
+    if self.entity_index(type_name.name) is Some(index) {
+      self.entities[index].members.push(
+        entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
+      )
+    }
   }
 }
 

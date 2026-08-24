@@ -192,10 +192,7 @@ fn note_tail(
   stereo1 : String?,
 ) -> (String?, String?, String?, SequenceTextSyntax) {
   let stereo2 = take_optional_stereotype(cursor, across_tail_continues)
-  let stereotype = match stereo1 {
-    Some(value) => Some(value)
-    None => stereo2
-  }
+  let stereotype = stereo1.map_or(stereo2, value => Some(value))
   let color = take_note_color_value(cursor)
   cursor.skip_inline_spaces()
   let url = take_optional_url(cursor)

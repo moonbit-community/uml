@@ -39,25 +39,20 @@ fn RelationLabelLayout::boxes(
   self : RelationLabelLayout,
 ) -> Array[RelationTextBox] {
   let boxes : Array[RelationTextBox] = []
-  match self.label {
-    Some(value) => boxes.push(value)
-    None => ()
+  if self.label is Some(value) {
+    boxes.push(value)
   }
-  match self.left_cardinality {
-    Some(value) => boxes.push(value)
-    None => ()
+  if self.left_cardinality is Some(value) {
+    boxes.push(value)
   }
-  match self.right_cardinality {
-    Some(value) => boxes.push(value)
-    None => ()
+  if self.right_cardinality is Some(value) {
+    boxes.push(value)
   }
-  match self.left_role {
-    Some(value) => boxes.push(value)
-    None => ()
+  if self.left_role is Some(value) {
+    boxes.push(value)
   }
-  match self.right_role {
-    Some(value) => boxes.push(value)
-    None => ()
+  if self.right_role is Some(value) {
+    boxes.push(value)
   }
   boxes
 }
@@ -525,25 +520,21 @@ fn relation_label_layout_from_geometry(
   }
   let tail_center = tail_label_center.unwrap_or(path_start)
   let head_center = head_label_center.unwrap_or(path_end)
-  match relation.left_cardinality {
-    Some(text) =>
-      entries.push({
-        kind: LeftCardinality,
-        box: relation_endpoint_text_box(
-          text, tail_center, path_start, tail_tangent, end_metrics, nodes, paths,
-        ),
-      })
-    None => ()
+  if relation.left_cardinality is Some(text) {
+    entries.push({
+      kind: LeftCardinality,
+      box: relation_endpoint_text_box(
+        text, tail_center, path_start, tail_tangent, end_metrics, nodes, paths,
+      ),
+    })
   }
-  match relation.right_cardinality {
-    Some(text) =>
-      entries.push({
-        kind: RightCardinality,
-        box: relation_endpoint_text_box(
-          text, head_center, path_end, head_tangent, end_metrics, nodes, paths,
-        ),
-      })
-    None => ()
+  if relation.right_cardinality is Some(text) {
+    entries.push({
+      kind: RightCardinality,
+      box: relation_endpoint_text_box(
+        text, head_center, path_end, head_tangent, end_metrics, nodes, paths,
+      ),
+    })
   }
   match relation.left_role {
     Some(text) => {
@@ -702,14 +693,12 @@ fn ClassLayout::relation_label_layout(
   relation : Relation,
   text_metrics : ClassTextMetrics,
 ) -> RelationLabelLayout {
-  match self.graphviz {
-    Some(graphviz) =>
-      for label_layout in graphviz.relation_labels {
-        if label_layout.relation_index == relation_index {
-          return label_layout
-        }
+  if self.graphviz is Some(graphviz) {
+    for label_layout in graphviz.relation_labels {
+      if label_layout.relation_index == relation_index {
+        return label_layout
       }
-    None => ()
+    }
   }
   fallback_relation_label_layout(
     self, diagram, relation_index, relation, text_metrics,

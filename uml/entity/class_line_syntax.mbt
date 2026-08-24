@@ -282,9 +282,10 @@ fn Parser::consume_braced_block(
       (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
       self.parse_line(self.lines[self.index])
-      match self.last_entity {
-        Some(code) => if !members.contains(code) { members.push(code) }
-        None => ()
+      if self.last_entity is Some(code) {
+        if !members.contains(code) {
+          members.push(code)
+        }
       }
     } else {
       let resolved = self.resolve(reference)

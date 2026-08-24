@@ -338,23 +338,21 @@ fn collapsible_relation_style(
       ),
     )
   }
-  match layout.mindmap {
-    Some(mindmap) =>
-      for structure_index, edge in mindmap.structure_edges {
-        output.write_string(
-          collapsible_edge_css(
-            diagram,
-            layout,
-            text_metrics,
-            class_member_collapsible,
-            -1 - structure_index,
-            Some(edge.left_entity),
-            Some(edge.right_entity),
-            false,
-          ),
-        )
-      }
-    None => ()
+  if layout.mindmap is Some(mindmap) {
+    for structure_index, edge in mindmap.structure_edges {
+      output.write_string(
+        collapsible_edge_css(
+          diagram,
+          layout,
+          text_metrics,
+          class_member_collapsible,
+          -1 - structure_index,
+          Some(edge.left_entity),
+          Some(edge.right_entity),
+          false,
+        ),
+      )
+    }
   }
   output.to_string()
 }
@@ -508,12 +506,9 @@ fn append_relation(
   layout : ClassLayout,
   class_member_collapsible : Bool,
 ) -> Unit {
-  match layout.mindmap {
-    // The mindmap tree edges are painted as structure edges; every other
-    // relation is dropped so non-root nodes keep exactly one edge.
-    Some(_) => return
-    None => ()
-  }
+  // The mindmap tree edges are painted as structure edges; every other
+  // relation is dropped so non-root nodes keep exactly one edge.
+  guard layout.mindmap is None else { return }
   let usecase = diagram.family.is_usecase()
   let left_index = entity_index(diagram, relation.left)
   let right_index = entity_index(diagram, relation.right)
@@ -574,11 +569,9 @@ fn append_relation(
   let (left_endpoint, right_endpoint) = edge_endpoints.unwrap_or(
     ((x1, y1), (x2, y2)),
   )
-  match relation.url {
-    Some(url) =>
-      output <+
-        $|<a href="\{@svg.xml_escape(url)}">
-    None => ()
+  if relation.url is Some(url) {
+    output <+
+      $|<a href="\{@svg.xml_escape(url)}">
   }
   let mut drew_spline = false
   match layout.graphviz {
@@ -729,8 +722,7 @@ fn append_relation(
   append_relation_qualifiers(
     output, relation, left_endpoint, right_endpoint, text_metrics,
   )
-  match relation.url {
-    Some(_) => output.write_string("</a>\n")
-    None => ()
+  if relation.url is Some(_) {
+    output.write_string("</a>\n")
   }
 }

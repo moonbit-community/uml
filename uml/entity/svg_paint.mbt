@@ -10,45 +10,40 @@ fn append_packages(
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
 ) -> Unit {
-  match layout.graphviz {
-    Some(graphviz) =>
-      for package_layout in graphviz.packages {
-        guard package_layout.package_index < diagram.packages.length() else {
-          continue
-        }
-        let group = diagram.packages[package_layout.package_index]
-        // Symbol packages are painted by `append_symbol_packages` instead.
-        guard group.symbol is None else { continue }
-        let fill = @svg.svg_color(
-          group.color,
-          package_background_color(diagram.style),
-        )
-        let tab_width = text_metrics.regular.measure(group.display).width.to_double() +
-          18.0
-        let x = package_layout.x
-        let y = package_layout.y
-        let right = x + package_layout.width
-        let bottom = y + package_layout.height
-        let border_color = package_border_color(diagram.style)
-        output <+
-          $|<g class="package">
-          $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + PACKAGE_TAB_HEIGHT} L \{right - 2.5} \{y + PACKAGE_TAB_HEIGHT} Q \{right} \{y + PACKAGE_TAB_HEIGHT} \{right} \{y + PACKAGE_TAB_HEIGHT + 2.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
-          $|<line x1="\{x}" y1="\{y + PACKAGE_TAB_HEIGHT}" x2="\{x + tab_width + 1.5}" y2="\{y + PACKAGE_TAB_HEIGHT}" style="stroke:\{border_color}"/>
-          $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text>
-        match group.stereotype {
-          Some(stereotype) => {
-            let display = @parse.display_stereotype(stereotype)
-            let metrics = text_metrics.italic.measure(display)
-            let stereotype_x = x +
-              (package_layout.width - metrics.width.to_double()) / 2.0
-            output <+
-              $|<text x="\{stereotype_x}" y="\{y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double()}" class="package-stereotype">\{@svg.xml_escape(display)}</text>
-          }
-          None => ()
-        }
-        output.write_string("</g>\n")
+  if layout.graphviz is Some(graphviz) {
+    for package_layout in graphviz.packages {
+      guard package_layout.package_index < diagram.packages.length() else {
+        continue
       }
-    None => ()
+      let group = diagram.packages[package_layout.package_index]
+      // Symbol packages are painted by `append_symbol_packages` instead.
+      guard group.symbol is None else { continue }
+      let fill = @svg.svg_color(
+        group.color,
+        package_background_color(diagram.style),
+      )
+      let tab_width = text_metrics.regular.measure(group.display).width.to_double() +
+        18.0
+      let x = package_layout.x
+      let y = package_layout.y
+      let right = x + package_layout.width
+      let bottom = y + package_layout.height
+      let border_color = package_border_color(diagram.style)
+      output <+
+        $|<g class="package">
+        $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + PACKAGE_TAB_HEIGHT} L \{right - 2.5} \{y + PACKAGE_TAB_HEIGHT} Q \{right} \{y + PACKAGE_TAB_HEIGHT} \{right} \{y + PACKAGE_TAB_HEIGHT + 2.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
+        $|<line x1="\{x}" y1="\{y + PACKAGE_TAB_HEIGHT}" x2="\{x + tab_width + 1.5}" y2="\{y + PACKAGE_TAB_HEIGHT}" style="stroke:\{border_color}"/>
+        $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text>
+      if group.stereotype is Some(stereotype) {
+        let display = @parse.display_stereotype(stereotype)
+        let metrics = text_metrics.italic.measure(display)
+        let stereotype_x = x +
+          (package_layout.width - metrics.width.to_double()) / 2.0
+        output <+
+          $|<text x="\{stereotype_x}" y="\{y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double()}" class="package-stereotype">\{@svg.xml_escape(display)}</text>
+      }
+      output.write_string("</g>\n")
+    }
   }
 }
 
@@ -113,18 +108,16 @@ fn lollipop_attachment_direction(
     } else {
       None
     }
-    match other {
-      Some(other) =>
-        if entity_index(diagram, other) is Some(other_index) {
-          let (ox, oy, ow, oh) = layout.entity_rect(
-            diagram, other_index, text_metrics,
-          )
-          return (
-            (ox + ow / 2 - center.0).to_double(),
-            (oy + oh / 2 - center.1).to_double(),
-          )
-        }
-      None => ()
+    if other is Some(other) {
+      if entity_index(diagram, other) is Some(other_index) {
+        let (ox, oy, ow, oh) = layout.entity_rect(
+          diagram, other_index, text_metrics,
+        )
+        return (
+          (ox + ow / 2 - center.0).to_double(),
+          (oy + oh / 2 - center.1).to_double(),
+        )
+      }
     }
   }
   (0.0, -1.0)
@@ -274,11 +267,9 @@ fn append_object_like_entity(
   }
   output <+
     $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  match entity.url {
-    Some(url) =>
-      output <+
-        $|<a href="\{@svg.xml_escape(url)}">
-    None => ()
+  if entity.url is Some(url) {
+    output <+
+      $|<a href="\{@svg.xml_escape(url)}">
   }
   output <+
     $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="\{OBJECT_ROUND_CORNER}" ry="\{OBJECT_ROUND_CORNER}" fill="\{fill}" \{line_attributes}/>
@@ -388,9 +379,8 @@ fn append_object_like_entity(
     }
     ClassCompartments | NoBody => panic()
   }
-  match entity.url {
-    Some(_) => output.write_string("</a>")
-    None => ()
+  if entity.url is Some(_) {
+    output.write_string("</a>")
   }
   output.write_string("</g>\n")
 }
@@ -530,11 +520,9 @@ fn append_usecase_entity(
   }
   output <+
     $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  match entity.url {
-    Some(url) =>
-      output <+
-        $|<a href="\{@svg.xml_escape(url)}">
-    None => ()
+  if entity.url is Some(url) {
+    output <+
+      $|<a href="\{@svg.xml_escape(url)}">
   }
   match entity.kind {
     Usecase | BusinessUsecase => {
@@ -632,9 +620,8 @@ fn append_usecase_entity(
     }
     _ => ()
   }
-  match entity.url {
-    Some(_) => output.write_string("</a>")
-    None => ()
+  if entity.url is Some(_) {
+    output.write_string("</a>")
   }
   output.write_string("</g>\n")
 }

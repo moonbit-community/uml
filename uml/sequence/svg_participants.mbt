@@ -7,10 +7,8 @@ fn append_participant(
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
   let fill = svg_color(layout.participant.color, layout.defaults)
-  match layout.participant.url {
-    Some(url) =>
-      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
-    None => ()
+  if layout.participant.url is Some(url) {
+    output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
   }
   output <+
     $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{@svg.xml_escape(layout.participant.code)}">
@@ -205,20 +203,18 @@ fn append_participant_box(
   let height = (diagram_layout.height - y - 5).max(22)
   output <+
     $|<rect x="\{left}" y="\{y}" width="\{right - left}" height="\{height}" class="participant-box-group" fill="\{svg_color(box.color, diagram_layout.defaults)}"/>
-  match box.label {
-    Some(label) =>
-      append_text(
-        output,
-        left + 8,
-        y + 13,
-        label,
-        "participant-box-label",
-        diagram_layout.defaults,
-        anchor="start",
-        line_height=first.text_metrics.small_bold.line_height,
-        font_metrics=Some(first.text_metrics.small_bold),
-      )
-    None => ()
+  if box.label is Some(label) {
+    append_text(
+      output,
+      left + 8,
+      y + 13,
+      label,
+      "participant-box-label",
+      diagram_layout.defaults,
+      anchor="start",
+      line_height=first.text_metrics.small_bold.line_height,
+      font_metrics=Some(first.text_metrics.small_bold),
+    )
   }
 }
 

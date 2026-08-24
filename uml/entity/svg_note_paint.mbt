@@ -365,26 +365,22 @@ fn collapsible_note_style(
     guard note.target_kind is EntityNote || note.target_kind is MemberTip else {
       continue
     }
-    match entity_index(diagram, note.target) {
-      Some(target_index) =>
-        match
-          relation_endpoint_header(
-            layout, diagram, target_index, text_metrics, collapsible,
-          ) {
-          Some(_) =>
-            for bit in 0..<2 {
-              let condition = if bit == 1 {
-                ":has(.class-node[data-node-index=\"\{target_index}\"] details:not([open]))"
-              } else {
-                ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
-              }
-              output.write_string(
-                "svg\{condition} > g[data-note-index=\"\{note_index}\"] > .note-state-\{bit}{display:block}\n",
-              )
-            }
-          None => ()
+    if entity_index(diagram, note.target) is Some(target_index) {
+      if relation_endpoint_header(
+          layout, diagram, target_index, text_metrics, collapsible,
+        )
+        is Some(_) {
+        for bit in 0..<2 {
+          let condition = if bit == 1 {
+            ":has(.class-node[data-node-index=\"\{target_index}\"] details:not([open]))"
+          } else {
+            ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
+          }
+          output.write_string(
+            "svg\{condition} > g[data-note-index=\"\{note_index}\"] > .note-state-\{bit}{display:block}\n",
+          )
         }
-      None => ()
+      }
     }
   }
   output.to_string()

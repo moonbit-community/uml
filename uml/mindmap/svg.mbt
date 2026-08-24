@@ -128,10 +128,9 @@ fn append_mindmap_node(
   }
   let defaults = diagram.style.defaults()
   let fill = @svg.svg_color(
-    match idea.background_color {
-      Some(color) => Some(color)
-      None => node_style.background_color
-    },
+    idea.background_color.map_or(node_style.background_color, color => {
+      Some(color)
+    }),
     defaults.node,
   )
   let line_color = @svg.svg_color(node_style.line_color, defaults.line)
@@ -187,10 +186,9 @@ pub fn MindmapDiagram::render_svg(
   let font_family = self.style.font_family()
   let font_size = self.style.font_size()
   let arrow_color = @svg.svg_color(
-    match self.mindmap_style.arrow.line_color {
-      Some(color) => Some(color)
-      None => self.style.line_color
-    },
+    self.mindmap_style.arrow.line_color.map_or(self.style.line_color, color => {
+      Some(color)
+    }),
     self.style.defaults().line,
   )
   let arrow_thickness = self.mindmap_style.arrow.line_thickness.unwrap_or(1)

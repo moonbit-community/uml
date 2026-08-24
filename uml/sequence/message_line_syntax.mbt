@@ -491,13 +491,11 @@ fn take_exo_arrow_dressing(
 fn take_part_ref(cursor : @parse.Cursor) -> PartRef? {
   let start = cursor.offset()
   if cursor.peek() == Some('"') {
-    match cursor.take_quoted_value() {
-      Some(display) =>
-        return match take_alias_code(cursor) {
-          Some(code) => Some({ code, display })
-          None => Some({ code: display, display })
-        }
-      None => ()
+    if cursor.take_quoted_value() is Some(display) {
+      return match take_alias_code(cursor) {
+        Some(code) => Some({ code, display })
+        None => Some({ code: display, display })
+      }
     }
   }
   let code = cursor.take_while(is_ident_char)

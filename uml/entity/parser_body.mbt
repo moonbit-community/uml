@@ -276,10 +276,9 @@ fn Parser::consume_json_body_line(
 /// stored source and its ordered tree come from the first successful parse.
 fn complete_json_source(wrapped : String, bare : String) -> (String, JsonNode)? {
   let wrapped_tree = Some(parse_json_tree(wrapped)) catch { _ => None }
-  match wrapped_tree {
-    Some(tree) => Some((wrapped, tree))
-    None => Some((bare, parse_json_tree(bare))) catch { _ => None }
-  }
+  wrapped_tree.map_or(Some((bare, parse_json_tree(bare))) catch { _ => None }, tree => {
+    Some((wrapped, tree))
+  })
 }
 
 ///|
@@ -302,9 +301,8 @@ fn Parser::consume_entity_body_line(
       self.raise_parse_error("map definition should contain key => value")
     }
     self.set_map_entry(entity_index, syntax.entry)
-    match syntax.arrow {
-      Some(arrow) => self.add_map_link(entity, syntax.entry, arrow)
-      None => ()
+    if syntax.arrow is Some(arrow) {
+      self.add_map_link(entity, syntax.entry, arrow)
     }
     return
   }

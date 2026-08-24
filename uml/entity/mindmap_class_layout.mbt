@@ -36,10 +36,8 @@ priv struct MindmapClassEdge {
 fn creates_cycle(parent : Array[Int?], source : Int, target : Int) -> Bool {
   let mut current = target
   while current != source {
-    match parent[current] {
-      Some(next) => current = next
-      None => return false
-    }
+    guard parent[current] is Some(next) else { return false }
+    current = next
   }
   true
 }
@@ -81,9 +79,8 @@ fn EntityDiagram::mindmap_class_layout(
     children.push([])
   }
   for entity_index, p in parent {
-    match p {
-      Some(par) => children[par].push(entity_index)
-      None => ()
+    if p is Some(par) {
+      children[par].push(entity_index)
     }
   }
   let roots : Array[Int] = []

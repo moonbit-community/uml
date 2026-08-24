@@ -607,15 +607,13 @@ fn StateDiagram::layout_scope(
         width,
         height,
       })
-      match visible.child {
-        Some(child) =>
-          append_shifted_fragment(
-            output,
-            child,
-            node_x + STATE_INTERNAL_PADDING,
-            node_y + STATE_HEADER_HEIGHT,
-          )
-        None => ()
+      if visible.child is Some(child) {
+        append_shifted_fragment(
+          output,
+          child,
+          node_x + STATE_INTERNAL_PADDING,
+          node_y + STATE_HEADER_HEIGHT,
+        )
       }
     }
   }
@@ -700,10 +698,7 @@ fn StateDiagram::correct_note_side(
   }
   guard note_index < self.notes.length() else { return layout }
   let position = self.notes[note_index].position
-  match position {
-    Some(NoteLeft) | Some(NoteRight) => ()
-    _ => return layout
-  }
+  guard position is (Some(NoteLeft) | Some(NoteRight)) else { return layout }
   guard self.note_anchor(self.notes[note_index], scope) is Some(anchor) else {
     return layout
   }
@@ -712,9 +707,10 @@ fn StateDiagram::correct_note_side(
   }
   let note_center = note.x + note.width / 2.0
   let anchor_center = anchor_x + anchor_w / 2.0
-  let on_correct_side = match position {
-    Some(NoteLeft) => note_center <= anchor_center
-    _ => note_center >= anchor_center
+  let on_correct_side = if position is Some(NoteLeft) {
+    note_center <= anchor_center
+  } else {
+    note_center >= anchor_center
   }
   if on_correct_side {
     return layout
@@ -724,9 +720,10 @@ fn StateDiagram::correct_note_side(
   } else {
     anchor_x - (note.x + note.width)
   }
-  let corrected_x = match position {
-    Some(NoteLeft) => anchor_x - gap - note.width
-    _ => anchor_x + anchor_w + gap
+  let corrected_x = if position is Some(NoteLeft) {
+    anchor_x - gap - note.width
+  } else {
+    anchor_x + anchor_w + gap
   }
   { ..layout, x: corrected_x }
 }

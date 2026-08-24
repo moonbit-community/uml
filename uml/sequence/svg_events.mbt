@@ -88,19 +88,17 @@ fn append_delay(
 ) -> Unit {
   let y = placement.y + 14
   append_line(output, 28, y, layout.width - 28, y, "delay")
-  match delay.label {
-    Some(label) =>
-      append_text(
-        output,
-        layout.width / 2,
-        y - 5,
-        label,
-        "delay-label",
-        layout.defaults,
-        line_height=layout.text_metrics.body.line_height,
-        font_metrics=Some(layout.text_metrics.body),
-      )
-    None => ()
+  if delay.label is Some(label) {
+    append_text(
+      output,
+      layout.width / 2,
+      y - 5,
+      label,
+      "delay-label",
+      layout.defaults,
+      line_height=layout.text_metrics.body.line_height,
+      font_metrics=Some(layout.text_metrics.body),
+    )
   }
 }
 
@@ -240,29 +238,28 @@ fn append_event(
         placement.y + 20,
         "page-break",
       )
-      match page.title {
-        Some(title) =>
-          append_text(
-            output,
-            layout.width / 2,
-            placement.y + 14,
-            title,
-            "page-label",
-            layout.defaults,
-            line_height=layout.text_metrics.body_italic.line_height,
-            font_metrics=Some(layout.text_metrics.body_italic),
-          )
-        None => ()
+      if page.title is Some(title) {
+        append_text(
+          output,
+          layout.width / 2,
+          placement.y + 14,
+          title,
+          "page-label",
+          layout.defaults,
+          line_height=layout.text_metrics.body_italic.line_height,
+          font_metrics=Some(layout.text_metrics.body_italic),
+        )
       }
     }
     LinkAnchor => ()
     AutoNewpage(size) =>
-      match size {
-        Some(height) =>
+      size.map_or_else(
+        () => output.write_string("<metadata class=\"auto-newpage\"/>\n"),
+        height => {
           output <+
-            $|<metadata class="auto-newpage" data-height="\{height}"/>
-        None => output.write_string("<metadata class=\"auto-newpage\"/>\n")
-      }
+            $|<metadata class="auto-newpage" data-height="\{height}"/>,
+        },
+      )
     GroupingStart(_)
     | GroupingLeaf(_)
     | LifeEvent(_)

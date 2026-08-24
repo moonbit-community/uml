@@ -78,10 +78,7 @@ fn ArrowHead::marker(self : ArrowHead, start : Bool) -> String {
 /// The message link URL: the message's own URL, falling back to the URL of
 /// an attached on-arrow note, mirroring `AbstractMessage.getUrl()`.
 fn link_url(own : String?, note : String?) -> String? {
-  match own {
-    Some(url) => Some(url)
-    None => note
-  }
+  own.map_or(note, url => Some(url))
 }
 
 ///|
@@ -97,15 +94,11 @@ fn append_message(
   // Java merges the stereotype into the arrow style signature
   // (AbstractMessage.getStyleSignature); the modeled style set has no
   // stereotype-tagged arrow styles, so the tag changes nothing visible.
-  if message.stereotype is Some(_) {
-    ()
-  }
+  let _ = message.stereotype
   // Java's `AbstractMessage.getUrl()` falls back to the URL of an attached
   // on-arrow note, wrapping the arrow in the note's link as well.
-  match link_url(message.url, note_url) {
-    Some(url) =>
-      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
-    None => ()
+  if link_url(message.url, note_url) is Some(url) {
+    output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
   }
   let y = placement.y + MESSAGE_ARROW_OFFSET
   let label = message.rendered_label(placement.number)
@@ -113,11 +106,9 @@ fn append_message(
   let line_class = "message\{dotted}"
   let start_y = y
   let end_y = y
-  match message.anchor {
-    Some(anchor) =>
-      output <+
-        $|<g id="\{@svg.xml_escape(anchor)}" class="message-anchor">
-    None => ()
+  if message.anchor is Some(anchor) {
+    output <+
+      $|<g id="\{@svg.xml_escape(anchor)}" class="message-anchor">
   }
   if from.participant.code == to.participant.code {
     let loop_x = from.center_x + 34
@@ -207,10 +198,8 @@ fn append_exo_message(
   guard layout.participant_at(message.participant_code) is Some(participant) else {
     return
   }
-  match link_url(message.url, note_url) {
-    Some(url) =>
-      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
-    None => ()
+  if link_url(message.url, note_url) is Some(url) {
+    output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
   }
   let y = placement.y + MESSAGE_ARROW_OFFSET
   let (outside_x, participant_x) = match message.exo_type {
