@@ -4,9 +4,8 @@ fn node_for(
   idea_index : Int,
 ) -> @render.NodeLayout {
   for node in layout.nodes {
-    if node.idea_index == idea_index {
-      return node
-    }
+    guard node.idea_index == idea_index else { continue }
+    return node
   }
   abort("missing mindmap node")
 }
@@ -17,9 +16,8 @@ fn edge_for(
   child_index : Int,
 ) -> @render.EdgeLayout {
   for edge in layout.edges {
-    if edge.child_index == child_index {
-      return edge
-    }
+    guard edge.child_index == child_index else { continue }
+    return edge
   }
   abort("missing mindmap edge")
 }
@@ -33,6 +31,18 @@ fn rectangles_overlap(
   right.x < left.x + left.width &&
   left.y < right.y + right.height &&
   right.y < left.y + left.height
+}
+
+///|
+fn expect_nodes_disjoint(layout : @render.MindmapLayout) -> Unit raise {
+  for left_index in 0..<layout.nodes.length() {
+    for right_index in (left_index + 1)..<layout.nodes.length() {
+      @test.assert_eq(
+        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
+        false,
+      )
+    }
+  }
 }
 
 ///|
@@ -73,14 +83,7 @@ test "layout separates sibling subtrees without fixed coordinates" {
     "* Root\n** First\n*** First leaf\n** Second\n*** Second leaf",
   )
   let layout = @render.layout_mindmap(diagram)
-  for left_index in 0..<layout.nodes.length() {
-    for right_index in (left_index + 1)..<layout.nodes.length() {
-      @test.assert_eq(
-        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
-        false,
-      )
-    }
-  }
+  expect_nodes_disjoint(layout)
   @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
   @test.assert_eq(layout.width > 0 && layout.height > 0, true)
 }
@@ -91,15 +94,8 @@ test "layout keeps multiple roots and both branch directions disjoint" {
     "* First root\n++ Right branch\n-- Left branch\n* Second root\n** Child",
   )
   let layout = @render.layout_mindmap(diagram)
+  expect_nodes_disjoint(layout)
   @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
-  for left_index in 0..<layout.nodes.length() {
-    for right_index in (left_index + 1)..<layout.nodes.length() {
-      @test.assert_eq(
-        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
-        false,
-      )
-    }
-  }
   let first_root = node_for(layout, 0)
   let second_root = node_for(layout, 3)
   @test.assert_eq(first_root.y + first_root.height <= second_root.y, true)
@@ -166,14 +162,7 @@ test "generic layout_tree packs explicit items without overlap" {
   let layout = @render.layout_tree(items, [0])
   @test.assert_eq(layout.nodes.length(), items.length())
   @test.assert_eq(layout.edges.length(), 3)
-  for left_index in 0..<layout.nodes.length() {
-    for right_index in (left_index + 1)..<layout.nodes.length() {
-      @test.assert_eq(
-        rectangles_overlap(layout.nodes[left_index], layout.nodes[right_index]),
-        false,
-      )
-    }
-  }
+  expect_nodes_disjoint(layout)
 }
 
 ///|
@@ -223,10 +212,9 @@ test "width emulation leaves the rendered font size untouched" {
 
 ///|
 test "generic layout_tree keeps one edge per non-root node" {
-  // 17 nodes: 0 = root, children of 0 = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15},
-  // node 1 has children {16}, etc. Mirror the mbti 05-activity shape.
+  // 17 nodes: root 0 with children {1..15}, node 1 with child 16.
+  // Mirrors the mbti 05-activity shape.
   let items : Array[@render.LayoutItem] = []
-  // root
   items.push({
     width: 100,
     height: 30,
@@ -237,7 +225,7 @@ test "generic layout_tree keeps one edge per non-root node" {
     left_children: [],
     right_children: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
   })
-  for _ in 0..<15 {
+  for _ in 0..<16 {
     items.push({
       width: 60,
       height: 30,
@@ -249,16 +237,6 @@ test "generic layout_tree keeps one edge per non-root node" {
       right_children: [],
     })
   }
-  items.push({
-    width: 60,
-    height: 30,
-    margin_left: 10,
-    margin_right: 10,
-    margin_top: 10,
-    margin_bottom: 10,
-    left_children: [],
-    right_children: [],
-  })
   items[1] = { ..items[1], right_children: [16], }
   let layout = @render.layout_tree(items, [0])
   @test.assert_eq(layout.edges.length(), items.length() - 1)

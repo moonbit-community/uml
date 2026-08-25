@@ -227,3 +227,67 @@ test "render_svg renders every diagram family" {
     @test.assert_eq(render_svg(source).length() > 0, true)
   }
 }
+
+///|
+test "explicit default theme preserves SVG output" {
+  let sources = [
+    "@startuml\nparticipant Alice\nAlice -> Bob : hello\n@enduml", "@startuml\nclass User {\n- secret\n}\n@enduml",
+  ]
+  for source in sources {
+    @test.assert_eq(
+      render_svg(source),
+      render_svg(source, color_scheme=@style.ColorScheme::default()),
+    )
+  }
+}
+
+///|
+test "document rendering delegates through the parsed diagram boundary" {
+  let source = "@startuml\nparticipant Alice\nAlice -> Bob : hello\n@enduml"
+  let document = parse(source)
+  @test.assert_eq(document.render_svg(), document.diagram.render_svg())
+}
+
+///|
+test "dot parse extracts the DOT source between markers" {
+  let source =
+    #|@startdot
+    #|digraph G {
+    #|  a -> b;
+    #|}
+    #|@enduml
+  let diagram = parse_dot_source(source)
+  @test.assert_eq(diagram.source, "digraph G {\n  a -> b;\n}\n")
+}
+
+///|
+test "dot parse keeps text outside markers out of the source" {
+  let source =
+    #|@startdot
+    #|digraph G { a -> b; }
+    #|@enddot
+  let diagram = parse_dot_source(source)
+  @test.assert_eq(diagram.source, "digraph G { a -> b; }\n")
+}
+
+///|
+test "dot parse without markers uses the whole input" {
+  let diagram = parse_dot_source("digraph G { a -> b; }")
+  @test.assert_eq(diagram.source, "digraph G { a -> b; }")
+}
+
+///|
+test "dot render surfaces invalid DOT source as an error" {
+  let source =
+    #|@startdot
+    #|digraph G { a -> b
+    #|@enduml
+  let diagram = parse_dot_source(source)
+  let failed = try {
+    let _ = diagram.render_svg()
+    false
+  } catch {
+    _ => true
+  }
+  @test.assert_eq(failed, true)
+}
