@@ -295,7 +295,7 @@ fn append_edges(output : StringBuilder, node : PlacedNode) -> Unit {
 }
 
 ///|
-fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
+fn structured_append_node(output : StringBuilder, node : PlacedNode) -> Unit {
   output.write_string("<g class=\"structured-node\">\n<rect\n")
   output <+
     "  x=\"\{node.x}\" y=\"\{node.y}\" width=\"\{node.metrics.width}\"\n"
@@ -343,7 +343,7 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
   output.write_string("</g>\n")
   for pair in node.children {
     let (_, child) = pair
-    append_node(output, child)
+    structured_append_node(output, child)
   }
 }
 
@@ -413,7 +413,7 @@ fn @structured.StructuredDiagram::render_svg(
   )
   output.write_char('\n')
   append_edges(output, root)
-  append_node(output, root)
+  structured_append_node(output, root)
   output.write_string("</svg>\n")
   output.to_string()
 }

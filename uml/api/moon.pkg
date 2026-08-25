@@ -5,7 +5,7 @@ import {
   "kokic/uml/render",
   "kokic/uml/render",
   "kokic/uml/structured",
-  "kokic/uml/structured_family",
+  "kokic/uml/render",
   "kokic/uml/render",
   "kokic/uml/tree",
   "kokic/uml/seq",

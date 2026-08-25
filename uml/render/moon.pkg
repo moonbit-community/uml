@@ -8,6 +8,7 @@ import {
   "kokic/uml/graphviz",
   "kokic/uml/metrics",
   "kokic/uml/parse",
+  "kokic/uml/structured",
   "kokic/uml/style",
   "kokic/uml/svg",
   "kokic/uml/tree",

@@ -197,7 +197,7 @@ fn append_region(
 }
 
 ///|
-fn append_node(
+fn activity_append_node(
   output : @svg.XmlWriter,
   layout : ActivityLayout,
   node_layout : ActivityNodeLayout,
@@ -385,7 +385,7 @@ fn @flow.ActivityDiagram::render_svg(
   layout.regions.each(region => append_region(output, region, font_metrics))
   layout.edges.each(edge => append_edge(output, layout, edge, small_metrics))
   layout.nodes.each(node => {
-    append_node(output, layout, node, font_metrics, small_metrics)
+    activity_append_node(output, layout, node, font_metrics, small_metrics)
   })
   output.close()
   output.to_string()

@@ -51,7 +51,7 @@ pub fn Diagram::render_svg(
     Mbti(diagram) =>
       @render.render_mbti_svg(diagram, color_scheme~, class_member_collapsible~)
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
-      @structured_family.render_structured_svg(diagram, color_scheme~)
+      @render.render_structured_svg(diagram, color_scheme~)
     Dot(diagram) => diagram.render_svg()
   }
 }
