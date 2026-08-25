@@ -3,11 +3,7 @@
 pub enum Diagram {
   Sequence(@seq.SequenceDiagram)
   Activity(@flow.ActivityDiagram)
-  Class(@entity.EntityDiagram)
-  Object(@entity.EntityDiagram)
-  Component(@entity.EntityDiagram)
-  Deployment(@entity.EntityDiagram)
-  UseCase(@entity.EntityDiagram)
+  Entity(@entity.EntityDiagram)
   State(@flow.StateDiagram)
   Mindmap(@tree.MindmapDiagram)
   Mbti(@entity.MbtiDiagram)
@@ -85,11 +81,7 @@ pub fn Diagram::render_svg(
   match self {
     Sequence(diagram) => @render.render_sequence_svg(diagram, color_scheme~)
     Activity(diagram) => @render.render_activity_svg(diagram, color_scheme~)
-    Class(diagram)
-    | Object(diagram)
-    | Component(diagram)
-    | UseCase(diagram)
-    | Deployment(diagram) =>
+    Entity(diagram) =>
       @render.render_entity_svg(
         diagram,
         color_scheme~,
@@ -110,11 +102,15 @@ pub fn Document::kind(self : Document) -> DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
     Activity(_) => Activity
-    Class(_) => Class
-    Object(_) => Object
-    Component(_) => Component
-    Deployment(_) => Deployment
-    UseCase(_) => UseCase
+    Entity(diagram) =>
+      match diagram.family {
+        ClassDiagram => Class
+        ObjectDiagram => Object
+        ComponentDiagram => Component
+        DeploymentDiagram => Deployment
+        UseCaseDiagram => UseCase
+        Mbti => Mbti
+      }
     State(_) => State
     Mindmap(_) => Mindmap
     Mbti(_) => Mbti
@@ -152,19 +148,7 @@ pub fn parse(source : String) -> Document raise {
       { diagram: State(@parser.parse_state(source)), }
     _ if entity_family_from_lines(meaningful_source_lines(source))
       is Some(family) =>
-      match family {
-        ClassDiagram =>
-          { diagram: Class(@parser.parse_entity(source, family~)), }
-        ObjectDiagram =>
-          { diagram: Object(@parser.parse_entity(source, family~)), }
-        ComponentDiagram =>
-          { diagram: Component(@parser.parse_entity(source, family~)), }
-        UseCaseDiagram =>
-          { diagram: UseCase(@parser.parse_entity(source, family~)), }
-        DeploymentDiagram =>
-          { diagram: Deployment(@parser.parse_entity(source, family~)), }
-        Mbti => raise @parse.SyntaxError(1, "unreachable mbti family")
-      }
+      { diagram: Entity(@parser.parse_entity(source, family~)), }
     _ => raise @parse.SyntaxError(1, "unknown diagram")
   }
 }
