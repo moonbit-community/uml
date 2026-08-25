@@ -129,7 +129,7 @@ test "acceptance corpus matches the installed plantuml" {
   for index in 0..<cases.length() {
     let (name, expected, body) = cases[index]
     let outcome = try {
-      ignore(parse("@startuml\n" + body + "@enduml"))
+      ignore(parse_timing("@startuml\n" + body + "@enduml"))
       "OK"
     } catch {
       _ => "ERR"

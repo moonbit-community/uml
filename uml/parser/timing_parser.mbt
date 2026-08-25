@@ -1,13 +1,13 @@
 ///|
 /// The parsing context mirroring `@flow.TimingDiagram` as mutated by the commands.
-priv struct Parser {
+priv struct TimingParser {
   diagram : @flow.TimingDiagram
   lines : Array[String]
   mut index : Int
 }
 
 ///|
-fn Parser::new(input : String) -> Parser {
+fn TimingParser::new(input : String) -> TimingParser {
   {
     diagram: {
       players: [],
@@ -33,17 +33,23 @@ fn Parser::new(input : String) -> Parser {
 }
 
 ///|
-fn Parser::line_number(self : Parser) -> Int {
+fn TimingParser::line_number(self : TimingParser) -> Int {
   self.index + 1
 }
 
 ///|
-fn Parser::error(self : Parser, message : String) -> @parse.ParseError {
+fn TimingParser::error(
+  self : TimingParser,
+  message : String,
+) -> @parse.ParseError {
   @parse.SyntaxError(self.line_number(), message)
 }
 
 ///|
-fn Parser::player(self : Parser, code : String) -> @flow.TimingPlayer? {
+fn TimingParser::player(
+  self : TimingParser,
+  code : String,
+) -> @flow.TimingPlayer? {
   self.diagram.player(code)
 }
 
@@ -57,8 +63,8 @@ fn take_rest(cursor : @parse.Cursor) -> String {
 }
 
 ///|
-fn Parser::require_player(
-  self : Parser,
+fn TimingParser::require_player(
+  self : TimingParser,
   code : String,
 ) -> @flow.TimingPlayer raise @parse.ParseError {
   guard self.player(code) is Some(player) else {
@@ -117,8 +123,8 @@ fn add_time_mark(diagram : @flow.TimingDiagram, tick : @flow.TimeTick) -> Unit {
 }
 
 ///|
-fn Parser::add_time(
-  self : Parser,
+fn TimingParser::add_time(
+  self : TimingParser,
   tick : @flow.TimeTick,
   code : String?,
 ) -> Unit {
@@ -192,8 +198,8 @@ fn parse_analog_value(value : String) -> String {
 /// matching subclass: state players decode codes to labels, binary players
 /// convert to `1`/`0`, analog players keep a numeric value and also use it as
 /// their initial state when none exists yet.
-fn Parser::set_player_state(
-  self : Parser,
+fn TimingParser::set_player_state(
+  self : TimingParser,
   player : @flow.TimingPlayer,
   when : @flow.TimeTick?,
   states : Array[String],
@@ -313,7 +319,7 @@ fn parse_declaration_tail(cursor : @parse.Cursor) -> (String?, String?) {
   skip_spaces(cursor)
   let stereotype = parse_stereotype(cursor)
   skip_spaces(cursor)
-  let color = parse_color(cursor)
+  let color = timing_parse_color(cursor)
   skip_spaces(cursor)
   (stereotype, color)
 }
@@ -321,8 +327,8 @@ fn parse_declaration_tail(cursor : @parse.Cursor) -> (String?, String?) {
 ///|
 /// Creates a player, mirroring `createPlayerRobust` and friends: the new
 /// player becomes the current one.
-fn Parser::declare_player(
-  self : Parser,
+fn TimingParser::declare_player(
+  self : TimingParser,
   code : String,
   title : String,
   kind : @flow.PlayerKind,
@@ -359,8 +365,8 @@ fn Parser::declare_player(
 /// Consumes the common style blocks and directives, mirroring the commands of
 /// `CommonCommands.addCommonCommands1` that the shared style machinery knows.
 /// Returns true when the line was consumed.
-fn Parser::consume_common_directive(
-  self : Parser,
+fn TimingParser::consume_common_directive(
+  self : TimingParser,
   line : String,
 ) -> Bool raise @parse.ParseError {
   let lower = line.to_lower()
@@ -456,8 +462,8 @@ fn parse_common_scale(line : String) -> String? {
 }
 
 ///|
-fn Parser::consume_text_block(
-  self : Parser,
+fn TimingParser::consume_text_block(
+  self : TimingParser,
   kind : String,
 ) -> Unit raise @parse.ParseError {
   let start = self.index
@@ -481,7 +487,9 @@ fn Parser::consume_text_block(
 }
 
 ///|
-fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
+fn TimingParser::parse_line(
+  self : TimingParser,
+) -> Unit raise @parse.ParseError {
   let trimmed = self.lines[self.index].trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
@@ -506,8 +514,8 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
     parse_at_time(self, @parse.Cursor::new(trimmed)) ||
     parse_at_player(self, @parse.Cursor::new(trimmed)) ||
     parse_time_message(self, @parse.Cursor::new(trimmed)) ||
-    parse_note(self, @parse.Cursor::new(trimmed)) ||
-    parse_note_long(self, @parse.Cursor::new(trimmed)) ||
+    timing_parse_note(self, @parse.Cursor::new(trimmed)) ||
+    timing_parse_note_long(self, @parse.Cursor::new(trimmed)) ||
     parse_constraint(self, @parse.Cursor::new(trimmed)) ||
     parse_scale_pixel(self, @parse.Cursor::new(trimmed)) ||
     parse_hide_time_axis(self, @parse.Cursor::new(trimmed)) ||
@@ -527,8 +535,10 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
 /// Commands are matched in the registration order of
 /// `TimingDiagramFactory.initCommandsList`, and each command follows the
 /// regex grammar and side effects of its Java `Command` counterpart.
-pub fn parse(input : String) -> @flow.TimingDiagram raise @parse.ParseError {
-  let parser = Parser::new(input)
+pub fn parse_timing(
+  input : String,
+) -> @flow.TimingDiagram raise @parse.ParseError {
+  let parser = TimingParser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()
     parser.index += 1

@@ -51,7 +51,7 @@ fn is_state_code_char(char : Char) -> Bool {
 
 ///|
 /// `\w`: ASCII letters, digits and underscore.
-fn is_word_char(char : Char) -> Bool {
+fn timing_is_word_char(char : Char) -> Bool {
   (char >= 'a' && char <= 'z') ||
   (char >= 'A' && char <= 'Z') ||
   (char >= '0' && char <= '9') ||
@@ -277,7 +277,7 @@ fn[T] with_state_spec(
 ///|
 /// Matches a Java `\w+` run.
 fn take_word(cursor : @parse.Cursor) -> String {
-  cursor.take_while(is_word_char)
+  cursor.take_while(timing_is_word_char)
 }
 
 ///|
@@ -354,7 +354,7 @@ fn match_multi_color(cursor : @parse.Cursor) -> String? {
         continue
       }
       guard cursor.peek() is None ||
-        !(is_word_char(cursor.peek().unwrap()) ||
+        !(timing_is_word_char(cursor.peek().unwrap()) ||
         cursor.peek().unwrap() == ';' ||
         cursor.peek().unwrap() == ':' ||
         cursor.peek().unwrap() == '.') else {
@@ -376,7 +376,7 @@ fn match_multi_color(cursor : @parse.Cursor) -> String? {
 ///|
 /// Matches a color expression, mirroring `ColorParser.COLORS_REGEXP`: the
 /// multi-color form first, then the simple `#\w+[-\\|/]?\w+` form.
-fn parse_color(cursor : @parse.Cursor) -> String? {
+fn timing_parse_color(cursor : @parse.Cursor) -> String? {
   let checkpoint = cursor.offset()
   match match_multi_color(cursor) {
     Some(color) => Some(color)

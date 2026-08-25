@@ -1,7 +1,7 @@
 ///|
 /// `robust`, `concise` and `rectangle` player declarations, mirroring
 /// `CommandRobustConcise`.
-fn parse_robust_concise(parser : Parser, cursor : @parse.Cursor) -> Bool {
+fn parse_robust_concise(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
   let compact = take_compact(cursor)
   let kind = if match_keyword(cursor, "robust") {
     @flow.PlayerKind::Robust
@@ -55,7 +55,7 @@ fn parse_positive_decimal(cursor : @parse.Cursor) -> String? {
 ///
 /// A clock adds its period as a time mark and otherwise behaves like every
 /// other player declaration.
-fn parse_clock(parser : Parser, cursor : @parse.Cursor) -> Bool {
+fn parse_clock(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
   let compact = take_compact(cursor)
   guard match_keyword(cursor, "clock") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -159,7 +159,7 @@ fn parse_bound_number(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// `analog` player declarations, mirroring `CommandAnalog`.
-fn parse_analog(parser : Parser, cursor : @parse.Cursor) -> Bool {
+fn parse_analog(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
   let compact = take_compact(cursor)
   guard match_keyword(cursor, "analog") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -207,7 +207,7 @@ fn parse_analog(parser : Parser, cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// `binary` player declarations, mirroring `CommandBinary`.
-fn parse_binary(parser : Parser, cursor : @parse.Cursor) -> Bool {
+fn parse_binary(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
   let compact = take_compact(cursor)
   guard match_keyword(cursor, "binary") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -246,7 +246,7 @@ fn parse_binary(parser : Parser, cursor : @parse.Cursor) -> Bool {
 ///|
 /// `CODE has STATE(,STATE)*`, mirroring `CommandDefineStateShort`.
 fn parse_define_state_short(
-  parser : Parser,
+  parser : TimingParser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
   guard with_player_code(cursor, code => {
@@ -282,7 +282,7 @@ fn parse_define_state_short(
 ///|
 /// `CODE has "LABEL" as STATE`, mirroring `CommandDefineStateLong`.
 fn parse_define_state_long(
-  parser : Parser,
+  parser : TimingParser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
   guard with_player_code(cursor, code => {
@@ -316,7 +316,7 @@ fn parse_define_state_long(
 /// optional `: comment`, end of line.
 fn parse_change_state_tail(cursor : @parse.Cursor) -> (String?, String?)? {
   skip_spaces(cursor)
-  let color = parse_color(cursor)
+  let color = timing_parse_color(cursor)
   skip_spaces(cursor)
   let comment = if cursor.consume(':') {
     skip_spaces(cursor)
@@ -334,7 +334,7 @@ fn parse_change_state_tail(cursor : @parse.Cursor) -> (String?, String?)? {
 /// recorded at the current diagram time, which makes it the initial state
 /// before any time mark exists.
 fn parse_change_state_by_player_code(
-  parser : Parser,
+  parser : TimingParser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
   guard with_player_code(cursor, code => {
@@ -362,7 +362,7 @@ fn parse_change_state_by_player_code(
 /// `CODE ticks (every|num on multiple) N`, mirroring `CommandTicks`: the
 /// interval only applies to analog players and is silently ignored otherwise.
 fn parse_ticks(
-  parser : Parser,
+  parser : TimingParser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
   guard with_full_code(cursor, code => {
@@ -397,7 +397,7 @@ fn parse_ticks(
 ///|
 /// `CODE is N pixel(s) height`, mirroring `CommandPixelHeight`.
 fn parse_pixel_height(
-  parser : Parser,
+  parser : TimingParser,
   cursor : @parse.Cursor,
 ) -> Bool raise @parse.ParseError {
   guard with_full_code(cursor, code => {

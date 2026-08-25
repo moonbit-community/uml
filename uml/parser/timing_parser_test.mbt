@@ -1,6 +1,6 @@
 ///|
 test "player declarations keep kind, title and registration order" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nrobust R\nconcise C\nrectangle Rc\nbinary B\nanalog \"Voltage\" as V\nclock \"Ticker\" as Clk with period 4\n@enduml",
   )
   @test.assert_eq(diagram.players.map(player => player.kind), [
@@ -22,7 +22,7 @@ test "player declarations keep kind, title and registration order" {
 
 ///|
 test "clock respects the compact flag" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nclock \"T\" as Clk with period 4\ncompact clock \"T\" as Clk2 with period 2\n@enduml",
   )
   @test.assert_eq(diagram.player("Clk").unwrap().compact, false)
@@ -31,7 +31,7 @@ test "clock respects the compact flag" {
 
 ///|
 test "state changes before any time mark become the initial state" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nrobust R\nR has \"Inactive\" as idle\nR is idle\n@3\nR is busy\n@enduml",
   )
   let player = diagram.player("R").unwrap()
@@ -47,7 +47,7 @@ test "state changes before any time mark become the initial state" {
 
 ///|
 test "binary and analog players convert their state values" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nbinary B\nB is high\nanalog \"V\" as A\nA is 0.25\n@2\nA is 1e-1\n@enduml",
   )
   let binary = diagram.player("B").unwrap()
@@ -60,7 +60,7 @@ test "binary and analog players convert their state values" {
 
 ///|
 test "time marks stay sorted and deduplicated" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nrobust R\n@5\nR is a\n@3\nR is b\n@5\nR is c\n@enduml",
   )
   let values = diagram.time_marks.map(mark => decimal_to_plain_string(mark.time))
@@ -69,7 +69,7 @@ test "time marks stay sorted and deduplicated" {
 
 ///|
 test "time codes, messages, constraints, highlights and notes keep their targets" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nrobust A\nbinary B\nA has \"Waiting\" as wait\n@5 as :start\nA is wait\nA@:start-->B\nA@:start<--->@8 : setup\nhighlight 0 to 10 : warmup\nnote top of A : single\nnote bottom of B\nmulti\nline\nend note\n@enduml",
   )
   let coded = diagram.code_value("start").unwrap()
@@ -96,7 +96,7 @@ test "rejected forms mirror the installed plantuml behavior" {
   ]
   for source in rejected {
     let outcome = try {
-      ignore(parse("@startuml\n" + source + "\n@enduml"))
+      ignore(parse_timing("@startuml\n" + source + "\n@enduml"))
       "ok"
     } catch {
       _ => "error"
@@ -107,7 +107,7 @@ test "rejected forms mirror the installed plantuml behavior" {
 
 ///|
 test "initial state overwrites and duplicate changes keep the first entry" {
-  let diagram = parse(
+  let diagram = parse_timing(
     "@startuml\nrobust R\nR is a\nR is b\n@3\nR is c\n@3\nR is d\n@enduml",
   )
   let player = diagram.player("R").unwrap()

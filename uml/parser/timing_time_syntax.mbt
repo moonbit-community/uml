@@ -160,7 +160,10 @@ fn[T] with_time_expr(
 ///|
 /// Resolves a time expression against the diagram state, mirroring
 /// `TimeTickBuilder.parseTimeTick`.
-fn resolve_time_expr(parser : Parser, expr : TimeExpr?) -> @flow.TimeTick? {
+fn resolve_time_expr(
+  parser : TimingParser,
+  expr : TimeExpr?,
+) -> @flow.TimeTick? {
   match expr {
     None => parser.diagram.now
     Some(expr) =>
