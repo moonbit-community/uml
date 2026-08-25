@@ -50,8 +50,10 @@ fn StateEdgeLayout::has_drawable_path(self : StateEdgeLayout) -> Bool {
 
 ///|
 test "circle and cross decorations render at the semantic transition ends" {
-  let svg = render_state(
-    "@startuml\nA x--> B\nC -->o D\nE o <-- F\nG <--x H\n@enduml",
+  let svg = render_state_svg(
+    @parser.parse_state(
+      "@startuml\nA x--> B\nC -->o D\nE o <-- F\nG <--x H\n@enduml",
+    ),
   )
   @test.assert_eq(
     count_substring(svg, "marker-start=\"url(#state-cross-start)\""),

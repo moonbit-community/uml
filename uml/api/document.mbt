@@ -46,7 +46,7 @@ pub fn Diagram::render_svg(
         color_scheme~,
         class_member_collapsible~,
       )
-    State(diagram) => @state.render_state_svg(diagram, color_scheme~)
+    State(diagram) => @render.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @render.render_mindmap_svg(diagram, color_scheme~)
     Mbti(diagram) =>
       @entity_family.render_mbti_svg(
