@@ -208,6 +208,51 @@ pub fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
 }
 
 ///|
+/// The image contract of a description symbol leaf: a box with a symbol
+/// painted by the description renderer, without compartments or ports.
+fn description_leaf_capability() -> EntityRenderCapability {
+  {
+    renderer: DescriptionRenderer,
+    header: DescriptionHeader,
+    body: NoBody,
+    shape: Box,
+    ports: NoPorts,
+    spot: NoSpot,
+    renders_stereotype: true,
+    relation_endpoint: ShapeBoundaryEndpoint,
+    style_role: DescriptionStyle,
+  }
+}
+
+///|
+/// The description kinds that render as a plain box symbol leaf, without a
+/// dedicated renderer (use-case, actor, component, port) or a non-box shape.
+fn EntityKind::is_description_symbol_kind(self : EntityKind) -> Bool {
+  self
+  is (Person
+  | Artifact
+  | Folder
+  | Card
+  | File
+  | Rectangle
+  | Label
+  | Frame
+  | Action
+  | Process
+  | Stack
+  | Storage
+  | Agent
+  | Boundary
+  | Control
+  | Collections
+  | Database
+  | Queue
+  | Node
+  | Cloud
+  | Circle)
+}
+
+///|
 /// Mirrors `GeneralImageBuilder`'s `LeafType` image dispatch. Diagram-family
 /// policy is deliberately not used here, so a mixed `object` remains an object
 /// image instead of inheriting class compartments from its surrounding source.
@@ -319,85 +364,17 @@ pub fn EntityKind::render_capability(
       }
     Interface if family
       is (ComponentDiagram | DeploymentDiagram | UseCaseDiagram) =>
-      {
-        renderer: DescriptionRenderer,
-        header: DescriptionHeader,
-        body: NoBody,
-        shape: Box,
-        ports: NoPorts,
-        spot: NoSpot,
-        renders_stereotype: true,
-        relation_endpoint: ShapeBoundaryEndpoint,
-        style_role: DescriptionStyle,
-      }
+      description_leaf_capability()
     Entity if family is (ComponentDiagram | DeploymentDiagram | UseCaseDiagram) =>
-      {
-        renderer: DescriptionRenderer,
-        header: DescriptionHeader,
-        body: NoBody,
-        shape: Box,
-        ports: NoPorts,
-        spot: NoSpot,
-        renders_stereotype: true,
-        relation_endpoint: ShapeBoundaryEndpoint,
-        style_role: DescriptionStyle,
-      }
+      description_leaf_capability()
     Port | PortIn | PortOut =>
       {
+        ..description_leaf_capability(),
         renderer: PortRenderer,
-        header: DescriptionHeader,
-        body: NoBody,
-        shape: Box,
-        ports: NoPorts,
-        spot: NoSpot,
         renders_stereotype: false,
-        relation_endpoint: ShapeBoundaryEndpoint,
-        style_role: DescriptionStyle,
       }
-    Person
-    | Artifact
-    | Folder
-    | Card
-    | File
-    | Rectangle
-    | Label
-    | Frame
-    | Action
-    | Process
-    | Stack
-    | Storage
-    | Agent
-    | Boundary
-    | Control
-    | Collections
-    | Database
-    | Queue
-    | Node
-    | Cloud
-    | Circle =>
-      {
-        renderer: DescriptionRenderer,
-        header: DescriptionHeader,
-        body: NoBody,
-        shape: Box,
-        ports: NoPorts,
-        spot: NoSpot,
-        renders_stereotype: true,
-        relation_endpoint: ShapeBoundaryEndpoint,
-        style_role: DescriptionStyle,
-      }
-    Hexagon =>
-      {
-        renderer: DescriptionRenderer,
-        header: DescriptionHeader,
-        body: NoBody,
-        shape: Hexagon,
-        ports: NoPorts,
-        spot: NoSpot,
-        renders_stereotype: true,
-        relation_endpoint: ShapeBoundaryEndpoint,
-        style_role: DescriptionStyle,
-      }
+    _ if self.is_description_symbol_kind() => description_leaf_capability()
+    Hexagon => { ..description_leaf_capability(), shape: Hexagon, }
     _ =>
       {
         renderer: ClassRenderer,
