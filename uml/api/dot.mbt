@@ -18,21 +18,21 @@ fn dot_source_between_markers(input : String) -> String {
   let mut has_markers = false
   for line in input.split("\n") {
     let marker = line.trim().to_lower()
-    if marker == "@startdot" {
+    guard marker != "@startdot" else {
       has_markers = true
       inside_markers = true
-    } else if (marker == "@enduml" || marker == "@enddot") && inside_markers {
-      inside_markers = false
-    } else if !has_markers || inside_markers {
-      output.write_string(line.to_owned())
-      output.write_char('\n')
+      continue
     }
+    guard !((marker == "@enduml" || marker == "@enddot") && inside_markers) else {
+      inside_markers = false
+      continue
+    }
+    guard !has_markers || inside_markers else { continue }
+    output.write_string(line.to_owned())
+    output.write_char('\n')
   }
-  if has_markers {
-    output.to_string()
-  } else {
-    input
-  }
+  guard has_markers else { input }
+  output.to_string()
 }
 
 ///|
