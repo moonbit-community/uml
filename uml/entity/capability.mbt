@@ -30,79 +30,55 @@ pub(all) struct EntityFamilyCapability {
 }
 
 ///|
+fn base_capability(
+  unclosed_body_message : String,
+  aria_label : String,
+) -> EntityFamilyCapability {
+  {
+    parser_allow_mixing: false,
+    unclosed_body_message,
+    aria_label,
+    usecase_relation_style: false,
+    class_members_collapsible: false,
+    paint_order: RelationsBeforeEntities,
+    renders_packages: true,
+    renders_notes: true,
+    description_only: false,
+  }
+}
+
+///|
 pub fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
   match self {
     ClassDiagram =>
       {
-        parser_allow_mixing: false,
-        unclosed_body_message: "unclosed class body",
-        aria_label: "Class diagram",
-        usecase_relation_style: false,
+        ..base_capability("unclosed class body", "Class diagram"),
         class_members_collapsible: true,
-        paint_order: RelationsBeforeEntities,
-        renders_packages: true,
-        renders_notes: true,
-        description_only: false,
       }
-    ObjectDiagram =>
-      {
-        parser_allow_mixing: false,
-        unclosed_body_message: "unclosed class body",
-        aria_label: "Object diagram",
-        usecase_relation_style: false,
-        class_members_collapsible: false,
-        paint_order: RelationsBeforeEntities,
-        renders_packages: true,
-        renders_notes: true,
-        description_only: false,
-      }
+    ObjectDiagram => base_capability("unclosed class body", "Object diagram")
     ComponentDiagram =>
       {
+        ..base_capability("unclosed component body", "Component diagram"),
         parser_allow_mixing: true,
-        unclosed_body_message: "unclosed component body",
-        aria_label: "Component diagram",
-        usecase_relation_style: false,
-        class_members_collapsible: false,
-        paint_order: RelationsBeforeEntities,
-        renders_packages: true,
-        renders_notes: true,
-        description_only: false,
       }
     UseCaseDiagram =>
       {
+        ..base_capability("unclosed use-case body", "Use case diagram"),
         parser_allow_mixing: true,
-        unclosed_body_message: "unclosed use-case body",
-        aria_label: "Use case diagram",
         usecase_relation_style: true,
-        class_members_collapsible: false,
         paint_order: EntitiesBeforeRelations,
-        renders_packages: true,
-        renders_notes: true,
-        description_only: false,
       }
     DeploymentDiagram =>
       {
+        ..base_capability("unclosed element body", "Deployment diagram"),
         parser_allow_mixing: true,
-        unclosed_body_message: "unclosed element body",
-        aria_label: "Deployment diagram",
-        usecase_relation_style: false,
-        class_members_collapsible: false,
         paint_order: EntitiesBeforeRelations,
-        renders_packages: true,
-        renders_notes: true,
         description_only: true,
       }
     Mbti =>
       {
-        parser_allow_mixing: false,
-        unclosed_body_message: "unclosed type body",
-        aria_label: "Mbti diagram",
-        usecase_relation_style: false,
+        ..base_capability("unclosed type body", "Mbti diagram"),
         class_members_collapsible: true,
-        paint_order: RelationsBeforeEntities,
-        renders_packages: true,
-        renders_notes: true,
-        description_only: false,
       }
   }
 }
