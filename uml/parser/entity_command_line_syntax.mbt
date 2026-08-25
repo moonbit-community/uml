@@ -18,7 +18,7 @@ let symbol_package_keywords : FixedArray[String] = [
 ]
 
 ///|
-fn package_keyword(cursor : @parse.Cursor) -> Bool? {
+fn package_keyword(cursor : @tokenizer.Cursor) -> Bool? {
   if consume_inline_keyword(cursor, "package") {
     Some(false)
   } else if consume_inline_keyword(cursor, "namespace") {
@@ -29,7 +29,7 @@ fn package_keyword(cursor : @parse.Cursor) -> Bool? {
 }
 
 ///|
-fn symbol_package_keyword(cursor : @parse.Cursor) -> String? {
+fn symbol_package_keyword(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard take_inline_word(cursor) is Some(word) else { return None }
   let lower = word.to_lower()
@@ -43,7 +43,7 @@ fn symbol_package_keyword(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn symbol_package_body(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool)? {
   guard take_declaration_name_and_suffixes(cursor) is Some((name, metadata)) else {
     return None
@@ -59,7 +59,7 @@ fn symbol_package_body(
 }
 
 ///|
-fn symbol_package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+fn symbol_package_line(cursor : @tokenizer.Cursor) -> ClassCommandLineSyntax? {
   let start = cursor.offset()
   let visibility = declaration_visibility(cursor)
   guard symbol_package_keyword(cursor) is Some(symbol) else {
@@ -98,7 +98,7 @@ fn symbol_package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
 
 ///|
 fn package_body(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool)? {
   guard take_declaration_name_and_suffixes(cursor) is Some((name, metadata)) else {
     return None
@@ -109,7 +109,7 @@ fn package_body(
 }
 
 ///|
-fn package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+fn package_line(cursor : @tokenizer.Cursor) -> ClassCommandLineSyntax? {
   let start = cursor.offset()
   let visibility = declaration_visibility(cursor)
   guard package_keyword(cursor) is Some(is_namespace) else {
@@ -145,18 +145,18 @@ fn package_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
 
 ///|
 fn stereotype_assignment_line(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> ClassCommandLineSyntax? {
   let start = cursor.offset()
   let code = match cursor.take_quoted_value() {
-    Some(value) => @parse.unquote_identifier(value)
+    Some(value) => @tokenizer.unquote_identifier(value)
     None => {
       let value = cursor.take_while(char => !char.is_whitespace() && char != '<')
       guard value.length() > 0 else {
         ignore(cursor.restore(start))
         return None
       }
-      @parse.unquote_identifier(value)
+      @tokenizer.unquote_identifier(value)
     }
   }
   guard cursor.skip_inline_space1() else {
@@ -175,19 +175,19 @@ fn stereotype_assignment_line(
 }
 
 ///|
-fn url_assignment_target(cursor : @parse.Cursor) -> String? {
+fn url_assignment_target(cursor : @tokenizer.Cursor) -> String? {
   match cursor.take_quoted_value() {
-    Some(value) => Some(@parse.unquote_identifier(value))
+    Some(value) => Some(@tokenizer.unquote_identifier(value))
     None => {
       let value = cursor.take_while(char => !char.is_whitespace() && char != '[')
       guard value.length() > 0 else { return None }
-      Some(@parse.unquote_identifier(value))
+      Some(@tokenizer.unquote_identifier(value))
     }
   }
 }
 
 ///|
-fn url_assignment_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+fn url_assignment_line(cursor : @tokenizer.Cursor) -> ClassCommandLineSyntax? {
   let start = cursor.offset()
   guard consume_inline_keyword(cursor, "url") && cursor.skip_inline_space1() else {
     ignore(cursor.restore(start))
@@ -226,7 +226,7 @@ fn url_assignment_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
 }
 
 ///|
-fn class_command_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
+fn class_command_line(cursor : @tokenizer.Cursor) -> ClassCommandLineSyntax? {
   if symbol_package_line(cursor) is Some(value) {
     return Some(value)
   }
@@ -245,7 +245,7 @@ fn EntityParser::apply_package_declaration(
   group : @entity.GroupDeclaration,
 ) -> Unit {
   let parent = self.current_package()
-  let segments = @parse.split_unquoted(group.code, '.')
+  let segments = @tokenizer.split_unquoted(group.code, '.')
   let mut prefix = parent
   for segment_index, segment in segments {
     let qualified_name = if prefix.length() == 0 {
@@ -303,7 +303,7 @@ fn EntityParser::apply_package_declaration(
 fn EntityParser::apply_class_command(
   self : EntityParser,
   syntax : ClassCommandLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   match syntax {
     ParsedPackage(group) => self.apply_package_declaration(group)
     ParsedInvalidSymbolPackage =>

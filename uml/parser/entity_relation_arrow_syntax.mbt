@@ -16,7 +16,7 @@ priv struct RelationArrowCandidate {
 
 ///|
 fn take_relation_decor(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   decorations : Array[(String, @entity.RelationEnd)],
 ) -> String? {
   for entry in decorations {
@@ -28,7 +28,7 @@ fn take_relation_decor(
 }
 
 ///|
-fn take_style(cursor : @parse.Cursor) -> String? {
+fn take_style(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('[') else { return None }
   let value = cursor.take_while(char => char != ']')
@@ -40,7 +40,7 @@ fn take_style(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn take_direction(cursor : @parse.Cursor) -> String? {
+fn take_direction(cursor : @tokenizer.Cursor) -> String? {
   let symbols = [
     "right", "down", "left", "up", "ri", "do", "le", "r", "d", "l", "u",
   ]
@@ -53,7 +53,7 @@ fn take_direction(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn relation_stroke(cursor : @parse.Cursor) -> RelationStroke? {
+fn relation_stroke(cursor : @tokenizer.Cursor) -> RelationStroke? {
   let first = cursor.take_while(char => "-=.".contains_char(char))
   guard first.length() > 0 else { return None }
   let first_style = take_style(cursor)
@@ -73,7 +73,7 @@ fn relation_stroke(cursor : @parse.Cursor) -> RelationStroke? {
 }
 
 ///|
-fn take_inside(cursor : @parse.Cursor) -> String? {
+fn take_inside(cursor : @tokenizer.Cursor) -> String? {
   let symbols = ["(0)", "(0", "0)", "0"]
   for symbol in symbols {
     let sym_start = cursor.offset()
@@ -89,7 +89,7 @@ fn take_inside(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn relation_arrow_candidate(cursor : @parse.Cursor) -> RelationArrowCandidate? {
+fn relation_arrow_candidate(cursor : @tokenizer.Cursor) -> RelationArrowCandidate? {
   let start = cursor.offset()
   let left = take_relation_decor(cursor, left_relation_decorations)
   guard relation_stroke(cursor) is Some(stroke) else {
@@ -111,7 +111,7 @@ fn relation_arrow_candidate(cursor : @parse.Cursor) -> RelationArrowCandidate? {
 }
 
 ///|
-fn relation_non_single_arrow(cursor : @parse.Cursor) -> String? {
+fn relation_non_single_arrow(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard relation_arrow_candidate(cursor) is Some(candidate) else { return None }
   if candidate.first_length >= 2 ||

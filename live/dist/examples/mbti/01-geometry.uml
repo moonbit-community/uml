@@ -20,7 +20,6 @@ trait ShapeLike : Show + Eq {
 trait Show {
   fn to_string(Self) -> String
 }
-trait Eq
 impl ShapeLike for Point;
 impl ShapeLike for Shape;
 fn Point::origin(Self) -> Bool

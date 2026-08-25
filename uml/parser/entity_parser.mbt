@@ -8,17 +8,17 @@ fn EntityParser::finish_entity(self : EntityParser) -> Unit {
 fn EntityParser::parse_line(
   self : EntityParser,
   line : String,
-) -> Unit raise @parse.ParseError {
-  let line = @parse.strip_line_comment(line).trim().to_owned()
+) -> Unit raise @tokenizer.ParseError {
+  let line = @tokenizer.strip_line_comment(line).trim().to_owned()
   guard line.length() > 0 else { return }
-  match @parse.common_block_terminator(line) {
+  match @tokenizer.common_block_terminator(line) {
     Some(terminator) => {
       self.consume_common_block(terminator)
       return
     }
     None => ()
   }
-  match @parse.parse_namespace_separator(line) {
+  match @tokenizer.parse_namespace_separator(line) {
     Some(separator) => {
       self.namespace_separator = separator
       self.style.apply(
@@ -52,7 +52,7 @@ fn EntityParser::parse_line(
 fn parse_with_family(
   input : String,
   family : @entity.EntityFamily,
-) -> @entity.EntityDiagram raise @parse.ParseError {
+) -> @entity.EntityDiagram raise @tokenizer.ParseError {
   let parser = EntityParser::new(
     input,
     allow_mixing=family.allow_mixing(),
@@ -90,7 +90,7 @@ fn parse_with_family(
 pub fn parse_entity(
   input : String,
   family? : @entity.EntityFamily = ClassDiagram,
-) -> @entity.EntityDiagram raise @parse.ParseError {
+) -> @entity.EntityDiagram raise @tokenizer.ParseError {
   parse_with_family(input, family)
 }
 
@@ -127,7 +127,7 @@ fn EntityParser::new(
   family? : @entity.EntityFamily = ClassDiagram,
 ) -> EntityParser {
   {
-    lines: @parse.preprocess(input)
+    lines: @tokenizer.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array(),
@@ -162,22 +162,22 @@ fn EntityParser::current_package(self : EntityParser) -> String {
 
 ///|
 fn EntityParser::line_number(self : EntityParser) -> Int {
-  @parse.line_span(self.index + 1).line
+  @tokenizer.line_span(self.index + 1).line
 }
 
 ///|
 fn EntityParser::diagnostic(
   self : EntityParser,
   message : String,
-) -> @parse.ParseDiagnostic {
-  @parse.diagnostic_at_line(self.line_number(), message)
+) -> @tokenizer.ParseDiagnostic {
+  @tokenizer.diagnostic_at_line(self.line_number(), message)
 }
 
 ///|
 fn[A] EntityParser::raise_parse_error(
   self : EntityParser,
   message : String,
-) -> A raise @parse.ParseError {
+) -> A raise @tokenizer.ParseError {
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }

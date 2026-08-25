@@ -26,7 +26,7 @@ fn require_block(
   expected : BlockKind,
   line : Int,
   command : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   guard stack.last() is Some(actual) && actual == expected else {
     raise SyntaxError(
       line,
@@ -41,7 +41,7 @@ fn pop_block(
   expected : BlockKind,
   line : Int,
   command : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   require_block(stack, expected, line, command)
   let _ = stack.pop()
 }
@@ -55,12 +55,12 @@ fn command_text(line : String, prefix : String) -> String {
 fn parse_note(
   lines : Array[String],
   start : Int,
-) -> (String, Int) raise @parse.ParseError {
+) -> (String, Int) raise @tokenizer.ParseError {
   let mut index = start + 1
-  guard @parse.collect_lines_until(
+  guard @tokenizer.collect_lines_until(
       () => {
         guard index < lines.length() else { return None }
-        let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
+        let line = @tokenizer.strip_line_comment(lines[index]).trim().to_owned()
         index += 1
         Some(line)
       },
@@ -84,8 +84,8 @@ fn is_activity_arrow(line : String) -> Bool {
 /// commands are rejected rather than being silently treated as activities.
 pub fn parse_activity(
   input : String,
-) -> @flow.ActivityDiagram raise @parse.ParseError {
-  let lines = @parse.preprocess(input)
+) -> @flow.ActivityDiagram raise @tokenizer.ParseError {
+  let lines = @tokenizer.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array()
@@ -95,7 +95,7 @@ pub fn parse_activity(
   let mut index = 0
   while index < lines.length() {
     let line_number = index + 1
-    let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
+    let line = @tokenizer.strip_line_comment(lines[index]).trim().to_owned()
     let lower = line.to_lower()
     if line.length() == 0 ||
       lower == "@startuml" ||
@@ -112,7 +112,7 @@ pub fn parse_activity(
           guard index < lines.length() else { return None }
           let line = lines[index]
           index += 1
-          Some(@parse.strip_line_comment(line).trim().to_owned())
+          Some(@tokenizer.strip_line_comment(line).trim().to_owned())
         },
         directive => style.apply(directive),
       )

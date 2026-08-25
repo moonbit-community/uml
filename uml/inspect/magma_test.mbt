@@ -134,10 +134,10 @@ test "port clusters pin inputs to the source rank" {
   )
   let port_y = (code : String) => {
     let marker = "class=\"port-node\" data-code=\"\{code}\""
-    match @parse.find_unquoted_literal(svg, marker) {
+    match @tokenizer.find_unquoted_literal(svg, marker) {
       Some(start) => {
         let segment = svg[start:].to_owned()
-        match @parse.find_unquoted_literal(segment, "y=\"") {
+        match @tokenizer.find_unquoted_literal(segment, "y=\"") {
           Some(y_start) => {
             let y_value = segment[y_start + 3:]
             let y_token = y_value.split("\"").nth(0).unwrap_or("")
@@ -150,14 +150,14 @@ test "port clusters pin inputs to the source rank" {
     }
   }
   let title_y = () => {
-    match @parse.find_unquoted_literal(svg, "class=\"package-title\"") {
+    match @tokenizer.find_unquoted_literal(svg, "class=\"package-title\"") {
       Some(start) => {
         // The title's own `y="` sits before its class attribute; scan the
         // prefix for the last occurrence.
         let prefix = svg[:start].to_owned()
         let mut y_pos : Int? = None
         let mut offset = 0
-        while @parse.find_unquoted_literal(prefix[offset:].to_owned(), "y=\"")
+        while @tokenizer.find_unquoted_literal(prefix[offset:].to_owned(), "y=\"")
               is Some(at) {
           y_pos = Some(offset + at)
           offset = offset + at + 3

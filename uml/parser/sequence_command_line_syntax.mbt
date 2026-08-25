@@ -1,6 +1,6 @@
 ///|
 /// Matches a participant type keyword.
-fn participant_type(cursor : @parse.Cursor) -> @seq.ParticipantType? {
+fn participant_type(cursor : @tokenizer.Cursor) -> @seq.ParticipantType? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
@@ -23,7 +23,7 @@ fn participant_type(cursor : @parse.Cursor) -> @seq.ParticipantType? {
 
 ///|
 /// Matches a group keyword.
-fn group_keyword(cursor : @parse.Cursor) -> @seq.GroupKeyword? {
+fn group_keyword(cursor : @tokenizer.Cursor) -> @seq.GroupKeyword? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
@@ -47,7 +47,7 @@ fn group_keyword(cursor : @parse.Cursor) -> @seq.GroupKeyword? {
 
 ///|
 /// Matches the `as` alias keyword, which must not be part of an identifier.
-fn take_as_keyword(cursor : @parse.Cursor) -> Bool {
+fn take_as_keyword(cursor : @tokenizer.Cursor) -> Bool {
   let start = cursor.offset()
   guard cursor.consume_literal("as") else { return false }
   if cursor.peek() is Some(char) && is_ident_char(char) {
@@ -59,7 +59,7 @@ fn take_as_keyword(cursor : @parse.Cursor) -> Bool {
 }
 
 ///|
-fn take_alias_code(cursor : @parse.Cursor) -> String? {
+fn take_alias_code(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   guard take_as_keyword(cursor) else {
@@ -78,12 +78,12 @@ fn take_alias_code(cursor : @parse.Cursor) -> String? {
 ///|
 
 ///|
-fn alias_ref(cursor : @parse.Cursor, name : String) -> PartRef? {
+fn alias_ref(cursor : @tokenizer.Cursor, name : String) -> PartRef? {
   take_alias_code(cursor).map(code => { code, display: name, })
 }
 
 ///|
-fn participant_decl_ref(cursor : @parse.Cursor) -> PartRef? {
+fn participant_decl_ref(cursor : @tokenizer.Cursor) -> PartRef? {
   let start = cursor.offset()
   if cursor.peek() == Some('"') {
     match cursor.take_quoted_value() {
@@ -129,7 +129,7 @@ fn participant_decl_ref(cursor : @parse.Cursor) -> PartRef? {
 
 ///|
 /// Matches an optional `#color` token introduced by a single space.
-fn optional_color(cursor : @parse.Cursor) -> String? {
+fn optional_color(cursor : @tokenizer.Cursor) -> String? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() {
     match cursor.take_color_value() {
@@ -146,7 +146,7 @@ fn optional_color(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches an optional digit run introduced by a single space.
-fn optional_digit_run(cursor : @parse.Cursor) -> Int? {
+fn optional_digit_run(cursor : @tokenizer.Cursor) -> Int? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() {
     let digits = cursor.take_while(Char::is_ascii_digit)
@@ -163,7 +163,7 @@ fn optional_digit_run(cursor : @parse.Cursor) -> Int? {
 
 ///|
 /// Matches an optional alphabetic run introduced by a single space.
-fn optional_alpha_run(cursor : @parse.Cursor) -> String? {
+fn optional_alpha_run(cursor : @tokenizer.Cursor) -> String? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() {
     let value = cursor.take_while(Char::is_ascii_alphabetic)
@@ -180,7 +180,7 @@ fn optional_alpha_run(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches an optional quoted value introduced by a single space.
-fn optional_quoted(cursor : @parse.Cursor) -> String? {
+fn optional_quoted(cursor : @tokenizer.Cursor) -> String? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() {
     if cursor.peek() == Some('"') {
@@ -202,7 +202,7 @@ fn optional_quoted(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn participant_declaration_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   typ : @seq.ParticipantType,
   reference : PartRef,
   created : Bool,
@@ -220,7 +220,7 @@ fn participant_declaration_tail(
 }
 
 ///|
-fn optional_order(cursor : @parse.Cursor) -> Int? {
+fn optional_order(cursor : @tokenizer.Cursor) -> Int? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() &&
     take_keyword(cursor, "order") &&
@@ -239,7 +239,7 @@ fn optional_order(cursor : @parse.Cursor) -> Int? {
 }
 
 ///|
-fn optional_url(cursor : @parse.Cursor) -> String? {
+fn optional_url(cursor : @tokenizer.Cursor) -> String? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() {
     match cursor.take_url_value() {
@@ -256,7 +256,7 @@ fn optional_url(cursor : @parse.Cursor) -> String? {
 
 ///|
 fn participant_declaration_line_syntax(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> ParticipantDecl? {
   let start = cursor.offset()
   if take_keyword(cursor, "create") {
@@ -319,7 +319,7 @@ fn participant_declaration_line_syntax(
 
 ///|
 fn life_event_line_syntax(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   keyword : String,
   event_type : @seq.ActivationSpec,
 ) -> @seq.Event? {
@@ -347,7 +347,7 @@ fn life_event_line_syntax(
 }
 
 ///|
-fn deactivate_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn deactivate_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "deactivate") {
     cursor.skip_inline_spaces()
@@ -360,7 +360,7 @@ fn deactivate_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 }
 
 ///|
-fn box_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn box_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "end") {
     if cursor.skip_inline_space1() && take_keyword(cursor, "box") {
@@ -382,11 +382,11 @@ fn box_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(@seq.BoxStart({ label: @parse.normalize_label(label), color, }))
+  Some(@seq.BoxStart({ label: @tokenizer.normalize_label(label), color, }))
 }
 
 ///|
-fn grouping_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn grouping_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   let parallel = cursor.consume('&')
   cursor.skip_inline_spaces()
@@ -415,7 +415,7 @@ fn grouping_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
         Some(
           @seq.GroupingLeaf({
             is_end: false,
-            label: @parse.normalize_label(label),
+            label: @tokenizer.normalize_label(label),
             back_color,
           }),
         )
@@ -436,7 +436,7 @@ fn grouping_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 }
 
 ///|
-fn divider_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn divider_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   guard cursor.consume_literal("==") else { return None }
   let title = StringBuilder()
@@ -462,7 +462,7 @@ fn divider_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 }
 
 ///|
-fn delay_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn delay_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   let delimiter = if cursor.starts_with_literal("...") {
     Some("...")
@@ -499,11 +499,11 @@ fn delay_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(@seq.Delay({ label: @parse.normalize_label(label.to_string()), }))
+  Some(@seq.Delay({ label: @tokenizer.normalize_label(label.to_string()), }))
 }
 
 ///|
-fn hspace_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn hspace_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   guard cursor.consume_literal("||") else { return None }
   let raw_pixels = cursor.take_while(Char::is_ascii_digit)
@@ -534,7 +534,7 @@ fn optional_digits(value : String) -> Int? {
 /// A `stop`/`resume`/`inc` branch that matches its keyword commits the whole
 /// autonumber line: trailing junk fails the line instead of falling through
 /// to the start branch, mirroring the talc choice followed by `eof`.
-fn autonumber_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "autonumber") {
     if cursor.skip_inline_space1() {
@@ -593,7 +593,7 @@ fn autonumber_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 /// A branch whose pattern matches commits the toggle line: trailing junk
 /// fails the whole line instead of retrying later branches, mirroring the
 /// talc choice followed by the trailing `inline_spaces` and `eof`.
-fn toggle_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn toggle_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "autoactivate") {
     let saved = cursor.offset()
@@ -681,7 +681,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 }
 
 ///|
-fn url_command_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn url_command_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   guard take_keyword(cursor, "url") else { return None }
   guard cursor.skip_inline_space1() else {
@@ -729,7 +729,7 @@ fn url_command_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 }
 
 ///|
-fn anchor(cursor : @parse.Cursor) -> String? {
+fn anchor(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('{') else { return None }
   let code = take_ident(cursor)
@@ -744,7 +744,7 @@ fn anchor(cursor : @parse.Cursor) -> String? {
 /// A branch whose pattern matches commits the miscellaneous line: trailing
 /// junk fails the whole line instead of retrying later branches, mirroring
 /// the talc choice followed by the trailing `inline_spaces` and `eof`.
-fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn miscellaneous_event_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "ignore") &&
     cursor.skip_inline_space1() &&
@@ -773,7 +773,7 @@ fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   cursor.skip_inline_spaces()
   if take_keyword(cursor, "return") {
     let value = cursor.take_while(_ => true)
-    return Some(@seq.Return({ value: @parse.normalize_label(value), }))
+    return Some(@seq.Return({ value: @tokenizer.normalize_label(value), }))
   }
   ignore(cursor.restore(start))
   match anchor(cursor) {
@@ -808,7 +808,7 @@ fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 }
 
 ///|
-fn newpage_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn newpage_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('@'))
   guard take_keyword(cursor, "newpage") else {
@@ -816,13 +816,13 @@ fn newpage_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
     return None
   }
   let title = cursor.take_while(_ => true)
-  Some(@seq.Newpage({ title: @parse.normalize_label(title), }))
+  Some(@seq.Newpage({ title: @tokenizer.normalize_label(title), }))
 }
 
 ///|
 /// Command matching follows `SequenceDiagramFactory` order for the simple
 /// commands; each alternative consumes the whole line before succeeding.
-fn simple_event_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn simple_event_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   let event = if box_line_syntax(cursor) is Some(value) {
     value

@@ -87,7 +87,7 @@ test "message grammar matches plantuml oracle" {
     fail("oracle corpus mismatch")
   }
   for index in 0..<cases.length() {
-    let cursor = @parse.Cursor::new(cases[index])
+    let cursor = @tokenizer.Cursor::new(cases[index])
     let signature = match complete_message_line_syntax(cursor) {
       Some(@seq.Message(message)) =>
         "M:\{message.from_code}>\{message.to_code}:a=\{activation_string(message)}:c=\{color_string(message)}:m=\{message.label.unwrap_or("")}:s=\{message.stereotype.unwrap_or("")}:u=\{message.url.unwrap_or("")}"
@@ -140,7 +140,7 @@ test "note across grammar matches the plantuml across factory oracle" {
     fail("across oracle corpus mismatch")
   }
   for index, line in cases {
-    let signature = note_line_syntax(@parse.Cursor::new(line)).map_or(
+    let signature = note_line_syntax(@tokenizer.Cursor::new(line)).map_or(
       "N", note_across_signature,
     )
     if signature != expected[index] {
@@ -192,7 +192,7 @@ test "participant and on-arrow note tails match the plantuml note factory oracle
     fail("note tail oracle corpus mismatch")
   }
   for index, line in cases {
-    let signature = match note_line_syntax(@parse.Cursor::new(line)) {
+    let signature = match note_line_syntax(@tokenizer.Cursor::new(line)) {
       Some(syntax) => note_tail_signature(syntax)
       None => "N"
     }

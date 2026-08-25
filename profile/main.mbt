@@ -315,22 +315,22 @@ fn svg_dimensions(svg : String) -> (Int, Int)? {
 /// the attribute on the whole document is the root attribute.
 fn attr_value(source : String, name : String) -> String? {
   let spaced = " \{name}=\""
-  let offset = match @parse.find_literal(source, spaced) {
+  let offset = match @tokenizer.find_literal(source, spaced) {
     Some(offset) => offset
     None =>
-      match @parse.find_literal(source, "<svg \{name}=\"") {
+      match @tokenizer.find_literal(source, "<svg \{name}=\"") {
         Some(offset) => offset
         None => return None
       }
   }
   let value_start = offset + spaced.length()
   let rest = source[value_start:].to_owned()
-  @parse.find_literal(rest, "\"").map(end => rest[:end].to_owned())
+  @tokenizer.find_literal(rest, "\"").map(end => rest[:end].to_owned())
 }
 
 ///|
 fn viewbox_dimensions(value : String) -> (Int, Int)? {
-  let words = @parse.syntax_words(value)
+  let words = @tokenizer.syntax_words(value)
   guard words.length() == 4 else { return None }
   match (parse_dimension(words[2]), parse_dimension(words[3])) {
     (Some(width), Some(height)) => Some((width, height))

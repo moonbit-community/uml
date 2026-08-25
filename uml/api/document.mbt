@@ -149,6 +149,6 @@ pub fn parse(source : String) -> Document raise {
     _ if entity_family_from_lines(meaningful_source_lines(source))
       is Some(family) =>
       { diagram: Entity(@parser.parse_entity(source, family~)), }
-    _ => raise @parse.SyntaxError(1, "unknown diagram")
+    _ => raise @tokenizer.SyntaxError(1, "unknown diagram")
   }
 }

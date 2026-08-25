@@ -18,7 +18,7 @@ priv enum ClassLineSyntax {
 
 ///|
 fn[T] validated_whole_line(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   classify : (String) -> T?,
 ) -> T? {
   let start = cursor.offset()
@@ -32,7 +32,7 @@ fn[T] validated_whole_line(
 }
 
 ///|
-fn class_control_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
+fn class_control_line(cursor : @tokenizer.Cursor) -> ClassLineSyntax? {
   validated_whole_line(cursor, line => {
     match line.to_lower() {
       "allowmixing" | "allow_mixing" => Some(ParsedAllowMixing)
@@ -46,7 +46,7 @@ fn class_control_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
 }
 
 ///|
-fn ignored_class_directive(cursor : @parse.Cursor) -> ClassLineSyntax? {
+fn ignored_class_directive(cursor : @tokenizer.Cursor) -> ClassLineSyntax? {
   validated_whole_line(cursor, line => {
     let lower = line.to_lower()
     if lower.has_prefix("skinparam ") ||
@@ -67,7 +67,7 @@ fn ignored_class_directive(cursor : @parse.Cursor) -> ClassLineSyntax? {
 }
 
 ///|
-fn class_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
+fn class_line(cursor : @tokenizer.Cursor) -> ClassLineSyntax? {
   let start = cursor.offset()
   if class_control_line(cursor) is Some(value) {
     return Some(value)
@@ -109,7 +109,7 @@ fn class_line(cursor : @parse.Cursor) -> ClassLineSyntax? {
 
 ///|
 fn parse_class_line(line : String) -> ClassLineSyntax? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   class_line(cursor)
 }
 
@@ -117,7 +117,7 @@ fn parse_class_line(line : String) -> ClassLineSyntax? {
 fn EntityParser::apply_declaration_syntax(
   self : EntityParser,
   syntax : DeclarationLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let declaration = syntax.declaration
   let is_usecase_element = declaration.kind is @entity.EntityKind::Usecase ||
     declaration.kind is @entity.EntityKind::BusinessUsecase ||
@@ -213,7 +213,7 @@ fn EntityParser::apply_declaration_syntax(
 fn EntityParser::apply_class_line_syntax(
   self : EntityParser,
   syntax : ClassLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   match syntax {
     ParsedAllowMixing => self.allow_mixing = true
     ParsedPackageClose => {
@@ -258,13 +258,13 @@ fn text_block_end(line : String, keyword : String) -> Bool {
 fn EntityParser::consume_text_block(
   self : EntityParser,
   keyword : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   self.index += 1
   let text = StringBuilder()
   let mut first = true
   while self.index < self.lines.length() {
     if text_block_end(
-        @parse.strip_line_comment(self.lines[self.index]),
+        @tokenizer.strip_line_comment(self.lines[self.index]),
         keyword,
       ) {
       self.style.apply(TextBlock(keyword, text.to_string()))
@@ -284,20 +284,20 @@ fn EntityParser::consume_text_block(
 fn EntityParser::consume_braced_block(
   self : EntityParser,
   kind : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let package_depth = self.package_stack.length()
   self.index += 1
   let members : Array[String] = []
   while self.index < self.lines.length() {
-    let line = @parse.strip_line_comment(self.lines[self.index])
+    let line = @tokenizer.strip_line_comment(self.lines[self.index])
     if line == "}" && self.package_stack.length() == package_depth {
       if kind == "together" {
         self.together_groups.push(members)
       }
       return
     }
-    let reference = @parse.unquote_identifier(line)
-    let existing_reference = @parse.syntax_words(line).length() == 1 &&
+    let reference = @tokenizer.unquote_identifier(line)
+    let existing_reference = @tokenizer.syntax_words(line).length() == 1 &&
       (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
       self.parse_line(self.lines[self.index])
@@ -320,12 +320,12 @@ fn EntityParser::consume_braced_block(
 ///|
 fn EntityParser::consume_skinparam_block(
   self : EntityParser,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   self.index += 1
   let closed = @style.consume_skinparam_body(
     () => {
       guard self.index < self.lines.length() else { return None }
-      let line = @parse.strip_line_comment(self.lines[self.index])
+      let line = @tokenizer.strip_line_comment(self.lines[self.index])
       if line.trim() != "}" {
         self.index += 1
       }
@@ -340,10 +340,10 @@ fn EntityParser::consume_skinparam_block(
 fn EntityParser::consume_common_block(
   self : EntityParser,
   terminator : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   self.index += 1
   while self.index < self.lines.length() {
-    if @parse.strip_line_comment(self.lines[self.index]).to_lower() ==
+    if @tokenizer.strip_line_comment(self.lines[self.index]).to_lower() ==
       terminator {
       return
     }

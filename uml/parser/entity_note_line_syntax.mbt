@@ -50,7 +50,7 @@ priv enum ClassAnnotationLineSyntax {
 }
 
 ///|
-fn note_position_syntax(cursor : @parse.Cursor) -> @entity.NotePosition? {
+fn note_position_syntax(cursor : @tokenizer.Cursor) -> @entity.NotePosition? {
   let start = cursor.offset()
   guard take_inline_word(cursor) is Some(word) else { return None }
   match entity_note_position(word) {
@@ -63,7 +63,7 @@ fn note_position_syntax(cursor : @parse.Cursor) -> @entity.NotePosition? {
 }
 
 ///|
-fn note_name(cursor : @parse.Cursor) -> String? {
+fn note_name(cursor : @tokenizer.Cursor) -> String? {
   let value = match cursor.take_quoted_value() {
     Some(value) => value
     None => {
@@ -80,11 +80,11 @@ fn note_name(cursor : @parse.Cursor) -> String? {
       value
     }
   }
-  Some(@parse.unquote_identifier(value))
+  Some(@tokenizer.unquote_identifier(value))
 }
 
 ///|
-fn note_entity_name(cursor : @parse.Cursor) -> String? {
+fn note_entity_name(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard note_name(cursor) is Some(name) else { return None }
   if name.equal_ignore_ascii_case("of") {
@@ -96,7 +96,7 @@ fn note_entity_name(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn note_member_name(cursor : @parse.Cursor) -> String? {
+fn note_member_name(cursor : @tokenizer.Cursor) -> String? {
   let value = cursor.take_while(char => {
     !char.is_whitespace() &&
     char != '#' &&
@@ -108,12 +108,12 @@ fn note_member_name(cursor : @parse.Cursor) -> String? {
   if value.length() == 0 {
     None
   } else {
-    Some(@parse.unquote_identifier(value))
+    Some(@tokenizer.unquote_identifier(value))
   }
 }
 
 ///|
-fn note_metadata_item(cursor : @parse.Cursor) -> NoteMetadataItemSyntax? {
+fn note_metadata_item(cursor : @tokenizer.Cursor) -> NoteMetadataItemSyntax? {
   if cursor.take_url_value() is Some(value) {
     return Some(NoteUrl(value))
   }
@@ -150,7 +150,7 @@ fn note_metadata_from(
 }
 
 ///|
-fn note_metadata(cursor : @parse.Cursor) -> NoteMetadataSyntax {
+fn note_metadata(cursor : @tokenizer.Cursor) -> NoteMetadataSyntax {
   let items = collect_repeated(cursor, note_metadata_item)
   cursor.skip_inline_spaces()
   let braced = cursor.consume('{')
@@ -158,7 +158,7 @@ fn note_metadata(cursor : @parse.Cursor) -> NoteMetadataSyntax {
 }
 
 ///|
-fn note_content(cursor : @parse.Cursor) -> NoteContentSyntax {
+fn note_content(cursor : @tokenizer.Cursor) -> NoteContentSyntax {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   if cursor.consume(':') && cursor.peek() != Some(':') {
@@ -171,7 +171,7 @@ fn note_content(cursor : @parse.Cursor) -> NoteContentSyntax {
 }
 
 ///|
-fn named_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
+fn named_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
   let inline = match cursor.take_quoted_value() {
     Some(text) => {
       let as_start = cursor.offset()
@@ -225,7 +225,7 @@ fn named_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
 }
 
 ///|
-fn link_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
+fn link_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
   let start = cursor.offset()
   let pos_start = cursor.offset()
   let position = if note_position_syntax(cursor) is Some(value) &&
@@ -255,7 +255,7 @@ fn link_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
 }
 
 ///|
-fn member_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
+fn member_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
   let start = cursor.offset()
   guard note_position_syntax(cursor) is Some(position) else { return None }
   guard position is Left || position is Right else {
@@ -290,7 +290,7 @@ fn member_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
 }
 
 ///|
-fn entity_note_target(cursor : @parse.Cursor) -> String? {
+fn entity_note_target(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   if cursor.skip_inline_space1() &&
     consume_inline_keyword(cursor, "of") &&
@@ -309,7 +309,7 @@ fn entity_note_target(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn entity_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
+fn entity_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
   guard note_position_syntax(cursor) is Some(position) else { return None }
   let target = entity_note_target(cursor)
   let metadata = note_metadata(cursor)
@@ -318,7 +318,7 @@ fn entity_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
 }
 
 ///|
-fn note_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
+fn note_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
   let start = cursor.offset()
   guard consume_inline_keyword(cursor, "note") && cursor.skip_inline_space1() else {
     ignore(cursor.restore(start))
@@ -346,7 +346,7 @@ fn note_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
 }
 
 ///|
-fn link_constraint_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
+fn link_constraint_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
   let start = cursor.offset()
   guard consume_inline_keyword(cursor, "constraint") &&
     cursor.skip_inline_space1() &&
@@ -372,7 +372,7 @@ fn link_constraint_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
 }
 
 ///|
-fn class_annotation_line(cursor : @parse.Cursor) -> ClassAnnotationLineSyntax? {
+fn class_annotation_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
   guard note_line(cursor) is Some(value) else {
     return link_constraint_line(cursor)
   }
@@ -387,7 +387,7 @@ test "class note line grammar accepts complete annotation lines" {
     "note \"shared note\" as N1 $shared <<info>> #yellow", "note as N2 {", "constraint on links #pink : {xor}",
   ]
   for line in lines {
-    let cursor = @parse.Cursor::new(line)
+    let cursor = @tokenizer.Cursor::new(line)
     guard class_annotation_line(cursor) is Some(_) else {
       @test.fail("expected annotation syntax: \{line}")
     }
@@ -401,7 +401,7 @@ test "class note line grammar rejects trailing or incomplete syntax" {
     "note right of User unexpected metadata",
   ]
   for line in lines {
-    let cursor = @parse.Cursor::new(line)
+    let cursor = @tokenizer.Cursor::new(line)
     guard class_annotation_line(cursor) is None else {
       @test.fail("unexpected annotation syntax: \{line}")
     }
@@ -413,7 +413,7 @@ fn EntityParser::push_note_syntax(
   self : EntityParser,
   syntax : EntityNoteLineSyntax,
   text : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let mut target = ""
   let mut target_kind = @entity.NoteTargetKind::EntityNote
   let mut relation_index = None
@@ -475,12 +475,12 @@ fn EntityParser::push_note_syntax(
 fn EntityParser::consume_note_syntax(
   self : EntityParser,
   syntax : EntityNoteLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   match syntax.content {
     NoteInline(text) => self.push_note_syntax(syntax, text)
     NoteBlock => {
       let mut index = self.index + 1
-      guard @parse.collect_lines_until(
+      guard @tokenizer.collect_lines_until(
           () => {
             guard index < self.lines.length() else { return None }
             let line = self.lines[index]
@@ -488,7 +488,7 @@ fn EntityParser::consume_note_syntax(
             Some(line)
           },
           line => {
-            let normalized = @parse.strip_line_comment(line).to_lower()
+            let normalized = @tokenizer.strip_line_comment(line).to_lower()
             normalized == "end note" ||
             normalized == "endnote" ||
             (syntax.metadata.braced && normalized == "}")
@@ -511,7 +511,7 @@ fn EntityParser::consume_note_syntax(
 fn EntityParser::apply_annotation_syntax(
   self : EntityParser,
   syntax : ClassAnnotationLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   match syntax {
     ParsedClassNote(note) => self.consume_note_syntax(note)
     ParsedLinkConstraint(constraint) =>

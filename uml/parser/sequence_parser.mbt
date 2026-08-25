@@ -1,8 +1,8 @@
 ///|
 fn ParseCtx::consume_style_directive(
   self : ParseCtx,
-) -> Bool raise @parse.ParseError {
-  let line = @parse.strip_line_comment(self.source.current_line())
+) -> Bool raise @tokenizer.ParseError {
+  let line = @tokenizer.strip_line_comment(self.source.current_line())
   let lower = line.trim().to_lower()
   guard lower != "newpage" && !lower.has_prefix("newpage ") else {
     return false
@@ -12,7 +12,7 @@ fn ParseCtx::consume_style_directive(
     let closed = @style.consume_skinparam_body(
       () => {
         guard !self.source.is_eof() else { return None }
-        Some(@parse.strip_line_comment(self.source.take_line()))
+        Some(@tokenizer.strip_line_comment(self.source.take_line()))
       },
       directive => self.style.apply(directive),
     )
@@ -48,7 +48,7 @@ fn diagram_options(events : Array[@seq.Event]) -> DiagramOptions {
 }
 
 ///|
-fn skip_ignored_line(source : @parse.Cursor) -> Bool {
+fn skip_ignored_line(source : @tokenizer.Cursor) -> Bool {
   let line = source.current_line().trim()
   if line.length() == 0 || line.has_prefix("'") {
     source.skip_line()
@@ -68,13 +68,13 @@ fn skip_ignored_line(source : @parse.Cursor) -> Bool {
 /// Returns a `@seq.SequenceDiagram` containing the parsed participants and events.
 pub fn parse_sequence(
   input : String,
-) -> @seq.SequenceDiagram raise @parse.ParseError {
+) -> @seq.SequenceDiagram raise @tokenizer.ParseError {
   let ctx = ParseCtx::new(input)
 
   while !ctx.source.is_eof() {
     guard !skip_ignored_line(ctx.source) else { continue }
     let raw_line = ctx.source.current_line()
-    let line = @parse.strip_line_comment(raw_line)
+    let line = @tokenizer.strip_line_comment(raw_line)
     if line.trim().equal_ignore_ascii_case("@startuml") {
       ctx.source.skip_line()
       continue

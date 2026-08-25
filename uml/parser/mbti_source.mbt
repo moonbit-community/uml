@@ -55,14 +55,14 @@ pub fn parse_mbti(
   input : String,
   standalone_alias? : Bool = false,
   options? : @entity.MbtiOptions = @entity.MbtiOptions::default(),
-) -> @entity.MbtiDiagram raise @parse.ParseError {
+) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
   match mbti_body(input) {
-    None => raise @parse.SyntaxError(1, "expected @startuml '.mbti")
+    None => raise @tokenizer.SyntaxError(1, "expected @startuml '.mbti")
     Some((body, body_line)) => {
       let (mbti, reports) = @mbti_parser.parse_string(body, name="<uml>.mbti")
       match reports {
         [report, ..] =>
-          raise @parse.SyntaxError(
+          raise @tokenizer.SyntaxError(
             report.loc.start.lnum + body_line - 1,
             report.msg,
           )

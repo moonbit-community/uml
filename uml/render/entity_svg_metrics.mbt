@@ -228,7 +228,7 @@ fn @entity.Entity::header_layout(
   let (stereotype, stereotype_width, stereotype_height) = match
     self.stereotype {
     Some(value) if !self.stereotype_hidden => {
-      let display = @parse.display_stereotype(value)
+      let display = @tokenizer.display_stereotype(value)
       let metrics = text_metrics.class_stereotype.measure(display)
       (
         Some(display),
@@ -283,7 +283,7 @@ fn @entity.Entity::object_header_layout(
   let (stereotype, stereotype_width, stereotype_height) = match
     self.stereotype {
     Some(value) if !self.stereotype_hidden => {
-      let display = @parse.display_stereotype(value)
+      let display = @tokenizer.display_stereotype(value)
       let metrics = text_metrics.class_stereotype.measure(display)
       (
         Some(display),
@@ -1273,7 +1273,7 @@ fn @entity.Entity::usecase_content_layout(
   let title_width = title.width + USECASE_BODY_HORIZONTAL_MARGIN
   match self.stereotype {
     Some(stereotype) if !self.stereotype_hidden => {
-      let display = @parse.display_stereotype(stereotype)
+      let display = @tokenizer.display_stereotype(stereotype)
       let stereotype_metrics = text_metrics.usecase_italic.measure(display)
       (
         title_width.max(stereotype_metrics.width),
@@ -1405,7 +1405,7 @@ fn @entity.Entity::actor_content_layout(
   )
   match self.stereotype {
     Some(stereotype) if !self.stereotype_hidden => {
-      let display = @parse.display_stereotype(stereotype)
+      let display = @tokenizer.display_stereotype(stereotype)
       let stereotype_metrics = text_metrics.actor_italic.measure(display)
       (
         title.width.max(stereotype_metrics.width).max(figure_width),

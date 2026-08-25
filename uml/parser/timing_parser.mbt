@@ -24,7 +24,7 @@ fn TimingParser::new(input : String) -> TimingParser {
       scale: None,
       style: @style.DocumentStyle::empty(),
     },
-    lines: @parse.preprocess(input)
+    lines: @tokenizer.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array(),
@@ -41,8 +41,8 @@ fn TimingParser::line_number(self : TimingParser) -> Int {
 fn TimingParser::error(
   self : TimingParser,
   message : String,
-) -> @parse.ParseError {
-  @parse.SyntaxError(self.line_number(), message)
+) -> @tokenizer.ParseError {
+  @tokenizer.SyntaxError(self.line_number(), message)
 }
 
 ///|
@@ -56,7 +56,7 @@ fn TimingParser::player(
 ///|
 /// Captures the remaining text and consumes it, like the trailing `.*`
 /// groups of the compiled regexes.
-fn take_rest(cursor : @parse.Cursor) -> String {
+fn take_rest(cursor : @tokenizer.Cursor) -> String {
   let text = cursor.remaining()
   ignore(cursor.restore(cursor.length()))
   text
@@ -66,7 +66,7 @@ fn take_rest(cursor : @parse.Cursor) -> String {
 fn TimingParser::require_player(
   self : TimingParser,
   code : String,
-) -> @flow.TimingPlayer raise @parse.ParseError {
+) -> @flow.TimingPlayer raise @tokenizer.ParseError {
   guard self.player(code) is Some(player) else {
     raise self.error("No such participant " + code)
   }
@@ -205,7 +205,7 @@ fn TimingParser::set_player_state(
   states : Array[String],
   comment : String?,
   color : String?,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   match player.kind {
     @flow.PlayerKind::Robust
     | @flow.PlayerKind::Concise
@@ -270,7 +270,7 @@ fn TimingParser::set_player_state(
 
 ///|
 /// Consumes a `compact ` prefix, mirroring the optional `(compact) ` group.
-fn take_compact(cursor : @parse.Cursor) -> Bool {
+fn take_compact(cursor : @tokenizer.Cursor) -> Bool {
   if !match_keyword(cursor, "compact") {
     return false
   }
@@ -280,7 +280,7 @@ fn take_compact(cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// Consumes the optional `"FULL" as ` prefix of a player declaration.
-fn take_full_as(cursor : @parse.Cursor) -> String? {
+fn take_full_as(cursor : @tokenizer.Cursor) -> String? {
   guard cursor.peek() == Some('"') else { return None }
   guard parse_quoted(cursor) is Some(full) else { return None }
   skip_spaces(cursor)
@@ -291,7 +291,7 @@ fn take_full_as(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Parses `[\p{L}_][%pLN_.]*`, the `PLAYER_CODE` class.
-fn parse_player_code(cursor : @parse.Cursor) -> String? {
+fn parse_player_code(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.peek() is Some(char) && is_player_code_start(char) else {
     return None
@@ -303,7 +303,7 @@ fn parse_player_code(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Parses `[%pLN_.@]+`, the player declaration code class.
-fn parse_full_code(cursor : @parse.Cursor) -> String? {
+fn parse_full_code(cursor : @tokenizer.Cursor) -> String? {
   let code = cursor.take_while(is_code_char)
   if code.length() == 0 {
     None
@@ -315,7 +315,7 @@ fn parse_full_code(cursor : @parse.Cursor) -> String? {
 ///|
 /// Parses the optional stereotype and color tail shared by the player
 /// declaration commands.
-fn parse_declaration_tail(cursor : @parse.Cursor) -> (String?, String?) {
+fn parse_declaration_tail(cursor : @tokenizer.Cursor) -> (String?, String?) {
   skip_spaces(cursor)
   let stereotype = parse_stereotype(cursor)
   skip_spaces(cursor)
@@ -368,21 +368,21 @@ fn TimingParser::declare_player(
 fn TimingParser::consume_common_directive(
   self : TimingParser,
   line : String,
-) -> Bool raise @parse.ParseError {
+) -> Bool raise @tokenizer.ParseError {
   let lower = line.to_lower()
   if lower == "skinparam {" {
     self.index += 1
     let closed = @style.consume_skinparam_body(
       () => {
         guard self.index < self.lines.length() else { return None }
-        let line = @parse.strip_line_comment(self.lines[self.index])
+        let line = @tokenizer.strip_line_comment(self.lines[self.index])
         self.index += 1
         Some(line)
       },
       directive => self.diagram.style.apply(directive),
     )
     guard closed else {
-      raise @parse.SyntaxError(self.line_number(), "unclosed skinparam")
+      raise @tokenizer.SyntaxError(self.line_number(), "unclosed skinparam")
     }
     self.index -= 1
     return true
@@ -431,7 +431,7 @@ fn TimingParser::consume_common_directive(
 
 ///|
 fn parse_common_scale(line : String) -> String? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   guard match_keyword(cursor, "scale") else { return None }
   guard space_one_or_more(cursor) else { return None }
   let scale = cursor.take_while(char => {
@@ -465,12 +465,12 @@ fn parse_common_scale(line : String) -> String? {
 fn TimingParser::consume_text_block(
   self : TimingParser,
   kind : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let start = self.index
   let values = []
   self.index += 1
   while self.index < self.lines.length() {
-    let line = @parse.strip_line_comment_preserving_indent(
+    let line = @tokenizer.strip_line_comment_preserving_indent(
         self.lines[self.index],
       )
       .trim()
@@ -483,13 +483,13 @@ fn TimingParser::consume_text_block(
     values.push(line)
     self.index += 1
   }
-  raise @parse.SyntaxError(start + 1, "unclosed \{kind}")
+  raise @tokenizer.SyntaxError(start + 1, "unclosed \{kind}")
 }
 
 ///|
 fn TimingParser::parse_line(
   self : TimingParser,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let trimmed = self.lines[self.index].trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
@@ -504,29 +504,29 @@ fn TimingParser::parse_line(
   }
   // Commands are tried in the registration order of
   // `TimingDiagramFactory.initCommandsList`.
-  if parse_robust_concise(self, @parse.Cursor::new(trimmed)) ||
-    parse_clock(self, @parse.Cursor::new(trimmed)) ||
-    parse_analog(self, @parse.Cursor::new(trimmed)) ||
-    parse_binary(self, @parse.Cursor::new(trimmed)) ||
-    parse_define_state_short(self, @parse.Cursor::new(trimmed)) ||
-    parse_define_state_long(self, @parse.Cursor::new(trimmed)) ||
-    parse_change_state_by_player_code(self, @parse.Cursor::new(trimmed)) ||
-    parse_at_time(self, @parse.Cursor::new(trimmed)) ||
-    parse_at_player(self, @parse.Cursor::new(trimmed)) ||
-    parse_time_message(self, @parse.Cursor::new(trimmed)) ||
-    timing_parse_note(self, @parse.Cursor::new(trimmed)) ||
-    timing_parse_note_long(self, @parse.Cursor::new(trimmed)) ||
-    parse_constraint(self, @parse.Cursor::new(trimmed)) ||
-    parse_scale_pixel(self, @parse.Cursor::new(trimmed)) ||
-    parse_hide_time_axis(self, @parse.Cursor::new(trimmed)) ||
-    parse_highlight(self, @parse.Cursor::new(trimmed)) ||
-    parse_mode_compact(self, @parse.Cursor::new(trimmed)) ||
-    parse_ticks(self, @parse.Cursor::new(trimmed)) ||
-    parse_pixel_height(self, @parse.Cursor::new(trimmed)) ||
-    parse_use_date_format(self, @parse.Cursor::new(trimmed)) {
+  if parse_robust_concise(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_clock(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_analog(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_binary(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_define_state_short(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_define_state_long(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_change_state_by_player_code(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_at_time(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_at_player(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_time_message(self, @tokenizer.Cursor::new(trimmed)) ||
+    timing_parse_note(self, @tokenizer.Cursor::new(trimmed)) ||
+    timing_parse_note_long(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_constraint(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_scale_pixel(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_hide_time_axis(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_highlight(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_mode_compact(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_ticks(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_pixel_height(self, @tokenizer.Cursor::new(trimmed)) ||
+    parse_use_date_format(self, @tokenizer.Cursor::new(trimmed)) {
     return
   }
-  raise @parse.SyntaxError(self.line_number(), "Syntax Error?")
+  raise @tokenizer.SyntaxError(self.line_number(), "Syntax Error?")
 }
 
 ///|
@@ -537,7 +537,7 @@ fn TimingParser::parse_line(
 /// regex grammar and side effects of its Java `Command` counterpart.
 pub fn parse_timing(
   input : String,
-) -> @flow.TimingDiagram raise @parse.ParseError {
+) -> @flow.TimingDiagram raise @tokenizer.ParseError {
   let parser = TimingParser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()

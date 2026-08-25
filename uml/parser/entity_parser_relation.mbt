@@ -123,8 +123,8 @@ fn relation_direction(arrow : String) -> @entity.RelationDirection {
 
 ///|
 fn relation_style(arrow : String) -> String? {
-  guard @parse.find_literal(arrow, "[") is Some(start) else { return None }
-  guard @parse.find_literal(arrow[start + 1:].to_owned(), "]") is Some(length) else {
+  guard @tokenizer.find_literal(arrow, "[") is Some(start) else { return None }
+  guard @tokenizer.find_literal(arrow[start + 1:].to_owned(), "]") is Some(length) else {
     return None
   }
   Some(arrow[start + 1:start + 1 + length].to_owned())
@@ -145,11 +145,11 @@ fn EntityParser::resolve_relation_name(
   self : EntityParser,
   syntax : RelationNameSyntax,
 ) -> (String, String?) {
-  let full = @parse.unquote_identifier(syntax.name)
+  let full = @tokenizer.unquote_identifier(syntax.name)
   guard syntax.port_base is Some(base) && syntax.port_value is Some(port) else {
     return (full, None)
   }
-  let base = @parse.unquote_identifier(base)
+  let base = @tokenizer.unquote_identifier(base)
   let base_code = self.resolve(base)
   if self.has_entity(full) {
     (full, None)
@@ -201,7 +201,7 @@ fn lollipop_arrow(arrow : String, at_start : Bool) -> Bool? {
 /// relation attaches to the group instead of creating a phantom entity
 /// (PlantUML `CommandLinkElement.getDummy` returns the group for group names).
 fn EntityParser::package_code(self : EntityParser, raw : String) -> String? {
-  let clean = @parse.unquote_identifier(raw)
+  let clean = @tokenizer.unquote_identifier(raw)
   for group in self.packages {
     if group.qualified_name == clean || group.name == clean {
       return Some(group.qualified_name)
@@ -221,7 +221,7 @@ fn EntityParser::ensure_relation_entity(
     None =>
       match relation_shape(raw) {
         Some((code, kind)) =>
-          self.ensure_entity_as(@parse.unquote_identifier(code), kind)
+          self.ensure_entity_as(@tokenizer.unquote_identifier(code), kind)
         None if endpoint is Parenthesis =>
           self.ensure_entity_as(raw, @entity.EntityKind::Interface)
         None => self.ensure_entity(raw)
@@ -238,7 +238,7 @@ fn EntityParser::ensure_lollipop(
   base : String,
   display : String,
   half : Bool,
-) -> String raise @parse.ParseError {
+) -> String raise @tokenizer.ParseError {
   let base = self.resolve(base)
   guard self.has_entity(base) else {
     self.raise_parse_error("No class " + base)
@@ -268,7 +268,7 @@ fn EntityParser::ensure_couple_point(self : EntityParser) -> String {
 fn EntityParser::apply_relation_syntax(
   self : EntityParser,
   syntax : RelationLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let arrow = syntax.arrow
   let left_end = left_relation_end(arrow)
   let right_end = right_relation_end(arrow)

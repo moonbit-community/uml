@@ -11,7 +11,7 @@ priv struct RawIdea {
 
 ///|
 fn mindmap_marker_end(line : String) -> Int {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   ignore(cursor.skip_inline_whitespace())
   ignore(
     cursor.skip_while(char => {
@@ -32,7 +32,7 @@ fn marker_is_valid(marker : String) -> Bool {
 
 ///|
 fn marker_count(marker : String) -> Int {
-  let cursor = @parse.Cursor::new(marker)
+  let cursor = @tokenizer.Cursor::new(marker)
   let mut count = 0
   while cursor.advance() is Some(char) {
     if char == '*' || char == '#' {
@@ -90,7 +90,7 @@ fn parse_raw_idea(line : String) -> RawIdea? {
   let is_plus = marker.contains("+") || marker.contains("-")
   guard is_org != is_plus else { return None }
   if is_plus {
-    let cursor = @parse.Cursor::new(marker)
+    let cursor = @tokenizer.Cursor::new(marker)
     ignore(cursor.skip_inline_whitespace())
     let level = cursor.skip_while(char => char == '+' || char == '-') - 1
     return Some({
@@ -129,7 +129,7 @@ fn parse_raw_idea(line : String) -> RawIdea? {
 fn smart_level(
   marker : String,
   first : String?,
-) -> (Int, String?) raise @parse.ParseError {
+) -> (Int, String?) raise @tokenizer.ParseError {
   let initial = first.unwrap_or(marker)
   let normalized = if marker.has_suffix("**") {
     marker.replace(old="\t", new=" ").trim().to_owned()
@@ -164,7 +164,7 @@ fn complete_multiline_label(
   lines : Array[String],
   index : Int,
   first : String,
-) -> (String, Int, String?) raise @parse.ParseError {
+) -> (String, Int, String?) raise @tokenizer.ParseError {
   let values = [first]
   let mut last = index
   while !values.last().unwrap_or("").contains(";") {
@@ -191,7 +191,7 @@ fn parent_for(
   ideas : Array[@tree.Idea],
   direction : @tree.MindmapDirection,
   level : Int,
-) -> Int? raise @parse.ParseError {
+) -> Int? raise @tokenizer.ParseError {
   let mut index = ideas.length() - 1
   while index >= 0 {
     let candidate = ideas[index]
@@ -209,11 +209,11 @@ fn parse_mindmap_style_block(
   lines : Array[String],
   start : Int,
   style : @tree.MindmapStyle,
-) -> Int raise @parse.ParseError {
+) -> Int raise @tokenizer.ParseError {
   let mut index = start + 1
   let mut selector : String? = None
   while index < lines.length() {
-    let line = @parse.strip_line_comment(lines[index]).trim().to_owned()
+    let line = @tokenizer.strip_line_comment(lines[index]).trim().to_owned()
     if line.equal_ignore_ascii_case("</style>") {
       return index + 1
     }
@@ -235,7 +235,7 @@ fn parse_mindmap_style_block(
       index += 1
       continue
     }
-    let words = @parse.syntax_words(line)
+    let words = @tokenizer.syntax_words(line)
     if words.length() >= 2 {
       let key = words[0]
       let value = words[1:].to_owned().join(" ")
@@ -256,8 +256,8 @@ fn parse_mindmap_style_block(
 /// org-mode multiline labels.
 pub fn parse_mindmap(
   input : String,
-) -> @tree.MindmapDiagram raise @parse.ParseError {
-  let lines = @parse.preprocess(input)
+) -> @tree.MindmapDiagram raise @tokenizer.ParseError {
+  let lines = @tokenizer.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array()
@@ -269,7 +269,7 @@ pub fn parse_mindmap(
   let mut org_first : String? = None
   let mut default_direction : @tree.MindmapDirection = @tree.MindmapDirection::Right
   while index < lines.length() {
-    let line = @parse.strip_line_comment(lines[index])
+    let line = @tokenizer.strip_line_comment(lines[index])
     let trimmed = line.trim().to_owned()
     if trimmed.length() == 0 ||
       trimmed.equal_ignore_ascii_case("@startmindmap") ||

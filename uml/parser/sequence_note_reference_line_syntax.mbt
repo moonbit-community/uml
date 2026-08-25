@@ -38,7 +38,7 @@ fn parsed_note_position(
 
 ///|
 /// Matches a note style keyword.
-fn note_style(cursor : @parse.Cursor) -> @seq.NoteStyle? {
+fn note_style(cursor : @tokenizer.Cursor) -> @seq.NoteStyle? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
@@ -58,7 +58,7 @@ fn note_style(cursor : @parse.Cursor) -> @seq.NoteStyle? {
 /// Matches a note position keyword, returning the position and the matched
 /// word. `accross` is accepted and reported like Java's regex, then rejected
 /// at execution time with an explicit error.
-fn note_position(cursor : @parse.Cursor) -> (@seq.NotePosition, String)? {
+fn note_position(cursor : @tokenizer.Cursor) -> (@seq.NotePosition, String)? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
@@ -81,7 +81,7 @@ fn note_position(cursor : @parse.Cursor) -> (@seq.NotePosition, String)? {
 ///|
 /// Matches one or more participant codes separated by commas, tolerating a
 /// trailing comma exactly like the talc `sep_by1` separator.
-fn participant_list(cursor : @parse.Cursor) -> Array[String]? {
+fn participant_list(cursor : @tokenizer.Cursor) -> Array[String]? {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   match take_quoted_or_ident(cursor) {
@@ -113,7 +113,7 @@ fn participant_list(cursor : @parse.Cursor) -> Array[String]? {
 }
 
 ///|
-fn sequence_text(cursor : @parse.Cursor) -> SequenceTextSyntax {
+fn sequence_text(cursor : @tokenizer.Cursor) -> SequenceTextSyntax {
   if cursor.consume(':') {
     Inline(cursor.take_while(_ => true).trim().to_owned())
   } else {
@@ -128,8 +128,8 @@ fn sequence_text(cursor : @parse.Cursor) -> SequenceTextSyntax {
 /// the next `>>` and retries. Consumes the trailing spaces when the token
 /// is committed, and restores the original position when it is absent.
 fn take_stereotype_with_continuation(
-  cursor : @parse.Cursor,
-  continues : (@parse.Cursor) -> Bool,
+  cursor : @tokenizer.Cursor,
+  continues : (@tokenizer.Cursor) -> Bool,
 ) -> String? {
   let start = cursor.offset()
   guard cursor.consume_literal("<<") else { return None }
@@ -157,8 +157,8 @@ fn take_stereotype_with_continuation(
 /// `spaceZeroOrMore` hands them to the following tokens (color, URL, `:`);
 /// the trailing spaces belong to the token itself.
 fn take_optional_stereotype(
-  cursor : @parse.Cursor,
-  continues : (@parse.Cursor) -> Bool,
+  cursor : @tokenizer.Cursor,
+  continues : (@tokenizer.Cursor) -> Bool,
 ) -> String? {
   cursor.skip_inline_spaces()
   guard take_stereotype_with_continuation(cursor, continues) is Some(value) else {
@@ -171,7 +171,7 @@ fn take_optional_stereotype(
 ///|
 /// Matches an optional `[[...]]` URL token preceded by spaces, restoring
 /// the spaces when the token is absent.
-fn take_optional_url(cursor : @parse.Cursor) -> String? {
+fn take_optional_url(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   guard cursor.take_url_value() is Some(value) else {
@@ -188,7 +188,7 @@ fn take_optional_url(cursor : @parse.Cursor) -> String? {
 /// spaceZeroOrMore (: spaceZeroOrMore NOTE)?` tail shared by the note
 /// factories. `stereo1` wins over STEREO2, like Java's `getLazzy` lookup.
 fn note_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   stereo1 : String?,
 ) -> (String?, String?, String?, SequenceTextSyntax) {
   let stereo2 = take_optional_stereotype(cursor, across_tail_continues)
@@ -203,7 +203,7 @@ fn note_tail(
 
 ///|
 fn note_on_arrow_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   position : @seq.NotePosition,
   note_style : @seq.NoteStyle,
   stereotype : String?,
@@ -225,7 +225,7 @@ fn note_on_arrow_tail(
 
 ///|
 fn participant_note_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   position : @seq.NotePosition,
   note_style : @seq.NoteStyle,
   require_of : Bool,
@@ -285,7 +285,7 @@ fn participant_note_tail(
 /// A lone separator keeps only the first word, leaving the separator for
 /// the caller, like the regex engine backtracking out of the separator
 /// group. Restores the original position when no word follows the marker.
-fn take_note_color_value(cursor : @parse.Cursor) -> String? {
+fn take_note_color_value(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
   let first = cursor.take_while(sequence_is_word_char)
@@ -316,7 +316,7 @@ fn take_note_color_value(cursor : @parse.Cursor) -> String? {
 /// MESSAGE? end()`. A URL that is itself followed by another token belongs
 /// to the stereotype, so the token keeps extending (Java backtracks `.+?`
 /// past it). Never moves the cursor.
-fn url_then_colon_or_eof(cursor : @parse.Cursor) -> Bool {
+fn url_then_colon_or_eof(cursor : @tokenizer.Cursor) -> Bool {
   let saved = cursor.offset()
   cursor.skip_inline_spaces()
   let result = match cursor.peek() {
@@ -337,7 +337,7 @@ fn url_then_colon_or_eof(cursor : @parse.Cursor) -> Bool {
 /// The across-tail continuation: `#color?` then the URL/colon/eof
 /// remainder, mirroring Java's `color()? spaceZeroOrMore UrlBuilder.OPTIONAL
 /// spaceZeroOrMore (: ...)?`. Never moves the cursor.
-fn across_tail_continues(cursor : @parse.Cursor) -> Bool {
+fn across_tail_continues(cursor : @tokenizer.Cursor) -> Bool {
   let saved = cursor.offset()
   cursor.skip_inline_spaces()
   let result = match cursor.peek() {
@@ -354,7 +354,7 @@ fn across_tail_continues(cursor : @parse.Cursor) -> Bool {
 /// URL, then the text, mirroring Java's across factory tail. Each token
 /// consumes its own spaces.
 fn across_note_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   note_style : @seq.NoteStyle,
   stereotype : String?,
   misspelled_across : Bool,
@@ -375,7 +375,7 @@ fn across_note_tail(
 }
 
 ///|
-fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
+fn note_line_syntax(cursor : @tokenizer.Cursor) -> NoteLineSyntax? {
   let start = cursor.offset()
   let parallel = cursor.consume('&')
   let merge = cursor.consume('/')
@@ -467,7 +467,7 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
 }
 
 ///|
-fn reference_line_syntax(cursor : @parse.Cursor) -> ReferenceLineSyntax? {
+fn reference_line_syntax(cursor : @tokenizer.Cursor) -> ReferenceLineSyntax? {
   let start = cursor.offset()
   guard take_keyword(cursor, "ref") else { return None }
   guard cursor.skip_inline_space1() else {

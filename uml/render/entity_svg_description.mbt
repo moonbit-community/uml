@@ -87,7 +87,7 @@ fn @entity.Entity::description_text_layout(
   let label = text_metrics.regular.measure(self.display)
   match self.stereotype {
     Some(value) if !self.stereotype_hidden => {
-      let display = @parse.display_stereotype(value)
+      let display = @tokenizer.display_stereotype(value)
       // The description stereotype style has no font-size key of its own, so
       // it inherits the element size (italic, same family as the label).
       let stereo = text_metrics.italic.measure(display)
@@ -891,7 +891,7 @@ fn append_symbol_package(
   let title_width = title.width.to_double()
   let stereo = match group.stereotype {
     Some(value) => {
-      let display = @parse.display_stereotype(value)
+      let display = @tokenizer.display_stereotype(value)
       let metrics = text_metrics.italic.measure(display)
       Some((display, metrics.width.to_double() + 2, metrics.height.to_double()))
     }

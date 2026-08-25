@@ -16,7 +16,7 @@ priv struct ParticipantDecl {
 
 ///|
 priv struct ParseCtx {
-  source : @parse.Cursor
+  source : @tokenizer.Cursor
   participants : Map[String, @seq.Participant]
   events : Array[@seq.Event]
   box_stack : Array[@seq.ParticipantBox]
@@ -31,7 +31,7 @@ priv struct ParseCtx {
 ///|
 fn ParseCtx::new(input : String) -> ParseCtx {
   {
-    source: @parse.Cursor::new(@parse.preprocess(input)),
+    source: @tokenizer.Cursor::new(@tokenizer.preprocess(input)),
     participants: Map([]),
     events: [],
     box_stack: [],
@@ -67,7 +67,7 @@ fn ParseCtx::ensure_participant(
 fn ParseCtx::declare_participant(
   self : ParseCtx,
   declaration : ParticipantDecl,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   self.ensure_no_pending_create()
   let reference = declaration.reference
   let is_new = !self.participants.contains(reference.code)
@@ -152,7 +152,7 @@ fn ParseCtx::register_event(self : ParseCtx, event : @seq.Event) -> Unit {
 ///|
 fn ParseCtx::ensure_no_pending_create(
   self : ParseCtx,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   guard self.pending_create is Some(code) else { () }
   self.source.raise_parse_error("after create, send a message to \{code}")
 }
@@ -161,7 +161,7 @@ fn ParseCtx::ensure_no_pending_create(
 fn ParseCtx::validate_event(
   self : ParseCtx,
   event : @seq.Event,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   if self.pending_create is Some(code) {
     match event {
       @seq.Message(message) if message.to_code == code =>
@@ -220,7 +220,7 @@ fn ParseCtx::apply_message_activation(
 fn ParseCtx::resolve_event(
   self : ParseCtx,
   event : @seq.Event,
-) -> @seq.Event raise @parse.ParseError {
+) -> @seq.Event raise @tokenizer.ParseError {
   match event {
     @seq.DeactivateLatest =>
       match self.activating_messages.last() {
@@ -245,7 +245,7 @@ fn ParseCtx::resolve_event(
 fn ParseCtx::push_event(
   self : ParseCtx,
   event : @seq.Event,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let event = self.resolve_event(event)
   self.validate_event(event)
   self.register_event(event)

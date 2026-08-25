@@ -27,11 +27,11 @@ test "every description kind paints its own node" {
   for declaration in kinds {
     let code = declaration.split(" ").nth(1).unwrap()
     @test.assert_eq(
-      @parse.find_unquoted_literal(svg, "data-code=\"\{code}\"") is Some(_),
+      @tokenizer.find_unquoted_literal(svg, "data-code=\"\{code}\"") is Some(_),
       true,
     )
     @test.assert_eq(
-      @parse.find_unquoted_literal(
+      @tokenizer.find_unquoted_literal(
         svg,
         "class=\"description-node\" data-code=\"\{code}\"",
       )
@@ -50,19 +50,19 @@ test "symbols paint their defining shapes" {
     "@startuml\nhexagon h1\n() api\nnode box {\nport p1\nnode inner\n}\n@enduml",
   )
   @test.assert_eq(
-    @parse.find_unquoted_literal(svg, "<polygon") is Some(_),
+    @tokenizer.find_unquoted_literal(svg, "<polygon") is Some(_),
     true,
   )
   @test.assert_eq(
-    @parse.find_unquoted_literal(svg, "<ellipse") is Some(_),
+    @tokenizer.find_unquoted_literal(svg, "<ellipse") is Some(_),
     true,
   )
   @test.assert_eq(
-    @parse.find_unquoted_literal(svg, "class=\"symbol-package\"") is Some(_),
+    @tokenizer.find_unquoted_literal(svg, "class=\"symbol-package\"") is Some(_),
     true,
   )
   @test.assert_eq(
-    @parse.find_unquoted_literal(svg, "class=\"port-node\"") is Some(_),
+    @tokenizer.find_unquoted_literal(svg, "class=\"port-node\"") is Some(_),
     true,
   )
 }
@@ -73,10 +73,10 @@ test "symbols paint their defining shapes" {
 /// any relation path.
 test "entities are painted before relations" {
   let svg = render_description("@startuml\nnode a\nnode b\na --> b\n@enduml")
-  let entity_at = @parse.find_unquoted_literal(
+  let entity_at = @tokenizer.find_unquoted_literal(
     svg, "class=\"description-node\"",
   )
-  let relation_at = @parse.find_unquoted_literal(svg, "class=\"relation\"")
+  let relation_at = @tokenizer.find_unquoted_literal(svg, "class=\"relation\"")
   match (entity_at, relation_at) {
     (Some(first), Some(second)) => @test.assert_eq(first < second, true)
     _ => @test.fail("expected both entities and relations")

@@ -1,6 +1,6 @@
 ///|
 fn parse_message_line(line : String) -> @seq.Event? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   complete_message_line_syntax(cursor)
 }
 

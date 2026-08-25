@@ -6,7 +6,7 @@ import {
   "kokic/uml/graphviz",
   "kokic/uml/bodierjson",
   "kokic/uml/metrics",
-  "kokic/uml/parse",
+  "kokic/uml/tokenizer",
   "kokic/uml/seq",
   "kokic/uml/structured",
   "kokic/uml/style",

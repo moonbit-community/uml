@@ -35,7 +35,7 @@ fn append_packages(
         $|<line x1="\{x}" y1="\{y + PACKAGE_TAB_HEIGHT}" x2="\{x + tab_width + 1.5}" y2="\{y + PACKAGE_TAB_HEIGHT}" style="stroke:\{border_color}"/>
         $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text>
       if group.stereotype is Some(stereotype) {
-        let display = @parse.display_stereotype(stereotype)
+        let display = @tokenizer.display_stereotype(stereotype)
         let metrics = text_metrics.italic.measure(display)
         let stereotype_x = x +
           (package_layout.width - metrics.width.to_double()) / 2.0

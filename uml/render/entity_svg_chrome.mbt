@@ -107,7 +107,7 @@ fn diagram_scale(style : @style.DocumentStyle) -> Double {
       match direct {
         Some(value) => value.max(0.0)
         None =>
-          match @parse.find_literal(trimmed, "/") {
+          match @tokenizer.find_literal(trimmed, "/") {
             Some(index) => {
               let numerator = @string.parse_double(trimmed[0:index].to_owned()) catch {
                 _ => 1.0

@@ -9,10 +9,10 @@ priv enum SequenceLineSyntax {
 
 ///|
 fn take_block_text(
-  source : @parse.Cursor,
+  source : @tokenizer.Cursor,
   terminator : (String) -> Bool,
 ) -> String? {
-  @parse.collect_lines_until(
+  @tokenizer.collect_lines_until(
     () => {
       guard !source.is_eof() else { return None }
       Some(source.take_line())
@@ -23,13 +23,13 @@ fn take_block_text(
 
 ///|
 /// Consumes one or more identifier characters, or nothing.
-fn take_ident(cursor : @parse.Cursor) -> String {
+fn take_ident(cursor : @tokenizer.Cursor) -> String {
   cursor.take_while(is_ident_char)
 }
 
 ///|
 /// Matches a whole identifier word against `keyword`, ignoring case.
-fn take_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
+fn take_keyword(cursor : @tokenizer.Cursor, keyword : String) -> Bool {
   let start = cursor.offset()
   let word = take_ident(cursor)
   if word.length() > 0 && word.equal_ignore_ascii_case(keyword) {
@@ -42,7 +42,7 @@ fn take_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
 
 ///|
 /// Matches a quoted value, falling back to an unquoted identifier token.
-fn take_quoted_or_ident(cursor : @parse.Cursor) -> String? {
+fn take_quoted_or_ident(cursor : @tokenizer.Cursor) -> String? {
   if cursor.peek() == Some('"') {
     if cursor.take_quoted_value() is Some(value) {
       return Some(value)
@@ -58,7 +58,7 @@ fn take_quoted_or_ident(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches an optionally negative run of digits.
-fn take_signed_integer(cursor : @parse.Cursor) -> Int? {
+fn take_signed_integer(cursor : @tokenizer.Cursor) -> Int? {
   let start = cursor.offset()
   let sign = if cursor.consume('-') { "-" } else { "" }
   let digits = cursor.take_while(Char::is_ascii_digit)
@@ -70,10 +70,10 @@ fn take_signed_integer(cursor : @parse.Cursor) -> Int? {
 }
 
 ///|
-fn title_line_syntax(cursor : @parse.Cursor) -> SequenceTextSyntax? {
+fn title_line_syntax(cursor : @tokenizer.Cursor) -> SequenceTextSyntax? {
   guard take_keyword(cursor, "title") else { return None }
   let rest = cursor.take_while(_ => true)
-  @parse.normalize_label(rest).map_or(Some(Multiline), text => {
+  @tokenizer.normalize_label(rest).map_or(Some(Multiline), text => {
     Some(Inline(text))
   })
 }
@@ -82,7 +82,7 @@ fn title_line_syntax(cursor : @parse.Cursor) -> SequenceTextSyntax? {
 /// Command matching follows `SequenceDiagramFactory` order, with message
 /// arrows tried before the other Cursor-based commands.
 fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   if complete_message_line_syntax(cursor) is Some(event) {
     return Some(ParsedEvent(event))
   }
@@ -128,7 +128,7 @@ fn ParseCtx::has_event_with_note(self : ParseCtx, top_or_bottom : Bool) -> Bool 
 fn ParseCtx::apply_note_syntax(
   self : ParseCtx,
   syntax : NoteLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   if syntax.misspelled_across {
     self.source.raise_parse_error("Use 'across' instead of 'accross'")
   }
@@ -191,10 +191,10 @@ fn ParseCtx::apply_note_syntax(
 fn ParseCtx::apply_reference_syntax(
   self : ParseCtx,
   syntax : ReferenceLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   self.source.skip_line()
   let label = match syntax.text {
-    Inline(text) => @parse.normalize_label(text)
+    Inline(text) => @tokenizer.normalize_label(text)
     Multiline =>
       match
         take_block_text(self.source, line => {
@@ -216,7 +216,7 @@ fn ParseCtx::apply_reference_syntax(
 fn ParseCtx::apply_line_syntax(
   self : ParseCtx,
   syntax : SequenceLineSyntax,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   match syntax {
     ParsedEvent(event) => {
       self.source.skip_line()

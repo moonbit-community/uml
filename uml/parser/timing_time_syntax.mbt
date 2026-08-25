@@ -42,7 +42,7 @@ fn days_from_civil(y : Int, m : Int, d : Int) -> Int64 {
 
 ///|
 /// Matches `:CODE([-+][.\d]+)?`, the first time-expression alternative.
-fn match_code_expr(cursor : @parse.Cursor) -> TimeExpr? {
+fn match_code_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
   guard cursor.consume(':') else { return None }
   let code = cursor.take_while(is_code_dot_char)
   guard code.length() > 0 else { return None }
@@ -71,7 +71,7 @@ fn match_code_expr(cursor : @parse.Cursor) -> TimeExpr? {
 ///|
 /// Matches `\d+/\d+/\d+`, the second time-expression alternative, with
 /// `yyyy/mm/dd` captured in that order.
-fn match_date_expr(cursor : @parse.Cursor) -> TimeExpr? {
+fn match_date_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
   guard match_ascii_digits(cursor) is Some(year) else { return None }
   guard cursor.consume('/') else { return None }
   guard match_ascii_digits(cursor) is Some(month) else { return None }
@@ -82,7 +82,7 @@ fn match_date_expr(cursor : @parse.Cursor) -> TimeExpr? {
 
 ///|
 /// Matches `\d+:\d+:\d+`, the third time-expression alternative.
-fn match_hour_expr(cursor : @parse.Cursor) -> TimeExpr? {
+fn match_hour_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
   guard match_ascii_digits(cursor) is Some(hour) else { return None }
   guard cursor.consume(':') else { return None }
   guard match_ascii_digits(cursor) is Some(minute) else { return None }
@@ -93,7 +93,7 @@ fn match_hour_expr(cursor : @parse.Cursor) -> TimeExpr? {
 
 ///|
 /// Matches `(\+?)(-?\d+\.?\d*)`, the fourth time-expression alternative.
-fn match_digit_expr(cursor : @parse.Cursor) -> TimeExpr? {
+fn match_digit_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
   let relative = cursor.consume('+')
   let start = cursor.offset()
   ignore(cursor.consume('-'))
@@ -111,7 +111,7 @@ fn match_digit_expr(cursor : @parse.Cursor) -> TimeExpr? {
 
 ///|
 /// Matches `[%pLN_.@]+\*(\d+)`, the fifth time-expression alternative.
-fn match_clock_expr(cursor : @parse.Cursor) -> TimeExpr? {
+fn match_clock_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
   let name = cursor.take_while(is_code_char)
   guard name.length() > 0 && cursor.consume('*') else { return None }
   guard match_ascii_digits(cursor) is Some(number) else { return None }
@@ -119,7 +119,7 @@ fn match_clock_expr(cursor : @parse.Cursor) -> TimeExpr? {
 }
 
 ///|
-fn match_ascii_digits(cursor : @parse.Cursor) -> Int? {
+fn match_ascii_digits(cursor : @tokenizer.Cursor) -> Int? {
   let digits = cursor.take_while(char => char >= '0' && char <= '9')
   if digits.length() == 0 {
     None
@@ -135,7 +135,7 @@ fn match_ascii_digits(cursor : @parse.Cursor) -> Int? {
 /// When the continuation rejects the match, the next alternative is tried,
 /// mirroring the backtracking of the compiled regex alternation.
 fn[T] with_time_expr(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   continue_with : (TimeExpr) -> T?,
 ) -> T? {
   for branch in 0..<5 {

@@ -11,7 +11,7 @@ priv enum ParsedMapEntrySyntax {
 }
 
 ///|
-fn map_value_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
+fn map_value_entry(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
   let start = cursor.offset()
   let key = cursor.take_while(_ => !cursor.starts_with_literal("=>"))
   guard key.length() > 0 else {
@@ -28,7 +28,7 @@ fn map_value_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
 }
 
 ///|
-fn linked_map_arrow(cursor : @parse.Cursor) -> String? {
+fn linked_map_arrow(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('*') else { return None }
   let dashes = cursor.take_while(char => char == '-')
@@ -45,7 +45,7 @@ fn linked_map_arrow(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn starts_linked_arrow(cursor : @parse.Cursor) -> Bool {
+fn starts_linked_arrow(cursor : @tokenizer.Cursor) -> Bool {
   let offset = cursor.offset()
   let matched = linked_map_arrow(cursor) is Some(_)
   ignore(cursor.restore(offset))
@@ -53,7 +53,7 @@ fn starts_linked_arrow(cursor : @parse.Cursor) -> Bool {
 }
 
 ///|
-fn linked_map_arrow_parser(cursor : @parse.Cursor) -> (String, String)? {
+fn linked_map_arrow_parser(cursor : @tokenizer.Cursor) -> (String, String)? {
   let start = cursor.offset()
   let prefix = cursor.take_while(_ => !starts_linked_arrow(cursor))
   guard linked_map_arrow(cursor) is Some(arrow) else {
@@ -64,7 +64,7 @@ fn linked_map_arrow_parser(cursor : @parse.Cursor) -> (String, String)? {
 }
 
 ///|
-fn map_link_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
+fn map_link_entry(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
   let start = cursor.offset()
   guard linked_map_arrow_parser(cursor) is Some((key, arrow)) else {
     return None
@@ -74,7 +74,7 @@ fn map_link_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
     ignore(cursor.restore(start))
     return None
   }
-  let target = @parse.unquote_identifier(
+  let target = @tokenizer.unquote_identifier(
     cursor.take_while(_ => true).trim().to_owned(),
   )
   if target.length() > 0 {
@@ -86,7 +86,7 @@ fn map_link_entry(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
 }
 
 ///|
-fn map_entry_line(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
+fn map_entry_line(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
   let start = cursor.offset()
   if map_value_entry(cursor) is Some(value) {
     return Some(value)
@@ -98,7 +98,7 @@ fn map_entry_line(cursor : @parse.Cursor) -> ParsedMapEntrySyntax? {
 
 ///|
 fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   match map_entry_line(cursor) {
     Some(ParsedMapValue(key~, value~)) =>
       Some({
@@ -125,16 +125,16 @@ priv struct MultilineElementHeader {
 fn EntityParser::consume_multiline_element(
   self : EntityParser,
   header : MultilineElementHeader,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let display = StringBuilder()
   if header.first_line.length() > 0 {
     display.write_string(header.first_line)
   }
   self.index += 1
   while self.index < self.lines.length() {
-    let line = @parse.strip_line_comment(self.lines[self.index])
-    let cursor = @parse.Cursor::new(line)
-    match @parse.find_literal(line, header.terminator.to_string()) {
+    let line = @tokenizer.strip_line_comment(self.lines[self.index])
+    let cursor = @tokenizer.Cursor::new(line)
+    match @tokenizer.find_literal(line, header.terminator.to_string()) {
       Some(index) => {
         let tail = cursor.slice(0, index)
         if display.to_string().length() > 0 && tail.length() > 0 {
@@ -179,7 +179,7 @@ fn valid_json(source : String) -> Bool {
 fn EntityParser::add_single_line_json(
   self : EntityParser,
   value : JsonSingleDeclaration,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let qualified_code = self.qualify(value.declaration.code)
   guard !self.has_entity(qualified_code) else {
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
@@ -201,7 +201,7 @@ fn EntityParser::add_map_link(
   source : @entity.Entity,
   entry : @entity.MapEntry,
   arrow : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   guard entry.link_target is Some(target) else { return }
   let resolved = self.resolve(target)
   guard self.has_entity(resolved) else {
@@ -243,7 +243,7 @@ fn EntityParser::consume_json_body_line(
   self : EntityParser,
   entity_index : Int,
   line : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let delta = parse_brace_delta(line)
   if self.body_depth + delta <= 0 {
     let body = self.entities[entity_index].json_data.unwrap_or("")
@@ -278,7 +278,9 @@ fn complete_json_source(
   wrapped : String,
   bare : String,
 ) -> (String, @bodierjson.JsonNode)? {
-  let wrapped_tree = Some(@bodierjson.parse_json_tree(wrapped)) catch { _ => None }
+  let wrapped_tree = Some(@bodierjson.parse_json_tree(wrapped)) catch {
+    _ => None
+  }
   wrapped_tree.map_or(
     Some((bare, @bodierjson.parse_json_tree(bare))) catch {
       _ => None
@@ -292,7 +294,7 @@ fn EntityParser::consume_entity_body_line(
   self : EntityParser,
   entity_index : Int,
   line : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let entity = self.entities[entity_index]
   if entity.kind is Json {
     self.consume_json_body_line(entity_index, line)
@@ -346,5 +348,5 @@ test "reject invalid map entry line" {
 
 ///|
 fn parse_brace_delta(line : String) -> Int {
-  @parse.unquoted_delimiter_delta(line, '{', '}')
+  @tokenizer.unquoted_delimiter_delta(line, '{', '}')
 }

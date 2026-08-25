@@ -2,8 +2,8 @@
 /// `@TIME (as : CODE)?`, mirroring `CommandAtTime`.
 fn parse_at_time(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard cursor.consume('@') else { return false }
   guard with_time_expr(cursor, expr => {
       let code = if space_one_or_more(cursor) {
@@ -34,8 +34,8 @@ fn parse_at_time(
 /// `@CODE`, mirroring `CommandAtPlayer`: selects the current player.
 fn parse_at_player(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard cursor.consume('@') else { return false }
   guard parse_player_code(cursor) is Some(code) else { return false }
   skip_spaces(cursor)
@@ -50,7 +50,7 @@ fn parse_at_player(
 ///|
 /// Matches the optional `@TIME` expression of a message or constraint,
 /// restoring the cursor when the expression is absent or malformed.
-fn parse_optional_time(cursor : @parse.Cursor) -> TimeExpr? {
+fn parse_optional_time(cursor : @tokenizer.Cursor) -> TimeExpr? {
   let checkpoint = cursor.offset()
   guard cursor.consume('@') else { return None }
   match with_time_expr(cursor, expr => Some(expr)) {
@@ -64,7 +64,7 @@ fn parse_optional_time(cursor : @parse.Cursor) -> TimeExpr? {
 
 ///|
 /// Matches the `[-]+` body and optional `[...]` style of a message arrow.
-fn parse_arrow(cursor : @parse.Cursor) -> (String, String?)? {
+fn parse_arrow(cursor : @tokenizer.Cursor) -> (String, String?)? {
   let body = cursor.take_while(char => char == '-')
   guard body.length() > 0 else { return None }
   let style = if cursor.consume('[') {
@@ -80,7 +80,7 @@ fn parse_arrow(cursor : @parse.Cursor) -> (String, String?)? {
 
 ///|
 /// Matches one `LINE_STYLE` item: `#\w+`, a style keyword, or `thickness=\d+`.
-fn parse_arrow_style_item(cursor : @parse.Cursor) -> Bool {
+fn parse_arrow_style_item(cursor : @tokenizer.Cursor) -> Bool {
   if cursor.consume('#') {
     guard take_word(cursor).length() > 0 else { return false }
     return true
@@ -108,7 +108,7 @@ fn parse_arrow_style_item(cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// Matches the comma-separated `LINE_STYLE` list inside `[...]`.
-fn parse_arrow_style(cursor : @parse.Cursor) -> String? {
+fn parse_arrow_style(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard parse_arrow_style_item(cursor) else { return None }
   while cursor.consume(',') {
@@ -125,8 +125,8 @@ fn parse_arrow_style(cursor : @parse.Cursor) -> String? {
 /// `CommandTimeMessage`.
 fn parse_time_message(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard parse_player_code(cursor) is Some(part1) else { return false }
   let time1 = parse_optional_time(cursor)
   skip_spaces(cursor)
@@ -166,8 +166,8 @@ fn parse_time_message(
 /// `note (top|bottom) of CODE : NOTE`, mirroring `CommandNote`.
 fn timing_parse_note(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard match_keyword(cursor, "note") else { return false }
   guard space_one_or_more(cursor) else { return false }
   guard timing_parse_note_position(cursor) is Some(position) else {
@@ -205,7 +205,7 @@ fn timing_parse_note(
 }
 
 ///|
-fn timing_parse_note_position(cursor : @parse.Cursor) -> String? {
+fn timing_parse_note_position(cursor : @tokenizer.Cursor) -> String? {
   if match_keyword(cursor, "top") {
     Some("top")
   } else if match_keyword(cursor, "bottom") {
@@ -221,8 +221,8 @@ fn timing_parse_note_position(cursor : @parse.Cursor) -> String? {
 /// dropped and a common leading indentation is removed from the rest.
 fn timing_parse_note_long(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard match_keyword(cursor, "note") else { return false }
   guard space_one_or_more(cursor) else { return false }
   guard timing_parse_note_position(cursor) is Some(position) else {
@@ -239,7 +239,7 @@ fn timing_parse_note_long(
   let lines = []
   let mut index = parser.index + 1
   while index < parser.lines.length() {
-    let raw = @parse.strip_line_comment_preserving_indent(parser.lines[index])
+    let raw = @tokenizer.strip_line_comment_preserving_indent(parser.lines[index])
     if raw.trim().length() == 0 {
       index += 1
       continue
@@ -297,8 +297,8 @@ fn remove_empty_columns(lines : Array[String]) -> Unit {
 /// against the first tick.
 fn parse_constraint(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   let part1 = if cursor.peek() == Some('@') {
     None
   } else {
@@ -361,8 +361,8 @@ fn parse_constraint(
 /// `scale N [unit] as N pixel(s)`, mirroring `CommandScalePixel`.
 fn parse_scale_pixel(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard match_keyword(cursor, "scale") else { return false }
   guard space_one_or_more(cursor) else { return false }
   guard match_ascii_digits(cursor) is Some(tick) else { return false }
@@ -418,7 +418,7 @@ fn scale_unit_factor(unit : String?) -> Int64 {
 ///|
 /// `(hide|manual) time.?axis`, mirroring `CommandHideTimeAxis`: the single
 /// character between `time` and `axis` is optional.
-fn parse_hide_time_axis(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_hide_time_axis(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   let manual = match_keyword(cursor, "manual")
   if !manual && !match_keyword(cursor, "hide") {
     return false
@@ -440,7 +440,7 @@ fn parse_hide_time_axis(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// `highlight FROM to TO (#color)? (: CAPTION)?`, mirroring `CommandHighlight`.
-fn parse_highlight(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_highlight(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   skip_spaces(cursor)
   guard match_keyword(cursor, "highlight") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -480,7 +480,7 @@ fn parse_highlight(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 ///|
 /// `mode compact`, mirroring `CommandModeCompact`: every player declared after
 /// the command becomes compact.
-fn parse_mode_compact(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_mode_compact(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   guard match_keyword(cursor, "mode") else { return false }
   guard space_one_or_more(cursor) else { return false }
   guard match_keyword(cursor, "compact") else { return false }
@@ -491,7 +491,7 @@ fn parse_mode_compact(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// `use date format "FORMAT"`, mirroring `CommandUseDateFormat`.
-fn parse_use_date_format(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_use_date_format(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   guard match_keyword(cursor, "use") else { return false }
   skip_spaces(cursor)
   guard match_keyword(cursor, "date") else { return false }

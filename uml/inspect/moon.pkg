@@ -12,7 +12,7 @@ import {
 import {
   "kokic/uml/entity",
   "kokic/uml/flow",
-  "kokic/uml/parse",
+  "kokic/uml/tokenizer",
   "kokic/uml/structured",
   "kokic/uml/tree",
   "kokic/uml/parser",

@@ -44,7 +44,7 @@ priv struct DeclarationLineSyntax {
 }
 
 ///|
-fn declaration_visibility(cursor : @parse.Cursor) -> @entity.Visibility {
+fn declaration_visibility(cursor : @tokenizer.Cursor) -> @entity.Visibility {
   match cursor.peek() {
     Some(char) if "+-#~".contains_char(char) => {
       ignore(cursor.advance())
@@ -61,7 +61,7 @@ fn declaration_visibility(cursor : @parse.Cursor) -> @entity.Visibility {
 }
 
 ///|
-fn take_shaped_parentheses(cursor : @parse.Cursor) -> String? {
+fn take_shaped_parentheses(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('(') else { return None }
   let name = cursor.take_while(char => char != ')')
@@ -78,7 +78,7 @@ fn take_shaped_parentheses(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn take_shaped_actor(cursor : @parse.Cursor) -> String? {
+fn take_shaped_actor(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume(':') else { return None }
   let name = cursor.take_while(char => char != ':')
@@ -95,7 +95,7 @@ fn take_shaped_actor(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn take_shaped_component(cursor : @parse.Cursor) -> String? {
+fn take_shaped_component(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('[') else { return None }
   let name = cursor.take_while(char => char != ']')
@@ -111,7 +111,7 @@ fn take_shaped_component(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn declaration_shaped_name(cursor : @parse.Cursor) -> String? {
+fn declaration_shaped_name(cursor : @tokenizer.Cursor) -> String? {
   match take_shaped_parentheses(cursor) {
     Some(value) => Some(value)
     None =>
@@ -123,7 +123,7 @@ fn declaration_shaped_name(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn take_nested_generic(cursor : @parse.Cursor) -> String? {
+fn take_nested_generic(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('<') else { return None }
   let content = generic_content(cursor)
@@ -135,7 +135,7 @@ fn take_nested_generic(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn generic_content(cursor : @parse.Cursor) -> String {
+fn generic_content(cursor : @tokenizer.Cursor) -> String {
   let parts = StringBuilder()
   while true {
     let start = cursor.offset()
@@ -155,7 +155,7 @@ fn generic_content(cursor : @parse.Cursor) -> String {
 }
 
 ///|
-fn declaration_generic(cursor : @parse.Cursor) -> String? {
+fn declaration_generic(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('<') else { return None }
   guard cursor.peek() != Some('<') else {
@@ -171,7 +171,7 @@ fn declaration_generic(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn declaration_name_atom(cursor : @parse.Cursor) -> DeclarationNameAtom? {
+fn declaration_name_atom(cursor : @tokenizer.Cursor) -> DeclarationNameAtom? {
   let start = cursor.offset()
   let (value, quoted) = match cursor.take_quoted_value() {
     Some(value) => (value, true)
@@ -196,11 +196,11 @@ fn declaration_name_atom(cursor : @parse.Cursor) -> DeclarationNameAtom? {
       }
   }
   let generic = declaration_generic(cursor)
-  Some({ value: @parse.unquote_identifier(value), generic, quoted, })
+  Some({ value: @tokenizer.unquote_identifier(value), generic, quoted, })
 }
 
 ///|
-fn declaration_name_syntax(cursor : @parse.Cursor) -> DeclarationNameSyntax? {
+fn declaration_name_syntax(cursor : @tokenizer.Cursor) -> DeclarationNameSyntax? {
   guard declaration_name_atom(cursor) is Some(first) else { return None }
   let as_start = cursor.offset()
   let alternate = if cursor.skip_inline_space1() &&
@@ -228,19 +228,19 @@ fn declaration_name_syntax(cursor : @parse.Cursor) -> DeclarationNameSyntax? {
 }
 
 ///|
-fn declaration_target(cursor : @parse.Cursor) -> String? {
+fn declaration_target(cursor : @tokenizer.Cursor) -> String? {
   match cursor.take_quoted_value() {
-    Some(value) => Some(@parse.unquote_identifier(value))
+    Some(value) => Some(@tokenizer.unquote_identifier(value))
     None => {
       let value = cursor.take_while(char => !char.is_whitespace() && char != ',')
       guard value.length() > 0 else { return None }
-      Some(@parse.unquote_identifier(value))
+      Some(@tokenizer.unquote_identifier(value))
     }
   }
 }
 
 ///|
-fn declaration_target_list(cursor : @parse.Cursor) -> Array[String]? {
+fn declaration_target_list(cursor : @tokenizer.Cursor) -> Array[String]? {
   guard declaration_target(cursor) is Some(first) else { return None }
   let values = [first]
   while true {
@@ -261,7 +261,7 @@ fn declaration_target_list(cursor : @parse.Cursor) -> Array[String]? {
 }
 
 ///|
-fn declaration_stereotype(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+fn declaration_stereotype(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("<<") else { return None }
   let parts = StringBuilder()
@@ -277,12 +277,12 @@ fn declaration_stereotype(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
 }
 
 ///|
-fn declaration_url(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+fn declaration_url(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
   cursor.take_url_value().map(url => DeclarationUrl(url))
 }
 
 ///|
-fn declaration_line_style(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+fn declaration_line_style(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("##") else { return None }
   let style = if cursor.consume('[') {
@@ -305,7 +305,7 @@ fn declaration_line_style(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
 
 ///|
 fn take_suffix_target_list(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   keyword : String,
 ) -> Array[String]? {
   let start = cursor.offset()
@@ -323,7 +323,7 @@ fn take_suffix_target_list(
 }
 
 ///|
-fn declaration_suffix(cursor : @parse.Cursor) -> DeclarationSuffixSyntax? {
+fn declaration_suffix(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
   if take_suffix_target_list(cursor, "extends") is Some(values) {
     return Some(DeclarationExtends(values))
   }
@@ -377,14 +377,14 @@ fn declaration_metadata_from(
 
 ///|
 fn take_declaration_suffixes(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> Array[DeclarationSuffixSyntax] {
   collect_repeated(cursor, declaration_suffix)
 }
 
 ///|
 fn take_declaration_name_and_suffixes(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (DeclarationNameSyntax, DeclarationMetadataSyntax)? {
   guard declaration_name_syntax(cursor) is Some(name) else { return None }
   let suffixes = take_declaration_suffixes(cursor)
@@ -395,7 +395,7 @@ fn take_declaration_name_and_suffixes(
 /// The shared `NAME [suffixes...]` prefix of declarations, package groups, and
 /// multiline element headers, including the mandatory space before the name.
 fn declaration_name_metadata(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (DeclarationNameSyntax, DeclarationMetadataSyntax)? {
   guard cursor.skip_inline_space1() else { return None }
   take_declaration_name_and_suffixes(cursor)
@@ -405,7 +405,7 @@ fn declaration_name_metadata(
 /// Consumes the optional `{}` or `{` body marker. `empty_opens` selects
 /// whether `{}` counts as an empty body; both `{}` and no marker leave the
 /// cursor after inline whitespace.
-fn take_brace(cursor : @parse.Cursor, empty_opens : Bool) -> Bool {
+fn take_brace(cursor : @tokenizer.Cursor, empty_opens : Bool) -> Bool {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   if cursor.consume_literal("{}") {
@@ -420,7 +420,7 @@ fn take_brace(cursor : @parse.Cursor, empty_opens : Bool) -> Bool {
 
 ///|
 fn declaration_body(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (DeclarationNameSyntax, DeclarationMetadataSyntax, Bool)? {
   guard take_declaration_name_and_suffixes(cursor) is Some((name, metadata)) else {
     return None
@@ -432,7 +432,7 @@ fn declaration_body(
 
 ///|
 fn declaration_kind_syntax(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@entity.EntityKind, Bool, Bool)? {
   let start = cursor.offset()
   if consume_inline_keyword(cursor, "static") &&
@@ -495,7 +495,7 @@ fn declaration_from_syntax(
 
 ///|
 fn regular_declaration(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   visibility : @entity.Visibility,
 ) -> DeclarationLineSyntax? {
   let start = cursor.offset()
@@ -522,7 +522,7 @@ fn regular_declaration(
 
 ///|
 fn symbol_declaration(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   visibility : @entity.Visibility,
 ) -> DeclarationLineSyntax? {
   let start = cursor.offset()
@@ -602,7 +602,7 @@ fn symbol_declaration(
 }
 
 ///|
-fn declaration_line(cursor : @parse.Cursor) -> DeclarationLineSyntax? {
+fn declaration_line(cursor : @tokenizer.Cursor) -> DeclarationLineSyntax? {
   let start = cursor.offset()
   let visibility = declaration_visibility(cursor)
   let syntax = match symbol_declaration(cursor, visibility) {
@@ -632,7 +632,7 @@ test "declaration line grammar accepts supported declarations" {
     "<> association",
   ]
   for line in lines {
-    let cursor = @parse.Cursor::new(line)
+    let cursor = @tokenizer.Cursor::new(line)
     guard declaration_line(cursor) is Some(_) else {
       @test.fail("declaration grammar rejected: " + line)
     }

@@ -59,19 +59,19 @@ fn timing_is_word_char(char : Char) -> Bool {
 }
 
 ///|
-fn skip_spaces(cursor : @parse.Cursor) -> Unit {
+fn skip_spaces(cursor : @tokenizer.Cursor) -> Unit {
   ignore(cursor.skip_while(char => char.is_whitespace()))
 }
 
 ///|
-fn space_one_or_more(cursor : @parse.Cursor) -> Bool {
+fn space_one_or_more(cursor : @tokenizer.Cursor) -> Bool {
   let start = cursor.offset()
   skip_spaces(cursor)
   cursor.offset() > start
 }
 
 ///|
-fn match_literal(cursor : @parse.Cursor, literal : String) -> Bool {
+fn match_literal(cursor : @tokenizer.Cursor, literal : String) -> Bool {
   let chars = literal.to_array()
   guard cursor.offset() + chars.length() <= cursor.length() else {
     return false
@@ -98,7 +98,7 @@ fn lower_ascii(char : Char) -> Char {
 
 ///|
 /// Matches `keyword` case-insensitively, like the compiled PlantUML regexes.
-fn match_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
+fn match_keyword(cursor : @tokenizer.Cursor, keyword : String) -> Bool {
   let chars = keyword.to_array()
   guard cursor.offset() + chars.length() <= cursor.length() else {
     return false
@@ -117,7 +117,7 @@ fn match_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
 ///|
 /// Matches a non-empty double-quoted string and returns its content without
 /// the quotes, mirroring `[%g]([^%g]+)[%g]`.
-fn parse_quoted(cursor : @parse.Cursor) -> String? {
+fn parse_quoted(cursor : @tokenizer.Cursor) -> String? {
   guard parse_quoted_any(cursor) is Some(value) && value.length() > 0 else {
     return None
   }
@@ -127,7 +127,7 @@ fn parse_quoted(cursor : @parse.Cursor) -> String? {
 ///|
 /// Matches a double-quoted string, empty content allowed, mirroring
 /// `[%g]([^%g]*)[%g]`.
-fn parse_quoted_any(cursor : @parse.Cursor) -> String? {
+fn parse_quoted_any(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('"') else { return None }
   let content_start = cursor.offset()
@@ -143,7 +143,7 @@ fn parse_quoted_any(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches `<<.+?>>` and returns the whole stereotype text.
-fn parse_stereotype(cursor : @parse.Cursor) -> String? {
+fn parse_stereotype(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard match_literal(cursor, "<<") else { return None }
   let content_start = cursor.offset()
@@ -163,7 +163,7 @@ fn parse_stereotype(cursor : @parse.Cursor) -> String? {
 /// `continue_with`. The retries mirror the greedy regex backtracking when the
 /// rest of a line does not fit the longest code.
 fn[T] with_player_code(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   continue_with : (String) -> T?,
 ) -> T? {
   let start = cursor.offset()
@@ -190,7 +190,7 @@ fn[T] with_player_code(
 /// Tries every `[%pLN_.@]+` prefix, longest first, mirroring the greedy regex
 /// backtracking of the declaration code class.
 fn[T] with_full_code(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   continue_with : (String) -> T?,
 ) -> T? {
   let start = cursor.offset()
@@ -212,7 +212,7 @@ fn[T] with_full_code(
 
 ///|
 /// Matches `[-%pLN_][-%pLN_.]*`, the `STATE_CODE` class.
-fn parse_state_code(cursor : @parse.Cursor) -> String? {
+fn parse_state_code(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.peek() is Some(char) && is_state_code_start(char) else {
     return None
@@ -228,7 +228,7 @@ fn parse_state_code(cursor : @parse.Cursor) -> String? {
 /// `{?}` and the `{code,code}` pair. The alternatives are retried when the
 /// continuation rejects a match, mirroring the regex backtracking.
 fn[T] with_state_spec(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   continue_with : (Array[String]) -> T?,
 ) -> T? {
   for branch in 0..<7 {
@@ -276,13 +276,13 @@ fn[T] with_state_spec(
 
 ///|
 /// Matches a Java `\w+` run.
-fn take_word(cursor : @parse.Cursor) -> String {
+fn take_word(cursor : @tokenizer.Cursor) -> String {
   cursor.take_while(timing_is_word_char)
 }
 
 ///|
 /// Matches `\w+[-\\|/]?\w+`, the color payload of the simple color form.
-fn take_color_word(cursor : @parse.Cursor) -> String? {
+fn take_color_word(cursor : @tokenizer.Cursor) -> String? {
   let first = take_word(cursor)
   guard first.length() > 0 else { return None }
   match cursor.peek() {
@@ -302,7 +302,7 @@ fn take_color_word(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches `#\w+[-\\|/]?\w+`, the simple color form of `COLOR_REGEXP`.
-fn match_simple_color(cursor : @parse.Cursor) -> String? {
+fn match_simple_color(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
   guard take_color_word(cursor) is Some(word) else {
@@ -314,7 +314,7 @@ fn match_simple_color(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches the keyword part of the multi-color form of `PART2`.
-fn match_color_keyword(cursor : @parse.Cursor) -> String? {
+fn match_color_keyword(cursor : @tokenizer.Cursor) -> String? {
   let keywords = [
     "text", "back", "header", "line", "line.dashed", "line.dotted", "line.bold",
     "shadowing",
@@ -332,7 +332,7 @@ fn match_color_keyword(cursor : @parse.Cursor) -> String? {
 ///|
 /// Matches `#(?:(\w+[-\\|/]?\w+);)?(?:(text|back|header|line|...)(?::(\w+[-\\|/]?\w+))?(?:;|(?![\\w;:.])))+`,
 /// the multi-color form of `PART2`.
-fn match_multi_color(cursor : @parse.Cursor) -> String? {
+fn match_multi_color(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
   let try_prefix = (prefix : Bool) => {
@@ -376,7 +376,7 @@ fn match_multi_color(cursor : @parse.Cursor) -> String? {
 ///|
 /// Matches a color expression, mirroring `ColorParser.COLORS_REGEXP`: the
 /// multi-color form first, then the simple `#\w+[-\\|/]?\w+` form.
-fn timing_parse_color(cursor : @parse.Cursor) -> String? {
+fn timing_parse_color(cursor : @tokenizer.Cursor) -> String? {
   let checkpoint = cursor.offset()
   match match_multi_color(cursor) {
     Some(color) => Some(color)
@@ -389,7 +389,7 @@ fn timing_parse_color(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// Matches `$tag` tokens, mirroring `Stereotag.pattern()`.
-fn parse_tags(cursor : @parse.Cursor) -> Bool {
+fn parse_tags(cursor : @tokenizer.Cursor) -> Bool {
   let start = cursor.offset()
   guard cursor.consume('$') else { return false }
   let first = cursor.take_while(char => {

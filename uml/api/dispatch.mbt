@@ -2,7 +2,7 @@
 fn meaningful_source_lines(input : String) -> Array[String] {
   input
   .split("\n")
-  .map(line => @parse.strip_line_comment(line.to_owned()).trim().to_owned())
+  .map(line => @tokenizer.strip_line_comment(line.to_owned()).trim().to_owned())
   .filter(line => {
     line.length() > 0 &&
     !line.equal_ignore_ascii_case("@startuml") &&
@@ -14,14 +14,14 @@ fn meaningful_source_lines(input : String) -> Array[String] {
 
 ///|
 fn starts_with_keyword(line : String, keywords : FixedArray[String]) -> Bool {
-  let words = @parse.syntax_words(line)
+  let words = @tokenizer.syntax_words(line)
   words.length() > 0 && keywords.contains(words[0].to_lower())
 }
 
 ///|
 fn is_sequence_command(line : String) -> Bool {
   let lower = line.to_lower()
-  let words = @parse.syntax_words(line)
+  let words = @tokenizer.syntax_words(line)
   let grouping_keyword = match words {
     ["&", keyword, ..] | [keyword, ..] =>
       sequence_grouping_keywords.contains(keyword.to_lower()) &&
@@ -57,8 +57,8 @@ fn is_ambiguous_participant_declaration(line : String) -> Bool {
 
 ///|
 fn has_message_arrow(line : String) -> Bool {
-  @parse.find_unquoted_literal(line, "->") is Some(_) ||
-  @parse.find_unquoted_literal(line, "<-") is Some(_)
+  @tokenizer.find_unquoted_literal(line, "->") is Some(_) ||
+  @tokenizer.find_unquoted_literal(line, "<-") is Some(_)
 }
 
 ///|
@@ -97,7 +97,7 @@ fn has_usecase_declaration(line : String) -> Bool {
 /// Whether the line starts with a `:actor:` shape.
 fn is_actor_shape(line : String) -> Bool {
   guard line.has_prefix(":") else { return false }
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   ignore(cursor.advance())
   ignore(cursor.skip_while(char => char != ':'))
   cursor.consume(':')
@@ -110,7 +110,7 @@ fn is_actor_shape(line : String) -> Bool {
 fn is_association_class_declaration(line : String) -> Bool {
   let trimmed = line.trim().to_owned()
   guard trimmed.has_prefix("(") else { return false }
-  let cursor = @parse.Cursor::new(trimmed)
+  let cursor = @tokenizer.Cursor::new(trimmed)
   ignore(cursor.advance())
   let mut comma = false
   while cursor.peek() is Some(char) && char != ')' {
@@ -132,7 +132,7 @@ fn is_association_class_declaration(line : String) -> Bool {
 /// These arrow forms are sequence-message syntax, never class relations.
 fn has_sequence_only_message_arrow(line : String) -> Bool {
   sequence_message_arrows.any(arrow => {
-    @parse.find_unquoted_literal(line, arrow) is Some(_)
+    @tokenizer.find_unquoted_literal(line, arrow) is Some(_)
   })
 }
 
@@ -225,7 +225,7 @@ fn has_component_arrow(line : String) -> Bool {
   trimmed.has_prefix("[") &&
   (
     has_message_arrow(trimmed) ||
-    @parse.find_unquoted_literal(trimmed, "--") is Some(_)
+    @tokenizer.find_unquoted_literal(trimmed, "--") is Some(_)
   )
 }
 
@@ -256,7 +256,7 @@ fn classify_entity_line(line : String) -> EntityLineKind {
     return DeploymentDeclaration
   }
   if class_relation_arrows.any(arrow => {
-      @parse.find_unquoted_literal(line, arrow) is Some(_)
+      @tokenizer.find_unquoted_literal(line, arrow) is Some(_)
     }) {
     return RelationLine
   }

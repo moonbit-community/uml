@@ -158,7 +158,7 @@ fn check_file(path : String, _matches : @argparse.Matches) -> Int {
 ///|
 fn render_error(path : String, action : String, err : Error) -> String {
   match err {
-    @parse.SyntaxError(line, message) => "error: \{path}:\{line}: \{message}"
+    @tokenizer.SyntaxError(line, message) => "error: \{path}:\{line}: \{message}"
     _ => "error: failed to \{action} \{path}: \{err}"
   }
 }

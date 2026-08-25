@@ -58,7 +58,7 @@ fn logical_wbs_lines(input : String) -> Array[String] {
 ///|
 fn WbsParser::new(input : String) -> WbsParser {
   {
-    lines: logical_wbs_lines(@parse.preprocess(input)),
+    lines: logical_wbs_lines(@tokenizer.preprocess(input)),
     nodes: [],
     links: [],
     codes: {},
@@ -75,7 +75,7 @@ fn is_marker_char(char : Char) -> Bool {
 }
 
 ///|
-fn wbs_marker_end(cursor : @parse.Cursor) -> Int? {
+fn wbs_marker_end(cursor : @tokenizer.Cursor) -> Int? {
   ignore(cursor.skip_while(char => char == ' ' || char == '\t'))
   let first = cursor.offset()
   ignore(cursor.skip_while(is_marker_char))
@@ -97,7 +97,7 @@ fn marker_direction(marker : String) -> @tree.WbsDirection {
 
 ///|
 fn parse_modifiers(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@tree.NodeShape, @tree.WbsDirection?, Int) {
   let parse_direction = () => {
     match cursor.peek() {
@@ -140,7 +140,7 @@ fn wbs_is_word_char(char : Char) -> Bool {
 }
 
 ///|
-fn parse_color(cursor : @parse.Cursor) -> String? {
+fn parse_color(cursor : @tokenizer.Cursor) -> String? {
   let checkpoint = cursor.offset()
   guard cursor.consume('[') && cursor.consume('#') else {
     ignore(cursor.restore(checkpoint))
@@ -160,7 +160,7 @@ fn valid_code(code : String) -> Bool {
 }
 
 ///|
-fn parse_parenthesized_code(cursor : @parse.Cursor) -> String? {
+fn parse_parenthesized_code(cursor : @tokenizer.Cursor) -> String? {
   let checkpoint = cursor.offset()
   guard cursor.consume('(') else { return None }
   let code = cursor.take_while(char => char != ')')
@@ -172,7 +172,7 @@ fn parse_parenthesized_code(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn parse_attributes(cursor : @parse.Cursor) -> (String?, String?, Int) {
+fn parse_attributes(cursor : @tokenizer.Cursor) -> (String?, String?, Int) {
   let mut color = None
   let mut code = None
   let mut count = 0
@@ -194,7 +194,7 @@ fn parse_attributes(cursor : @parse.Cursor) -> (String?, String?, Int) {
 
 ///|
 fn parse_prefix(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   start : Int,
   attributes_first : Bool,
 ) -> ItemPrefix {
@@ -212,13 +212,13 @@ fn parse_prefix(
 
 ///|
 fn quoted_alias(value : String) -> (String, String)? {
-  let cursor = @parse.Cursor::new(value)
+  let cursor = @tokenizer.Cursor::new(value)
   guard cursor.peek() == Some('"') else { return None }
   let mut close = cursor.length() - 1
   while close > 0 {
     if cursor.char_at(close) == Some('"') {
       let suffix = cursor.slice(close + 1, cursor.length()).trim().to_owned()
-      let words = @parse.syntax_words(suffix)
+      let words = @tokenizer.syntax_words(suffix)
       if words.length() == 2 &&
         words[0].equal_ignore_ascii_case("as") &&
         valid_code(words[1]) {
@@ -232,7 +232,7 @@ fn quoted_alias(value : String) -> (String, String)? {
 
 ///|
 fn item_from_prefix(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   marker : String,
   prefix : ItemPrefix,
 ) -> ItemLine? {
@@ -305,7 +305,7 @@ fn item_from_prefix(
 
 ///|
 fn parse_item_line(line : String) -> ItemLine? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   guard wbs_marker_end(cursor) is Some(end) else { return None }
   let marker = cursor.slice(0, end)
   let modern = parse_prefix(cursor, end, false)
@@ -351,7 +351,7 @@ fn multiline_end(line : String) -> (String, String?)? {
 fn WbsParser::complete_multiline(
   self : WbsParser,
   first : String,
-) -> (String, String?) raise @parse.ParseError {
+) -> (String, String?) raise @tokenizer.ParseError {
   let values = [first.trim().to_owned()]
   let start = self.index
   while true {
@@ -378,7 +378,7 @@ fn WbsParser::complete_multiline(
 fn WbsParser::smart_level(
   self : WbsParser,
   marker : String,
-) -> Int raise @parse.ParseError {
+) -> Int raise @tokenizer.ParseError {
   guard self.first_marker is Some(first) else {
     self.first_marker = Some(marker)
     return 0
@@ -403,7 +403,7 @@ fn WbsParser::smart_level(
 fn WbsParser::parent_for(
   self : WbsParser,
   level : Int,
-) -> Int raise @parse.ParseError {
+) -> Int raise @tokenizer.ParseError {
   let last_index = self.nodes.length() - 1
   let last = self.nodes[last_index]
   guard level <= last.level + 1 else {
@@ -431,7 +431,7 @@ fn WbsParser::parent_for(
 fn WbsParser::add_item(
   self : WbsParser,
   item : ItemLine,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let level = self.smart_level(item.marker)
   guard item.label is Some(_) || item.shape is @tree.NodeShape::Pseudo else {
     raise SyntaxError(self.index + 1, "Missing label for WBS node.")
@@ -483,7 +483,7 @@ fn WbsParser::add_item(
 }
 
 ///|
-fn parse_link_color(cursor : @parse.Cursor) -> String? {
+fn parse_link_color(cursor : @tokenizer.Cursor) -> String? {
   let checkpoint = cursor.offset()
   guard cursor.consume('#') else { return None }
   let first = cursor.take_while(wbs_is_word_char)
@@ -524,8 +524,8 @@ fn parse_link_color(cursor : @parse.Cursor) -> String? {
 fn WbsParser::parse_link(
   self : WbsParser,
   line : String,
-) -> Bool raise @parse.ParseError {
-  let cursor = @parse.Cursor::new(line)
+) -> Bool raise @tokenizer.ParseError {
+  let cursor = @tokenizer.Cursor::new(line)
   while cursor.peek() is Some(char) && char != '>' {
     ignore(cursor.advance())
   }
@@ -589,12 +589,12 @@ fn WbsParser::parse_link(
 ///|
 fn WbsParser::consume_style_block(
   self : WbsParser,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let start = self.index
   let selectors = []
   self.index += 1
   while self.index < self.lines.length() {
-    let line = @parse.strip_line_comment(self.lines[self.index])
+    let line = @tokenizer.strip_line_comment(self.lines[self.index])
       .trim()
       .to_owned()
     if line.equal_ignore_ascii_case("</style>") {
@@ -619,7 +619,7 @@ fn WbsParser::consume_style_block(
       self.index += 1
       continue
     }
-    let words = @parse.syntax_words(line)
+    let words = @tokenizer.syntax_words(line)
     guard !selectors.is_empty() && words.length() >= 2 else {
       raise SyntaxError(self.index + 1, "invalid WBS style property")
     }
@@ -637,12 +637,12 @@ fn WbsParser::consume_style_block(
 fn WbsParser::consume_text_block(
   self : WbsParser,
   kind : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let start = self.index
   let values = []
   self.index += 1
   while self.index < self.lines.length() {
-    let line = @parse.strip_line_comment_preserving_indent(
+    let line = @tokenizer.strip_line_comment_preserving_indent(
         self.lines[self.index],
       )
       .trim()
@@ -659,7 +659,7 @@ fn WbsParser::consume_text_block(
 }
 
 ///|
-fn WbsParser::parse_line(self : WbsParser) -> Unit raise @parse.ParseError {
+fn WbsParser::parse_line(self : WbsParser) -> Unit raise @tokenizer.ParseError {
   let trimmed = self.lines[self.index].trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
@@ -676,7 +676,7 @@ fn WbsParser::parse_line(self : WbsParser) -> Unit raise @parse.ParseError {
     let closed = @style.consume_skinparam_body(
       () => {
         guard self.index < self.lines.length() else { return None }
-        let next = @parse.strip_line_comment(self.lines[self.index])
+        let next = @tokenizer.strip_line_comment(self.lines[self.index])
         self.index += 1
         Some(next)
       },
@@ -726,7 +726,7 @@ fn WbsParser::parse_line(self : WbsParser) -> Unit raise @parse.ParseError {
 /// Parse the command family registered by PlantUML's `WBSDiagramFactory`.
 /// Both modern and legacy modifier order are accepted, together with coded
 /// nodes, multiline labels, pseudo nodes, and non-tree links.
-pub fn parse_wbs(input : String) -> @tree.WbsDiagram raise @parse.ParseError {
+pub fn parse_wbs(input : String) -> @tree.WbsDiagram raise @tokenizer.ParseError {
   let parser = WbsParser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()

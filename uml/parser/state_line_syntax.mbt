@@ -86,7 +86,7 @@ priv struct StateMetadataValues {
 /// Matches a quoted or unquoted state name. An unterminated quote falls back
 /// to the raw unquoted token, mirroring the entity `quoted.attempt().or(...)`
 /// grammar.
-fn state_identifier(cursor : @parse.Cursor) -> StateIdentifier? {
+fn state_identifier(cursor : @tokenizer.Cursor) -> StateIdentifier? {
   if cursor.peek() == Some('"') {
     if cursor.take_quoted_value() is Some(value) {
       return Some({ value, quoted: true, })
@@ -107,12 +107,12 @@ fn state_identifier(cursor : @parse.Cursor) -> StateIdentifier? {
 }
 
 ///|
-fn state_color(cursor : @parse.Cursor) -> String? {
+fn state_color(cursor : @tokenizer.Cursor) -> String? {
   cursor.take_color_value()
 }
 
 ///|
-fn state_metadata(cursor : @parse.Cursor) -> StateMetadata? {
+fn state_metadata(cursor : @tokenizer.Cursor) -> StateMetadata? {
   let start = cursor.offset()
   if cursor.take_stereotype_value() is Some(value) {
     return Some(Stereotype(value))
@@ -148,7 +148,7 @@ fn metadata_values(metadata : Array[StateMetadata]) -> StateMetadataValues {
 
 ///|
 fn state_declaration(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   keyword : String,
 ) -> StateDeclarationSyntax? {
   guard cursor.consume_literal(keyword) else { return None }
@@ -230,7 +230,7 @@ fn declaration_syntax(
 ///|
 /// Matches `[*]`, `[H*]`, `[H]`, `==name==`, or a state identifier, consuming
 /// trailing inline whitespace like the talc `symbol`/`lexeme` wrappers.
-fn state_endpoint(cursor : @parse.Cursor) -> String? {
+fn state_endpoint(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   let matched = if cursor.consume_literal("[*]") {
     Some("[*]")
@@ -270,7 +270,7 @@ fn state_endpoint(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn transition_direction(cursor : @parse.Cursor) -> @flow.TransitionDirection? {
+fn transition_direction(cursor : @tokenizer.Cursor) -> @flow.TransitionDirection? {
   if cursor.consume_literal("left") {
     return Some(@flow.TransitionDirection::Leftward)
   }
@@ -308,7 +308,7 @@ fn transition_direction(cursor : @parse.Cursor) -> @flow.TransitionDirection? {
 }
 
 ///|
-fn transition_style(cursor : @parse.Cursor) -> String? {
+fn transition_style(cursor : @tokenizer.Cursor) -> String? {
   guard cursor.consume('[') else { return None }
   let start = cursor.offset()
   while !cursor.is_eof() && !cursor.starts_with_literal("]") {
@@ -333,7 +333,7 @@ fn transition_arrow_from(parts : TransitionArrowParts) -> TransitionArrowSyntax 
 }
 
 ///|
-fn forward_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
+fn forward_transition_arrow(cursor : @tokenizer.Cursor) -> TransitionArrowParts? {
   let has_cross_start = cursor.consume('x')
   guard cursor.consume('-') else { return None }
   while cursor.consume('-') {
@@ -369,7 +369,7 @@ fn forward_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
 }
 
 ///|
-fn reverse_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
+fn reverse_transition_arrow(cursor : @tokenizer.Cursor) -> TransitionArrowParts? {
   let has_circle_end = cursor.consume('o')
   if has_circle_end {
     ignore(cursor.skip_inline_whitespace())
@@ -397,7 +397,7 @@ fn reverse_transition_arrow(cursor : @parse.Cursor) -> TransitionArrowParts? {
 }
 
 ///|
-fn transition_arrow(cursor : @parse.Cursor) -> TransitionArrowSyntax? {
+fn transition_arrow(cursor : @tokenizer.Cursor) -> TransitionArrowSyntax? {
   let start = cursor.offset()
   match forward_transition_arrow(cursor) {
     Some(parts) => Some(transition_arrow_from(parts))
@@ -415,7 +415,7 @@ fn transition_arrow(cursor : @parse.Cursor) -> TransitionArrowSyntax? {
 }
 
 ///|
-fn state_transition(cursor : @parse.Cursor) -> StateTransitionSyntax? {
+fn state_transition(cursor : @tokenizer.Cursor) -> StateTransitionSyntax? {
   let start = cursor.offset()
   ignore(cursor.skip_inline_whitespace())
   guard state_endpoint(cursor) is Some(first) else {
@@ -458,7 +458,7 @@ fn state_transition(cursor : @parse.Cursor) -> StateTransitionSyntax? {
 }
 
 ///|
-fn state_note_position(cursor : @parse.Cursor) -> @flow.StateNotePosition? {
+fn state_note_position(cursor : @tokenizer.Cursor) -> @flow.StateNotePosition? {
   let position = if cursor.consume_literal("left") {
     Some(@flow.StateNotePosition::NoteLeft)
   } else if cursor.consume_literal("right") {
@@ -478,7 +478,7 @@ fn state_note_position(cursor : @parse.Cursor) -> @flow.StateNotePosition? {
 
 ///|
 /// A trailing inline color must fully match; a bare `#` rejects the note.
-fn note_color(cursor : @parse.Cursor) -> String?? {
+fn note_color(cursor : @tokenizer.Cursor) -> String?? {
   match cursor.peek() {
     Some('#') => {
       guard state_color(cursor) is Some(value) else { return None }
@@ -490,7 +490,7 @@ fn note_color(cursor : @parse.Cursor) -> String?? {
 }
 
 ///|
-fn entity_note(cursor : @parse.Cursor) -> StateEntityNoteSyntax? {
+fn entity_note(cursor : @tokenizer.Cursor) -> StateEntityNoteSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("note") else { return None }
   ignore(cursor.skip_inline_whitespace())
@@ -519,7 +519,7 @@ fn entity_note(cursor : @parse.Cursor) -> StateEntityNoteSyntax? {
 }
 
 ///|
-fn link_note(cursor : @parse.Cursor) -> StateLinkNoteSyntax? {
+fn link_note(cursor : @tokenizer.Cursor) -> StateLinkNoteSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("note") else { return None }
   ignore(cursor.skip_inline_whitespace())
@@ -553,7 +553,7 @@ fn link_note(cursor : @parse.Cursor) -> StateLinkNoteSyntax? {
 /// Command matching follows `StateDiagramFactory` order: state and frame
 /// declarations, forward and reverse transitions, then entity and link notes.
 fn parse_line_syntax(line : String) -> StateLineSyntax? {
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   if state_declaration(cursor, "state") is Some(syntax) {
     return Some(Declaration(syntax))
   }

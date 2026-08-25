@@ -36,13 +36,13 @@ fn selector_for_tokens(tokens : Array[String]) -> @entity.EntitySelector {
     return AnyEntities(tokens.map(token => selector_for_tokens([token])))
   }
   let raw = tokens[0]
-  if raw.has_prefix("<<") && @parse.normalize_stereotype(raw) is Some(value) {
+  if raw.has_prefix("<<") && @tokenizer.normalize_stereotype(raw) is Some(value) {
     return StereotypedEntities(value)
   }
   if raw.to_lower() == "abstract" {
     return KindEntities(@entity.EntityKind::AbstractClass)
   }
-  declaration_kind(raw).map_or(NamedEntity(@parse.unquote_identifier(raw)), kind => {
+  declaration_kind(raw).map_or(NamedEntity(@tokenizer.unquote_identifier(raw)), kind => {
     KindEntities(kind)
   })
 }
@@ -51,7 +51,7 @@ fn selector_for_tokens(tokens : Array[String]) -> @entity.EntitySelector {
 fn visibility_list(tokens : Array[String]) -> Array[@entity.Visibility]? {
   let result : Array[@entity.Visibility] = []
   for token in tokens {
-    for item in @parse.split_unquoted(token, ',') {
+    for item in @tokenizer.split_unquoted(token, ',') {
       let item = item.trim().to_owned()
       guard item.length() > 0 else { continue }
       guard visibility_word(item) is Some(visibility) else { return None }
@@ -135,7 +135,7 @@ priv enum FilterLineSyntax {
 }
 
 ///|
-fn filter_token(cursor : @parse.Cursor) -> String? {
+fn filter_token(cursor : @tokenizer.Cursor) -> String? {
   if cursor.take_stereotype_value() is Some(value) {
     return Some(value)
   }
@@ -151,7 +151,7 @@ fn filter_token(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn filter_line(cursor : @parse.Cursor) -> FilterLineSyntax? {
+fn filter_line(cursor : @tokenizer.Cursor) -> FilterLineSyntax? {
   let start = cursor.offset()
   guard filter_token(cursor) is Some(first) else { return None }
   let tokens = [first]

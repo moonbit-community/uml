@@ -1,6 +1,6 @@
 import {
   "kokic/uml/svg",
-  "kokic/uml/parse",
+  "kokic/uml/tokenizer",
   "kokic/uml/metrics",
   "moonbitlang/core/string",
   "moonbitlang/core/test",

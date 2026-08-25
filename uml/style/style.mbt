@@ -235,7 +235,7 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     return Some(
       Property(
         "namespace separator",
-        @parse.syntax_words(trimmed.to_owned()).last().unwrap_or(""),
+        @tokenizer.syntax_words(trimmed.to_owned()).last().unwrap_or(""),
       ),
     )
   }
@@ -331,7 +331,7 @@ pub fn consume_skinparam_body(
   next_line : () -> String?,
   apply : (StyleDirective) -> Unit,
 ) -> Bool {
-  @parse.consume_lines_until(next_line, line => line.trim() == "}", line => {
+  @tokenizer.consume_lines_until(next_line, line => line.trim() == "}", line => {
     guard parse_style_property(line) is Some(directive) else { return }
     apply(directive)
   })

@@ -20,7 +20,7 @@ priv struct Parser {
 ///|
 fn Parser::new(input : String) -> Parser {
   {
-    lines: @parse.preprocess(input)
+    lines: @tokenizer.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array(),
@@ -146,15 +146,15 @@ fn Parser::consume_entity_note(
   position : @flow.StateNotePosition,
   target : String,
   color : String?,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   guard target.length() > 0 else {
     raise SyntaxError(self.line_number(), "state note needs a target")
   }
   let mut index = self.index + 1
-  guard @parse.collect_lines_until(
+  guard @tokenizer.collect_lines_until(
       () => {
         guard index < self.lines.length() else { return None }
-        let line = @parse.strip_line_comment(self.lines[index])
+        let line = @tokenizer.strip_line_comment(self.lines[index])
           .trim()
           .to_owned()
         index += 1
@@ -178,7 +178,7 @@ fn Parser::consume_entity_note(
 fn Parser::apply_line_syntax(
   self : Parser,
   line : String,
-) -> Bool raise @parse.ParseError {
+) -> Bool raise @tokenizer.ParseError {
   guard parse_line_syntax(line) is Some(syntax) else { return false }
   match syntax {
     Declaration(syntax) => {
@@ -254,7 +254,7 @@ fn Parser::apply_line_syntax(
 fn Parser::parse_line(
   self : Parser,
   line : String,
-) -> Unit raise @parse.ParseError {
+) -> Unit raise @tokenizer.ParseError {
   let lower = line.to_lower()
   if line.length() == 0 ||
     lower == "@startuml" ||
@@ -309,10 +309,10 @@ fn Parser::parse_line(
 /// The AST preserves state-specific pseudo-states and composite-state scope.
 pub fn parse_state(
   input : String,
-) -> @flow.StateDiagram raise @parse.ParseError {
+) -> @flow.StateDiagram raise @tokenizer.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
-    let line = @parse.strip_line_comment(parser.lines[parser.index])
+    let line = @tokenizer.strip_line_comment(parser.lines[parser.index])
       .trim()
       .to_owned()
     if line.to_lower() == "skinparam {" {
@@ -320,7 +320,7 @@ pub fn parse_state(
       let closed = @style.consume_skinparam_body(
         () => {
           guard parser.index < parser.lines.length() else { return None }
-          let line = @parse.strip_line_comment(parser.lines[parser.index])
+          let line = @tokenizer.strip_line_comment(parser.lines[parser.index])
           parser.index += 1
           Some(line)
         },

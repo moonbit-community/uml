@@ -1,5 +1,5 @@
 ///|
-fn take_inline_word(cursor : @parse.Cursor) -> String? {
+fn take_inline_word(cursor : @tokenizer.Cursor) -> String? {
   let word = cursor.take_while(char => {
     char.is_ascii_alphabetic() || char == '_' || char == '/'
   })
@@ -11,7 +11,7 @@ fn take_inline_word(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn consume_inline_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
+fn consume_inline_keyword(cursor : @tokenizer.Cursor, keyword : String) -> Bool {
   let start = cursor.offset()
   guard take_inline_word(cursor) is Some(word) else { return false }
   if word.equal_ignore_ascii_case(keyword) {
@@ -27,8 +27,8 @@ fn consume_inline_keyword(cursor : @parse.Cursor, keyword : String) -> Bool {
 /// The repeated "skip a space, parse, or restore and stop" loop shared by the
 /// suffix, modifier, and metadata grammars.
 fn[T] collect_repeated(
-  cursor : @parse.Cursor,
-  parse : (@parse.Cursor) -> T?,
+  cursor : @tokenizer.Cursor,
+  parse : (@tokenizer.Cursor) -> T?,
 ) -> Array[T] {
   let items : Array[T] = []
   while true {

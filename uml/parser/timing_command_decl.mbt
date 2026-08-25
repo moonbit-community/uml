@@ -1,7 +1,7 @@
 ///|
 /// `robust`, `concise` and `rectangle` player declarations, mirroring
 /// `CommandRobustConcise`.
-fn parse_robust_concise(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_robust_concise(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   let compact = take_compact(cursor)
   let kind = if match_keyword(cursor, "robust") {
     @flow.PlayerKind::Robust
@@ -36,7 +36,7 @@ fn parse_robust_concise(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// Matches `[0-9]+(\.[0-9]+)?`, the clock period/pulse/offset literals.
-fn parse_positive_decimal(cursor : @parse.Cursor) -> String? {
+fn parse_positive_decimal(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   let whole = cursor.take_while(char => char >= '0' && char <= '9')
   guard whole.length() > 0 else { return None }
@@ -55,7 +55,7 @@ fn parse_positive_decimal(cursor : @parse.Cursor) -> String? {
 ///
 /// A clock adds its period as a time mark and otherwise behaves like every
 /// other player declaration.
-fn parse_clock(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_clock(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   let compact = take_compact(cursor)
   guard match_keyword(cursor, "clock") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -143,7 +143,7 @@ fn parse_clock(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// Matches `-?[0-9]*\.?[0-9]+`, the analog bound literals.
-fn parse_bound_number(cursor : @parse.Cursor) -> String? {
+fn parse_bound_number(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   ignore(cursor.consume('-'))
   let whole = cursor.take_while(char => char >= '0' && char <= '9')
@@ -159,7 +159,7 @@ fn parse_bound_number(cursor : @parse.Cursor) -> String? {
 
 ///|
 /// `analog` player declarations, mirroring `CommandAnalog`.
-fn parse_analog(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_analog(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   let compact = take_compact(cursor)
   guard match_keyword(cursor, "analog") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -207,7 +207,7 @@ fn parse_analog(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 
 ///|
 /// `binary` player declarations, mirroring `CommandBinary`.
-fn parse_binary(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
+fn parse_binary(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   let compact = take_compact(cursor)
   guard match_keyword(cursor, "binary") else { return false }
   guard space_one_or_more(cursor) else { return false }
@@ -247,8 +247,8 @@ fn parse_binary(parser : TimingParser, cursor : @parse.Cursor) -> Bool {
 /// `CODE has STATE(,STATE)*`, mirroring `CommandDefineStateShort`.
 fn parse_define_state_short(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard with_player_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "has") else { return None }
@@ -283,8 +283,8 @@ fn parse_define_state_short(
 /// `CODE has "LABEL" as STATE`, mirroring `CommandDefineStateLong`.
 fn parse_define_state_long(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard with_player_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "has") else { return None }
@@ -314,7 +314,7 @@ fn parse_define_state_long(
 ///|
 /// Parses the shared tail of the change-state commands: optional color,
 /// optional `: comment`, end of line.
-fn parse_change_state_tail(cursor : @parse.Cursor) -> (String?, String?)? {
+fn parse_change_state_tail(cursor : @tokenizer.Cursor) -> (String?, String?)? {
   skip_spaces(cursor)
   let color = timing_parse_color(cursor)
   skip_spaces(cursor)
@@ -335,8 +335,8 @@ fn parse_change_state_tail(cursor : @parse.Cursor) -> (String?, String?)? {
 /// before any time mark exists.
 fn parse_change_state_by_player_code(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard with_player_code(cursor, code => {
       skip_spaces(cursor)
       guard match_keyword(cursor, "is") else { return None }
@@ -363,8 +363,8 @@ fn parse_change_state_by_player_code(
 /// interval only applies to analog players and is silently ignored otherwise.
 fn parse_ticks(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard with_full_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "ticks") else { return None }
@@ -398,8 +398,8 @@ fn parse_ticks(
 /// `CODE is N pixel(s) height`, mirroring `CommandPixelHeight`.
 fn parse_pixel_height(
   parser : TimingParser,
-  cursor : @parse.Cursor,
-) -> Bool raise @parse.ParseError {
+  cursor : @tokenizer.Cursor,
+) -> Bool raise @tokenizer.ParseError {
   guard with_full_code(cursor, code => {
       guard space_one_or_more(cursor) else { return None }
       guard match_keyword(cursor, "is") else { return None }

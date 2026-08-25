@@ -15,7 +15,7 @@ pub fn magma_bottom_left_index(Int) -> Int
 
 pub fn magma_branch(Int) -> Int
 
-pub fn parse(String, family? : EntityFamily) -> EntityDiagram raise @parse.ParseError
+pub fn parse(String, family? : EntityFamily) -> EntityDiagram raise @tokenizer.ParseError
 
 pub fn[T] put_in_square(Array[T], (T, T) -> Unit, (T, T) -> Unit) -> Unit
 

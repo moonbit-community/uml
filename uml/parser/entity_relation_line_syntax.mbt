@@ -41,7 +41,7 @@ priv enum RelationMetadataSyntax {
 }
 
 ///|
-fn starts_relation_separator(cursor : @parse.Cursor) -> Bool {
+fn starts_relation_separator(cursor : @tokenizer.Cursor) -> Bool {
   let offset = cursor.offset()
   let matched = relation_separator(cursor) is Some(_)
   ignore(cursor.restore(offset))
@@ -50,7 +50,7 @@ fn starts_relation_separator(cursor : @parse.Cursor) -> Bool {
 
 ///|
 fn relation_name(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   stop_at_arrow : Bool,
 ) -> RelationNameSyntax? {
   let start = cursor.offset()
@@ -117,7 +117,7 @@ fn relation_name(
 
 ///|
 fn relation_couple(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (RelationNameSyntax, (String, String))? {
   let start = cursor.offset()
   guard cursor.consume('(') else { return None }
@@ -141,14 +141,14 @@ fn relation_couple(
     ignore(cursor.restore(start))
     return None
   }
-  let left = @parse.unquote_identifier(first.name)
-  let right = @parse.unquote_identifier(second.name)
+  let left = @tokenizer.unquote_identifier(first.name)
+  let right = @tokenizer.unquote_identifier(second.name)
   Some(({ name: left, port_base: None, port_value: None, }, (left, right)))
 }
 
 ///|
 fn relation_target(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
   stop_at_arrow : Bool,
 ) -> (RelationNameSyntax, (String, String)?)? {
   let start = cursor.offset()
@@ -160,19 +160,19 @@ fn relation_target(
 }
 
 ///|
-fn relation_role_value(cursor : @parse.Cursor) -> String? {
+fn relation_role_value(cursor : @tokenizer.Cursor) -> String? {
   match cursor.take_quoted_value() {
-    Some(value) => Some(@parse.unquote_identifier(value))
+    Some(value) => Some(@tokenizer.unquote_identifier(value))
     None => {
       let value = cursor.take_while(char => !char.is_whitespace())
       guard value.length() > 0 else { return None }
-      Some(@parse.unquote_identifier(value))
+      Some(@tokenizer.unquote_identifier(value))
     }
   }
 }
 
 ///|
-fn relation_modifier(cursor : @parse.Cursor) -> RelationEndpointModifier? {
+fn relation_modifier(cursor : @tokenizer.Cursor) -> RelationEndpointModifier? {
   let start = cursor.offset()
   if cursor.take_quoted_value() is Some(value) {
     return Some(RelationCardinality(value))
@@ -219,12 +219,12 @@ fn relation_endpoint_from(
 }
 
 ///|
-fn take_modifiers(cursor : @parse.Cursor) -> Array[RelationEndpointModifier] {
+fn take_modifiers(cursor : @tokenizer.Cursor) -> Array[RelationEndpointModifier] {
   collect_repeated(cursor, relation_modifier)
 }
 
 ///|
-fn left_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
+fn left_relation_endpoint(cursor : @tokenizer.Cursor) -> RelationEndpointSyntax? {
   guard relation_target(cursor, true) is Some((name, couple)) else {
     return None
   }
@@ -233,7 +233,7 @@ fn left_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
 }
 
 ///|
-fn right_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
+fn right_relation_endpoint(cursor : @tokenizer.Cursor) -> RelationEndpointSyntax? {
   let start = cursor.offset()
   // The arrow separator consumes the leading spaces, so modifiers sit at the
   // current position and only a trailing space is required. A bracket may be
@@ -261,7 +261,7 @@ fn right_relation_endpoint(cursor : @parse.Cursor) -> RelationEndpointSyntax? {
 }
 
 ///|
-fn relation_separator(cursor : @parse.Cursor) -> String? {
+fn relation_separator(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   if relation_non_single_arrow(cursor) is Some(arrow) {
@@ -282,22 +282,22 @@ fn relation_separator(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn relation_color(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
+fn relation_color(cursor : @tokenizer.Cursor) -> RelationMetadataSyntax? {
   cursor.take_color_value().map(value => RelationColor(value))
 }
 
 ///|
-fn relation_url(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
+fn relation_url(cursor : @tokenizer.Cursor) -> RelationMetadataSyntax? {
   cursor.take_url_value().map(value => RelationUrl(value))
 }
 
 ///|
-fn relation_stereotype(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
+fn relation_stereotype(cursor : @tokenizer.Cursor) -> RelationMetadataSyntax? {
   cursor.take_stereotype_value().map(value => RelationStereotype(value))
 }
 
 ///|
-fn relation_metadata(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
+fn relation_metadata(cursor : @tokenizer.Cursor) -> RelationMetadataSyntax? {
   if relation_color(cursor) is Some(value) {
     return Some(value)
   }
@@ -309,7 +309,7 @@ fn relation_metadata(cursor : @parse.Cursor) -> RelationMetadataSyntax? {
 
 ///|
 fn right_relation_syntax(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (RelationEndpointSyntax, Array[RelationMetadataSyntax], String?)? {
   let start = cursor.offset()
   guard right_relation_endpoint(cursor) is Some(endpoint) else { return None }
@@ -351,7 +351,7 @@ fn relation_metadata_from(
 
 ///|
 fn left_relation_syntax(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (String?, RelationEndpointSyntax)? {
   let weight_start = cursor.offset()
   let weight = if cursor.consume('@') {
@@ -369,7 +369,7 @@ fn left_relation_syntax(
 }
 
 ///|
-fn relation_line(cursor : @parse.Cursor) -> RelationLineSyntax? {
+fn relation_line(cursor : @tokenizer.Cursor) -> RelationLineSyntax? {
   let start = cursor.offset()
   guard left_relation_syntax(cursor) is Some((weight, left)) else {
     ignore(cursor.restore(start))
@@ -400,7 +400,7 @@ test "relation line grammar accepts supported syntax" {
     "(A, B) -- Label : association", "A-->B", "order-item-->target-item",
   ]
   for line in lines {
-    let cursor = @parse.Cursor::new(line)
+    let cursor = @tokenizer.Cursor::new(line)
     guard relation_line(cursor) is Some(_) else {
       @test.fail("relation grammar rejected: " + line)
     }
@@ -410,7 +410,7 @@ test "relation line grammar accepts supported syntax" {
 ///|
 test "relation line grammar parses each typed phase" {
   let line = "U <|.. Auth : implements"
-  let cursor = @parse.Cursor::new(line)
+  let cursor = @tokenizer.Cursor::new(line)
   guard relation_line(cursor) is Some(relation) else {
     @test.fail("complete relation grammar failed")
   }

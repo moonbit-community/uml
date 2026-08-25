@@ -66,7 +66,7 @@ pub fn[T] layout_or_fallback(
   layout : () -> T raise @dot_layout.DotLayoutError,
   fallback : (() -> T)?,
 ) -> T raise @dot_layout.DotLayoutError {
-  try layout() catch {
+  layout() catch {
     @dot_layout.DotLayoutError::UnsupportedFeature(message~) => {
       guard fallback is Some(fallback) else {
         raise @dot_layout.DotLayoutError::UnsupportedFeature(message~)
@@ -74,8 +74,6 @@ pub fn[T] layout_or_fallback(
       fallback()
     }
     other => raise other
-  } noraise {
-    value => value
   }
 }
 

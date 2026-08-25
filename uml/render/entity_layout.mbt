@@ -201,7 +201,7 @@ fn @entity.EntityDiagram::graphviz_layout(
     // The stereotype line reserves cluster height for the package attribute,
     // matching Java's Cluster.getTitleAndAttributeHeight.
     let cluster_label = group.stereotype.map_or(group.display, stereotype => {
-      group.display + "\n" + @parse.display_stereotype(stereotype)
+      group.display + "\n" + @tokenizer.display_stereotype(stereotype)
     })
     cluster.set_attr("label", cluster_label)
     cluster.set_attr("style", "rounded")
@@ -399,7 +399,7 @@ fn @entity.EntityDiagram::graphviz_layout(
     }
     if !label.is_empty() {
       if usecase {
-        label = @parse.display_stereotype(label)
+        label = @tokenizer.display_stereotype(label)
       }
       edge.set_attr("label", label)
       let label_font_size = if usecase {

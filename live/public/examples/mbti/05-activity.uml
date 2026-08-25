@@ -11,7 +11,7 @@ import {
 // Values
 pub const CANVAS_LEFT : Int = 16
 
-pub fn parse(String) -> ActivityDiagram raise @parse.ParseError
+pub fn parse(String) -> ActivityDiagram raise @tokenizer.ParseError
 
 pub fn reduce(Array[ActivityNode]) -> Array[ActivityInstruction]
 

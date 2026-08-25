@@ -125,7 +125,7 @@ fn shift_digits(a : String, zeros : Int) -> String {
 }
 
 ///|
-fn parse_digits(cursor : @parse.Cursor) -> String? {
+fn parse_digits(cursor : @tokenizer.Cursor) -> String? {
   let digits = cursor.take_while(char => char >= '0' && char <= '9')
   if digits.length() == 0 {
     None
@@ -141,7 +141,7 @@ fn parse_digits(cursor : @parse.Cursor) -> String? {
 /// `10.`, `.5`, `+12` and `-0.25` are all accepted; scientific notation is
 /// rejected because the grammars never produce it.
 fn @flow.Decimal::parse(raw : String) -> @flow.Decimal? {
-  let cursor = @parse.Cursor::new(raw)
+  let cursor = @tokenizer.Cursor::new(raw)
   let sign = if cursor.consume('-') {
     -1
   } else {

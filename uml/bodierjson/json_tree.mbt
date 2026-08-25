@@ -52,7 +52,7 @@ priv struct JsonTreeCursor {
 ///
 /// PlantUML's bundled parser accepts a plain value (scalar, array, object),
 /// rejects trailing commas and malformed input, and reports a stable error.
-pub fn parse_json_tree(source : String) -> JsonNode raise @parse.ParseError {
+pub fn parse_json_tree(source : String) -> JsonNode raise @tokenizer.ParseError {
   let cursor = { chars: source.to_array(), index: 0, }
   cursor.skip_whitespace()
   guard cursor.index < cursor.chars.length() else {
@@ -67,18 +67,18 @@ pub fn parse_json_tree(source : String) -> JsonNode raise @parse.ParseError {
 }
 
 ///|
-pub fn[A] json_tree_error(message : String) -> A raise @parse.ParseError {
-  raise @parse.SyntaxError(1, message)
+pub fn[A] json_tree_error(message : String) -> A raise @tokenizer.ParseError {
+  raise @tokenizer.SyntaxError(1, message)
 }
 
 ///|
 fn JsonTreeCursor::skip_whitespace(self : JsonTreeCursor) -> Unit {
-  while self.index < self.chars.length() {
-    match self.chars[self.index] {
-      ' ' | '\t' | '\n' | '\r' => self.index += 1
-      _ => return
-    }
-  }
+  let start = self.index
+  self.index = self.chars[start:]
+    .search_by(char => {
+      !(char == ' ' || char == '\t' || char == '\n' || char == '\r')
+    })
+    .map_or(self.chars.length(), offset => start + offset)
 }
 
 ///|
@@ -93,7 +93,7 @@ fn JsonTreeCursor::consume(self : JsonTreeCursor, char : Char) -> Bool {
 ///|
 fn JsonTreeCursor::parse_value(
   self : JsonTreeCursor,
-) -> JsonNode raise @parse.ParseError {
+) -> JsonNode raise @tokenizer.ParseError {
   self.skip_whitespace()
   guard self.index < self.chars.length() else {
     json_tree_error("unexpected end of JSON")
@@ -123,21 +123,17 @@ fn JsonTreeCursor::parse_value(
 fn JsonTreeCursor::expect_literal(
   self : JsonTreeCursor,
   literal : String,
-) -> Unit raise @parse.ParseError {
-  let chars = literal.to_array()
-  for offset, char in chars {
-    guard self.index + offset < self.chars.length() &&
-      self.chars[self.index + offset] == char else {
-      json_tree_error("invalid JSON literal")
-    }
+) -> Unit raise @tokenizer.ParseError {
+  guard self.chars[self.index:].starts_with(literal.to_array()[:]) else {
+    json_tree_error("invalid JSON literal")
   }
-  self.index += chars.length()
+  self.index += literal.length()
 }
 
 ///|
 fn JsonTreeCursor::parse_object(
   self : JsonTreeCursor,
-) -> JsonNode raise @parse.ParseError {
+) -> JsonNode raise @tokenizer.ParseError {
   ignore(self.consume('{'))
   self.skip_whitespace()
   let members : Array[JsonMember] = []
@@ -164,7 +160,7 @@ fn JsonTreeCursor::parse_object(
 ///|
 fn JsonTreeCursor::parse_array(
   self : JsonTreeCursor,
-) -> JsonNode raise @parse.ParseError {
+) -> JsonNode raise @tokenizer.ParseError {
   ignore(self.consume('['))
   self.skip_whitespace()
   let elements : Array[JsonNode] = []
@@ -185,7 +181,7 @@ fn JsonTreeCursor::parse_array(
 ///|
 fn JsonTreeCursor::parse_string(
   self : JsonTreeCursor,
-) -> String raise @parse.ParseError {
+) -> String raise @tokenizer.ParseError {
   guard self.consume('"') else { json_tree_error("expected string") }
   let output = StringBuilder()
   while self.index < self.chars.length() {
@@ -238,7 +234,7 @@ fn JsonTreeCursor::parse_string(
 ///|
 fn JsonTreeCursor::parse_number(
   self : JsonTreeCursor,
-) -> String raise @parse.ParseError {
+) -> String raise @tokenizer.ParseError {
   let output = StringBuilder()
   if self.consume('-') {
     output.write_char('-')

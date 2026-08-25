@@ -185,7 +185,7 @@ fn decode_shaped_entity(
   }
   match encoded {
     Some((shape, raw_inner)) => {
-      let inner = @parse.unquote_identifier(raw_inner)
+      let inner = @tokenizer.unquote_identifier(raw_inner)
       if inner.length() > 0 {
         let actual_code = if display == code { inner } else { code }
         return (shape, inner, actual_code)

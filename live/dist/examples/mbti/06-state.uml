@@ -10,7 +10,7 @@ import {
 }
 
 // Values
-pub fn parse(String) -> StateDiagram raise @parse.ParseError
+pub fn parse(String) -> StateDiagram raise @tokenizer.ParseError
 
 pub fn render_state_svg(String, color_scheme? : @style.ColorScheme) -> String raise
 

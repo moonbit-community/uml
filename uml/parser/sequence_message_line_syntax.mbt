@@ -4,7 +4,7 @@
 /// targets the second participant, the combined forms add a second effect
 /// (see `manageActivations`). Never consumes input when it fails.
 fn take_message_activation(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@seq.ActivationSpec, @seq.ActivationSpec?)? {
   if cursor.consume_literal("++") {
     if cursor.consume_literal("--") {
@@ -31,7 +31,7 @@ fn take_message_activation(
 /// Matches the exo activation run `[+*!-]+`; only its first character has
 /// an effect, mirroring `CommandExoArrowAny`. Never consumes input when it
 /// fails.
-fn take_exo_activation(cursor : @parse.Cursor) -> @seq.ActivationSpec? {
+fn take_exo_activation(cursor : @tokenizer.Cursor) -> @seq.ActivationSpec? {
   let start = cursor.offset()
   match cursor.peek() {
     Some('+') => {
@@ -67,7 +67,7 @@ fn is_exo_activation_char(char : Char) -> Bool {
 /// space, mirroring Java's `(\{([%pLN_]+)\}[%s]+)?`: the greedy `[%s]+`
 /// hands surplus spaces back to the following tokens, so a single space is
 /// consumed here and the remainder is skipped by the caller.
-fn take_anchor(cursor : @parse.Cursor) -> String? {
+fn take_anchor(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('{') else { return None }
   let name = cursor.take_while(is_anchor_char)
@@ -95,7 +95,7 @@ fn is_anchor_char(char : Char) -> Bool {
 /// Matches one or more ` & name` multicast elements, mirroring Java's
 /// `(?:\s&\s[%pLN_.@]+)*`. An element needs a space before `&`, a space
 /// after it and a name; a partial element discards only that element.
-fn take_multicast(cursor : @parse.Cursor) -> Array[String] {
+fn take_multicast(cursor : @tokenizer.Cursor) -> Array[String] {
   let result = Array::new()
   while true {
     let saved = cursor.offset()
@@ -123,7 +123,7 @@ fn take_multicast(cursor : @parse.Cursor) -> Array[String] {
 
 ///|
 /// Consumes exactly one inline whitespace character.
-fn consume_inline_space1(cursor : @parse.Cursor) -> Bool {
+fn consume_inline_space1(cursor : @tokenizer.Cursor) -> Bool {
   if cursor.peek() is Some(char) && is_inline_whitespace(char) {
     ignore(cursor.advance())
     true
@@ -135,7 +135,7 @@ fn consume_inline_space1(cursor : @parse.Cursor) -> Bool {
 ///|
 /// Matches the optional `(digits)` arrow index token, consuming it when
 /// present.
-fn take_optional_digits(cursor : @parse.Cursor) -> Unit {
+fn take_optional_digits(cursor : @tokenizer.Cursor) -> Unit {
   let start = cursor.offset()
   guard cursor.consume('(') else { return }
   ignore(cursor.skip_while(Char::is_ascii_digit))
@@ -149,7 +149,7 @@ fn take_optional_digits(cursor : @parse.Cursor) -> Unit {
 ///|
 /// Matches `o` or `x` followed by at least one inline space, returning
 /// `(circle, cross)`; on failure consumes nothing.
-fn take_o_x_space(cursor : @parse.Cursor) -> (Bool, Bool)? {
+fn take_o_x_space(cursor : @tokenizer.Cursor) -> (Bool, Bool)? {
   let start = cursor.offset()
   let circle = cursor.consume('o')
   let cross = if circle { false } else { cursor.consume('x') }
@@ -169,7 +169,7 @@ fn take_o_x_space(cursor : @parse.Cursor) -> (Bool, Bool)? {
 /// Matches `o` or `x` preceded by at least one inline space, returning
 /// `(circle, cross)`; on failure consumes nothing. Mirrors the exo
 /// participant-side `([%s]+[ox])?` decoration.
-fn take_space_o_x(cursor : @parse.Cursor) -> (Bool, Bool)? {
+fn take_space_o_x(cursor : @tokenizer.Cursor) -> (Bool, Bool)? {
   let start = cursor.offset()
   let spaces = cursor.skip_inline_whitespace()
   if spaces > 0 && (cursor.peek() == Some('o') || cursor.peek() == Some('x')) {
@@ -187,7 +187,7 @@ fn take_space_o_x(cursor : @parse.Cursor) -> (Bool, Bool)? {
 /// `@seq.NoneHead`/`@seq.Full` when no head is present. The `_` suffix allowed by
 /// Java's `<<?_?` is consumed and discarded.
 fn take_left_arrow_head(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@seq.ArrowHead, @seq.ArrowPart) {
   match cursor.peek() {
     Some('<') => {
@@ -214,7 +214,7 @@ fn take_left_arrow_head(
 /// Matches the arrow head on the right side, always succeeding with
 /// `@seq.NoneHead`/`@seq.Full` when no head is present.
 fn take_right_arrow_head(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@seq.ArrowHead, @seq.ArrowPart) {
   match cursor.peek() {
     Some('>') => {
@@ -242,7 +242,7 @@ fn take_right_arrow_head(
 /// optional `_` after `<`/`<<`, and no `o`/`x` together with `(digits)`.
 /// Consumes its own leading spaces so the `o`/`x` can demand the extra
 /// space Java's `[%s][ox]` needs. Always succeeds.
-fn take_left_dressing(cursor : @parse.Cursor) -> @seq.DressingResult {
+fn take_left_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
   let spaces = cursor.skip_inline_whitespace()
   if spaces > 0 && (cursor.peek() == Some('o') || cursor.peek() == Some('x')) {
     let circle = cursor.consume('o')
@@ -277,7 +277,7 @@ fn take_left_dressing(cursor : @parse.Cursor) -> @seq.DressingResult {
 /// (the `_` only when no `>` starts the dressing), `/`/`\` heads, then
 /// either `o`/`x` with a following space or `(digits)` (never both), or a
 /// standalone `o`/`x` with a following space. Always succeeds.
-fn take_right_dressing(cursor : @parse.Cursor) -> @seq.DressingResult {
+fn take_right_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
   let start = cursor.offset()
   let mut head : @seq.ArrowHead = @seq.NoneHead
   let mut part : @seq.ArrowPart = @seq.Full
@@ -362,7 +362,7 @@ fn take_right_dressing(cursor : @parse.Cursor) -> @seq.DressingResult {
 /// Matches an optional `[LINE_STYLE]` token: a comma-separated list of
 /// colors (`#\w+`) and style keywords, mirroring `CommandLinkElement.
 /// LINE_STYLE`. Consumes nothing when absent or malformed.
-fn take_arrow_style(cursor : @parse.Cursor) -> Unit {
+fn take_arrow_style(cursor : @tokenizer.Cursor) -> Unit {
   let start = cursor.offset()
   guard cursor.consume('[') else { return }
   if !take_style_token(cursor) {
@@ -383,7 +383,7 @@ fn take_arrow_style(cursor : @parse.Cursor) -> Unit {
 }
 
 ///|
-fn take_style_token(cursor : @parse.Cursor) -> Bool {
+fn take_style_token(cursor : @tokenizer.Cursor) -> Bool {
   let start = cursor.offset()
   if cursor.consume('#') {
     let word = cursor.take_while(sequence_is_word_char)
@@ -429,7 +429,7 @@ fn is_style_keyword(word : String) -> Bool {
 /// token and more dashes, then the right dressing. Requires at least one
 /// dash, mirroring the talc "arrow body" failure.
 fn take_arrow_dressing(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult)? {
   let left = take_left_dressing(cursor)
   let first = cursor.take_while(char => char == '-')
@@ -448,7 +448,7 @@ fn take_arrow_dressing(
 /// (`>>?|//?|\\\\?`). Requires at least one dash and one head, mirroring
 /// `CommandExoArrowLeft`/`@seq.Right` alternatives.
 fn take_exo_arrow_dressing(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult)? {
   let start = cursor.offset()
   let (left_head, left_part) = take_left_arrow_head(cursor)
@@ -492,7 +492,7 @@ fn take_exo_arrow_dressing(
 /// optionally aliased with `as` followed by a quoted display name,
 /// mirroring Java's PART1/PART2 alternatives. On failure restores the
 /// cursor.
-fn take_part_ref(cursor : @parse.Cursor) -> PartRef? {
+fn take_part_ref(cursor : @tokenizer.Cursor) -> PartRef? {
   let start = cursor.offset()
   if cursor.peek() == Some('"') {
     if cursor.take_quoted_value() is Some(display) {
@@ -515,7 +515,7 @@ fn take_part_ref(cursor : @parse.Cursor) -> PartRef? {
 /// Matches `as "display"`, mirroring Java's CODELONG alternative: after
 /// `as` only a quoted name is valid. Restores the cursor when the alias
 /// is absent or incomplete.
-fn take_alias_display(cursor : @parse.Cursor) -> String? {
+fn take_alias_display(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   cursor.skip_inline_spaces()
   guard take_as_keyword(cursor) else {
@@ -536,7 +536,7 @@ fn take_alias_display(cursor : @parse.Cursor) -> String? {
 /// Matches the exo participant: a quoted name or bare identifier with no
 /// `as` alias, mirroring Java's PARTICIPANT alternative. On failure
 /// restores the cursor.
-fn take_exo_participant(cursor : @parse.Cursor) -> PartRef? {
+fn take_exo_participant(cursor : @tokenizer.Cursor) -> PartRef? {
   let start = cursor.offset()
   if cursor.peek() == Some('"') {
     match cursor.take_quoted_value() {
@@ -562,7 +562,7 @@ fn take_exo_participant(cursor : @parse.Cursor) -> PartRef? {
 /// (`[A-Za-z0-9_]`), mirroring the `#\w+` LIFECOLOR group of the arrow and
 /// exo commands. Restores the original position when no word follows the
 /// marker.
-fn take_life_color_value(cursor : @parse.Cursor) -> String? {
+fn take_life_color_value(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
   let word = cursor.take_while(sequence_is_word_char)
@@ -579,7 +579,7 @@ fn take_life_color_value(cursor : @parse.Cursor) -> String? {
 /// label, mirroring Java's `ACTIVATION LIFECOLOR StereotypePattern.optional
 /// UrlBuilder.OPTIONAL : MESSAGE?`. Always succeeds.
 fn take_message_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (
   @seq.ActivationSpec?,
   @seq.ActivationSpec?,
@@ -596,7 +596,7 @@ fn take_message_tail(
   let url = take_optional_url(cursor)
   cursor.skip_inline_spaces()
   let label = if cursor.consume(':') {
-    @parse.normalize_label(cursor.take_while(_ => true))
+    @tokenizer.normalize_label(cursor.take_while(_ => true))
   } else {
     None
   }
@@ -611,7 +611,7 @@ fn take_message_tail(
 /// optional `[[url]]`, optional `:` label. Exo arrows accept no stereotype,
 /// mirroring `CommandExoArrowLeft`/`@seq.Right`. Always succeeds.
 fn take_exo_tail(
-  cursor : @parse.Cursor,
+  cursor : @tokenizer.Cursor,
 ) -> (@seq.ActivationSpec?, String?, String?, String?) {
   cursor.skip_inline_spaces()
   let activation_spec = take_exo_activation(cursor)
@@ -620,7 +620,7 @@ fn take_exo_tail(
   let url = take_optional_url(cursor)
   cursor.skip_inline_spaces()
   let label = if cursor.consume(':') {
-    @parse.normalize_label(cursor.take_while(_ => true))
+    @tokenizer.normalize_label(cursor.take_while(_ => true))
   } else {
     None
   }
@@ -630,7 +630,7 @@ fn take_exo_tail(
 ///|
 /// Matches a complete message between two participants, requiring the
 /// full line to be consumed.
-fn message_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
@@ -706,7 +706,7 @@ fn message_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 ///|
 /// Matches an exogenous message arriving from or leaving to the left
 /// border, requiring the full line to be consumed.
-fn left_exo_message_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
@@ -781,7 +781,7 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 ///|
 /// Matches an exogenous message arriving from or leaving to the right
 /// border, requiring the full line to be consumed.
-fn right_exo_message_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
@@ -857,7 +857,7 @@ fn right_exo_message_syntax(cursor : @parse.Cursor) -> @seq.Event? {
 /// Matches the exo border symbol `[?\[\]][ox]?` on the left side,
 /// returning the symbol character, the short-arrow flag and the border
 /// circle/cross decorations.
-fn take_exo_left_symbol(cursor : @parse.Cursor) -> (Char, Bool, Bool, Bool)? {
+fn take_exo_left_symbol(cursor : @tokenizer.Cursor) -> (Char, Bool, Bool, Bool)? {
   let start = cursor.offset()
   let symbol = match cursor.peek() {
     Some(char) if char == '?' || char == '[' || char == ']' => {
@@ -879,7 +879,7 @@ fn take_exo_left_symbol(cursor : @parse.Cursor) -> (Char, Bool, Bool, Bool)? {
 /// returning the symbol character and the border circle/cross
 /// decorations. A `?` or `[` here can never complete a line (the closing
 /// `]` is required), so only `]` with an optional `o`/`x` is reachable.
-fn take_exo_right_symbol(cursor : @parse.Cursor) -> (Char, Bool, Bool, Bool)? {
+fn take_exo_right_symbol(cursor : @tokenizer.Cursor) -> (Char, Bool, Bool, Bool)? {
   let start = cursor.offset()
   let circle = cursor.consume('o')
   let cross = if circle { false } else { cursor.consume('x') }
@@ -895,7 +895,7 @@ fn take_exo_right_symbol(cursor : @parse.Cursor) -> (Char, Bool, Bool, Bool)? {
 /// Tries the left exo, right exo and plain message forms in order,
 /// mirroring the talc `choice` with the two exo forms wrapped in
 /// `attempt`.
-fn complete_message_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
+fn complete_message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if left_exo_message_syntax(cursor) is Some(event) {
     return Some(event)

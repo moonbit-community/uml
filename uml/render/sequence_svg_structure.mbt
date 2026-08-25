@@ -28,7 +28,7 @@ fn GroupSpan::header_text(self : GroupSpan) -> String {
 fn GroupSpan::comment_text(self : GroupSpan) -> String? {
   match self.keyword {
     @seq.Group => None
-    _ => @parse.normalize_label(self.header)
+    _ => @tokenizer.normalize_label(self.header)
   }
 }
 
