@@ -33,16 +33,17 @@ pub fn[T] put_in_square(
   left_right : (T, T) -> Unit,
 ) -> Unit {
   let branch = magma_branch(data.length())
-  let mut head_branch = 0
-  for i in 1..<data.length() {
-    let dist = i - head_branch
-    guard dist == branch else {
-      left_right(data[i - 1], data[i])
-      continue
-    }
-    top_down(data[head_branch], data[i])
-    head_branch = i
-  }
+  ignore(
+    data.foldi(init=0, (i, head_branch, _) => {
+      guard i > 0 else { return head_branch }
+      guard i - head_branch == branch else {
+        left_right(data[i - 1], data[i])
+        return head_branch
+      }
+      top_down(data[head_branch], data[i])
+      i
+    }),
+  )
 }
 
 ///|
@@ -63,12 +64,13 @@ pub fn EntityDiagram::is_grid_standalone(
   self : EntityDiagram,
   code : String,
 ) -> Bool {
-  let touched = self.relations.any(
-    relation => relation.left == code || relation.right == code,
-  ) || self.notes.any(
-    note => (note.target_kind is EntityNote || note.target_kind is MemberTip) &&
-      note.target == code,
-  )
+  let touched = self.relations.any(relation => {
+      relation.left == code || relation.right == code
+    }) ||
+    self.notes.any(note => {
+      (note.target_kind is EntityNote || note.target_kind is MemberTip) &&
+      note.target == code
+    })
   !touched
 }
 
@@ -79,9 +81,9 @@ pub fn EntityDiagram::package_parent(
   scope : String,
 ) -> String? {
   self.packages
-    .iter()
-    .find_first(group => group.qualified_name == scope)
-    .map(group => group.parent)
+  .iter()
+  .find_first(group => group.qualified_name == scope)
+  .map(group => group.parent)
 }
 
 ///|
@@ -103,8 +105,7 @@ pub fn EntityDiagram::magma_grid_edges(
   let edges : Array[(String, String, Int)] = []
   guard self.family.applies_magma_grid() else { return edges }
   let scopes = [""] + self.packages.map(group => group.qualified_name)
-  let magmas : Array[Magma] = []
-  for scope in scopes {
+  let magmas = scopes.filter_map(scope => {
     let standalones = self.entities
       .filter(entity => {
         !entity.is_hidden &&
@@ -113,21 +114,18 @@ pub fn EntityDiagram::magma_grid_edges(
         self.is_grid_standalone(entity.qualified_code)
       })
       .map(entity => entity.qualified_code)
-    guard standalones.length() >= 3 else { continue }
+    guard standalones.length() >= 3 else { return None }
     let container = if scope == "" { None } else { self.package_parent(scope) }
     put_in_square(standalones, (top, down) => edges.push((top, down, 1)), (
       left,
       right,
     ) => edges.push((left, right, 0)))
-    magmas.push({ standalones, container, })
-  }
+    Some({ standalones, container, })
+  })
   for group in self.packages {
-    let package_magmas = []
-    for magma in magmas {
-      if magma.container is Some(scope) && scope == group.qualified_name {
-        package_magmas.push(magma)
-      }
-    }
+    let package_magmas = magmas.filter(magma => {
+      magma.container == Some(group.qualified_name)
+    })
     guard package_magmas.length() >= 3 else { continue }
     put_in_square(
       package_magmas,

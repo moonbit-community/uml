@@ -495,17 +495,13 @@ pub(all) struct EntityRule {
 
 ///|
 pub fn EntityDiagram::entity(self : EntityDiagram, code : String) -> Entity? {
-  for entity in self.entities {
-    if entity.qualified_code == code {
-      return Some(entity)
-    }
-  }
-  for entity in self.entities {
-    if entity.code == code {
-      return Some(entity)
-    }
-  }
-  None
+  self.entities
+  .iter()
+  .find_first(entity => entity.qualified_code == code)
+  .map_or_else(
+    () => self.entities.iter().find_first(entity => entity.code == code),
+    entity => Some(entity),
+  )
 }
 
 ///|
