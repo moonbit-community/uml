@@ -12,7 +12,7 @@ pub extend TextAlignment with Eq::{not_equal, equal}
 pub extend TextAlignment with Debug::{to_repr}
 
 ///|
-pub struct MindmapNodeStyle {
+pub(all) struct MindmapNodeStyle {
   minimum_width : Int?
   padding_x : Int?
   padding_y : Int?
@@ -37,7 +37,7 @@ pub extend MindmapNodeStyle with Eq::{not_equal, equal}
 pub extend MindmapNodeStyle with Debug::{to_repr}
 
 ///|
-pub struct MindmapArrowStyle {
+pub(all) struct MindmapArrowStyle {
   line_color : String?
   line_thickness : Int?
 } derive(Eq, Debug)
@@ -49,7 +49,7 @@ pub extend MindmapArrowStyle with Eq::{not_equal, equal}
 pub extend MindmapArrowStyle with Debug::{to_repr}
 
 ///|
-pub struct MindmapStyle {
+pub(all) struct MindmapStyle {
   mut node : MindmapNodeStyle
   mut root_node : MindmapNodeStyle
   mut leaf_node : MindmapNodeStyle
@@ -112,7 +112,7 @@ fn MindmapNodeStyle::defaults() -> MindmapNodeStyle {
 
 ///|
 fn MindmapArrowStyle::defaults() -> MindmapArrowStyle {
-  { line_color: None, line_thickness: Some(1) }
+  { line_color: None, line_thickness: Some(1), }
 }
 
 ///|
@@ -193,7 +193,7 @@ fn parse_box_lengths(value : String) -> (Int, Int, Int, Int)? {
 }
 
 ///|
-fn MindmapNodeStyle::with_property(
+pub fn MindmapNodeStyle::with_property(
   self : MindmapNodeStyle,
   key : String,
   value : String,
@@ -234,9 +234,9 @@ fn MindmapNodeStyle::with_property(
         ..self,
         font_size: Some(size.max(1)),
       })
-    "backgroundcolor" => { ..self, background_color: Some(value) }
-    "linecolor" | "bordercolor" => { ..self, line_color: Some(value) }
-    "fontcolor" => { ..self, font_color: Some(value) }
+    "backgroundcolor" => { ..self, background_color: Some(value), }
+    "linecolor" | "bordercolor" => { ..self, line_color: Some(value), }
+    "fontcolor" => { ..self, font_color: Some(value), }
     "linethickness" =>
       parse_nonnegative_int(value).map_or(self, thickness => {
         ..self,
@@ -254,9 +254,9 @@ fn MindmapNodeStyle::with_property(
       })
     "horizontalalignment" =>
       match value.to_lower() {
-        "left" => { ..self, alignment: Some(Left) }
-        "right" => { ..self, alignment: Some(Right) }
-        "center" | "centre" => { ..self, alignment: Some(Center) }
+        "left" => { ..self, alignment: Some(Left), }
+        "right" => { ..self, alignment: Some(Right), }
+        "center" | "centre" => { ..self, alignment: Some(Center), }
         _ => self
       }
     _ => self
@@ -264,14 +264,14 @@ fn MindmapNodeStyle::with_property(
 }
 
 ///|
-fn MindmapArrowStyle::with_property(
+pub fn MindmapArrowStyle::with_property(
   self : MindmapArrowStyle,
   key : String,
   value : String,
 ) -> MindmapArrowStyle {
   match key.to_lower().replace(old=":", new="") {
     "linecolor" | "color" =>
-      { ..self, line_color: Some(value.trim().to_owned()) }
+      { ..self, line_color: Some(value.trim().to_owned()), }
     "linethickness" =>
       parse_nonnegative_int(value).map_or(self, thickness => {
         ..self,

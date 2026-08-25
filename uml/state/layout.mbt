@@ -150,7 +150,7 @@ fn shift_state_node(
   dx : Double,
   dy : Double,
 ) -> StateNodeLayout {
-  { ..node, x: node.x + dx, y: node.y + dy }
+  { ..node, x: node.x + dx, y: node.y + dy, }
 }
 
 ///|
@@ -174,7 +174,7 @@ fn shift_state_region(
   dx : Double,
   dy : Double,
 ) -> StateRegionLayout {
-  { ..region, x: region.x + dx, y: region.y + dy }
+  { ..region, x: region.x + dx, y: region.y + dy, }
 }
 
 ///|
@@ -183,7 +183,7 @@ fn shift_state_note(
   dx : Double,
   dy : Double,
 ) -> StateNoteLayout {
-  { ..note, x: note.x + dx, y: note.y + dy }
+  { ..note, x: note.x + dx, y: note.y + dy, }
 }
 
 ///|
@@ -438,7 +438,7 @@ fn StateDiagram::visible_nodes_for_scope(
     let child = self.composite_fragment(
       state, name_metrics, description_metrics,
     )
-    Some({ state, child })
+    Some({ state, child, })
   })
 }
 
@@ -666,14 +666,14 @@ fn StateDiagram::layout_scope(
       } else {
         output.width
       },
-      nodes: output.nodes.map(node => { ..node, x: node.x + dx }),
+      nodes: output.nodes.map(node => { ..node, x: node.x + dx, }),
       edges: output.edges.map(edge => {
         ..edge,
         paths: edge.paths.map(path => path.map(point => (point.0 + dx, point.1))),
         label: edge.label.map(point => (point.0 + dx, point.1)),
       }),
-      regions: output.regions.map(region => { ..region, x: region.x + dx }),
-      notes: output.notes.map(note => { ..note, x: note.x + dx }),
+      regions: output.regions.map(region => { ..region, x: region.x + dx, }),
+      notes: output.notes.map(note => { ..note, x: note.x + dx, }),
     }
   }
 }
@@ -725,7 +725,7 @@ fn StateDiagram::correct_note_side(
   } else {
     anchor_x + anchor_w + gap
   }
-  { ..layout, x: corrected_x }
+  { ..layout, x: corrected_x, }
 }
 
 ///|
@@ -777,7 +777,7 @@ fn stack_region_fragments(
       }
       height = height.max(fragment.height)
     }
-    { ..output, width: x.max(1.0), height }
+    { ..output, width: x.max(1.0), height, }
   } else {
     let mut y = 0.0
     let mut width = 1.0
@@ -799,7 +799,7 @@ fn stack_region_fragments(
       }
       width = width.max(fragment.width)
     }
-    { ..output, width, height: y.max(1.0) }
+    { ..output, width, height: y.max(1.0), }
   }
 }
 

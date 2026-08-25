@@ -180,7 +180,7 @@ fn decimal(
   let scale = if trailing_dot { 1 } else { fraction.length() }
   let tail = if trailing_dot { "0" } else { "" }
   let coeff = normalize_digits(whole + fraction + tail)
-  { sign, coeff: if coeff == "0" { "0" } else { coeff }, scale }
+  { sign, coeff: if coeff == "0" { "0" } else { coeff }, scale, }
 }
 
 ///|
@@ -190,7 +190,7 @@ pub fn Decimal::is_zero(self : Decimal) -> Bool {
 
 ///|
 pub fn Decimal::negate(self : Decimal) -> Decimal {
-  { ..self, sign: if self.sign < 0 { 1 } else { -1 } }
+  { ..self, sign: if self.sign < 0 { 1 } else { -1 }, }
 }
 
 ///|
@@ -211,14 +211,14 @@ pub fn Decimal::add(self : Decimal, other : Decimal) -> Decimal {
   } else {
     (other.sign, sub_digits(b, a))
   }
-  { sign, coeff: normalize_digits(coeff), scale }
+  { sign, coeff: normalize_digits(coeff), scale, }
 }
 
 ///|
 /// Exact multiplication by a positive integer, mirroring
 /// `BigDecimal.multiply(BigDecimal.valueOf(nb))`.
 pub fn Decimal::mul_int(self : Decimal, factor : Int) -> Decimal {
-  { ..self, coeff: mul_digits_int(self.coeff, factor) }
+  { ..self, coeff: mul_digits_int(self.coeff, factor), }
 }
 
 ///|

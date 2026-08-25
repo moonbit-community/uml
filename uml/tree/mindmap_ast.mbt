@@ -1,15 +1,15 @@
 ///|
 /// Which side of the root a mindmap idea belongs to.
-pub(all) enum Direction {
+pub(all) enum MindmapDirection {
   Left
   Right
 } derive(Eq, Debug)
 
 ///|
-pub extend Direction with Eq::{not_equal, equal}
+pub extend MindmapDirection with Eq::{not_equal, equal}
 
 ///|
-pub extend Direction with Debug::{to_repr}
+pub extend MindmapDirection with Debug::{to_repr}
 
 ///|
 /// The visual form requested by a mindmap item.
@@ -27,10 +27,10 @@ pub extend IdeaShape with Debug::{to_repr}
 ///|
 /// A parsed mindmap item. `parent` is the index of its parent in
 /// `MindmapDiagram::ideas`; the root has no parent.
-pub struct Idea {
+pub(all) struct Idea {
   label : String
   level : Int
-  direction : Direction
+  direction : MindmapDirection
   shape : IdeaShape
   background_color : String?
   stereotype : String?
@@ -45,7 +45,7 @@ pub extend Idea with Debug::{to_repr}
 
 ///|
 /// Parsed PlantUML mindmap state.
-pub struct MindmapDiagram {
+pub(all) struct MindmapDiagram {
   ideas : Array[Idea]
   style : @style.DocumentStyle
   mindmap_style : MindmapStyle

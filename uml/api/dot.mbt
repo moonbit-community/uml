@@ -40,7 +40,7 @@ fn dot_source_between_markers(input : String) -> String {
 /// markers. The source is validated only when rendered, like PlantUML's dot
 /// factory which forwards the text verbatim to graphviz.
 pub fn parse_dot_source(input : String) -> DotDiagram {
-  { source: @parse.preprocess(input) |> dot_source_between_markers }
+  { source: @parse.preprocess(input) |> dot_source_between_markers, }
 }
 
 ///|

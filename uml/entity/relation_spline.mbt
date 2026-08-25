@@ -6,7 +6,7 @@ priv struct RelationPath {
 
 ///|
 fn relation_path(points : Array[(Double, Double)]) -> RelationPath {
-  { points: points.map(point => { x: point.0, y: point.1 }) }
+  { points: points.map(point => { x: point.0, y: point.1, }), }
 }
 
 ///|
@@ -53,7 +53,7 @@ fn reverse_relation_spline(
   {
     arrow_start: spline.arrow_end,
     arrow_end: spline.arrow_start,
-    points: points.map(point => { x: point.0, y: point.1 }),
+    points: points.map(point => { x: point.0, y: point.1, }),
   }
 }
 
@@ -123,7 +123,7 @@ fn move_spline_start_to(
   if points.length() > 1 && (points.length() - 1) % 3 == 0 {
     points[1] = (points[1].0 + dx, points[1].1 + dy)
   }
-  { ..spline, points: points.map(point => { x: point.0, y: point.1 }) }
+  { ..spline, points: points.map(point => { x: point.0, y: point.1, }), }
 }
 
 ///|
@@ -140,7 +140,7 @@ fn move_spline_end_to(
   if points.length() > 1 && (points.length() - 1) % 3 == 0 {
     points[last - 1] = (points[last - 1].0 + dx, points[last - 1].1 + dy)
   }
-  { ..spline, points: points.map(point => { x: point.0, y: point.1 }) }
+  { ..spline, points: points.map(point => { x: point.0, y: point.1, }), }
 }
 
 ///|
@@ -166,7 +166,7 @@ fn repair_relation_contacts(
   let first_adjacent = if first.points.length() > 1 {
     first.points[1]
   } else {
-    { x: right_node.x, y: right_node.y }
+    { x: right_node.x, y: right_node.y, }
   }
   let start = clip_ray_to_node(
     point(first.points[0].x, first.points[0].y),
@@ -180,7 +180,7 @@ fn repair_relation_contacts(
   let last_adjacent = if last.points.length() > 1 {
     last.points[last_point - 1]
   } else {
-    { x: left_node.x, y: left_node.y }
+    { x: left_node.x, y: left_node.y, }
   }
   let end = clip_ray_to_node(
     point(last.points[last_point].x, last.points[last_point].y),

@@ -92,39 +92,45 @@ fn append_mindmap_edge(
 ///|
 fn append_mindmap_node(
   output : @svg.XmlWriter,
-  diagram : MindmapDiagram,
+  diagram : @tree.MindmapDiagram,
   node : NodeLayout,
 ) -> Unit {
   let idea = diagram.ideas[node.idea_index]
   let font_size = diagram.node_font_size(node.idea_index)
   let font_metrics = diagram.style.font_metrics(font_size~)
   let node_style = diagram.node_style(node.idea_index)
-  let padding_x = node_style.padding_x.unwrap_or(MINDMAP_DEFAULT_PADDING_X)
-  let padding_y = node_style.padding_y.unwrap_or(MINDMAP_DEFAULT_PADDING_Y)
-  let (text_x, anchor) = match node_style.alignment.unwrap_or(Left) {
+  let padding_x = node_style.padding_x.unwrap_or(
+    @tree.MINDMAP_DEFAULT_PADDING_X,
+  )
+  let padding_y = node_style.padding_y.unwrap_or(
+    @tree.MINDMAP_DEFAULT_PADDING_Y,
+  )
+  let (text_x, anchor) = match
+    node_style.alignment.unwrap_or(@tree.TextAlignment::Left) {
     // PlantUML draws every node label at the box's left edge plus the
     // padding; `HorizontalAlignment Right` does not move it either.
-    Left | Right => (node.x + padding_x, "start")
-    Center => (node.x + node.width / 2, "middle")
+    @tree.TextAlignment::Left | @tree.TextAlignment::Right =>
+      (node.x + padding_x, "start")
+    @tree.TextAlignment::Center => (node.x + node.width / 2, "middle")
   }
   let (text_x, anchor, first_baseline) = match idea.shape {
-    Box =>
+    @tree.IdeaShape::Box =>
       // SVG positions text by its baseline. PlantUML's box renderer starts a
       // line after the top padding plus the font's baseline offset.
       (text_x, anchor, node.y + padding_y + font_size)
-    Boxless => {
+    @tree.IdeaShape::Boxless => {
       // Java adds the horizontal margin on the side away from the connector.
       // The connector itself meets the opposite edge of this virtual box.
       let text_x = match idea.direction {
-        Right => node.x + boxless_horizontal_margin
-        Left => node.x
+        @tree.MindmapDirection::Right => node.x + boxless_horizontal_margin
+        @tree.MindmapDirection::Left => node.x
       }
       (text_x, "start", node.y + boxless_vertical_margin + font_size)
     }
   }
   let shape_class = match idea.shape {
-    Box => "box"
-    Boxless => "boxless"
+    @tree.IdeaShape::Box => "box"
+    @tree.IdeaShape::Boxless => "boxless"
   }
   let defaults = diagram.style.defaults()
   let fill = @svg.svg_color(
@@ -146,7 +152,7 @@ fn append_mindmap_node(
     ("data-idea-index", node.idea_index.to_string()),
   ])
   match idea.shape {
-    Box =>
+    @tree.IdeaShape::Box =>
       output.empty("rect", attributes=[
         ("x", node.x.to_string()),
         ("y", node.y.to_string()),
@@ -157,7 +163,7 @@ fn append_mindmap_node(
         ("stroke", line_color),
         ("stroke-width", line_thickness),
       ])
-    Boxless => ()
+    @tree.IdeaShape::Boxless => ()
   }
   append_mindmap_text(
     output,
@@ -175,11 +181,11 @@ fn append_mindmap_node(
 
 ///|
 /// Render a parsed mindmap as an SVG document.
-pub fn MindmapDiagram::render_svg(
-  self : MindmapDiagram,
+fn @tree.MindmapDiagram::render_svg(
+  self : @tree.MindmapDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = self.layout()
   let output = @svg.XmlWriter::new()
   let background = self.style.canvas_color()
@@ -221,9 +227,15 @@ pub fn MindmapDiagram::render_svg(
 }
 
 ///|
+pub fn render_mindmap(input : String) -> String raise @parse.ParseError {
+  parse(input).render_svg()
+}
+
+///|
+/// Render a parsed mindmap to SVG.
 pub fn render_mindmap_svg(
-  input : String,
+  diagram : @tree.MindmapDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String raise @parse.ParseError {
-  parse(input).render_svg(color_scheme~)
+) -> String {
+  diagram.render_svg(color_scheme~)
 }

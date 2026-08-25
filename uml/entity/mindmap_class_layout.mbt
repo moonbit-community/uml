@@ -90,10 +90,10 @@ fn EntityDiagram::mindmap_class_layout(
     items.push({
       width: geometry.width,
       height: geometry.height,
-      margin_left: @mindmap.MINDMAP_DEFAULT_MARGIN,
-      margin_right: @mindmap.MINDMAP_DEFAULT_MARGIN,
-      margin_top: @mindmap.MINDMAP_DEFAULT_MARGIN,
-      margin_bottom: @mindmap.MINDMAP_DEFAULT_MARGIN,
+      margin_left: @tree.MINDMAP_DEFAULT_MARGIN,
+      margin_right: @tree.MINDMAP_DEFAULT_MARGIN,
+      margin_top: @tree.MINDMAP_DEFAULT_MARGIN,
+      margin_bottom: @tree.MINDMAP_DEFAULT_MARGIN,
       left_children: [],
       right_children: children[entity_index],
     })
@@ -118,7 +118,7 @@ fn EntityDiagram::mindmap_class_layout(
     left_entity: edge.parent_index,
     right_entity: edge.child_index,
   })
-  { layout, rects, structure_edges }
+  { layout, rects, structure_edges, }
 }
 
 ///|

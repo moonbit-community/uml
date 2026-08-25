@@ -198,7 +198,7 @@ fn parse_note(
   guard parser.player(code) is Some(player) else {
     raise parser.error("Unknown \"" + code + "\"")
   }
-  player.notes.push({ when: parser.diagram.now, position, text, stereotype })
+  player.notes.push({ when: parser.diagram.now, position, text, stereotype, })
   true
 }
 
@@ -349,7 +349,7 @@ fn parse_constraint(
   let tick2 = resolve_time_expr(parser, Some(expr2))
   parser.diagram.now = saved
   guard tick2 is Some(value) else { raise parser.error("Unknown time label") }
-  player.constraints.push({ tick1, tick2: value, message, style })
+  player.constraints.push({ tick1, tick2: value, message, style, })
   true
 }
 

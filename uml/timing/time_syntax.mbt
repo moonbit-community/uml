@@ -207,5 +207,5 @@ fn resolve_time_expr(parser : Parser, expr : TimeExpr?) -> TimeTick? {
 
 ///|
 fn tick(time : Decimal, format : TimingFormat) -> TimeTick {
-  { time, format }
+  { time, format, }
 }

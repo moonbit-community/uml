@@ -29,5 +29,5 @@ fn json_root(value : Json) -> StructuredNode {
 ///|
 pub fn parse_json(input : String) -> StructuredDiagram raise @json.ParseError {
   let source = source_between_markers(input, "@startjson", "@endjson")
-  { format: Json, root: json_root(@json.parse(source)) }
+  { format: Json, root: json_root(@json.parse(source)), }
 }

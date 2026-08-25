@@ -193,7 +193,7 @@ pub fn EntityDiagram::render_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(class_member_collapsible)
 }
 
@@ -204,6 +204,6 @@ pub fn EntityDiagram::render_mbti_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(class_member_collapsible)
 }

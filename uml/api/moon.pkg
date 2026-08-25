@@ -5,6 +5,7 @@ import {
   "kokic/uml/mindmap",
   "kokic/uml/structured",
   "kokic/uml/sequence",
+  "kokic/uml/tree",
   "kokic/uml/seq",
   "kokic/uml/state",
   "moonbit-community/graphviz/dot" @gv_dot,

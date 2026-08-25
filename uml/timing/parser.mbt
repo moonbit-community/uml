@@ -203,7 +203,7 @@ fn Parser::set_player_state(
         Some(tick) =>
           insert_change(
             player,
-            { when: Some(tick), comment, color, states: decoded },
+            { when: Some(tick), comment, color, states: decoded, },
             false,
           )
       }
@@ -221,20 +221,20 @@ fn Parser::set_player_state(
         Some(tick) =>
           insert_change(
             player,
-            { when: Some(tick), comment, color, states: converted },
+            { when: Some(tick), comment, color, states: converted, },
             true,
           )
       }
     }
     Analog => {
       let value = parse_analog_value(states[0])
-      let change = { when, comment: None, color: None, states: [value] }
+      let change = { when, comment: None, color: None, states: [value], }
       match when {
         None => player.initial = Some(change)
         Some(tick) => {
-          insert_change(player, { ..change, when: Some(tick) }, true)
+          insert_change(player, { ..change, when: Some(tick), }, true)
           if player.initial is None {
-            player.initial = Some({ ..change, when: None })
+            player.initial = Some({ ..change, when: None, })
           }
         }
       }

@@ -17,7 +17,7 @@ fn place_sequence(
   for tile in tiles {
     match tile {
       LabelAnchor(index) | GotoAnchor(index) => {
-        layouts.push({ node_index: index, x, y: cursor_y, width: 0, height: 0 })
+        layouts.push({ node_index: index, x, y: cursor_y, width: 0, height: 0, })
         continue
       }
       Swimlane(_) => continue
@@ -68,7 +68,8 @@ fn place_sequence(
         outgoing_label: previous.outgoing_label,
         outgoing_route: previous.outgoing_route,
       }
-    None => { entry, exit: None, outgoing_label: None, outgoing_route: Forward }
+    None =>
+      { entry, exit: None, outgoing_label: None, outgoing_route: Forward, }
   }
 }
 
@@ -203,11 +204,21 @@ fn place_tile(
     Leaf(index) =>
       place_leaf(index, nodes, metrics, small_metrics, x, y, layouts)
     LabelAnchor(_) | GotoAnchor(_) =>
-      { entry: None, exit: None, outgoing_label: None, outgoing_route: Forward }
+      {
+        entry: None,
+        exit: None,
+        outgoing_label: None,
+        outgoing_route: Forward,
+      }
     Partition(tiles) =>
       place_sequence(tiles, nodes, metrics, small_metrics, x, y, layouts, edges)
     Swimlane(_) =>
-      { entry: None, exit: None, outgoing_label: None, outgoing_route: Forward }
+      {
+        entry: None,
+        exit: None,
+        outgoing_label: None,
+        outgoing_route: Forward,
+      }
     IfChain(branches, exit) if is_if_down(branches) =>
       place_if_down(
         branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
@@ -375,7 +386,7 @@ fn place_if_chain(
       metrics,
       small_metrics,
     )
-    let decision_size = branch.decision.map_or({ width: 0, height: 0 }, index => {
+    let decision_size = branch.decision.map_or({ width: 0, height: 0, }, index => {
       nodes[index].size(metrics, small_metrics)
     })
     let branch_width = body_size.width.max(decision_size.width)
@@ -410,7 +421,7 @@ fn place_if_chain(
         label=branch.label,
       )
     }
-    placed.push({ tile: body, label: branch.label })
+    placed.push({ tile: body, label: branch.label, })
     cursor_x += branch_width + BRANCH_GAP
   }
   let exit_size = nodes[exit].size(metrics, small_metrics)
@@ -464,7 +475,7 @@ fn measure_chain_width(
   let mut width = 0
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    let decision = branch.decision.map_or({ width: 0, height: 0 }, index => {
+    let decision = branch.decision.map_or({ width: 0, height: 0, }, index => {
       nodes[index].size(metrics, small_metrics)
     })
     if index > 0 {
@@ -845,7 +856,7 @@ pub fn ActivityDiagram::layout(self : ActivityDiagram) -> ActivityLayout {
     result.edges,
     small_metrics,
   )
-  { ..result, width: (content_right + CANVAS_RIGHT).max(swimlane_width) }
+  { ..result, width: (content_right + CANVAS_RIGHT).max(swimlane_width), }
 }
 
 ///|

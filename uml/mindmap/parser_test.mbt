@@ -22,9 +22,9 @@ test "supports independent plus and minus branches" {
   let diagram = parse(
     "@startmindmap\n* Root\n++ Right child\n+++ Right leaf\n-- Left child\n---@red[not a color]\n@endmindmap",
   )
-  @test.assert_eq(diagram.ideas[1].direction, Right)
+  @test.assert_eq(diagram.ideas[1].direction, @tree.MindmapDirection::Right)
   @test.assert_eq(diagram.ideas[2].parent, Some(1))
-  @test.assert_eq(diagram.ideas[3].direction, Left)
+  @test.assert_eq(diagram.ideas[3].direction, @tree.MindmapDirection::Left)
   @test.assert_eq(diagram.ideas[3].parent, Some(0))
 }
 

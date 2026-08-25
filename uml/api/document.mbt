@@ -9,7 +9,7 @@ pub enum Diagram {
   Deployment(@entity.EntityDiagram)
   UseCase(@entity.EntityDiagram)
   State(@state.StateDiagram)
-  Mindmap(@mindmap.MindmapDiagram)
+  Mindmap(@tree.MindmapDiagram)
   Mbti(@mbti.MbtiDiagram)
   Json(@structured.StructuredDiagram)
   Yaml(@structured.StructuredDiagram)
@@ -43,7 +43,7 @@ pub fn Diagram::render_svg(
     | Deployment(diagram) =>
       diagram.render_svg(color_scheme~, class_member_collapsible~)
     State(diagram) => diagram.render_svg(color_scheme~)
-    Mindmap(diagram) => diagram.render_svg(color_scheme~)
+    Mindmap(diagram) => @mindmap.render_mindmap_svg(diagram, color_scheme~)
     Mbti(diagram) =>
       diagram.render_svg(color_scheme~, class_member_collapsible~)
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
@@ -80,26 +80,28 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 /// one classifier scan. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
   match () {
-    _ if @mbti.is_mbti_source(source) => { diagram: Mbti(@mbti.parse(source)) }
+    _ if @mbti.is_mbti_source(source) => { diagram: Mbti(@mbti.parse(source)), }
     _ if is_json_source(source) =>
-      { diagram: Json(@structured.parse_json(source)) }
+      { diagram: Json(@structured.parse_json(source)), }
     _ if is_yaml_source(source) =>
-      { diagram: Yaml(@structured.parse_yaml(source)) }
+      { diagram: Yaml(@structured.parse_yaml(source)), }
     _ if is_toml_source(source) =>
-      { diagram: Toml(@structured.parse_toml(source)) }
-    _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)) }
+      { diagram: Toml(@structured.parse_toml(source)), }
+    _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)), }
     _ if is_mindmap_source(source) =>
-      { diagram: Mindmap(@mindmap.parse(source)) }
+      { diagram: Mindmap(@mindmap.parse(source)), }
     _ if is_sequence_source(source) =>
-      { diagram: Sequence(@sequence.parse(source)) }
+      { diagram: Sequence(@sequence.parse(source)), }
     _ if is_activity_source(source) =>
-      { diagram: Activity(@activity.parse(source)) }
-    _ if is_state_source(source) => { diagram: State(@state.parse(source)) }
+      { diagram: Activity(@activity.parse(source)), }
+    _ if is_state_source(source) => { diagram: State(@state.parse(source)), }
     _ if entity_family_from_lines(meaningful_source_lines(source))
       is Some(family) =>
       match family {
         ClassDiagram =>
-          { diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)) }
+          {
+            diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)),
+          }
         ObjectDiagram =>
           {
             diagram: Object(@entity.parse(source, family=@entity.ObjectDiagram)),

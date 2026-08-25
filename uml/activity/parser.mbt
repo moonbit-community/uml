@@ -213,5 +213,5 @@ pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
       "unclosed \{block_name(stack.last().unwrap())}",
     )
   }
-  { nodes, instructions: reduce(nodes), style }
+  { nodes, instructions: reduce(nodes), style, }
 }

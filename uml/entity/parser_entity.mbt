@@ -276,7 +276,7 @@ fn Parser::ensure_entity_as(
 fn Parser::set_entity_url(self : Parser, code : String, url : String) -> Bool {
   let qualified_code = self.resolve(code)
   guard self.entity_index(qualified_code) is Some(index) else { return false }
-  self.entities[index] = { ..self.entities[index], url: Some(url) }
+  self.entities[index] = { ..self.entities[index], url: Some(url), }
   true
 }
 

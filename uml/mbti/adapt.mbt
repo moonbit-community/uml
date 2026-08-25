@@ -62,7 +62,7 @@ priv struct Adapter {
 
 ///|
 fn Adapter::new(options : MbtiOptions) -> Adapter {
-  { entities: [], entity_indices: Map([]), relations: [], options }
+  { entities: [], entity_indices: Map([]), relations: [], options, }
 }
 
 ///|
@@ -154,7 +154,7 @@ fn Adapter::merge_alias(
             Some(existing) => existing + ", " + name.name
             None => "alias " + name.name
           }
-          self.entities[index] = { ..entity, annotation: Some(annotation) }
+          self.entities[index] = { ..entity, annotation: Some(annotation), }
         }
         None => self.ensure_standalone_alias(name, standalone_alias)
       }

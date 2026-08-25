@@ -165,7 +165,7 @@ fn Parser::apply_declaration_syntax(
     let existing_kind = self
       .entity_index(qualified_code)
       .map_or(Object, index => self.entities[index].kind)
-    { ..declaration, kind: existing_kind }
+    { ..declaration, kind: existing_kind, }
   } else {
     declaration
   }

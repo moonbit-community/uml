@@ -2,8 +2,8 @@
 priv struct RawIdea {
   marker : String
   level : Int
-  direction : Direction?
-  shape : IdeaShape
+  direction : @tree.MindmapDirection?
+  shape : @tree.IdeaShape
   background_color : String?
   label : String
   multiline : Bool
@@ -43,7 +43,7 @@ fn marker_count(marker : String) -> Int {
 }
 
 ///|
-fn parse_color_and_shape(rest : String) -> (String?, IdeaShape, String) {
+fn parse_color_and_shape(rest : String) -> (String?, @tree.IdeaShape, String) {
   let (color, remainder) = if rest.has_prefix("[") {
     match rest.find("]") {
       Some(end) => {
@@ -60,9 +60,9 @@ fn parse_color_and_shape(rest : String) -> (String?, IdeaShape, String) {
     (None, rest)
   }
   if remainder.has_prefix("_") {
-    (color, Boxless, remainder[1:].trim_start().to_owned())
+    (color, @tree.IdeaShape::Boxless, remainder[1:].trim_start().to_owned())
   } else {
-    (color, Box, remainder.trim_start().to_owned())
+    (color, @tree.IdeaShape::Box, remainder.trim_start().to_owned())
   }
 }
 
@@ -73,8 +73,8 @@ fn parse_raw_idea(line : String) -> RawIdea? {
     return Some({
       marker: "0",
       level: 0,
-      direction: Some(Right),
-      shape: Box,
+      direction: Some(@tree.MindmapDirection::Right),
+      shape: @tree.IdeaShape::Box,
       background_color: None,
       label: trimmed[1:].trim_start().to_owned(),
       multiline: false,
@@ -96,7 +96,13 @@ fn parse_raw_idea(line : String) -> RawIdea? {
     return Some({
       marker,
       level,
-      direction: Some(if marker.contains("-") { Left } else { Right }),
+      direction: Some(
+        if marker.contains("-") {
+          @tree.MindmapDirection::Left
+        } else {
+          @tree.MindmapDirection::Right
+        },
+      ),
       shape,
       background_color: color,
       label,
@@ -182,8 +188,8 @@ fn complete_multiline_label(
 
 ///|
 fn parent_for(
-  ideas : Array[Idea],
-  direction : Direction,
+  ideas : Array[@tree.Idea],
+  direction : @tree.MindmapDirection,
   level : Int,
 ) -> Int? raise @parse.ParseError {
   let mut index = ideas.length() - 1
@@ -202,7 +208,7 @@ fn parent_for(
 fn parse_mindmap_style_block(
   lines : Array[String],
   start : Int,
-  style : MindmapStyle,
+  style : @tree.MindmapStyle,
 ) -> Int raise @parse.ParseError {
   let mut index = start + 1
   let mut selector : String? = None
@@ -248,18 +254,18 @@ fn parse_mindmap_style_block(
 /// Parse a PlantUML mindmap source. Both org-mode (`*`/`#`) and plus/minus
 /// syntax are accepted, including colors, boxless items, stereotypes, and
 /// org-mode multiline labels.
-pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
+pub fn parse(input : String) -> @tree.MindmapDiagram raise @parse.ParseError {
   let lines = @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
     .to_array()
   let ideas = []
   let style = @style.DocumentStyle::empty()
-  let mindmap_style = MindmapStyle::default()
+  let mindmap_style = @tree.MindmapStyle::default()
   let mut index = 0
   let mut multiplier : Int? = None
   let mut org_first : String? = None
-  let mut default_direction : Direction = Right
+  let mut default_direction : @tree.MindmapDirection = @tree.MindmapDirection::Right
   while index < lines.length() {
     let line = @parse.strip_line_comment(lines[index])
     let trimmed = line.trim().to_owned()
@@ -303,12 +309,12 @@ pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
     }
     let lower = trimmed.to_lower()
     if lower.contains("left side") || lower.contains("left direction") {
-      default_direction = Left
+      default_direction = @tree.MindmapDirection::Left
       index += 1
       continue
     }
     if lower.contains("right side") || lower.contains("right direction") {
-      default_direction = Right
+      default_direction = @tree.MindmapDirection::Right
       index += 1
       continue
     }
@@ -361,5 +367,5 @@ pub fn parse(input : String) -> MindmapDiagram raise @parse.ParseError {
     })
     index = last + 1
   }
-  { ideas, style, mindmap_style }
+  { ideas, style, mindmap_style, }
 }

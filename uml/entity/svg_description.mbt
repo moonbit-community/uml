@@ -531,7 +531,7 @@ priv struct JavaRandom {
 
 ///|
 fn JavaRandom::new(seed : Int64) -> JavaRandom {
-  { seed: (seed ^ 0x5DEECE66DL) & 0xFFFFFFFFFFFFL }
+  { seed: (seed ^ 0x5DEECE66DL) & 0xFFFFFFFFFFFFL, }
 }
 
 ///|

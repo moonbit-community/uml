@@ -196,7 +196,7 @@ fn declaration_name_atom(cursor : @parse.Cursor) -> DeclarationNameAtom? {
       }
   }
   let generic = declaration_generic(cursor)
-  Some({ value: @parse.unquote_identifier(value), generic, quoted })
+  Some({ value: @parse.unquote_identifier(value), generic, quoted, })
 }
 
 ///|
@@ -217,13 +217,13 @@ fn declaration_name_syntax(cursor : @parse.Cursor) -> DeclarationNameSyntax? {
     Some(second) => {
       let generic = first.generic.map_or(second.generic, value => Some(value))
       if second.quoted {
-        Some({ display: second.value, code: first.value, generic })
+        Some({ display: second.value, code: first.value, generic, })
       } else {
-        Some({ display: first.value, code: second.value, generic })
+        Some({ display: first.value, code: second.value, generic, })
       }
     }
     None =>
-      Some({ display: first.value, code: first.value, generic: first.generic })
+      Some({ display: first.value, code: first.value, generic: first.generic, })
   }
 }
 
@@ -372,7 +372,7 @@ fn declaration_metadata_from(
       }
     }
   }
-  { extends, implements, stereotype, url, tags, color, line_color, line_style }
+  { extends, implements, stereotype, url, tags, color, line_color, line_style, }
 }
 
 ///|

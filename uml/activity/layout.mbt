@@ -437,16 +437,16 @@ fn ActivityNode::size(
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   match self {
-    Start => { width: TERMINAL_SIZE, height: TERMINAL_SIZE }
-    Stop | End | Kill => { width: STOP_SIZE, height: STOP_SIZE }
-    _ if self.is_exit() => { width: EXIT_SIZE, height: EXIT_SIZE }
-    Repeat => { width: 0, height: 0 }
-    _ if self.is_fork() => { width: 0, height: FORK_BAR_HEIGHT }
+    Start => { width: TERMINAL_SIZE, height: TERMINAL_SIZE, }
+    Stop | End | Kill => { width: STOP_SIZE, height: STOP_SIZE, }
+    _ if self.is_exit() => { width: EXIT_SIZE, height: EXIT_SIZE, }
+    Repeat => { width: 0, height: 0, }
+    _ if self.is_fork() => { width: 0, height: FORK_BAR_HEIGHT, }
     _ if self.is_decision() => {
       let label_width = self
         .label()
         .map_or(0, label => small_metrics.measure(label).width)
-      { width: label_width + DIAMOND_TEXT_PADDING, height: DIAMOND_HEIGHT }
+      { width: label_width + DIAMOND_TEXT_PADDING, height: DIAMOND_HEIGHT, }
     }
     Note(label) => {
       let text = metrics.measure(label)
@@ -462,7 +462,7 @@ fn ActivityNode::size(
         height: text.height + TEXT_PADDING * 2,
       }
     }
-    _ => { width: 0, height: 0 }
+    _ => { width: 0, height: 0, }
   }
 }
 
@@ -498,7 +498,7 @@ fn measure_sequence(
     found = true
     pending_label = None
   }
-  { width, height }
+  { width, height, }
 }
 
 ///|
@@ -523,7 +523,7 @@ fn measure_branches(
     width += size.width
     height = height.max(size.height)
   }
-  { width, height }
+  { width, height, }
 }
 
 ///|
@@ -562,7 +562,7 @@ fn measure_if_chain(
   let mut body_height = 0
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    let decision = branch.decision.map_or({ width: 0, height: 0 }, index => {
+    let decision = branch.decision.map_or({ width: 0, height: 0, }, index => {
       nodes[index].size(metrics, small_metrics)
     })
     if index > 0 {
@@ -593,9 +593,9 @@ fn measure_tile(
 ) -> TileMeasure {
   match tile {
     Leaf(index) => nodes[index].size(metrics, small_metrics)
-    LabelAnchor(_) | GotoAnchor(_) => { width: 0, height: 0 }
+    LabelAnchor(_) | GotoAnchor(_) => { width: 0, height: 0, }
     Partition(tiles) => measure_sequence(tiles, nodes, metrics, small_metrics)
-    Swimlane(_) => { width: 0, height: 0 }
+    Swimlane(_) => { width: 0, height: 0, }
     IfChain(branches, _) if is_if_down(branches) => {
       let branches_size = measure_if_down(
         branches, nodes, metrics, small_metrics,

@@ -1135,7 +1135,7 @@ test "builds the ordered JSON tree beside the source text" {
       @test.assert_eq(members[0].value, JsonString("Ada"))
       @test.assert_eq(
         members[2].value,
-        JsonObject([{ key: "locale", value: JsonString("en-GB") }]),
+        JsonObject([{ key: "locale", value: JsonString("en-GB"), }]),
       )
     }
     _ => fail("expected ordered Profile object")

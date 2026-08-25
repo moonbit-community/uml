@@ -1,5 +1,5 @@
 ///|
-fn node_named(diagram : WbsDiagram, label : String) -> WbsNode {
+fn node_named(diagram : @tree.WbsDiagram, label : String) -> @tree.WbsNode {
   for node in diagram.nodes {
     if node.label == label {
       return node
@@ -9,12 +9,12 @@ fn node_named(diagram : WbsDiagram, label : String) -> WbsNode {
 }
 
 ///|
-fn parent_label(diagram : WbsDiagram, node : WbsNode) -> String? {
+fn parent_label(diagram : @tree.WbsDiagram, node : @tree.WbsNode) -> String? {
   node.parent.map(index => diagram.nodes[index].label)
 }
 
 ///|
-fn first_link(diagram : WbsDiagram) -> WbsLink {
+fn first_link(diagram : @tree.WbsDiagram) -> @tree.WbsLink {
   match diagram.links {
     [link, ..] => link
     _ => abort("missing WBS link in test")
@@ -23,9 +23,9 @@ fn first_link(diagram : WbsDiagram) -> WbsLink {
 
 ///|
 fn style_property_named(
-  diagram : WbsDiagram,
+  diagram : @tree.WbsDiagram,
   name : String,
-) -> WbsStyleProperty {
+) -> @tree.WbsStyleProperty {
   for property in diagram.style_properties {
     if property.name == name {
       return property
@@ -52,8 +52,14 @@ test "builds WBS hierarchy from smart marker levels" {
 ///|
 test "uses marker and explicit directions independently" {
   let diagram = parse("@startwbs\n* Root\n**> Right\n--< Left\n@endwbs")
-  @test.assert_eq(node_named(diagram, "Right").direction, Right)
-  @test.assert_eq(node_named(diagram, "Left").direction, Left)
+  @test.assert_eq(
+    node_named(diagram, "Right").direction,
+    @tree.WbsDirection::Right,
+  )
+  @test.assert_eq(
+    node_named(diagram, "Left").direction,
+    @tree.WbsDirection::Left,
+  )
   @test.assert_eq(
     parent_label(diagram, node_named(diagram, "Left")),
     Some("Root"),
@@ -68,13 +74,13 @@ test "parses modern and legacy node modifiers" {
   let modern = node_named(diagram, "Boxless")
   let direction_first = node_named(diagram, "Direction first")
   let legacy = node_named(diagram, "Legacy")
-  @test.assert_eq(modern.shape, Boxless)
+  @test.assert_eq(modern.shape, @tree.NodeShape::Boxless)
   @test.assert_eq(modern.background_color, Some("#abc"))
   @test.assert_eq(modern.code, Some("right"))
   @test.assert_eq(modern.stereotype, Some("<<tag>>"))
-  @test.assert_eq(direction_first.shape, Boxless)
-  @test.assert_eq(direction_first.direction, Right)
-  @test.assert_eq(legacy.shape, Boxless)
+  @test.assert_eq(direction_first.shape, @tree.NodeShape::Boxless)
+  @test.assert_eq(direction_first.direction, @tree.WbsDirection::Right)
+  @test.assert_eq(legacy.shape, @tree.NodeShape::Boxless)
   @test.assert_eq(legacy.background_color, Some("#def"))
   @test.assert_eq(legacy.code, Some("left"))
 }
@@ -88,7 +94,7 @@ test "supports quoted aliases, pseudo nodes, and multiline labels" {
   let pseudo = node_named(diagram, "")
   let multiline = node_named(diagram, "first line\nsecond line")
   @test.assert_eq(alpha.code, Some("alpha"))
-  @test.assert_eq(pseudo.shape, Pseudo)
+  @test.assert_eq(pseudo.shape, @tree.NodeShape::Pseudo)
   @test.assert_eq(pseudo.code, Some("group"))
   @test.assert_eq(multiline.stereotype, Some("<<note>>"))
   @test.assert_eq(parent_label(diagram, multiline), Some(""))

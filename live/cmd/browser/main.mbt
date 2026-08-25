@@ -63,13 +63,13 @@ fn update(
   state : AppState,
 ) -> (AppState, @cmd.Cmd) {
   match msg {
-    EditorChanged(value) => ({ ..state, source: value }, @cmd.none)
+    EditorChanged(value) => ({ ..state, source: value, }, @cmd.none)
     FileSelected(file) => (select_source(state, file), @cmd.none)
     SizesChanged(sizes) => ({ ..state, sizes, }, @cmd.none)
     ManifestLoaded(Ok(categories)) =>
       ({ ..state, categories, }, fetch_sources_cmd(emit, categories))
     ManifestLoaded(Err(error)) =>
-      ({ ..state, load_error: Some(error) }, @cmd.none)
+      ({ ..state, load_error: Some(error), }, @cmd.none)
     SourceLoaded(path, Ok(source)) =>
       (apply_source(state, path, source), @cmd.none)
     SourceLoaded(path, Err(_)) => (apply_source(state, path, ""), @cmd.none)
@@ -79,7 +79,7 @@ fn update(
 
 ///|
 fn toggle_theme(state : AppState) -> AppState {
-  { ..state, theme: state.theme.toggle() }
+  { ..state, theme: state.theme.toggle(), }
 }
 
 ///|
@@ -93,7 +93,7 @@ fn apply_theme(theme : Theme) -> @cmd.Cmd {
 
 ///|
 fn select_source(state : AppState, path : String) -> AppState {
-  { ..state, active_file: path, source: state.sources.get(path).unwrap_or("") }
+  { ..state, active_file: path, source: state.sources.get(path).unwrap_or(""), }
 }
 
 ///|

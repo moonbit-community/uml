@@ -175,15 +175,18 @@ fn PositionedTee::max_y(self : PositionedTee) -> Int {
 }
 
 ///|
-fn MindmapDiagram::has_children(self : MindmapDiagram, index : Int) -> Bool {
+fn @tree.MindmapDiagram::has_children(
+  self : @tree.MindmapDiagram,
+  index : Int,
+) -> Bool {
   self.ideas.any(idea => idea.parent == Some(index))
 }
 
 ///|
-fn MindmapDiagram::children_of(
-  self : MindmapDiagram,
+fn @tree.MindmapDiagram::children_of(
+  self : @tree.MindmapDiagram,
   parent : Int,
-  direction : Direction,
+  direction : @tree.MindmapDirection,
 ) -> Array[Int] {
   let children = []
   for index, idea in self.ideas {
@@ -195,23 +198,26 @@ fn MindmapDiagram::children_of(
 }
 
 ///|
-pub fn MindmapDiagram::node_style(
-  self : MindmapDiagram,
+fn @tree.MindmapDiagram::node_style(
+  self : @tree.MindmapDiagram,
   index : Int,
-) -> MindmapNodeStyle {
+) -> @tree.MindmapNodeStyle {
   self.mindmap_style.node_style(self.ideas[index], self.has_children(index))
 }
 
 ///|
-fn MindmapDiagram::node_font_size(self : MindmapDiagram, index : Int) -> Int {
+fn @tree.MindmapDiagram::node_font_size(
+  self : @tree.MindmapDiagram,
+  index : Int,
+) -> Int {
   self.node_style(index).font_size.unwrap_or(
     self.style.font_size_value(fallback=14),
   )
 }
 
 ///|
-fn MindmapDiagram::node_text_metrics(
-  self : MindmapDiagram,
+fn @tree.MindmapDiagram::node_text_metrics(
+  self : @tree.MindmapDiagram,
   index : Int,
 ) -> @metrics.TextMetrics {
   let idea = self.ideas[index]
@@ -223,7 +229,10 @@ fn MindmapDiagram::node_text_metrics(
 /// Width of the visible label. PlantUML's multi-line labels carry a leading
 /// space on their first line (visible in the reference SVGs); it widens the
 /// box and offsets the first line of text.
-fn MindmapDiagram::node_text_width(self : MindmapDiagram, index : Int) -> Int {
+fn @tree.MindmapDiagram::node_text_width(
+  self : @tree.MindmapDiagram,
+  index : Int,
+) -> Int {
   let idea = self.ideas[index]
   let font_size = self.node_font_size(index)
   let metrics = self.style.font_metrics(font_size~)
@@ -240,24 +249,28 @@ fn MindmapDiagram::node_text_width(self : MindmapDiagram, index : Int) -> Int {
 }
 
 ///|
-fn MindmapDiagram::node_base_size(
-  self : MindmapDiagram,
+fn @tree.MindmapDiagram::node_base_size(
+  self : @tree.MindmapDiagram,
   index : Int,
 ) -> (Int, Int) {
   let idea = self.ideas[index]
   let metrics = self.node_text_metrics(index)
   let node_style = self.node_style(index)
   match idea.shape {
-    Box => {
-      let padding_x = node_style.padding_x.unwrap_or(MINDMAP_DEFAULT_PADDING_X)
-      let padding_y = node_style.padding_y.unwrap_or(MINDMAP_DEFAULT_PADDING_Y)
+    @tree.IdeaShape::Box => {
+      let padding_x = node_style.padding_x.unwrap_or(
+        @tree.MINDMAP_DEFAULT_PADDING_X,
+      )
+      let padding_y = node_style.padding_y.unwrap_or(
+        @tree.MINDMAP_DEFAULT_PADDING_Y,
+      )
       let width = (self.node_text_width(index) + padding_x * 2).max(
         node_style.minimum_width.unwrap_or(0),
       )
       let height = metrics.height + padding_y * 2
       (width, height)
     }
-    Boxless =>
+    @tree.IdeaShape::Boxless =>
       (
         (self.node_text_width(index) + boxless_horizontal_margin).max(
           node_style.minimum_width.unwrap_or(0),
@@ -268,7 +281,10 @@ fn MindmapDiagram::node_base_size(
 }
 
 ///|
-fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
+fn @tree.MindmapDiagram::node_size(
+  self : @tree.MindmapDiagram,
+  index : Int,
+) -> (Int, Int) {
   let (width, height) = self.node_base_size(index)
   guard self.node_style(index).same_class_width.unwrap_or(false) else {
     (width, height)
@@ -286,7 +302,7 @@ fn MindmapDiagram::node_size(self : MindmapDiagram, index : Int) -> (Int, Int) {
 
 ///|
 /// Calculate PlantUML-style, symmetric mindmap geometry without rendering it.
-pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
+fn @tree.MindmapDiagram::layout(self : @tree.MindmapDiagram) -> MindmapLayout {
   let items = []
   let roots = []
   for index, idea in self.ideas {
@@ -295,12 +311,12 @@ pub fn MindmapDiagram::layout(self : MindmapDiagram) -> MindmapLayout {
     items.push({
       width,
       height,
-      margin_left: style.margin_left.unwrap_or(MINDMAP_DEFAULT_MARGIN),
-      margin_right: style.margin_right.unwrap_or(MINDMAP_DEFAULT_MARGIN),
-      margin_top: style.margin_top.unwrap_or(MINDMAP_DEFAULT_MARGIN),
-      margin_bottom: style.margin_bottom.unwrap_or(MINDMAP_DEFAULT_MARGIN),
-      left_children: self.children_of(index, Left),
-      right_children: self.children_of(index, Right),
+      margin_left: style.margin_left.unwrap_or(@tree.MINDMAP_DEFAULT_MARGIN),
+      margin_right: style.margin_right.unwrap_or(@tree.MINDMAP_DEFAULT_MARGIN),
+      margin_top: style.margin_top.unwrap_or(@tree.MINDMAP_DEFAULT_MARGIN),
+      margin_bottom: style.margin_bottom.unwrap_or(@tree.MINDMAP_DEFAULT_MARGIN),
+      left_children: self.children_of(index, @tree.MindmapDirection::Left),
+      right_children: self.children_of(index, @tree.MindmapDirection::Right),
     })
     if idea.parent is None {
       roots.push(index)
@@ -334,7 +350,7 @@ fn add_frontier_segment(
       result.push(stripe)
     } else {
       if stripe.start < start {
-        result.push({ start: stripe.start, end: start, value: stripe.value })
+        result.push({ start: stripe.start, end: start, value: stripe.value, })
       }
       result.push({
         start: stripe.start.max(start),
@@ -342,7 +358,7 @@ fn add_frontier_segment(
         value: stripe.value.max(value),
       })
       if stripe.end > end {
-        result.push({ start: end, end: stripe.end, value: stripe.value })
+        result.push({ start: end, end: stripe.end, value: stripe.value, })
       }
     }
   }
@@ -365,7 +381,7 @@ fn append_tee(
       half2
     first.max(second)
   }
-  let positioned = { tee, y }
+  let positioned = { tee, y, }
   let mut next = add_frontier_segment(frontier, 0, tee.elongation1, y + half1)
   next = add_frontier_segment(
     next,
@@ -378,8 +394,8 @@ fn append_tee(
 
 ///|
 fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
-  guard !tees.is_empty() else { { positions: [], width: 0, height: 0 } }
-  let mut frontier = [{ start: 0, end: 1_000_000_000, value: -1_000_000_000 }]
+  guard !tees.is_empty() else { { positions: [], width: 0, height: 0, } }
+  let mut frontier = [{ start: 0, end: 1_000_000_000, value: -1_000_000_000, }]
   let positions = []
   for tee in tees {
     let (next_frontier, positioned) = append_tee(
@@ -413,11 +429,11 @@ fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
 fn item_children(
   items : Array[LayoutItem],
   index : Int,
-  direction : Direction,
+  direction : @tree.MindmapDirection,
 ) -> Array[Int] {
   match direction {
-    Left => items[index].left_children
-    Right => items[index].right_children
+    @tree.MindmapDirection::Left => items[index].left_children
+    @tree.MindmapDirection::Right => items[index].right_children
   }
 }
 
@@ -435,7 +451,7 @@ fn item_branch_gap(item : LayoutItem) -> Int {
 fn finger_tee(
   items : Array[LayoutItem],
   index : Int,
-  direction : Direction,
+  direction : @tree.MindmapDirection,
 ) -> Tee {
   let item = items[index]
   let thickness = item_thickness(item)
@@ -466,7 +482,7 @@ fn finger_tee(
 fn hidden_finger_tee(
   items : Array[LayoutItem],
   index : Int,
-  direction : Direction,
+  direction : @tree.MindmapDirection,
 ) -> Tee {
   let item = items[index]
   let packed = pack_tees(
@@ -486,7 +502,7 @@ fn hidden_finger_tee(
 fn append_finger(
   items : Array[LayoutItem],
   index : Int,
-  direction : Direction,
+  direction : @tree.MindmapDirection,
   origin_x : Int,
   origin_y : Int,
   draw_node : Bool,
@@ -499,13 +515,13 @@ fn append_finger(
   let phalanx_width = if draw_node { width } else { 0 }
   let branch_gap = item_branch_gap(item)
   let sign = match direction {
-    Right => 1
-    Left => -1
+    @tree.MindmapDirection::Right => 1
+    @tree.MindmapDirection::Left => -1
   }
   if draw_node {
     nodes.push({
       idea_index: index,
-      x: if direction is Right {
+      x: if direction is @tree.MindmapDirection::Right {
         origin_x
       } else {
         origin_x - width
@@ -546,7 +562,7 @@ fn MindmapLayout::translated(
 ) -> MindmapLayout {
   {
     ..self,
-    nodes: self.nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy }),
+    nodes: self.nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy, }),
     edges: self.edges.map(edge => {
       ..edge,
       x1: edge.x1 + dx,
@@ -586,17 +602,17 @@ pub fn layout_tree(
     let has_right_children = !items[root_index].right_children.is_empty()
     let left = if has_left_children {
       if has_right_children {
-        hidden_finger_tee(items, root_index, Left)
+        hidden_finger_tee(items, root_index, @tree.MindmapDirection::Left)
       } else {
-        finger_tee(items, root_index, Left)
+        finger_tee(items, root_index, @tree.MindmapDirection::Left)
       }
     } else {
-      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
+      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0, }
     }
     let right = if has_right_children || !has_left_children {
-      finger_tee(items, root_index, Right)
+      finger_tee(items, root_index, @tree.MindmapDirection::Right)
     } else {
-      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
+      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0, }
     }
     let root_height = left.full_thickness().max(right.full_thickness())
     // PlantUML places the root at the vertical center of its content, which
@@ -608,12 +624,48 @@ pub fn layout_tree(
     let content_half = (root_height - margin_top - margin_bottom) / 2
     let root_y = next_y + content_half
     if has_left_children && has_right_children {
-      append_finger(items, root_index, Right, 0, root_y, true, nodes, edges)
-      append_finger(items, root_index, Left, 0, root_y, false, nodes, edges)
+      append_finger(
+        items,
+        root_index,
+        @tree.MindmapDirection::Right,
+        0,
+        root_y,
+        true,
+        nodes,
+        edges,
+      )
+      append_finger(
+        items,
+        root_index,
+        @tree.MindmapDirection::Left,
+        0,
+        root_y,
+        false,
+        nodes,
+        edges,
+      )
     } else if has_left_children {
-      append_finger(items, root_index, Left, 0, root_y, true, nodes, edges)
+      append_finger(
+        items,
+        root_index,
+        @tree.MindmapDirection::Left,
+        0,
+        root_y,
+        true,
+        nodes,
+        edges,
+      )
     } else {
-      append_finger(items, root_index, Right, 0, root_y, true, nodes, edges)
+      append_finger(
+        items,
+        root_index,
+        @tree.MindmapDirection::Right,
+        0,
+        root_y,
+        true,
+        nodes,
+        edges,
+      )
     }
     next_y = root_y + content_half + outer_padding_y
   }
@@ -633,4 +685,20 @@ pub fn layout_tree(
     width: max_x - min_x + outer_padding_x * 2,
     height: max_y - min_y + outer_padding_y * 2,
   }.translated(outer_padding_x - min_x, outer_padding_y - min_y)
+}
+
+///|
+/// Calculate PlantUML-style, symmetric mindmap geometry without rendering it.
+pub fn layout_mindmap(diagram : @tree.MindmapDiagram) -> MindmapLayout {
+  diagram.layout()
+}
+
+///|
+/// The effective node style for a mindmap idea, combining diagram defaults
+/// with `<style>` and skinparam overrides.
+pub fn mindmap_node_style(
+  diagram : @tree.MindmapDiagram,
+  index : Int,
+) -> @tree.MindmapNodeStyle {
+  diagram.node_style(index)
 }

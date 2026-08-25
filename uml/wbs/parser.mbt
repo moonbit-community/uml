@@ -3,8 +3,8 @@ priv struct ItemLine {
   marker : String
   code : String?
   label : String?
-  direction : Direction
-  shape : NodeShape
+  direction : @tree.WbsDirection
+  shape : @tree.NodeShape
   background_color : String?
   multiline : Bool
 }
@@ -12,8 +12,8 @@ priv struct ItemLine {
 ///|
 priv struct ItemPrefix {
   code : String?
-  direction : Direction?
-  shape : NodeShape
+  direction : @tree.WbsDirection?
+  shape : @tree.NodeShape
   background_color : String?
   end : Int
 }
@@ -21,11 +21,11 @@ priv struct ItemPrefix {
 ///|
 priv struct Parser {
   lines : Array[String]
-  nodes : Array[WbsNode]
-  links : Array[WbsLink]
+  nodes : Array[@tree.WbsNode]
+  links : Array[@tree.WbsLink]
   codes : Map[String, Int]
   style : @style.DocumentStyle
-  style_properties : Array[WbsStyleProperty]
+  style_properties : Array[@tree.WbsStyleProperty]
   mut first_marker : String?
   mut index : Int
 }
@@ -87,25 +87,27 @@ fn marker_end(cursor : @parse.Cursor) -> Int? {
 }
 
 ///|
-fn marker_direction(marker : String) -> Direction {
+fn marker_direction(marker : String) -> @tree.WbsDirection {
   if marker.contains("-") {
-    Left
+    @tree.WbsDirection::Left
   } else {
-    Right
+    @tree.WbsDirection::Right
   }
 }
 
 ///|
-fn parse_modifiers(cursor : @parse.Cursor) -> (NodeShape, Direction?, Int) {
+fn parse_modifiers(
+  cursor : @parse.Cursor,
+) -> (@tree.NodeShape, @tree.WbsDirection?, Int) {
   let parse_direction = () => {
     match cursor.peek() {
       Some('<') => {
         ignore(cursor.advance())
-        Some(Direction::Left)
+        Some(@tree.WbsDirection::Left)
       }
       Some('>') => {
         ignore(cursor.advance())
-        Some(Direction::Right)
+        Some(@tree.WbsDirection::Right)
       }
       _ => None
     }
@@ -113,14 +115,18 @@ fn parse_modifiers(cursor : @parse.Cursor) -> (NodeShape, Direction?, Int) {
   let (shape, direction) = match cursor.peek() {
     Some('_') => {
       ignore(cursor.advance())
-      (Boxless, parse_direction())
+      (@tree.NodeShape::Boxless, parse_direction())
     }
     Some('<') | Some('>') => {
       let direction = parse_direction()
-      let shape = if cursor.consume('_') { Boxless } else { Box }
+      let shape = if cursor.consume('_') {
+        @tree.NodeShape::Boxless
+      } else {
+        @tree.NodeShape::Box
+      }
       (shape, direction)
     }
-    _ => (Box, None)
+    _ => (@tree.NodeShape::Box, None)
   }
   (shape, direction, cursor.offset())
 }
@@ -196,11 +202,11 @@ fn parse_prefix(
   if attributes_first {
     let (background_color, code, _) = parse_attributes(cursor)
     let (shape, direction, end) = parse_modifiers(cursor)
-    { code, direction, shape, background_color, end }
+    { code, direction, shape, background_color, end, }
   } else {
     let (shape, direction, _) = parse_modifiers(cursor)
     let (background_color, code, end) = parse_attributes(cursor)
-    { code, direction, shape, background_color, end }
+    { code, direction, shape, background_color, end, }
   }
 }
 
@@ -234,9 +240,9 @@ fn item_from_prefix(
   let direction = prefix.direction.unwrap_or(marker_direction(marker))
   if cursor.is_eof() {
     let shape = match prefix.shape {
-      Boxless => Pseudo
-      Box => Box
-      Pseudo => Pseudo
+      @tree.NodeShape::Boxless => @tree.NodeShape::Pseudo
+      @tree.NodeShape::Box => @tree.NodeShape::Box
+      @tree.NodeShape::Pseudo => @tree.NodeShape::Pseudo
     }
     return Some({
       marker,
@@ -263,9 +269,9 @@ fn item_from_prefix(
   ignore(cursor.skip_while(char => char.is_whitespace()))
   guard !cursor.is_eof() else {
     let shape = match prefix.shape {
-      Boxless => Pseudo
-      Box => Box
-      Pseudo => Pseudo
+      @tree.NodeShape::Boxless => @tree.NodeShape::Pseudo
+      @tree.NodeShape::Box => @tree.NodeShape::Box
+      @tree.NodeShape::Pseudo => @tree.NodeShape::Pseudo
     }
     return Some({
       marker,
@@ -427,7 +433,7 @@ fn Parser::add_item(
   item : ItemLine,
 ) -> Unit raise @parse.ParseError {
   let level = self.smart_level(item.marker)
-  guard item.label is Some(_) || item.shape is Pseudo else {
+  guard item.label is Some(_) || item.shape is @tree.NodeShape::Pseudo else {
     raise SyntaxError(self.index + 1, "Missing label for WBS node.")
   }
   if self.nodes.is_empty() {
@@ -576,7 +582,7 @@ fn Parser::parse_link(
   guard self.codes.get(target_code) is Some(target) else {
     raise SyntaxError(self.index + 1, "No such node \{target_code}")
   }
-  self.links.push({ source, target, color, stereotype, label })
+  self.links.push({ source, target, color, stereotype, label, })
   true
 }
 
@@ -718,7 +724,7 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
 /// Parse the command family registered by PlantUML's `WBSDiagramFactory`.
 /// Both modern and legacy modifier order are accepted, together with coded
 /// nodes, multiline labels, pseudo nodes, and non-tree links.
-pub fn parse(input : String) -> WbsDiagram raise @parse.ParseError {
+pub fn parse(input : String) -> @tree.WbsDiagram raise @parse.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()

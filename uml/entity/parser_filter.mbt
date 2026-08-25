@@ -125,7 +125,7 @@ fn entity_rule_from_tokens(tokens : Array[String]) -> EntityRule? {
     "restore" => RestoreEntity
     _ => return None
   }
-  Some({ selector: selector_for_tokens(tokens[1:].to_owned()), action })
+  Some({ selector: selector_for_tokens(tokens[1:].to_owned()), action, })
 }
 
 ///|
@@ -188,7 +188,7 @@ fn Parser::apply_filter_syntax(
 ) -> Unit {
   match syntax {
     ParsedPortionRule(rule) =>
-      self.portion_rules.push({ ..rule, scope: self.current_package() })
+      self.portion_rules.push({ ..rule, scope: self.current_package(), })
     ParsedEntityRule(rule) => self.entity_rules.push(rule)
   }
 }
@@ -237,10 +237,10 @@ fn Parser::apply_entity_rules(self : Parser) -> Unit {
     for index, entity in self.entities {
       guard selector_matches(entity, rule.selector, "") else { continue }
       self.entities[index] = match rule.action {
-        HideEntity => { ..entity, is_hidden: true }
-        ShowEntity => { ..entity, is_hidden: false }
-        RemoveEntity => { ..entity, is_removed: true }
-        RestoreEntity => { ..entity, is_removed: false }
+        HideEntity => { ..entity, is_hidden: true, }
+        ShowEntity => { ..entity, is_hidden: false, }
+        RemoveEntity => { ..entity, is_removed: true, }
+        RestoreEntity => { ..entity, is_removed: false, }
       }
     }
   }
@@ -256,13 +256,13 @@ fn Parser::set_portion_state(
   let entity = self.entities[entity_index]
   match rule.portion {
     CirclePortion =>
-      self.entities[entity_index] = { ..entity, circle_hidden: hidden }
+      self.entities[entity_index] = { ..entity, circle_hidden: hidden, }
     StereotypePortion =>
-      self.entities[entity_index] = { ..entity, stereotype_hidden: hidden }
+      self.entities[entity_index] = { ..entity, stereotype_hidden: hidden, }
     FieldPortion =>
-      self.entities[entity_index] = { ..entity, fields_hidden: hidden }
+      self.entities[entity_index] = { ..entity, fields_hidden: hidden, }
     MethodPortion =>
-      self.entities[entity_index] = { ..entity, methods_hidden: hidden }
+      self.entities[entity_index] = { ..entity, methods_hidden: hidden, }
     MemberPortion =>
       self.entities[entity_index] = {
         ..entity,

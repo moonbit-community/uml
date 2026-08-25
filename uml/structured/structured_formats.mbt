@@ -33,7 +33,7 @@ fn yaml_root(documents : Array[@yaml.Yaml]) -> StructuredNode {
 ///|
 pub fn parse_yaml(input : String) -> StructuredDiagram raise @yaml.YamlError {
   let source = source_between_markers(input, "@startyaml", "@endyaml")
-  { format: Yaml, root: yaml_root(@yaml.Yaml::load_from_string(source)) }
+  { format: Yaml, root: yaml_root(@yaml.Yaml::load_from_string(source)), }
 }
 
 ///|
