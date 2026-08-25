@@ -24,9 +24,12 @@ test "YAML preserves scalar kinds and nested mapping structure" {
   @test.assert_eq(diagram.root.rows[0].key, Some("version"))
   @test.assert_eq(diagram.root.rows[1].key, Some("enabled"))
   @test.assert_eq(diagram.root.rows[2].key, Some("service"))
-  @test.assert_eq(diagram.root.rows[0].value, Text("9223372036854775807"))
-  @test.assert_eq(diagram.root.rows[1].value, False)
-  @test.assert_eq(diagram.root.rows[2].value, Compound)
+  @test.assert_eq(
+    diagram.root.rows[0].value,
+    @structured.Text("9223372036854775807"),
+  )
+  @test.assert_eq(diagram.root.rows[1].value, @structured.False)
+  @test.assert_eq(diagram.root.rows[2].value, @structured.Compound)
   @test.assert_eq(diagram.root.rows[2].child is Some(_), true)
 }
 
@@ -49,7 +52,9 @@ test "TOML tables arrays and datetimes use the shared structure renderer" {
   @test.assert_eq(diagram.root.rows[2].key, Some("created"))
   @test.assert_eq(diagram.root.rows[3].key, Some("server"))
   @test.assert_eq(
-    diagram.root.rows.any(row => row.value == Text("1979-05-27T07:32:00Z")),
+    diagram.root.rows.any(row => {
+      row.value == @structured.Text("1979-05-27T07:32:00Z")
+    }),
     true,
   )
   @test.assert_eq(
@@ -72,15 +77,17 @@ test "YAML block scalars render as multiline record cells" {
       #|@endyaml
     ),
   )
-  let svg = diagram.render_yaml_svg()
-  let single_line_svg = parse_yaml(
-    (
-      #|@startyaml
-      #|notes: first line
-      #|next: value
-      #|@endyaml
+  let svg = render_structured_svg(diagram)
+  let single_line_svg = render_structured_svg(
+    parse_yaml(
+      (
+        #|@startyaml
+        #|notes: first line
+        #|next: value
+        #|@endyaml
+      ),
     ),
-  ).render_yaml_svg()
+  )
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
   @test.assert_eq(svg.contains("first line\nsecond line"), false)
 }
@@ -96,16 +103,21 @@ test "TOML multiline basic strings render as multiline record cells" {
       #|@endtoml
     ),
   )
-  @test.assert_eq(diagram.root.rows[0].value, Text("line one\nline two"))
-  let svg = diagram.render_toml_svg()
-  let single_line_svg = parse_toml(
-    (
-      #|@starttoml
-      #|multiline = "line one"
-      #|next = "value"
-      #|@endtoml
+  @test.assert_eq(
+    diagram.root.rows[0].value,
+    @structured.Text("line one\nline two"),
+  )
+  let svg = render_structured_svg(diagram)
+  let single_line_svg = render_structured_svg(
+    parse_toml(
+      (
+        #|@starttoml
+        #|multiline = "line one"
+        #|next = "value"
+        #|@endtoml
+      ),
     ),
-  ).render_toml_svg()
+  )
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
   @test.assert_eq(svg.contains("line one\nline two"), false)
 }

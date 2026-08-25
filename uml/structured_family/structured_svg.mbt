@@ -8,7 +8,7 @@ priv struct NodeMetrics {
 
 ///|
 priv struct PlacedNode {
-  node : StructuredNode
+  node : @structured.StructuredNode
   metrics : NodeMetrics
   x : Int
   y : Int
@@ -43,26 +43,28 @@ const STRUCTURED_SIBLING_GAP : Int = 8
 const STRUCTURED_CANVAS_PADDING : Int = 10
 
 ///|
-fn StructuredValueDisplay::measurement_text(
-  self : StructuredValueDisplay,
+fn @structured.StructuredValueDisplay::measurement_text(
+  self : @structured.StructuredValueDisplay,
 ) -> String {
   match self {
-    Text(text) => text
-    True => "[x] true"
-    False => "[ ] false"
-    Null => "[]"
-    Compound => "   "
+    @structured.Text(text) => text
+    @structured.True => "[x] true"
+    @structured.False => "[ ] false"
+    @structured.Null => "[]"
+    @structured.Compound => "   "
   }
 }
 
 ///|
-fn StructuredValueDisplay::svg_markup(self : StructuredValueDisplay) -> String {
+fn @structured.StructuredValueDisplay::svg_markup(
+  self : @structured.StructuredValueDisplay,
+) -> String {
   match self {
-    Text(text) => @svg.xml_escape(text)
-    True => "&#9745; true"
-    False => "&#9744; false"
-    Null => "&#9216;"
-    Compound => "&#160;&#160;&#160;"
+    @structured.Text(text) => @svg.xml_escape(text)
+    @structured.True => "&#9745; true"
+    @structured.False => "&#9744; false"
+    @structured.Null => "&#9216;"
+    @structured.Compound => "&#160;&#160;&#160;"
   }
 }
 
@@ -107,24 +109,27 @@ fn append_value_text(
   output : StringBuilder,
   x : Int,
   y : Int,
-  value : StructuredValueDisplay,
+  value : @structured.StructuredValueDisplay,
 ) -> Unit {
   match value {
-    Text(text) => append_multiline_text(output, x, y, text)
+    @structured.Text(text) => append_multiline_text(output, x, y, text)
     _ => output <+ "<text x=\"\{x}\" y=\"\{y}\">\{value.svg_markup()}</text>\n"
   }
 }
 
 ///|
-fn is_blank_node(node : StructuredNode) -> Bool {
+fn is_blank_node(node : @structured.StructuredNode) -> Bool {
   match node.rows {
-    [{ key: None, value: Text(text), child: None, }] => text.is_empty()
+    [{ key: None, value: @structured.Text(text), child: None, }] =>
+      text.is_empty()
     _ => false
   }
 }
 
 ///|
-fn StructuredNode::metrics(self : StructuredNode) -> NodeMetrics {
+fn @structured.StructuredNode::metrics(
+  self : @structured.StructuredNode,
+) -> NodeMetrics {
   let regular_metrics = @metrics.FontMetrics::from_defaults(
     font_size=STRUCTURED_FONT_SIZE,
     line_height=STRUCTURED_LINE_HEIGHT,
@@ -175,8 +180,8 @@ fn StructuredNode::metrics(self : StructuredNode) -> NodeMetrics {
 }
 
 ///|
-fn StructuredNode::place(
-  self : StructuredNode,
+fn @structured.StructuredNode::place(
+  self : @structured.StructuredNode,
   x : Int,
   next_y : Int,
 ) -> (PlacedNode, Int) {
@@ -343,32 +348,32 @@ fn append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 }
 
 ///|
-pub fn StructuredDiagram::render_json_svg(
-  diagram : StructuredDiagram,
+fn @structured.StructuredDiagram::render_json_svg(
+  diagram : @structured.StructuredDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   diagram.render_svg(color_scheme~)
 }
 
 ///|
-pub fn StructuredDiagram::render_yaml_svg(
-  diagram : StructuredDiagram,
+fn @structured.StructuredDiagram::render_yaml_svg(
+  diagram : @structured.StructuredDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   diagram.render_svg(color_scheme~)
 }
 
 ///|
-pub fn StructuredDiagram::render_toml_svg(
-  diagram : StructuredDiagram,
+fn @structured.StructuredDiagram::render_toml_svg(
+  diagram : @structured.StructuredDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   diagram.render_svg(color_scheme~)
 }
 
 ///|
-pub fn StructuredDiagram::render_svg(
-  diagram : StructuredDiagram,
+fn @structured.StructuredDiagram::render_svg(
+  diagram : @structured.StructuredDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let (initial_root, _) = diagram.root.place(
@@ -411,4 +416,13 @@ pub fn StructuredDiagram::render_svg(
   append_node(output, root)
   output.write_string("</svg>\n")
   output.to_string()
+}
+
+///|
+/// Render a parsed structured-data diagram to SVG.
+pub fn render_structured_svg(
+  diagram : @structured.StructuredDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  diagram.render_svg(color_scheme~)
 }

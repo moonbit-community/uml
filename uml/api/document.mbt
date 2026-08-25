@@ -55,7 +55,7 @@ pub fn Diagram::render_svg(
         class_member_collapsible~,
       )
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
-      diagram.render_svg(color_scheme~)
+      @structured_family.render_structured_svg(diagram, color_scheme~)
     Dot(diagram) => diagram.render_svg()
   }
 }
@@ -90,11 +90,11 @@ pub fn parse(source : String) -> Document raise {
   match () {
     _ if @mbti.is_mbti_source(source) => { diagram: Mbti(@mbti.parse(source)), }
     _ if is_json_source(source) =>
-      { diagram: Json(@structured.parse_json(source)), }
+      { diagram: Json(@structured_family.parse_json(source)), }
     _ if is_yaml_source(source) =>
-      { diagram: Yaml(@structured.parse_yaml(source)), }
+      { diagram: Yaml(@structured_family.parse_yaml(source)), }
     _ if is_toml_source(source) =>
-      { diagram: Toml(@structured.parse_toml(source)), }
+      { diagram: Toml(@structured_family.parse_toml(source)), }
     _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)), }
     _ if is_mindmap_source(source) =>
       { diagram: Mindmap(@mindmap.parse(source)), }
