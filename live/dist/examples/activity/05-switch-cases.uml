@@ -1,0 +1,15 @@
+@startuml
+start
+:Read delivery method;
+
+switch (Delivery method)
+case (email)
+  :Send email;
+case (sms)
+  :Send text message;
+case (other)
+  :Queue manual delivery;
+endswitch
+
+stop
+@enduml

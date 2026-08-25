@@ -1,0 +1,12 @@
+@startuml
+left to right direction
+
+package "Order fulfillment" as Fulfillment {
+  :Customer:
+  (Place order)
+  (Track delivery)
+
+  :Customer: --> (Place order)
+  :Customer: --> (Track delivery)
+}
+@enduml

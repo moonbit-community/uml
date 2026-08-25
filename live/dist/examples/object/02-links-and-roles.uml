@@ -1,0 +1,13 @@
+@startuml
+left to right direction
+
+object Customer
+object Order
+object Address
+object Payment
+
+Customer "1" --> "0..*" Order : places
+Order *-- "1" Address : shipping address
+Order --> Payment : settles
+Payment "0..1" <-left- "1" Customer : default method
+@enduml

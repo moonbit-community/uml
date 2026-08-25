@@ -1,0 +1,8 @@
+@startuml
+start
+:Receive request;
+-> validate input;
+:Validate input;
+:Persist result;
+stop
+@enduml

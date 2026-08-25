@@ -1,0 +1,17 @@
+@startmindmap
+* Engineering
+** Languages
+*** MoonBit
+*** Java
+** Tooling
+*** Compiler
+**** Diagnostics
+**** IDE support
+*** Renderer
+** Quality
+*** Tests
+*** Benchmarks
+* Operations
+** Releases
+*** Changelog
+@endmindmap

@@ -1,0 +1,17 @@
+@starttoml
+name = "gateway"
+environment = "production"
+
+[server]
+host = "0.0.0.0"
+ports = [8080, 8443]
+
+[server.health]
+path = "/healthz"
+interval_seconds = 15
+retries = 3
+
+[logging]
+level = "info"
+format = "json"
+@endtoml

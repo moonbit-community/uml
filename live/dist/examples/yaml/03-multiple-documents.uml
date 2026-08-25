@@ -1,0 +1,14 @@
+@startyaml
+---
+kind: Deployment
+metadata:
+  name: catalog
+---
+kind: Service
+metadata:
+  name: catalog
+spec:
+  ports:
+    - 8080
+    - 8443
+@endyaml

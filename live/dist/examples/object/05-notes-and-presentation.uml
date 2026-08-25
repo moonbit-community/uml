@@ -1,0 +1,29 @@
+@startuml
+left to right direction
+skinparam ClassBorderColor #5C6BC0
+title
+Checkout snapshot
+end title
+
+package checkout <<bounded-context>> #aliceblue {
+  object Cart <<aggregate>> [[https://example.com/cart]] #lightblue {
+    + itemCount = 2
+    + total = "42.00"
+  }
+  object Receipt #lightyellow
+}
+
+Cart --> Receipt #green [[https://example.com/receipt]] <<creates>> : checkout
+
+note right of Cart #pink
+  Captured after payment
+  authorization succeeds.
+end note
+
+note left of Cart::total #lightgreen
+  formatted currency
+end note
+note on link #yellow : immutable receipt
+
+hide object methods
+@enduml

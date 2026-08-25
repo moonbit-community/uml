@@ -1,0 +1,9 @@
+@startuml
+node "App Server" as app {
+  port "http" as http
+  portin "ingress" as ingress
+  portout "egress" as egress
+}
+node "Client" as client
+client --> app
+@enduml

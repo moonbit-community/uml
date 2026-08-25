@@ -1,0 +1,15 @@
+@startyaml
+defaults: &defaults
+  timeout: 30
+  retries: 3
+production:
+  <<: *defaults
+  endpoint: "https://api.example.test/v1"
+notes: |
+  This is a block value.
+  It spans multiple lines.
+flags:
+  - true
+  - false
+  - null
+@endyaml

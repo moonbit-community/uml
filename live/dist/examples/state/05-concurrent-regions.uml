@@ -1,0 +1,13 @@
+@startuml
+[*] --> Work
+
+state Work {
+  state "Prepare input" as Input
+  --
+  state "Reserve capacity" as Capacity
+  --
+  state "Record audit" as Audit
+}
+
+Work --> [*]
+@enduml

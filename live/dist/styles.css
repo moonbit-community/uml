@@ -1,0 +1,232 @@
+:root {
+  --uml-text: #000000;
+  --uml-line: #181818;
+  --uml-canvas: transparent;
+  --uml-node: #f1f1f1;
+  --uml-note: #feffdd;
+  --uml-partition: transparent;
+  --uml-participant: #e2e2f0;
+  --uml-activation: #ffffff;
+  --uml-lifeline: #777777;
+  --uml-divider: #777777;
+  --uml-divider-title: #f6f6f6;
+  --uml-delay: #777777;
+  --uml-reference-tab: #eeeeee;
+  --uml-page-break: #555555;
+  --uml-transparent: none;
+  --uml-spot-abstract: #a9dcdf;
+  --uml-spot-interface: #b4a7e5;
+  --uml-spot-enum: #eb937f;
+  --uml-spot-annotation: #e3664a;
+  --uml-spot-class: #add1b2;
+  --uml-visibility-public-stroke: #038048;
+  --uml-visibility-public-fill: #84be84;
+  --uml-visibility-private-stroke: #c82930;
+  --uml-visibility-private-fill: #f24d5c;
+  --uml-visibility-protected-stroke: #b38d22;
+  --uml-visibility-protected-fill: #ffff44;
+  --uml-visibility-package-stroke: #1963a0;
+  --uml-visibility-package-fill: #4177af;
+
+  --app-bg: #f8fafc;
+  --editor-bg: #ffffff;
+  --preview-bg: #ffffff;
+  --text: #1f2937;
+  --text-strong: #0f172a;
+  --title-color: #475569;
+  --border: #cbd5e1;
+  --item-placeholder: #94a3b8;
+  --active-bg: #2563eb;
+  --active-text: #ffffff;
+  --rui-border: #d1d5db;
+}
+
+[data-theme="dark"] {
+  --uml-text: #e2e8f0;
+  --uml-line: #94a3b8;
+  --uml-canvas: transparent;
+  --uml-node: #1e293b;
+  --uml-note: #3b341a;
+  --uml-partition: transparent;
+  --uml-participant: #334155;
+  --uml-activation: #1e293b;
+  --uml-lifeline: #64748b;
+  --uml-divider: #94a3b8;
+  --uml-divider-title: #1e293b;
+  --uml-delay: #94a3b8;
+  --uml-reference-tab: #334155;
+  --uml-page-break: #64748b;
+  --uml-transparent: none;
+  --uml-spot-abstract: #155e75;
+  --uml-spot-interface: #4338ca;
+  --uml-spot-enum: #9a3412;
+  --uml-spot-annotation: #9f1239;
+  --uml-spot-class: #166534;
+  --uml-visibility-public-stroke: #4ade80;
+  --uml-visibility-public-fill: #14532d;
+  --uml-visibility-private-stroke: #f87171;
+  --uml-visibility-private-fill: #7f1d1d;
+  --uml-visibility-protected-stroke: #facc15;
+  --uml-visibility-protected-fill: #713f12;
+  --uml-visibility-package-stroke: #60a5fa;
+  --uml-visibility-package-fill: #1e3a8a;
+
+  --app-bg: #0f172a;
+  --editor-bg: #0f172a;
+  --preview-bg: #0f172a;
+  --text: #e2e8f0;
+  --text-strong: #f1f5f9;
+  --title-color: #94a3b8;
+  --border: #334155;
+  --item-placeholder: #64748b;
+  --active-bg: #3b82f6;
+  --active-text: #ffffff;
+  --rui-border: #334155;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: var(--app-bg);
+}
+
+#app {
+  height: 100vh;
+}
+
+.file-panel,
+.editor-panel,
+.preview-panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 16px;
+}
+
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--editor-bg);
+}
+
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panel-header .panel-title {
+  margin: 0;
+}
+
+.panel-title {
+  margin: 0 0 12px;
+  color: var(--title-color);
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.theme-toggle {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--title-color);
+  background: transparent;
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--text-strong);
+  border-color: var(--text-strong);
+}
+
+.file-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.file-item.active {
+  color: var(--active-text);
+  background: var(--active-bg);
+}
+
+.file-category {
+  margin-top: 12px;
+  margin-bottom: 4px;
+  color: var(--title-color);
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.file-placeholder {
+  padding: 8px 10px;
+  color: var(--item-placeholder);
+  font-size: 0.875rem;
+}
+
+.editor,
+.preview {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.editor {
+  resize: none;
+  color: var(--text-strong);
+  background: var(--editor-bg);
+}
+
+.editor:focus {
+  outline: 2px solid var(--active-bg);
+  outline-offset: -1px;
+}
+
+.preview {
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--text-strong);
+  background: var(--preview-bg);
+}
+
+.preview-message {
+  padding: 8px;
+  color: var(--item-placeholder);
+  font-size: 0.875rem;
+}

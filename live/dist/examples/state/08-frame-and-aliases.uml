@@ -1,0 +1,7 @@
+@startuml
+frame "Order processing" as OrderFlow {
+  state "Awaiting payment" as Awaiting
+  state "Payment confirmed" as Confirmed
+  Awaiting --> Confirmed : capture
+}
+@enduml

@@ -1,0 +1,15 @@
+@startuml
+start
+:Prepare release;
+
+fork
+  :Build package;
+fork again
+  :Run test suite;
+fork again
+  :Generate documentation;
+end fork
+
+:Publish release;
+stop
+@enduml

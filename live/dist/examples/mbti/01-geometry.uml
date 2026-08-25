@@ -1,0 +1,30 @@
+@startuml '.mbti
+package "demo/geometry";
+import { "demo/numbers", "@stdlib/random" }
+struct Point {
+  x : Double
+  mut y : Double
+}
+struct Line {
+  start : Point
+  end : Point
+}
+enum Shape {
+  Circle(Double)
+  Rect(Double, Double)
+}
+trait ShapeLike : Show + Eq {
+  fn area(Self) -> Double
+  fn perimeter(Self) -> Double
+}
+trait Show {
+  fn to_string(Self) -> String
+}
+impl ShapeLike for Point;
+impl ShapeLike for Shape;
+fn Point::origin(Self) -> Bool
+fn Point::move_to(Self, Double, Double) -> Unit
+type Abstract
+suberror ShapeError
+type Alias = Point
+@enduml

@@ -1,0 +1,19 @@
+@startyaml
+service:
+  name: gateway
+  ports: [8080, 8443]
+  hosts:
+    - api.example.test
+    - admin.example.test
+  health:
+    path: /healthz
+    interval_seconds: 15
+    retries: 3
+workers:
+  - name: ingest
+    replicas: 2
+    queues: [events, audit]
+  - name: export
+    replicas: 1
+    queues: [reports]
+@endyaml

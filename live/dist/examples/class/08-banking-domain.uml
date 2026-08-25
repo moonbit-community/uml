@@ -1,0 +1,87 @@
+@startuml
+class Bank {
+  + name : String
+  + code : String
+  # branches : List<Branch>
+  --
+  + openAccount(holder : Customer) : Account
+  + closeAccount(account : Account) : Bool
+  + listBranches() : List<Branch>
+  - validateLicense() : Bool
+}
+
+class Branch {
+  + address : String
+  + manager : String
+  + openAt : Time
+  - balance : Decimal
+  --
+  + deposit(account : Account, amount : Decimal) : Bool
+  + withdraw(account : Account, amount : Decimal) : Bool
+  + transfer(source : Account, target : Account, amount : Decimal) : Bool
+  - checkFunds(account : Account, amount : Decimal) : Bool
+}
+
+class Account {
+  + number : String
+  + holder : Customer
+  # balance : Decimal
+  # status : AccountStatus
+  --
+  + getBalance() : Decimal
+  + deposit(amount : Decimal) : Bool
+  + withdraw(amount : Decimal) : Bool
+  + freeze(reason : String)
+}
+
+enum AccountStatus {
+  Active
+  Frozen
+  Closed
+}
+
+interface Customer {
+  + fullName() : String
+  + verified() : Bool
+}
+
+class Individual implements Customer {
+  + firstName : String
+  + lastName : String
+  - ssn : String
+  --
+  + fullName() : String
+  + verified() : Bool
+  + setSsn(value : String)
+}
+
+class Company implements Customer {
+  + legalName : String
+  + taxId : String
+  - contactEmail : String
+  --
+  + fullName() : String
+  + verified() : Bool
+  + contact() : String
+}
+
+class Transaction {
+  + id : String
+  + amount : Decimal
+  + timestamp : Time
+  + type : TransactionType
+  --
+  + reverse() : Bool
+}
+
+enum TransactionType {
+  Deposit
+  Withdrawal
+  Transfer
+}
+
+Branch "1" -- "*" Account : holds
+Account "1" -- "*" Transaction : produces
+Customer "1" -- "*" Account : owns
+Bank "1" -- "*" Branch : manages
+@enduml
