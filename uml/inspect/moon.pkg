@@ -1,15 +1,20 @@
-warnings = "-unused_package"
-
 import {
   "moonbitlang/core/string",
   "moonbitlang/core/test",
+}
+
+import {
+  "kokic/uml/parser",
+  "kokic/uml/render",
+  "kokic/uml/metrics",
+} for "wbtest"
+
+import {
   "kokic/uml/entity",
   "kokic/uml/flow",
   "kokic/uml/parse",
-  "kokic/uml/parser",
-  "kokic/uml/metrics",
-  "kokic/uml/render",
-  "kokic/uml/seq",
   "kokic/uml/structured",
   "kokic/uml/tree",
-}
+  "kokic/uml/parser",
+  "kokic/uml/render",
+} for "test"
