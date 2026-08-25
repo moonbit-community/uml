@@ -1,6 +1,6 @@
 ///|
 test "if chains keep decision text and branch labels separate" {
-  let diagram = parse(
+  let diagram = parse_activity(
     "if (ready?) then (yes)\n:Run;\nelseif (later?) then (wait)\n:Wait;\nelse (no)\n:Stop;\nendif",
   )
   match diagram.instructions {
@@ -22,7 +22,7 @@ test "if chains keep decision text and branch labels separate" {
 
 ///|
 test "loop conditions preserve enter retry and exit edge labels" {
-  let diagram = parse(
+  let diagram = parse_activity(
     "while (more?) is (yes)\n:Read;\nendwhile (no)\nrepeat\n:Retry;\nrepeat while (failed?) is (again) not (done)",
   )
   match diagram.instructions {
@@ -40,7 +40,7 @@ test "loop conditions preserve enter retry and exit edge labels" {
 
 ///|
 test "switch fork partitions lanes and goto reduce to dedicated instructions" {
-  let diagram = parse(
+  let diagram = parse_activity(
     "|Worker|\npartition Work {\nfork\n:Build;\nfork again\n:Test;\nend fork\n}\nswitch (mode)\ncase (fast)\n:Ship;\nendswitch\nlabel done\ngoto done",
   )
   match diagram.instructions {

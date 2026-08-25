@@ -834,7 +834,7 @@ fn @flow.StateDiagram::render_svg(
 
 ///|
 pub fn render_state(input : String) -> String raise {
-  parse(input).render_svg()
+  @parser.parse_state(input).render_svg()
 }
 
 ///|

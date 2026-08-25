@@ -82,7 +82,9 @@ fn is_activity_arrow(line : String) -> Bool {
 /// Parse PlantUML's modern activity-diagram commands. The supported command
 /// set follows `activitydiagram3.ActivityDiagramFactory3`; unsupported
 /// commands are rejected rather than being silently treated as activities.
-pub fn parse(input : String) -> @flow.ActivityDiagram raise @parse.ParseError {
+pub fn parse_activity(
+  input : String,
+) -> @flow.ActivityDiagram raise @parse.ParseError {
   let lines = @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)

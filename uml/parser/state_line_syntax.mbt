@@ -458,7 +458,7 @@ fn state_transition(cursor : @parse.Cursor) -> StateTransitionSyntax? {
 }
 
 ///|
-fn note_position(cursor : @parse.Cursor) -> @flow.StateNotePosition? {
+fn state_note_position(cursor : @parse.Cursor) -> @flow.StateNotePosition? {
   let position = if cursor.consume_literal("left") {
     Some(@flow.StateNotePosition::NoteLeft)
   } else if cursor.consume_literal("right") {
@@ -494,7 +494,7 @@ fn entity_note(cursor : @parse.Cursor) -> StateEntityNoteSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("note") else { return None }
   ignore(cursor.skip_inline_whitespace())
-  guard note_position(cursor) is Some(position) else {
+  guard state_note_position(cursor) is Some(position) else {
     ignore(cursor.restore(start))
     return None
   }

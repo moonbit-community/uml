@@ -307,7 +307,9 @@ fn Parser::parse_line(
 ///|
 /// Parse the command family registered by PlantUML's `StateDiagramFactory`.
 /// The AST preserves state-specific pseudo-states and composite-state scope.
-pub fn parse(input : String) -> @flow.StateDiagram raise @parse.ParseError {
+pub fn parse_state(
+  input : String,
+) -> @flow.StateDiagram raise @parse.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
     let line = @parse.strip_line_comment(parser.lines[parser.index])

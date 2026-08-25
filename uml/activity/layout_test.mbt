@@ -71,7 +71,7 @@ fn region_for(
 ///|
 test "conditional branches are horizontal siblings and join at endif" {
   let layout = layout_activity(
-    parse(
+    @parser.parse_activity(
       "if (ready?) then (yes)\n:Accept;\nelse (no)\n:Reject;\nendif\n:Continue;",
     ),
   )
@@ -111,7 +111,9 @@ test "conditional branches are horizontal siblings and join at endif" {
 ///|
 test "parallel branches are horizontal and converge at the ending fork" {
   let layout = layout_activity(
-    parse("fork\n:Build;\nfork again\n:Test;\nend fork\n:Ship;"),
+    @parser.parse_activity(
+      "fork\n:Build;\nfork again\n:Test;\nend fork\n:Ship;",
+    ),
   )
   guard action_index(layout, "Build") is Some(build_index) else {
     @test.fail("missing build branch index")
@@ -147,7 +149,7 @@ test "parallel branches are horizontal and converge at the ending fork" {
 ///|
 test "loops include a routed back edge" {
   let layout = layout_activity(
-    parse("while (more?)\n:Read;\nendwhile (done)\n:Finish;"),
+    @parser.parse_activity("while (more?)\n:Read;\nendwhile (done)\n:Finish;"),
   )
   @test.assert_eq(
     layout.edges.any(edge => {
@@ -160,7 +162,7 @@ test "loops include a routed back edge" {
 ///|
 test "loop labels remain attached to control-flow edges" {
   let layout = layout_activity(
-    parse(
+    @parser.parse_activity(
       "while (more?) is (yes)\n:Read;\nendwhile (done)\nrepeat\n:Retry;\nrepeat while (failed?) is (again) not (sent)\n:Finish;",
     ),
   )
@@ -173,7 +175,9 @@ test "loop labels remain attached to control-flow edges" {
 ///|
 test "while exits from its controlling decision rather than its loop body" {
   let layout = layout_activity(
-    parse("while (more?) is (yes)\n:Read;\nendwhile (done)\n:Finish;"),
+    @parser.parse_activity(
+      "while (more?) is (yes)\n:Read;\nendwhile (done)\n:Finish;",
+    ),
   )
   guard control_index(layout, "more?") is Some(while_decision) else {
     @test.fail("missing while decision")
@@ -205,10 +209,12 @@ test "while exits from its controlling decision rather than its loop body" {
 ///|
 test "conditional and switch labels belong to incoming branch edges" {
   let conditional = layout_activity(
-    parse("if (ready?) then (accept)\n:Accept;\nelse (reject)\n:Reject;\nendif"),
+    @parser.parse_activity(
+      "if (ready?) then (accept)\n:Accept;\nelse (reject)\n:Reject;\nendif",
+    ),
   )
   let switch_layout = layout_activity(
-    parse(
+    @parser.parse_activity(
       "switch (method)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\nendswitch",
     ),
   )
@@ -233,7 +239,7 @@ test "conditional and switch labels belong to incoming branch edges" {
 ///|
 test "elseif decisions form a horizontal cascade" {
   let layout = layout_activity(
-    parse(
+    @parser.parse_activity(
       "if (first?) then (yes)\n:First;\nelseif (second?) then (yes)\n:Second;\nelse (no)\n:Fallback;\nendif",
     ),
   )
@@ -255,7 +261,7 @@ test "elseif decisions form a horizontal cascade" {
 ///|
 test "partitions and swimlanes contain their visible instructions" {
   let layout = layout_activity(
-    parse(
+    @parser.parse_activity(
       "|Customer|\n:Submit;\n|Store|\npartition Fulfilment {\n:Validate;\n:Reserve;\n}\n|Customer|\n:Confirm;",
     ),
   )
@@ -294,7 +300,7 @@ test "partitions and swimlanes contain their visible instructions" {
 ///|
 test "explicit arrow text labels the following visible edge" {
   let layout = layout_activity(
-    parse(":Receive;\n-> validate input\n:Validate;"),
+    @parser.parse_activity(":Receive;\n-> validate input\n:Validate;"),
   )
   @test.assert_eq(
     layout.edges.any(edge => edge.label == Some("validate input")),
@@ -305,7 +311,9 @@ test "explicit arrow text labels the following visible edge" {
 ///|
 test "goto connects its anchor directly to the matching label anchor" {
   let layout = layout_activity(
-    parse("label retry\n:Retry;\nif (again?) then (yes)\ngoto retry\nendif"),
+    @parser.parse_activity(
+      "label retry\n:Retry;\nif (again?) then (yes)\ngoto retry\nendif",
+    ),
   )
   guard anchor_index(layout, "retry", true) is Some(label_anchor) else {
     @test.fail("missing label anchor")
@@ -350,7 +358,9 @@ fn box_gap(layout : ActivityLayout, left : Int, right : Int) -> Int? {
 
 ///|
 test "fork columns compress toward the bars when the gaps are empty" {
-  let layout = layout_activity(parse("fork\n:A;\nfork again\n:BB;\nend fork"))
+  let layout = layout_activity(
+    @parser.parse_activity("fork\n:A;\nfork again\n:BB;\nend fork"),
+  )
   guard fork_bar_index(layout) is Some(bar_index) else {
     @test.fail("missing fork bar")
   }
@@ -376,9 +386,11 @@ test "fork columns compress toward the bars when the gaps are empty" {
 
 ///|
 test "fork compression is blocked by elements spanning the gaps" {
-  let empty = layout_activity(parse("fork\n:A;\nfork again\n:BB;\nend fork"))
+  let empty = layout_activity(
+    @parser.parse_activity("fork\n:A;\nfork again\n:BB;\nend fork"),
+  )
   let covered = layout_activity(
-    parse(
+    @parser.parse_activity(
       ":WWWWWWWWWWWWWWWWWWWW;\nfork\n:A;\nfork again\n:BB;\nend fork\n:WWWWWWWWWWWWWWWWWWWW;",
     ),
   )
@@ -408,7 +420,7 @@ test "fork compression is blocked by elements spanning the gaps" {
 ///|
 test "switch case columns compress when nothing spans the gaps" {
   let layout = layout_activity(
-    parse(
+    @parser.parse_activity(
       "switch (x)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\ncase (other)\n:Other;\nendswitch",
     ),
   )
@@ -430,7 +442,7 @@ test "switch case columns compress when nothing spans the gaps" {
 
 ///|
 test "plain sequences are never compressed" {
-  let layout = layout_activity(parse(":One;\n:Two;\n:Three;"))
+  let layout = layout_activity(@parser.parse_activity(":One;\n:Two;\n:Three;"))
   guard action_index(layout, "One") is Some(one_index) else {
     @test.fail("missing first action")
   }

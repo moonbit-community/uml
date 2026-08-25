@@ -28,7 +28,7 @@ fn has_control(diagram : @flow.ActivityDiagram, label : String) -> Bool {
 
 ///|
 test "parses nested conditional branches without losing branch commands" {
-  let diagram = parse(
+  let diagram = parse_activity(
     "start\nif (ready?) then (yes)\n:Work;\nelseif (later?) then (wait)\n:Wait;\nelse (no)\n:Stop;\nendif\nstop",
   )
   @test.assert_eq(diagram.nodes.is_empty(), false)
@@ -42,7 +42,7 @@ test "parses nested conditional branches without losing branch commands" {
 
 ///|
 test "preserves all loop, fork, and switch boundaries" {
-  let diagram = parse(
+  let diagram = parse_activity(
     "while (more?)\n:Read;\nendwhile (done)\nrepeat\n:Retry;\nrepeat while (failed?)\nfork\n:One;\nfork again\n:Two;\nend fork\nswitch (kind)\ncase (a)\n:A;\nendswitch",
   )
   @test.assert_eq(has_control(diagram, "(more?)"), true)
@@ -53,7 +53,7 @@ test "preserves all loop, fork, and switch boundaries" {
 
 ///|
 test "parses swimlanes partitions notes and named flow targets" {
-  let diagram = parse(
+  let diagram = parse_activity(
     "|User|\npartition Work {\n:Start;\nnote right\nHelpful text\nend note\nlabel retry\ngoto retry\n}",
   )
   @test.assert_eq(has_control(diagram, "User"), true)
@@ -74,7 +74,7 @@ test "parses swimlanes partitions notes and named flow targets" {
 test "rejects unmatched and unclosed control-flow blocks" {
   for
     source in ["else", "endwhile", "case (unexpected)", "if (open?) then (yes)"] {
-    try parse(source) catch {
+    try parse_activity(source) catch {
       SyntaxError(_, _) => ()
     } noraise {
       _ => @test.fail("expected activity structure error")
@@ -84,5 +84,7 @@ test "rejects unmatched and unclosed control-flow blocks" {
 
 ///|
 test "rejects arbitrary dash-prefixed lines as arrows" {
-  @test.assert_raise(() => ignore(parse("@startuml\n- not an arrow\n@enduml")))
+  @test.assert_raise(() => {
+    ignore(parse_activity("@startuml\n- not an arrow\n@enduml"))
+  })
 }

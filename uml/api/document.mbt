@@ -101,8 +101,9 @@ pub fn parse(source : String) -> Document raise {
     _ if is_sequence_source(source) =>
       { diagram: Sequence(@parser.parse_sequence(source)), }
     _ if is_activity_source(source) =>
-      { diagram: Activity(@activity.parse(source)), }
-    _ if is_state_source(source) => { diagram: State(@state.parse(source)), }
+      { diagram: Activity(@parser.parse_activity(source)), }
+    _ if is_state_source(source) =>
+      { diagram: State(@parser.parse_state(source)), }
     _ if entity_family_from_lines(meaningful_source_lines(source))
       is Some(family) =>
       match family {
