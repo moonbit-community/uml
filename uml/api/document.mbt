@@ -99,7 +99,7 @@ pub fn parse(source : String) -> Document raise {
     _ if is_mindmap_source(source) =>
       { diagram: Mindmap(@mindmap.parse(source)), }
     _ if is_sequence_source(source) =>
-      { diagram: Sequence(@sequence.parse(source)), }
+      { diagram: Sequence(@parser.parse_sequence(source)), }
     _ if is_activity_source(source) =>
       { diagram: Activity(@activity.parse(source)), }
     _ if is_state_source(source) => { diagram: State(@state.parse(source)), }

@@ -7,7 +7,6 @@ import {
   "moonbitlang/core/math",
   "moonbitlang/core/test",
   "kokic/uml/entity",
-  "kokic/uml/mbti",
   "kokic/uml/parse",
   "kokic/uml/style",
   "kokic/uml/svg",

@@ -386,14 +386,14 @@ fn take_arrow_style(cursor : @parse.Cursor) -> Unit {
 fn take_style_token(cursor : @parse.Cursor) -> Bool {
   let start = cursor.offset()
   if cursor.consume('#') {
-    let word = cursor.take_while(is_word_char)
+    let word = cursor.take_while(sequence_is_word_char)
     if word.length() > 0 {
       return true
     }
     ignore(cursor.restore(start))
     return false
   }
-  let word = cursor.take_while(is_word_char)
+  let word = cursor.take_while(sequence_is_word_char)
   if is_style_keyword(word.to_lower()) {
     true
   } else {
@@ -403,7 +403,7 @@ fn take_style_token(cursor : @parse.Cursor) -> Bool {
 }
 
 ///|
-fn is_word_char(char : Char) -> Bool {
+fn sequence_is_word_char(char : Char) -> Bool {
   char.is_ascii_alphabetic() || char.is_ascii_digit() || char == '_'
 }
 
@@ -565,7 +565,7 @@ fn take_exo_participant(cursor : @parse.Cursor) -> PartRef? {
 fn take_life_color_value(cursor : @parse.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
-  let word = cursor.take_while(is_word_char)
+  let word = cursor.take_while(sequence_is_word_char)
   guard word.length() > 0 else {
     ignore(cursor.restore(start))
     return None

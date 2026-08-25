@@ -169,7 +169,7 @@ fn @seq.SequenceDiagram::render_svg(
 ///|
 /// Parse PlantUML sequence-diagram text and render it as standalone SVG.
 pub fn render_sequence(input : String) -> String raise @parse.ParseError {
-  parse(input).render_svg()
+  @parser.parse_sequence(input).render_svg()
 }
 
 ///|

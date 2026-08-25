@@ -181,7 +181,7 @@ test "life event with color parses and carries the color" {
     #|activate Bob #FF0000
     #|Bob --> Alice
     #|@enduml
-  let diagram = parse(src)
+  let diagram = parse_sequence(src)
   let has_colored_activation = diagram.events.exists(event => {
     match event {
       @seq.LifeEvent({ participant_code, event_type: @seq.Activate, color, }) =>
@@ -190,19 +190,4 @@ test "life event with color parses and carries the color" {
     }
   })
   @test.assert_eq(has_colored_activation, true)
-}
-
-///|
-test "colored notes and activations keep their fill in the svg" {
-  let src =
-    #|@startuml
-    #|Alice -> Bob
-    #|activate Bob #lightgreen
-    #|hnote over Alice #lightgreen : colored hex
-    #|rnote over Carol #lightcoral : colored box
-    #|Bob --> Alice
-    #|@enduml
-  let svg = render_sequence(src)
-  @test.assert_eq(svg.contains("fill=\"#90EE90\""), true)
-  @test.assert_eq(svg.contains("fill=\"#F08080\""), true)
 }

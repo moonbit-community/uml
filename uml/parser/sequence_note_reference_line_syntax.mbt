@@ -288,7 +288,7 @@ fn participant_note_tail(
 fn take_note_color_value(cursor : @parse.Cursor) -> String? {
   let start = cursor.offset()
   guard cursor.consume('#') else { return None }
-  let first = cursor.take_while(is_word_char)
+  let first = cursor.take_while(sequence_is_word_char)
   guard first.length() > 0 else {
     ignore(cursor.restore(start))
     return None
@@ -297,7 +297,7 @@ fn take_note_color_value(cursor : @parse.Cursor) -> String? {
   match cursor.peek() {
     Some(char) if char == '-' || char == '\\' || char == '|' || char == '/' => {
       ignore(cursor.advance())
-      let second = cursor.take_while(is_word_char)
+      let second = cursor.take_while(sequence_is_word_char)
       if second.length() > 0 {
         Some(first + char.to_string() + second)
       } else {

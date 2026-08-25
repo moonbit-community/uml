@@ -15,6 +15,7 @@ import {
   "moonbit-community/graphviz/layout/dot" @dot_layout,
   "moonbit-community/graphviz/render/svg",
   "moonbitlang/core/test",
+  "kokic/uml/parser",
   "kokic/uml/parse",
   "kokic/uml/style",
 }
