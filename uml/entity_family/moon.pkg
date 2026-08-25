@@ -12,7 +12,6 @@ import {
   "kokic/uml/style",
   "kokic/uml/svg",
   "kokic/uml/graphviz",
-  "kokic/uml/mbti",
   "kokic/uml/mindmap",
   "kokic/uml/tree",
 }
