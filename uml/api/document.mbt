@@ -34,7 +34,7 @@ pub fn Diagram::render_svg(
   class_member_collapsible? : Bool = false,
 ) -> String raise {
   match self {
-    Sequence(diagram) => @sequence.render_sequence_svg(diagram, color_scheme~)
+    Sequence(diagram) => @render.render_sequence_svg(diagram, color_scheme~)
     Activity(diagram) => @activity.render_activity_svg(diagram, color_scheme~)
     Class(diagram)
     | Object(diagram)

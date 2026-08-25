@@ -167,12 +167,6 @@ fn @seq.SequenceDiagram::render_svg(
 }
 
 ///|
-/// Parse PlantUML sequence-diagram text and render it as standalone SVG.
-pub fn render_sequence(input : String) -> String raise @parse.ParseError {
-  @parser.parse_sequence(input).render_svg()
-}
-
-///|
 /// Render a parsed sequence diagram to SVG.
 pub fn render_sequence_svg(
   diagram : @seq.SequenceDiagram,

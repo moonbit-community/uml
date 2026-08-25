@@ -6,7 +6,7 @@ import {
   "kokic/uml/mindmap",
   "kokic/uml/structured",
   "kokic/uml/structured_family",
-  "kokic/uml/sequence",
+  "kokic/uml/render",
   "kokic/uml/tree",
   "kokic/uml/seq",
   "kokic/uml/state",

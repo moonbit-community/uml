@@ -8,7 +8,7 @@ test "colored notes and activations keep their fill in the svg" {
     #|rnote over Carol #lightcoral : colored box
     #|Bob --> Alice
     #|@enduml
-  let svg = render_sequence(src)
+  let svg = render_sequence_svg(@parser.parse_sequence(src))
   @test.assert_eq(svg.contains("fill=\"#90EE90\""), true)
   @test.assert_eq(svg.contains("fill=\"#F08080\""), true)
 }
