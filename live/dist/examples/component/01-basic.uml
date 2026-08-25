@@ -1,4 +1,0 @@
-@startuml
-[Web client] --> [Gateway API] : HTTPS
-[Gateway API] --> [Catalog service] : query
-@enduml

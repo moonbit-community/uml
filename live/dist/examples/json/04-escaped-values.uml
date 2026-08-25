@@ -1,9 +1,0 @@
-@startjson
-{
-  "title": "Quoted \"value\"",
-  "path": "C:\\User\\Guest",
-  "multiline": "first line\nsecond line",
-  "unicode": "\u4e2d\u6587",
-  "url": "https://example.test/api?query=json"
-}
-@endjson

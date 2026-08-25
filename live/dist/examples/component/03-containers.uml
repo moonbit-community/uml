@@ -1,8 +1,0 @@
-@startuml
-package platform {
-  component "Public gateway" as Gateway
-  component "Identity service" as Identity
-}
-
-Gateway --> Identity : validates
-@enduml

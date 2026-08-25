@@ -1,9 +1,0 @@
-@startuml
-state Open
-state Closed
-state Archived
-
-Open -[dashed]-> Closed : close
-Archived <-[bold]- Closed : archive
-Open x--> Archived : cancel
-@enduml

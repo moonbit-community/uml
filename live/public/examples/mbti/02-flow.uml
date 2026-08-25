@@ -1,0 +1,403 @@
+@startuml '.mbti
+// Generated using `moon info`, DON'T EDIT IT
+package "kokic/uml/flow"
+
+import {
+  "kokic/uml/style",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn arrow_label(String) -> ActivityEdgeLabel
+
+pub fn edge_label(String) -> ActivityEdgeLabel
+
+pub fn reduce(Array[ActivityNode]) -> Array[ActivityInstruction]
+
+// Errors
+
+// Types and methods
+pub(all) struct ActivityBranch {
+  condition : String?
+  incoming : ActivityEdgeLabel
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityBranch::equal(Self, Self) -> Bool
+pub fn ActivityBranch::not_equal(Self, Self) -> Bool
+pub fn ActivityBranch::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityDiagram {
+  nodes : Array[ActivityNode]
+  instructions : Array[ActivityInstruction]
+  style : @style.DocumentStyle
+} derive(Eq, @debug.Debug)
+pub fn ActivityDiagram::equal(Self, Self) -> Bool
+pub fn ActivityDiagram::not_equal(Self, Self) -> Bool
+pub fn ActivityDiagram::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityEdgeLabel {
+  text : String?
+} derive(Eq, @debug.Debug)
+pub fn ActivityEdgeLabel::equal(Self, Self) -> Bool
+pub fn ActivityEdgeLabel::not_equal(Self, Self) -> Bool
+pub fn ActivityEdgeLabel::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityFork {
+  branches : Array[Array[ActivityInstruction]]
+} derive(Eq, @debug.Debug)
+pub fn ActivityFork::equal(Self, Self) -> Bool
+pub fn ActivityFork::not_equal(Self, Self) -> Bool
+pub fn ActivityFork::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityIfChain {
+  branches : Array[ActivityBranch]
+} derive(Eq, @debug.Debug)
+pub fn ActivityIfChain::equal(Self, Self) -> Bool
+pub fn ActivityIfChain::not_equal(Self, Self) -> Bool
+pub fn ActivityIfChain::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ActivityInstruction {
+  Start
+  Stop
+  End
+  Kill
+  Action(String)
+  Note(String)
+  Edge(ActivityEdgeLabel)
+  IfChain(ActivityIfChain)
+  While(ActivityWhile)
+  Repeat(ActivityRepeat)
+  Fork(ActivityFork)
+  Switch(ActivitySwitch)
+  Partition(ActivityPartition)
+  Swimlane(String)
+  Label(String)
+  Goto(String)
+} derive(Eq, @debug.Debug)
+pub fn ActivityInstruction::equal(Self, Self) -> Bool
+pub fn ActivityInstruction::not_equal(Self, Self) -> Bool
+pub fn ActivityInstruction::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ActivityNode {
+  Start
+  Stop
+  End
+  Kill
+  Action(String)
+  Arrow(String)
+  If(String)
+  ElseIf(String)
+  Else(String)
+  EndIf
+  While(String)
+  EndWhile(String)
+  Repeat
+  RepeatWhile(String)
+  Fork
+  ForkAgain
+  EndFork
+  Switch(String)
+  Case(String)
+  EndSwitch
+  Swimlane(String)
+  Partition(String)
+  EndPartition
+  Note(String)
+  Label(String)
+  Goto(String)
+} derive(Eq, @debug.Debug)
+pub fn ActivityNode::equal(Self, Self) -> Bool
+pub fn ActivityNode::not_equal(Self, Self) -> Bool
+pub fn ActivityNode::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityPartition {
+  label : String
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityPartition::equal(Self, Self) -> Bool
+pub fn ActivityPartition::not_equal(Self, Self) -> Bool
+pub fn ActivityPartition::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityRepeat {
+  condition : String
+  retry : ActivityEdgeLabel
+  exit : ActivityEdgeLabel
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityRepeat::equal(Self, Self) -> Bool
+pub fn ActivityRepeat::not_equal(Self, Self) -> Bool
+pub fn ActivityRepeat::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivitySwitch {
+  condition : String
+  branches : Array[ActivityBranch]
+} derive(Eq, @debug.Debug)
+pub fn ActivitySwitch::equal(Self, Self) -> Bool
+pub fn ActivitySwitch::not_equal(Self, Self) -> Bool
+pub fn ActivitySwitch::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ActivityWhile {
+  condition : String
+  enter : ActivityEdgeLabel
+  exit : ActivityEdgeLabel
+  instructions : Array[ActivityInstruction]
+} derive(Eq, @debug.Debug)
+pub fn ActivityWhile::equal(Self, Self) -> Bool
+pub fn ActivityWhile::not_equal(Self, Self) -> Bool
+pub fn ActivityWhile::to_repr(Self) -> @debug.Repr
+
+pub(all) struct ChangeState {
+  when : TimeTick?
+  comment : String?
+  color : String?
+  states : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn ChangeState::equal(Self, Self) -> Bool
+pub fn ChangeState::not_equal(Self, Self) -> Bool
+pub fn ChangeState::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Decimal {
+  sign : Int
+  coeff : String
+  scale : Int
+} derive(Eq, @debug.Debug)
+pub fn Decimal::equal(Self, Self) -> Bool
+pub fn Decimal::not_equal(Self, Self) -> Bool
+pub fn Decimal::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Highlight {
+  from : TimeTick?
+  to : TimeTick?
+  caption : String?
+  color : String?
+} derive(Eq, @debug.Debug)
+pub fn Highlight::equal(Self, Self) -> Bool
+pub fn Highlight::not_equal(Self, Self) -> Bool
+pub fn Highlight::to_repr(Self) -> @debug.Repr
+
+pub(all) enum PlayerKind {
+  Robust
+  Concise
+  Rectangle
+  Binary
+  Clock
+  Analog
+} derive(Eq, @debug.Debug)
+pub fn PlayerKind::equal(Self, Self) -> Bool
+pub fn PlayerKind::not_equal(Self, Self) -> Bool
+pub fn PlayerKind::to_repr(Self) -> @debug.Repr
+
+pub(all) struct StateDiagram {
+  states : Array[StateNode]
+  transitions : Array[StateTransition]
+  notes : Array[StateNote]
+  concurrent_regions : Array[String]
+  regions : Array[StateRegion]
+  style : @style.DocumentStyle
+} derive(Eq, @debug.Debug)
+pub fn StateDiagram::equal(Self, Self) -> Bool
+pub fn StateDiagram::hide_empty_description(Self) -> Bool
+pub fn StateDiagram::not_equal(Self, Self) -> Bool
+pub fn StateDiagram::state(Self, String) -> StateNode?
+pub fn StateDiagram::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateKind {
+  Normal
+  Initial
+  Final
+  History
+  DeepHistory
+  Synchronization
+  Choice
+} derive(Eq, @debug.Debug)
+pub fn StateKind::equal(Self, Self) -> Bool
+pub fn StateKind::not_equal(Self, Self) -> Bool
+pub fn StateKind::to_repr(Self) -> @debug.Repr
+
+pub(all) struct StateNode {
+  code : String
+  display : String
+  kind : StateKind
+  parent : String?
+  region_index : Int
+  description : String?
+  stereotype : String?
+  url : String?
+  color : String?
+} derive(Eq, @debug.Debug)
+pub fn StateNode::equal(Self, Self) -> Bool
+pub fn StateNode::has_description(Self) -> Bool
+pub fn StateNode::not_equal(Self, Self) -> Bool
+pub fn StateNode::to_repr(Self) -> @debug.Repr
+
+pub(all) struct StateNote {
+  target : StateNoteTarget
+  text : String
+  color : String?
+  position : StateNotePosition?
+} derive(Eq, @debug.Debug)
+pub fn StateNote::equal(Self, Self) -> Bool
+pub fn StateNote::not_equal(Self, Self) -> Bool
+pub fn StateNote::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateNotePosition {
+  NoteLeft
+  NoteRight
+  NoteTop
+  NoteBottom
+} derive(Eq, @debug.Debug)
+pub fn StateNotePosition::equal(Self, Self) -> Bool
+pub fn StateNotePosition::not_equal(Self, Self) -> Bool
+pub fn StateNotePosition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateNoteTarget {
+  StateNote(String)
+  TransitionNote(Int)
+} derive(Eq, @debug.Debug)
+pub fn StateNoteTarget::equal(Self, Self) -> Bool
+pub fn StateNoteTarget::not_equal(Self, Self) -> Bool
+pub fn StateNoteTarget::to_repr(Self) -> @debug.Repr
+
+pub(all) struct StateRegion {
+  parent : String
+  separator : StateRegionSeparator?
+  index : Int
+} derive(Eq, @debug.Debug)
+pub fn StateRegion::equal(Self, Self) -> Bool
+pub fn StateRegion::not_equal(Self, Self) -> Bool
+pub fn StateRegion::to_repr(Self) -> @debug.Repr
+
+pub(all) enum StateRegionSeparator {
+  Horizontal
+  Vertical
+} derive(Eq, @debug.Debug)
+pub fn StateRegionSeparator::equal(Self, Self) -> Bool
+pub fn StateRegionSeparator::not_equal(Self, Self) -> Bool
+pub fn StateRegionSeparator::to_repr(Self) -> @debug.Repr
+
+pub(all) struct StateTransition {
+  source : String
+  target : String
+  label : String?
+  direction : TransitionDirection
+  line_style : String?
+  has_cross_start : Bool
+  has_circle_end : Bool
+} derive(Eq, @debug.Debug)
+pub fn StateTransition::equal(Self, Self) -> Bool
+pub fn StateTransition::not_equal(Self, Self) -> Bool
+pub fn StateTransition::to_repr(Self) -> @debug.Repr
+
+pub(all) enum TimeAxisStrategy {
+  Automatic
+  Manual
+  Hidden
+} derive(Eq, @debug.Debug)
+pub fn TimeAxisStrategy::equal(Self, Self) -> Bool
+pub fn TimeAxisStrategy::not_equal(Self, Self) -> Bool
+pub fn TimeAxisStrategy::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TimeConstraint {
+  tick1 : TimeTick
+  tick2 : TimeTick
+  message : String?
+  style : String?
+} derive(Eq, @debug.Debug)
+pub fn TimeConstraint::equal(Self, Self) -> Bool
+pub fn TimeConstraint::not_equal(Self, Self) -> Bool
+pub fn TimeConstraint::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TimeTick {
+  time : Decimal
+  format : TimingFormat
+} derive(Eq, @debug.Debug)
+pub fn TimeTick::equal(Self, Self) -> Bool
+pub fn TimeTick::not_equal(Self, Self) -> Bool
+pub fn TimeTick::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TimingDiagram {
+  players : Array[TimingPlayer]
+  clocks : Array[String]
+  codes : Array[(String, TimeTick)]
+  messages : Array[TimingMessage]
+  highlights : Array[Highlight]
+  time_marks : Array[TimeTick]
+  mut now : TimeTick?
+  mut last_player : String?
+  mut time_axis : TimeAxisStrategy
+  mut compact_by_default : Bool
+  mut date_format : String?
+  mut scale : (Int64, Int64)?
+  style : @style.DocumentStyle
+}
+pub fn TimingDiagram::clock(Self, String) -> TimingPlayer?
+pub fn TimingDiagram::code_value(Self, String) -> TimeTick?
+pub fn TimingDiagram::player(Self, String) -> TimingPlayer?
+
+pub(all) enum TimingFormat {
+  Decimal
+  Hour
+  Date
+} derive(Eq, @debug.Debug)
+pub fn TimingFormat::equal(Self, Self) -> Bool
+pub fn TimingFormat::not_equal(Self, Self) -> Bool
+pub fn TimingFormat::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TimingMessage {
+  player1 : String
+  tick1 : TimeTick?
+  player2 : String
+  tick2 : TimeTick?
+  label : String?
+  style : String?
+} derive(Eq, @debug.Debug)
+pub fn TimingMessage::equal(Self, Self) -> Bool
+pub fn TimingMessage::not_equal(Self, Self) -> Bool
+pub fn TimingMessage::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TimingNote {
+  when : TimeTick?
+  position : String
+  text : String
+  stereotype : String?
+} derive(Eq, @debug.Debug)
+pub fn TimingNote::equal(Self, Self) -> Bool
+pub fn TimingNote::not_equal(Self, Self) -> Bool
+pub fn TimingNote::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TimingPlayer {
+  code : String
+  title : String
+  kind : PlayerKind
+  compact : Bool
+  stereotype : String?
+  background_color : String?
+  states : Array[(String, String)]
+  mut initial : ChangeState?
+  changes : Array[ChangeState]
+  notes : Array[TimingNote]
+  constraints : Array[TimeConstraint]
+  period : String?
+  pulse : String?
+  offset : String?
+  mut bounds : (String, String)?
+  mut ticks_every : Int?
+  mut height : Int?
+}
+pub fn TimingPlayer::is_state_player(Self) -> Bool
+
+pub(all) enum TransitionDirection {
+  Automatic
+  Leftward
+  Rightward
+  Upward
+  Downward
+} derive(Eq, @debug.Debug)
+pub fn TransitionDirection::equal(Self, Self) -> Bool
+pub fn TransitionDirection::not_equal(Self, Self) -> Bool
+pub fn TransitionDirection::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
+@enduml

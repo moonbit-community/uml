@@ -3,25 +3,90 @@
 package "kokic/uml/entity"
 
 import {
-  "kokic/uml/core/graphviz",
-  "kokic/uml/core/parse",
-  "kokic/uml/core/style",
-  "moonbit-community/graphviz/layout/dot",
+  "kokic/uml/bodierjson",
+  "kokic/uml/style",
   "moonbitlang/core/debug",
 }
 
 // Values
+pub fn actor_background_color(@style.DocumentStyle) -> String
+
+pub fn actor_border_color(@style.DocumentStyle) -> String
+
+pub fn actor_font_color(@style.DocumentStyle) -> String
+
+pub fn actor_font_family(@style.DocumentStyle) -> String
+
+pub fn actor_font_size(@style.DocumentStyle, fallback~ : Int) -> Int
+
+pub fn actor_style(@style.DocumentStyle) -> String
+
+pub fn arrow_font_color(@style.DocumentStyle) -> String
+
+pub fn arrow_font_family(@style.DocumentStyle) -> String
+
+pub fn arrow_font_size(@style.DocumentStyle, fallback~ : Int) -> Int
+
+pub fn class_background_color(@style.DocumentStyle) -> String
+
+pub fn class_border_color(@style.DocumentStyle) -> String
+
+pub fn class_stereotype_font_color(@style.DocumentStyle) -> String
+
+pub fn class_stereotype_font_family(@style.DocumentStyle) -> String
+
+pub fn class_stereotype_font_size(@style.DocumentStyle, fallback~ : Int) -> Int
+
 pub fn magma_bottom_left_index(Int) -> Int
 
 pub fn magma_branch(Int) -> Int
 
-pub fn parse(String, family? : EntityFamily) -> EntityDiagram raise @tokenizer.ParseError
+pub fn note_background_color(@style.DocumentStyle) -> String
+
+pub fn note_border_color(@style.DocumentStyle) -> String
+
+pub fn object_background_color(@style.DocumentStyle) -> String
+
+pub fn object_border_color(@style.DocumentStyle) -> String
+
+pub fn object_font_color(@style.DocumentStyle) -> String
+
+pub fn package_background_color(@style.DocumentStyle) -> String
+
+pub fn package_border_color(@style.DocumentStyle) -> String
 
 pub fn[T] put_in_square(Array[T], (T, T) -> Unit, (T, T) -> Unit) -> Unit
+
+pub fn usecase_background_color(@style.DocumentStyle) -> String
+
+pub fn usecase_border_color(@style.DocumentStyle) -> String
+
+pub fn usecase_font_color(@style.DocumentStyle) -> String
+
+pub fn usecase_font_family(@style.DocumentStyle) -> String
+
+pub fn usecase_font_size(@style.DocumentStyle, fallback~ : Int) -> Int
 
 // Errors
 
 // Types and methods
+pub(all) struct Declaration {
+  kind : EntityKind
+  code : String
+  display : String
+  visibility : Visibility
+  is_static : Bool
+  generic : String?
+  stereotype : String?
+  extends : Array[String]
+  implements : Array[String]
+  url : String?
+  color : String?
+  line_color : String?
+  line_style : String?
+  tags : Array[String]
+}
+
 pub(all) struct Entity {
   code : String
   qualified_code : String
@@ -47,11 +112,27 @@ pub(all) struct Entity {
   members : Array[Member]
   map_entries : Array[MapEntry]
   json_data : String?
-  json_tree : JsonNode?
+  json_tree : @bodierjson.JsonNode?
 } derive(Eq, @debug.Debug)
 pub fn Entity::equal(Self, Self) -> Bool
 pub fn Entity::not_equal(Self, Self) -> Bool
+pub fn Entity::render_capability(Self, EntityFamily) -> EntityRenderCapability
 pub fn Entity::to_repr(Self) -> @debug.Repr
+
+pub(all) enum EntityAction {
+  HideEntity
+  ShowEntity
+  RemoveEntity
+  RestoreEntity
+}
+
+pub(all) enum EntityBodyCapability {
+  ClassCompartments
+  OrderedMembers
+  MapEntries
+  JsonData
+  NoBody
+}
 
 pub(all) struct EntityDiagram {
   family : EntityFamily
@@ -65,10 +146,12 @@ pub(all) struct EntityDiagram {
 } derive(Eq, @debug.Debug)
 pub fn EntityDiagram::entity(Self, String) -> Entity?
 pub fn EntityDiagram::equal(Self, Self) -> Bool
+pub fn EntityDiagram::find_package(Self, String) -> Package?
 pub fn EntityDiagram::has_entity(Self, String) -> Bool
+pub fn EntityDiagram::is_grid_standalone(Self, String) -> Bool
 pub fn EntityDiagram::magma_grid_edges(Self) -> Array[(String, String, Int)]
 pub fn EntityDiagram::not_equal(Self, Self) -> Bool
-pub fn EntityDiagram::render_svg(Self, color_scheme? : @style.ColorScheme, class_member_collapsible? : Bool) -> String raise @dot.DotLayoutError
+pub fn EntityDiagram::package_parent(Self, String) -> String?
 pub fn EntityDiagram::to_repr(Self) -> @debug.Repr
 
 pub(all) enum EntityFamily {
@@ -80,11 +163,30 @@ pub(all) enum EntityFamily {
   Mbti
 } derive(Eq, @debug.Debug)
 pub fn EntityFamily::allow_mixing(Self) -> Bool
+pub fn EntityFamily::capability(Self) -> EntityFamilyCapability
 pub fn EntityFamily::equal(Self, Self) -> Bool
 pub fn EntityFamily::is_usecase(Self) -> Bool
 pub fn EntityFamily::not_equal(Self, Self) -> Bool
 pub fn EntityFamily::to_repr(Self) -> @debug.Repr
 pub fn EntityFamily::unclosed_body_message(Self) -> String
+
+pub(all) struct EntityFamilyCapability {
+  parser_allow_mixing : Bool
+  unclosed_body_message : String
+  aria_label : String
+  usecase_relation_style : Bool
+  class_members_collapsible : Bool
+  paint_order : EntityPaintOrder
+  renders_packages : Bool
+  renders_notes : Bool
+  description_only : Bool
+}
+
+pub(all) enum EntityHeaderCapability {
+  ClassHeader
+  ObjectHeader
+  DescriptionHeader
+}
 
 pub(all) enum EntityKind {
   Class
@@ -141,66 +243,113 @@ pub(all) enum EntityKind {
   Point
 } derive(Eq, @debug.Debug)
 pub fn EntityKind::equal(Self, Self) -> Bool
+pub fn EntityKind::is_description_kind(Self) -> Bool
 pub fn EntityKind::not_equal(Self, Self) -> Bool
+pub fn EntityKind::render_capability(Self, EntityFamily) -> EntityRenderCapability
 pub fn EntityKind::to_repr(Self) -> @debug.Repr
 
-pub struct GraphvizLayout {
-  width : Double
-  height : Double
-  nodes : Array[GraphvizNodeLayout]
-  edges : Array[@graphviz.GraphvizEdge]
-  note_edges : Array[@graphviz.GraphvizEdge]
-  relation_labels : Array[RelationLabelLayout]
-  packages : Array[GraphvizPackageLayout]
-  notes : Array[@graphviz.GraphvizNote]
-} derive(Eq, @debug.Debug)
-pub fn GraphvizLayout::equal(Self, Self) -> Bool
-pub fn GraphvizLayout::not_equal(Self, Self) -> Bool
-pub fn GraphvizLayout::to_repr(Self) -> @debug.Repr
+pub(all) enum EntityPaintOrder {
+  EntitiesBeforeRelations
+  RelationsBeforeEntities
+}
 
-pub struct GraphvizNodeLayout {
+pub(all) enum EntityPortCapability {
+  MemberPorts
+  MapEntryPorts
+  JsonTreePorts
+  NoPorts
+}
+
+pub(all) enum EntityPortion {
+  MemberPortion
+  FieldPortion
+  MethodPortion
+  CirclePortion
+  StereotypePortion
+}
+
+pub(all) enum EntityRelationEndpointCapability {
+  CenterEndpoint
+  ShapeBoundaryEndpoint
+  PortOrShapeBoundaryEndpoint
+}
+
+pub(all) struct EntityRenderCapability {
+  renderer : EntityRendererKind
+  header : EntityHeaderCapability
+  body : EntityBodyCapability
+  shape : NodeShape
+  ports : EntityPortCapability
+  spot : EntitySpotCapability
+  renders_stereotype : Bool
+  relation_endpoint : EntityRelationEndpointCapability
+  style_role : EntityStyleRole
+}
+pub fn EntityRenderCapability::graphviz_shape(Self) -> String
+pub fn EntityRenderCapability::node_class(Self) -> String
+pub fn EntityRenderCapability::stereotype_class(Self) -> String
+pub fn EntityRenderCapability::title_class(Self) -> String
+
+pub(all) enum EntityRendererKind {
+  ClassRenderer
+  ObjectRenderer
+  MapRenderer
+  JsonRenderer
+  LollipopRenderer
+  PointRenderer
+  UsecaseRenderer
+  ActorRenderer
+  ComponentRenderer
+  DescriptionRenderer
+  PortRenderer
+}
+
+pub(all) struct EntityRule {
+  selector : EntitySelector
+  action : EntityAction
+}
+
+pub(all) enum EntitySelector {
+  AllEntities
+  KindEntities(EntityKind)
+  StereotypedEntities(String)
+  NamedEntity(String)
+  AnyEntities(Array[EntitySelector])
+}
+
+pub(all) enum EntitySpotCapability {
+  ClassSpot
+  NoSpot
+}
+
+pub(all) enum EntityStyleRole {
+  ClassStyle
+  ObjectStyle
+  MapStyle
+  JsonStyle
+  LollipopStyle
+  UsecaseStyle
+  ActorStyle
+  ComponentStyle
+  DescriptionStyle
+}
+pub fn EntityStyleRole::background_color(Self, @style.DocumentStyle) -> String
+pub fn EntityStyleRole::border_color(Self, @style.DocumentStyle) -> String
+pub fn EntityStyleRole::font_color(Self, @style.DocumentStyle) -> String
+
+pub(all) struct GroupDeclaration {
   code : String
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-} derive(Eq, @debug.Debug)
-pub fn GraphvizNodeLayout::equal(Self, Self) -> Bool
-pub fn GraphvizNodeLayout::not_equal(Self, Self) -> Bool
-pub fn GraphvizNodeLayout::to_repr(Self) -> @debug.Repr
+  display : String
+  is_namespace : Bool
+  visibility : Visibility
+  stereotype : String?
+  url : String?
+  color : String?
+  empty : Bool
+  symbol : String?
+}
 
-pub struct GraphvizPackageLayout {
-  package_index : Int
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-} derive(Eq, @debug.Debug)
-pub fn GraphvizPackageLayout::equal(Self, Self) -> Bool
-pub fn GraphvizPackageLayout::not_equal(Self, Self) -> Bool
-pub fn GraphvizPackageLayout::to_repr(Self) -> @debug.Repr
-
-pub(all) struct JsonMember {
-  key : String
-  value : JsonNode
-} derive(Eq, @debug.Debug)
-pub fn JsonMember::equal(Self, Self) -> Bool
-pub fn JsonMember::not_equal(Self, Self) -> Bool
-pub fn JsonMember::to_repr(Self) -> @debug.Repr
-
-pub(all) enum JsonNode {
-  JsonObject(Array[JsonMember])
-  JsonArray(Array[JsonNode])
-  JsonString(String)
-  JsonNumber(String)
-  JsonBoolean(Bool)
-  JsonNull
-} derive(Eq, @debug.Debug)
-pub fn JsonNode::equal(Self, Self) -> Bool
-pub fn JsonNode::not_equal(Self, Self) -> Bool
-pub fn JsonNode::to_repr(Self) -> @debug.Repr
-
-pub struct LinkConstraint {
+pub(all) struct LinkConstraint {
   first_relation : Int
   second_relation : Int
   text : String
@@ -215,7 +364,7 @@ pub(all) struct Magma {
   container : String?
 }
 
-pub struct MapEntry {
+pub(all) struct MapEntry {
   key : String
   value : String?
   link_target : String?
@@ -224,6 +373,23 @@ pub struct MapEntry {
 pub fn MapEntry::equal(Self, Self) -> Bool
 pub fn MapEntry::not_equal(Self, Self) -> Bool
 pub fn MapEntry::to_repr(Self) -> @debug.Repr
+
+pub(all) struct MbtiDiagram {
+  package_name : String
+  imports : Array[String]
+  graph : EntityDiagram
+} derive(Eq, @debug.Debug)
+pub fn MbtiDiagram::equal(Self, Self) -> Bool
+pub fn MbtiDiagram::not_equal(Self, Self) -> Bool
+pub fn MbtiDiagram::to_repr(Self) -> @debug.Repr
+
+pub(all) struct MbtiOptions {
+  trait_inheritance_edges : Bool
+  impl_edges : Bool
+  member_type_edges : Bool
+  show_methods : Bool
+}
+pub fn MbtiOptions::default() -> Self
 
 pub(all) struct Member {
   raw : String
@@ -238,7 +404,15 @@ pub fn Member::equal(Self, Self) -> Bool
 pub fn Member::not_equal(Self, Self) -> Bool
 pub fn Member::to_repr(Self) -> @debug.Repr
 
-pub struct Note {
+pub(all) enum NodeShape {
+  Box
+  Ellipse
+  Circle
+  InterfaceCircle
+  Hexagon
+}
+
+pub(all) struct Note {
   target : String
   position : NotePosition
   text : String
@@ -275,7 +449,7 @@ pub fn NoteTargetKind::equal(Self, Self) -> Bool
 pub fn NoteTargetKind::not_equal(Self, Self) -> Bool
 pub fn NoteTargetKind::to_repr(Self) -> @debug.Repr
 
-pub struct Package {
+pub(all) struct Package {
   name : String
   qualified_name : String
   display : String
@@ -290,6 +464,15 @@ pub struct Package {
 pub fn Package::equal(Self, Self) -> Bool
 pub fn Package::not_equal(Self, Self) -> Bool
 pub fn Package::to_repr(Self) -> @debug.Repr
+
+pub(all) struct PortionRule {
+  selector : EntitySelector
+  portion : EntityPortion
+  show : Bool
+  empty_only : Bool
+  visibilities : Array[Visibility]
+  scope : String
+}
 
 pub(all) struct Relation {
   left : String
@@ -319,7 +502,7 @@ pub(all) struct Relation {
   right_couple : (String, String)?
 } derive(Eq, @debug.Debug)
 pub fn Relation::equal(Self, Self) -> Bool
-pub fn Relation::graphviz_minlen(Self) -> Int
+pub fn Relation::new(String, String, RelationKind, String, RelationEnd, RelationEnd) -> Self
 pub fn Relation::not_equal(Self, Self) -> Bool
 pub fn Relation::to_repr(Self) -> @debug.Repr
 
@@ -373,30 +556,6 @@ pub(all) enum RelationKind {
 pub fn RelationKind::equal(Self, Self) -> Bool
 pub fn RelationKind::not_equal(Self, Self) -> Bool
 pub fn RelationKind::to_repr(Self) -> @debug.Repr
-
-pub struct RelationLabelLayout {
-  relation_index : Int
-  label : RelationTextBox?
-  left_cardinality : RelationTextBox?
-  right_cardinality : RelationTextBox?
-  left_role : RelationTextBox?
-  right_role : RelationTextBox?
-} derive(Eq, @debug.Debug)
-pub fn RelationLabelLayout::equal(Self, Self) -> Bool
-pub fn RelationLabelLayout::not_equal(Self, Self) -> Bool
-pub fn RelationLabelLayout::to_repr(Self) -> @debug.Repr
-
-pub struct RelationTextBox {
-  text : String
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-  baseline : Double
-} derive(Eq, @debug.Debug)
-pub fn RelationTextBox::equal(Self, Self) -> Bool
-pub fn RelationTextBox::not_equal(Self, Self) -> Bool
-pub fn RelationTextBox::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Visibility {
   Public

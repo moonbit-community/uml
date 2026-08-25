@@ -1,8 +1,0 @@
-@startuml
-component "Order service" as Orders
-component "Payment adapter" as Payments
-() "Payment API" as PaymentApi
-
-Orders --> PaymentApi : authorizes
-PaymentApi - Payments
-@enduml
