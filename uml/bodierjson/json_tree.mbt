@@ -141,9 +141,7 @@ fn JsonTreeCursor::parse_object(
   ignore(self.consume('{'))
   self.skip_whitespace()
   let members : Array[JsonMember] = []
-  if self.consume('}') {
-    return JsonObject(members)
-  }
+  guard !self.consume('}') else { return JsonObject(members) }
   while true {
     self.skip_whitespace()
     let key = self.parse_string()
@@ -154,9 +152,7 @@ fn JsonTreeCursor::parse_object(
     let value = self.parse_value()
     members.push({ key, value, })
     self.skip_whitespace()
-    if self.consume('}') {
-      return JsonObject(members)
-    }
+    guard !self.consume('}') else { return JsonObject(members) }
     guard self.consume(',') else {
       json_tree_error("expected ',' or '}' in JSON object")
     }
@@ -172,16 +168,12 @@ fn JsonTreeCursor::parse_array(
   ignore(self.consume('['))
   self.skip_whitespace()
   let elements : Array[JsonNode] = []
-  if self.consume(']') {
-    return JsonArray(elements)
-  }
+  guard !self.consume(']') else { return JsonArray(elements) }
   while true {
     let value = self.parse_value()
     elements.push(value)
     self.skip_whitespace()
-    if self.consume(']') {
-      return JsonArray(elements)
-    }
+    guard !self.consume(']') else { return JsonArray(elements) }
     guard self.consume(',') else {
       json_tree_error("expected ',' or ']' in JSON array")
     }

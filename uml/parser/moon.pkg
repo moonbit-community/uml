@@ -6,6 +6,7 @@ import {
   "kokic/uml/seq",
   "kokic/uml/tree",
   "kokic/uml/entity",
+  "kokic/uml/bodierjson",
   "kokic/uml/structured",
   "kokic/uml/style",
   "kokic/unicode",

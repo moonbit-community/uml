@@ -118,7 +118,7 @@ pub(all) struct Entity {
   members : Array[Member]
   map_entries : Array[MapEntry]
   json_data : String?
-  json_tree : JsonNode?
+  json_tree : @bodierjson.JsonNode?
 } derive(Eq, Debug)
 
 ///|

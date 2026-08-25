@@ -517,7 +517,7 @@ priv struct JsonNodeSize {
 /// `TextBlockCucaJSon` measures each object's key and value columns
 /// independently; nested compounds participate with their own full width.
 fn measure_json_node(
-  node : @entity.JsonNode,
+  node : @bodierjson.JsonNode,
   text_metrics : ClassTextMetrics,
 ) -> JsonNodeSize {
   match node {
@@ -570,7 +570,7 @@ fn measure_json_node(
 /// precede all but the first element, and both span the enclosing value
 /// column (`hline_width`) like `TextBlockJson.drawU`.
 fn build_json_rows(
-  node : @entity.JsonNode,
+  node : @bodierjson.JsonNode,
   text_metrics : ClassTextMetrics,
   rows : Array[JsonRowLayout],
   dividers : Array[JsonDividerLayout],

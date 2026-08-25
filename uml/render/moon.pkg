@@ -4,6 +4,7 @@ import {
   "kokic/uml/entity",
   "kokic/uml/flow",
   "kokic/uml/graphviz",
+  "kokic/uml/bodierjson",
   "kokic/uml/metrics",
   "kokic/uml/parse",
   "kokic/uml/seq",

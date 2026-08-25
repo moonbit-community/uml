@@ -168,7 +168,7 @@ priv struct JsonSingleDeclaration {
 ///|
 fn valid_json(source : String) -> Bool {
   try {
-    ignore(@entity.parse_json_tree(source))
+    ignore(@bodierjson.parse_json_tree(source))
     true
   } catch {
     _ => false
@@ -185,7 +185,7 @@ fn EntityParser::add_single_line_json(
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
   }
   self.add_entity(value.declaration, false)
-  let tree = @entity.parse_json_tree(value.data) catch { _ => return }
+  let tree = @bodierjson.parse_json_tree(value.data) catch { _ => return }
   if self.entity_index(qualified_code) is Some(index) {
     self.entities[index] = {
       ..self.entities[index],
@@ -277,10 +277,10 @@ fn EntityParser::consume_json_body_line(
 fn complete_json_source(
   wrapped : String,
   bare : String,
-) -> (String, @entity.JsonNode)? {
-  let wrapped_tree = Some(@entity.parse_json_tree(wrapped)) catch { _ => None }
+) -> (String, @bodierjson.JsonNode)? {
+  let wrapped_tree = Some(@bodierjson.parse_json_tree(wrapped)) catch { _ => None }
   wrapped_tree.map_or(
-    Some((bare, @entity.parse_json_tree(bare))) catch {
+    Some((bare, @bodierjson.parse_json_tree(bare))) catch {
       _ => None
     },
     tree => Some((wrapped, tree)),
