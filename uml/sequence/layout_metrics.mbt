@@ -48,7 +48,7 @@ fn SequenceTextMetrics::new(
 
 ///|
 priv struct ParticipantLayout {
-  participant : Participant
+  participant : @seq.Participant
   text_metrics : SequenceTextMetrics
   defaults : @style.SequenceColors
   index : Int
@@ -81,7 +81,7 @@ priv struct GroupSpan {
   start_y : Int
   end_y : Int
   depth : Int
-  keyword : GroupKeyword
+  keyword : @seq.GroupKeyword
   header : String
   color : String?
   header_color : String?
@@ -156,13 +156,13 @@ const SELF_MESSAGE_LOOP_DEPTH : Int = 28
 const MESSAGE_VISUAL_CLEARANCE : Int = 6
 
 ///|
-fn Message::display_label(self : Message) -> String {
+fn @seq.Message::display_label(self : @seq.Message) -> String {
   self.label.unwrap_or("")
 }
 
 ///|
-fn Message::label_height(
-  self : Message,
+fn @seq.Message::label_height(
+  self : @seq.Message,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   match self.label {
@@ -173,88 +173,94 @@ fn Message::label_height(
 }
 
 ///|
-fn ParticipantType::header_height(self : ParticipantType) -> Int {
+fn @seq.ParticipantType::header_height(self : @seq.ParticipantType) -> Int {
   self.symbol_height() +
   (match self {
     Actor | Boundary | Control | Entity | Database => 16
     Queue => 26
     Collections => 40
-    Participant => 36
+    @seq.Participant => 36
   })
 }
 
 ///|
-fn Note::height(self : Note, text_metrics : SequenceTextMetrics) -> Int {
+fn @seq.Note::height(
+  self : @seq.Note,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
   self.component(text_metrics).height
 }
 
 ///|
-fn Event::height(self : Event, text_metrics : SequenceTextMetrics) -> Int {
+fn @seq.Event::height(
+  self : @seq.Event,
+  text_metrics : SequenceTextMetrics,
+) -> Int {
   match self {
-    Message(message) =>
+    @seq.Message(message) =>
       if message.is_self() {
         SELF_MESSAGE_EVENT_HEIGHT
       } else {
         MESSAGE_EVENT_HEIGHT
       }
-    MessageExo(_) => MESSAGE_EVENT_HEIGHT
-    Note(note) => note.height(text_metrics) + 10
-    Notes(notes) =>
+    @seq.MessageExo(_) => MESSAGE_EVENT_HEIGHT
+    @seq.Note(note) => note.height(text_metrics) + 10
+    @seq.Notes(notes) =>
       notes.fold(init=0, (acc, note) => acc.max(note.height(text_metrics))) + 10
-    GroupingStart(_) => 22
-    GroupingLeaf(leaf) => if leaf.is_end { 0 } else { 29 }
-    LifeEvent(_) => 0
-    Delay(_) => 28
-    Divider(_) => 34
-    HSpace(space) => space.pixels.unwrap_or(0)
-    Newpage(_) => 40
-    Reference(reference) =>
+    @seq.GroupingStart(_) => 22
+    @seq.GroupingLeaf(leaf) => if leaf.is_end { 0 } else { 29 }
+    @seq.LifeEvent(_) => 0
+    @seq.Delay(_) => 28
+    @seq.Divider(_) => 34
+    @seq.HSpace(space) => space.pixels.unwrap_or(0)
+    @seq.Newpage(_) => 40
+    @seq.Reference(reference) =>
       (TextSize::of_with(reference.label.unwrap_or("ref"), text_metrics.body).height +
       28).max(42)
-    BoxStart(_) | BoxEnd => 0
-    Return(return_value) =>
+    @seq.BoxStart(_) | @seq.BoxEnd => 0
+    @seq.Return(return_value) =>
       (TextSize::of_with(return_value.value.unwrap_or(""), text_metrics.body).height +
       24).max(34)
-    Create => 0
-    Url(_, _) => 0
-    DeactivateLatest => 0
-    LinkAnchor => 0
-    Autonumber(_)
-    | AutonumberStop
-    | AutonumberResume(_)
-    | AutonumberIncrement(_)
-    | Autoactivate(_)
-    | Footbox(_)
-    | HideUnlinked(_)
-    | IgnoreNewpage
-    | AutoNewpage(_) => 0
+    @seq.Create => 0
+    @seq.Url(_, _) => 0
+    @seq.DeactivateLatest => 0
+    @seq.LinkAnchor => 0
+    @seq.Autonumber(_)
+    | @seq.AutonumberStop
+    | @seq.AutonumberResume(_)
+    | @seq.AutonumberIncrement(_)
+    | @seq.Autoactivate(_)
+    | @seq.Footbox(_)
+    | @seq.HideUnlinked(_)
+    | @seq.IgnoreNewpage
+    | @seq.AutoNewpage(_) => 0
   }
 }
 
 ///|
-fn Event::required_gap_before(
-  self : Event,
+fn @seq.Event::required_gap_before(
+  self : @seq.Event,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   match self {
-    Message(message) =>
+    @seq.Message(message) =>
       if message.is_self() {
         42
-      } else if message.activation_spec is Some(Create) {
+      } else if message.activation_spec is Some(@seq.Create) {
         message.label_height(text_metrics).max(15) + 44
       } else if message.label_height(text_metrics) > 0 {
         message.label_height(text_metrics) + 14
       } else {
         14
       }
-    MessageExo(message) =>
+    @seq.MessageExo(message) =>
       match message.label {
         Some(label) if label.length() > 0 =>
           TextSize::of_with(label, text_metrics.body).height + 14
         _ => 14
       }
-    Note(note) => note.component(text_metrics).height + 18
-    Notes(notes) =>
+    @seq.Note(note) => note.component(text_metrics).height + 18
+    @seq.Notes(notes) =>
       notes.fold(init=0, (acc, note) => {
         acc.max(note.component(text_metrics).height)
       }) +
@@ -264,8 +270,8 @@ fn Event::required_gap_before(
 }
 
 ///|
-fn Event::participant_span(
-  self : Event,
+fn @seq.Event::participant_span(
+  self : @seq.Event,
   participant_index : Map[String, Int],
 ) -> (Int, Int)? {
   let index_for = (code : String) => participant_index.get(code)
@@ -276,15 +282,15 @@ fn Event::participant_span(
     }
   }
   match self {
-    Message(message) => between(message.from_code, message.to_code)
-    MessageExo(message) =>
+    @seq.Message(message) => between(message.from_code, message.to_code)
+    @seq.MessageExo(message) =>
       index_for(message.participant_code).map(index => (index, index))
-    Note(note) =>
+    @seq.Note(note) =>
       match (note.participant_codes.get(0), note.participant_codes.last()) {
         (Some(first), Some(last)) => between(first, last)
         _ => None
       }
-    Notes(notes) => {
+    @seq.Notes(notes) => {
       let mut span : (Int, Int)? = None
       for note in notes {
         if (note.participant_codes.get(0), note.participant_codes.last())
@@ -301,13 +307,13 @@ fn Event::participant_span(
       }
       span
     }
-    Reference(reference) =>
+    @seq.Reference(reference) =>
       match
         (reference.participant_codes.get(0), reference.participant_codes.last()) {
         (Some(first), Some(last)) => between(first, last)
         _ => None
       }
-    LifeEvent(life) =>
+    @seq.LifeEvent(life) =>
       index_for(life.participant_code).map(index => (index, index))
     _ => None
   }
@@ -332,19 +338,19 @@ fn GroupSpan::include_participant_span(
 
 ///|
 fn event_advances_layout(
-  event : Event,
+  event : @seq.Event,
   text_metrics : SequenceTextMetrics,
 ) -> Bool {
   match event {
-    Note(note) => !note.on_arrow
-    Notes(notes) => !notes[0].on_arrow
+    @seq.Note(note) => !note.on_arrow
+    @seq.Notes(notes) => !notes[0].on_arrow
     _ => event.height(text_metrics) > 0
   }
 }
 
 ///|
 fn next_visual_gap(
-  events : Array[Event],
+  events : Array[@seq.Event],
   index : Int,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
@@ -369,14 +375,14 @@ fn participant_code_index(
 }
 
 ///|
-fn Message::gap_requirement(
-  self : Message,
+fn @seq.Message::gap_requirement(
+  self : @seq.Message,
   number : String?,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   // The participant gap already includes both half-widths and the group margin.
   let activation_lane = match self.activation_spec {
-    Some(Activate) | Some(Create) => 10
+    Some(@seq.Activate) | Some(@seq.Create) => 10
     _ => 0
   }
   TextSize::of_with(self.rendered_label(number), text_metrics.body).width +
@@ -385,15 +391,18 @@ fn Message::gap_requirement(
 }
 
 ///|
-fn Message::rendered_label(self : Message, number : String?) -> String {
+fn @seq.Message::rendered_label(
+  self : @seq.Message,
+  number : String?,
+) -> String {
   number.map_or_else(() => self.display_label(), number => {
     "\{number} \{self.display_label()}"
   })
 }
 
 ///|
-fn ParticipantBox::minimum_width(
-  self : ParticipantBox,
+fn @seq.ParticipantBox::minimum_width(
+  self : @seq.ParticipantBox,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   self.label.map_or(0, label => {
@@ -404,7 +413,7 @@ fn ParticipantBox::minimum_width(
 ///|
 fn participant_box_horizontal_bounds(
   layouts : Array[ParticipantLayout],
-  box : ParticipantBox,
+  box : @seq.ParticipantBox,
 ) -> (Int, Int) {
   let first = layouts[0]
   let last = layouts[layouts.length() - 1]
@@ -419,24 +428,27 @@ fn participant_box_horizontal_bounds(
 }
 
 ///|
-fn SequenceDiagram::participant_is_linked(
-  self : SequenceDiagram,
+fn @seq.SequenceDiagram::participant_is_linked(
+  self : @seq.SequenceDiagram,
   code : String,
 ) -> Bool {
   for event in self.events {
     match event {
-      Message(message) =>
+      @seq.Message(message) =>
         if message.from_code == code || message.to_code == code {
           return true
         }
-      MessageExo(message) => if message.participant_code == code { return true }
-      Note(note) =>
+      @seq.MessageExo(message) =>
+        if message.participant_code == code {
+          return true
+        }
+      @seq.Note(note) =>
         for participant in note.participant_codes {
           if participant == code {
             return true
           }
         }
-      Notes(notes) =>
+      @seq.Notes(notes) =>
         for note in notes {
           for participant in note.participant_codes {
             if participant == code {
@@ -444,8 +456,8 @@ fn SequenceDiagram::participant_is_linked(
             }
           }
         }
-      LifeEvent(life) => if life.participant_code == code { return true }
-      Reference(reference) =>
+      @seq.LifeEvent(life) => if life.participant_code == code { return true }
+      @seq.Reference(reference) =>
         for participant in reference.participant_codes {
           if participant == code {
             return true
@@ -458,9 +470,9 @@ fn SequenceDiagram::participant_is_linked(
 }
 
 ///|
-fn SequenceDiagram::hides_unlinked(self : SequenceDiagram) -> Bool {
+fn @seq.SequenceDiagram::hides_unlinked(self : @seq.SequenceDiagram) -> Bool {
   self.events.fold(init=false, (hidden, event) => {
-    if event is HideUnlinked(value) {
+    if event is @seq.HideUnlinked(value) {
       value
     } else {
       hidden
@@ -469,38 +481,38 @@ fn SequenceDiagram::hides_unlinked(self : SequenceDiagram) -> Bool {
 }
 
 ///|
-fn SequenceDiagram::minimum_text_width(
-  self : SequenceDiagram,
+fn @seq.SequenceDiagram::minimum_text_width(
+  self : @seq.SequenceDiagram,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   let mut width = 0
   for event in self.events {
     let measured = match event {
-      GroupingStart(group) =>
+      @seq.GroupingStart(group) =>
         TextSize::of_with(
           "\{group.keyword.label()} \{group.header}",
           text_metrics.body_bold,
         ).width +
         84
-      GroupingLeaf(leaf) =>
+      @seq.GroupingLeaf(leaf) =>
         TextSize::of_with(leaf.label.unwrap_or(""), text_metrics.body_bold).width +
         84
-      Divider(divider) =>
+      @seq.Divider(divider) =>
         TextSize::of_with(divider.title, text_metrics.body_bold).width + 44
-      Newpage(page) =>
+      @seq.Newpage(page) =>
         TextSize::of_with(page.title.unwrap_or(""), text_metrics.body_italic).width +
         48
-      Delay(delay) =>
+      @seq.Delay(delay) =>
         TextSize::of_with(delay.label.unwrap_or(""), text_metrics.body).width +
         56
-      Reference(reference) =>
+      @seq.Reference(reference) =>
         TextSize::of_with(reference.label.unwrap_or("ref"), text_metrics.body).width +
         72
-      Return(value) =>
+      @seq.Return(value) =>
         TextSize::of_with(value.value.unwrap_or(""), text_metrics.body).width +
         48
-      LinkAnchor => 0
-      BoxStart(box) =>
+      @seq.LinkAnchor => 0
+      @seq.BoxStart(box) =>
         TextSize::of_with(box.label.unwrap_or(""), text_metrics.small_bold).width +
         32
       _ => 0

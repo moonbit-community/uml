@@ -19,7 +19,7 @@ fn DiagramLayout::group_bounds(
 ///|
 fn GroupSpan::header_text(self : GroupSpan) -> String {
   match self.keyword {
-    Group => self.header
+    @seq.Group => self.header
     _ => self.keyword.label()
   }
 }
@@ -27,7 +27,7 @@ fn GroupSpan::header_text(self : GroupSpan) -> String {
 ///|
 fn GroupSpan::comment_text(self : GroupSpan) -> String? {
   match self.keyword {
-    Group => None
+    @seq.Group => None
     _ => @parse.normalize_label(self.header)
   }
 }
@@ -109,11 +109,11 @@ fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
 ///|
 fn delay_ranges(
   layout : DiagramLayout,
-  events : Array[Event],
+  events : Array[@seq.Event],
 ) -> Array[(Int, Int)] {
   let ranges = []
   events.eachi((index, event) => {
-    if event is Delay(_) {
+    if event is @seq.Delay(_) {
       let placement = layout.placements[index]
       ranges.push((placement.y, placement.y + placement.height))
     }
@@ -125,7 +125,7 @@ fn delay_ranges(
 fn append_lifelines(
   output : StringBuilder,
   layout : DiagramLayout,
-  events : Array[Event],
+  events : Array[@seq.Event],
 ) -> Unit {
   let delays = delay_ranges(layout, events)
   for participant in layout.participants {

@@ -1,6 +1,6 @@
 ///|
 priv enum SequenceLineSyntax {
-  ParsedEvent(Event)
+  ParsedEvent(@seq.Event)
   ParsedParticipant(ParticipantDecl)
   ParsedNote(NoteLineSyntax)
   ParsedReference(ReferenceLineSyntax)
@@ -114,9 +114,9 @@ fn parse_sequence_line(line : String) -> SequenceLineSyntax? {
 /// to them is dropped with a warning).
 fn ParseCtx::has_event_with_note(self : ParseCtx, top_or_bottom : Bool) -> Bool {
   self.events.fold(init=false, (carried, event) => {
-    if event is Message(_) || event is MessageExo(_) {
+    if event is @seq.Message(_) || event is @seq.MessageExo(_) {
       true
-    } else if event is Reference(_) || event is GroupingLeaf(_) {
+    } else if event is @seq.Reference(_) || event is @seq.GroupingLeaf(_) {
       !top_or_bottom
     } else {
       carried
@@ -150,7 +150,7 @@ fn ParseCtx::apply_note_syntax(
         }
       }
   }
-  let note : Note = {
+  let note : @seq.Note = {
     participant_codes: syntax.participant_codes,
     position: syntax.position,
     text,
@@ -165,18 +165,22 @@ fn ParseCtx::apply_note_syntax(
   // when `getLastEventWithNote` returns null), and top/bottom notes are
   // dropped when the carrier only accepts left/right positions.
   if note.on_arrow &&
-    !self.has_event_with_note(note.position is Top || note.position is Bottom) {
+    !self.has_event_with_note(
+      note.position is @seq.Top || note.position is @seq.Bottom,
+    ) {
     return
   }
-  self.push_event(Note(note))
+  self.push_event(@seq.Note(note))
   if syntax.merge && self.events.length() > 1 {
     match self.events.pop() {
-      Some(Note(popped)) =>
+      Some(@seq.Note(popped)) =>
         match self.events[self.events.length() - 1] {
-          Note(previous) =>
-            self.events[self.events.length() - 1] = Notes([previous, popped])
-          Notes(list) => list.push(popped)
-          _ => self.events.push(Note(popped))
+          @seq.Note(previous) =>
+            self.events[self.events.length() - 1] = @seq.Notes([
+              previous, popped,
+            ])
+          @seq.Notes(list) => list.push(popped)
+          _ => self.events.push(@seq.Note(popped))
         }
       _ => ()
     }
@@ -204,7 +208,7 @@ fn ParseCtx::apply_reference_syntax(
       }
   }
   self.push_event(
-    Reference({ participant_codes: syntax.participant_codes, label }),
+    @seq.Reference({ participant_codes: syntax.participant_codes, label }),
   )
 }
 

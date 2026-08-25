@@ -23,7 +23,7 @@ test "parse arrow with label" {
   let result = parse("@startuml\nAlice -> Bob : hello\n@enduml")
   guard result.events.length() == 1 else { fail("expected 1 event") }
   match result.events[0] {
-    Message(m) => @test.assert_eq(m.label, Some("hello"))
+    @seq.Message(m) => @test.assert_eq(m.label, Some("hello"))
     _ => fail("not a message")
   }
 }
@@ -41,7 +41,7 @@ test "parse note" {
   )
   @test.assert_eq(result.events.length(), 2)
   match result.events[1] {
-    Note(n) => @test.assert_eq(n.text, "hello")
+    @seq.Note(n) => @test.assert_eq(n.text, "hello")
     _ => fail("not a note")
   }
 }
@@ -52,7 +52,7 @@ test "parse multiline notes" {
     "@startuml\nAlice -> Bob\nnote left of Alice\nfirst line\nsecond line\nend note\nnote top\nattached\nend note\n@enduml",
   )
   match (result.events[1], result.events[2]) {
-    (Note(participant_note), Note(arrow_note)) => {
+    (@seq.Note(participant_note), @seq.Note(arrow_note)) => {
       @test.assert_eq(participant_note.text, "first line\nsecond line")
       @test.assert_eq(arrow_note.text, "attached")
       @test.assert_eq(arrow_note.on_arrow, true)
@@ -68,7 +68,7 @@ test "notes and references normalize quoted participant codes" {
   )
   @test.assert_eq(result.participants.length(), 1)
   match (result.events[0], result.events[1]) {
-    (Note(note), Reference(reference)) => {
+    (@seq.Note(note), @seq.Reference(reference)) => {
       @test.assert_eq(note.participant_codes, ["Alice Smith"])
       @test.assert_eq(reference.participant_codes, ["Alice Smith"])
     }
@@ -82,7 +82,7 @@ test "parsec participant lists keep commas inside quoted names" {
     "@startuml\nparticipant \"Alice, Inc.\"\nparticipant Bob\nnote over \"Alice, Inc.\", Bob : shared\n@enduml",
   )
   match result.events[0] {
-    Note(note) =>
+    @seq.Note(note) =>
       @test.assert_eq(note.participant_codes, ["Alice, Inc.", "Bob"])
     _ => fail("expected participant note")
   }
@@ -95,11 +95,11 @@ test "parse grouping" {
   )
   @test.assert_eq(result.events.length(), 4)
   match result.events[1] {
-    GroupingStart(g) => @test.assert_eq(g.header, "condition")
+    @seq.GroupingStart(g) => @test.assert_eq(g.header, "condition")
     _ => fail("not grouping start")
   }
   match result.events[3] {
-    GroupingLeaf(gl) => @test.assert_eq(gl.is_end, true)
+    @seq.GroupingLeaf(gl) => @test.assert_eq(gl.is_end, true)
     _ => fail("not grouping leaf")
   }
 }
@@ -110,7 +110,7 @@ test "parse multiline references" {
     "@startuml\nref over Alice, Bob\nfirst line\nsecond line\nend ref\n@enduml",
   )
   match result.events[0] {
-    Reference(reference) =>
+    @seq.Reference(reference) =>
       @test.assert_eq(reference.label, Some("first line\nsecond line"))
     _ => fail("expected reference")
   }
@@ -123,11 +123,11 @@ test "parse activate deactivate" {
   )
   @test.assert_eq(result.events.length(), 4)
   match result.events[1] {
-    LifeEvent(le) => @test.assert_eq(le.participant_code, "Bob")
+    @seq.LifeEvent(le) => @test.assert_eq(le.participant_code, "Bob")
     _ => fail("not life event")
   }
   match result.events[3] {
-    LifeEvent(le) => @test.assert_eq(le.participant_code, "Bob")
+    @seq.LifeEvent(le) => @test.assert_eq(le.participant_code, "Bob")
     _ => fail("not life event")
   }
 }
@@ -136,10 +136,10 @@ test "parse activate deactivate" {
 test "bare deactivate follows the latest activating message" {
   let result = parse("@startuml\nAlice -> Bob ++\ndeactivate\n@enduml")
   match result.events[1] {
-    LifeEvent(life) => {
+    @seq.LifeEvent(life) => {
       @test.assert_eq(life.participant_code, "Bob")
       match life.event_type {
-        Deactivate => ()
+        @seq.Deactivate => ()
         _ => fail("expected deactivation")
       }
     }
@@ -162,7 +162,7 @@ test "bare deactivate consumes activating messages in reverse order" {
     "@startuml\nAlice -> Bob ++\nAlice -> Carol ++\ndeactivate\ndeactivate\n@enduml",
   )
   match (result.events[2], result.events[3]) {
-    (LifeEvent(first), LifeEvent(second)) => {
+    (@seq.LifeEvent(first), @seq.LifeEvent(second)) => {
       @test.assert_eq(first.participant_code, "Carol")
       @test.assert_eq(second.participant_code, "Bob")
     }
@@ -176,7 +176,7 @@ test "standalone activate can be followed by bare deactivate" {
     "@startuml\nAlice -> Bob\nactivate Bob\ndeactivate\n@enduml",
   )
   match result.events[2] {
-    LifeEvent(life) => @test.assert_eq(life.participant_code, "Bob")
+    @seq.LifeEvent(life) => @test.assert_eq(life.participant_code, "Bob")
     _ => fail("expected lifecycle event")
   }
 }
@@ -188,7 +188,7 @@ test "parse divider" {
   )
   @test.assert_eq(result.events.length(), 3)
   match result.events[1] {
-    Divider(d) => @test.assert_eq(d.title, "Test Title")
+    @seq.Divider(d) => @test.assert_eq(d.title, "Test Title")
     _ => fail("not a divider")
   }
 }
@@ -198,7 +198,7 @@ test "parse delay" {
   let result = parse("@startuml\nAlice -> Bob\n...\nBob -> Carol\n@enduml")
   @test.assert_eq(result.events.length(), 3)
   match result.events[1] {
-    Delay(d) => @test.assert_eq(d.label, None)
+    @seq.Delay(d) => @test.assert_eq(d.label, None)
     _ => fail("not a delay")
   }
 }
@@ -207,7 +207,7 @@ test "parse delay" {
 test "delays require a closing ellipsis around labels" {
   let result = parse("@startuml\n... waiting ...\n@enduml")
   match result.events[0] {
-    Delay(delay) => @test.assert_eq(delay.label, Some("waiting"))
+    @seq.Delay(delay) => @test.assert_eq(delay.label, Some("waiting"))
     _ => fail("expected delay")
   }
   try parse("@startuml\n... waiting\n@enduml") catch {
@@ -231,7 +231,7 @@ test "sequence parser accepts comments before start and inline comments" {
     "\n' header comment\n@STARTUML\nAlice -> Bob : request ' trailing comment\n@ENDUML",
   )
   match result.events[0] {
-    Message(message) => @test.assert_eq(message.label, Some("request"))
+    @seq.Message(message) => @test.assert_eq(message.label, Some("request"))
     _ => @test.fail("expected message")
   }
 }
@@ -249,7 +249,7 @@ test "parse right-to-left arrow" {
   let result = parse("@startuml\nAlice <- Bob\n@enduml")
   guard result.events.length() == 1 else { fail("expected 1 event") }
   match result.events[0] {
-    Message(m) => {
+    @seq.Message(m) => {
       @test.assert_eq(m.from_code, "Bob")
       @test.assert_eq(m.to_code, "Alice")
     }
@@ -262,11 +262,11 @@ test "parse dotted arrow" {
   let result = parse("@startuml\nAlice --> Bob\n@enduml")
   guard result.events.length() == 1 else { fail("expected 1 event") }
   match result.events[0] {
-    Message(m) => {
+    @seq.Message(m) => {
       @test.assert_eq(m.from_code, "Alice")
       @test.assert_eq(m.to_code, "Bob")
       match m.arrow_config.body {
-        Dotted => ()
+        @seq.Dotted => ()
         _ => fail("expected dotted arrow")
       }
     }
@@ -279,9 +279,9 @@ test "parse async arrow" {
   let result = parse("@startuml\nAlice ->> Bob\n@enduml")
   guard result.events.length() == 1 else { fail("expected 1 event") }
   match result.events[0] {
-    Message(m) =>
+    @seq.Message(m) =>
       match m.arrow_config.head2 {
-        Async => ()
+        @seq.Async => ()
         _ => fail("expected async arrow")
       }
     _ => fail("not a message")
@@ -296,7 +296,7 @@ test "partial arrows preserve PlantUML direction and part semantics" {
   @test.assert_eq(result.events.length(), 4)
   for event in result.events {
     match event {
-      Message(message) => {
+      @seq.Message(message) => {
         @test.assert_eq(message.from_code, "Alice")
         @test.assert_eq(message.to_code, "Bob")
       }
@@ -304,13 +304,13 @@ test "partial arrows preserve PlantUML direction and part semantics" {
     }
   }
   match (result.events[0], result.events[2]) {
-    (Message(bottom), Message(top)) => {
+    (@seq.Message(bottom), @seq.Message(top)) => {
       match bottom.arrow_config.part {
-        BottomPart => ()
+        @seq.BottomPart => ()
         _ => fail("expected bottom arrow part")
       }
       match top.arrow_config.part {
-        TopPart => ()
+        @seq.TopPart => ()
         _ => fail("expected top arrow part")
       }
     }
@@ -324,18 +324,18 @@ test "parsec message grammar preserves decorated arrows and aliases" {
     "@startuml\nparticipant \"Alice Agent\" as alice\nalice o<<-->>o Bob ++ : dispatch\n@enduml",
   )
   match result.events[0] {
-    Message(message) => {
+    @seq.Message(message) => {
       @test.assert_eq(message.from_code, "alice")
       @test.assert_eq(message.to_code, "Bob")
       @test.assert_eq(message.label, Some("dispatch"))
       match message.activation_spec {
-        Some(Activate) => ()
+        Some(@seq.Activate) => ()
         _ => fail("expected activation")
       }
       @test.assert_eq(message.arrow_config.circle_start, true)
       @test.assert_eq(message.arrow_config.circle_end, true)
       match (message.arrow_config.body, message.arrow_config.head1) {
-        (Dotted, Async) => ()
+        (@seq.Dotted, @seq.Async) => ()
         _ => fail("expected dotted asynchronous arrow")
       }
     }
@@ -479,8 +479,8 @@ test "across notes parse color stereotype and url like the java factory" {
     "@startuml\nAlice -> Bob\nnote <<first>> across <<second>> #yellow [[https://example.com]] : shared\n@enduml",
   )
   match diagram.events[1] {
-    Note(note) => {
-      @test.assert_eq(note.position is Across, true)
+    @seq.Note(note) => {
+      @test.assert_eq(note.position is @seq.Across, true)
       @test.assert_eq(note.color, Some("yellow"))
       @test.assert_eq(note.stereotype, Some("<<first>>"))
       @test.assert_eq(note.url, Some("https://example.com"))
@@ -496,7 +496,7 @@ test "a leading slash merges a note with the previous note" {
     "@startuml\nnote across #yellow : first\n/note across : second\n/note across #red : third\nnote across : standalone\n@enduml",
   )
   match diagram.events[0] {
-    Notes(notes) => {
+    @seq.Notes(notes) => {
       @test.assert_eq(notes.length(), 3)
       @test.assert_eq(notes[0].text, "first")
       @test.assert_eq(notes[0].color, Some("yellow"))
@@ -508,7 +508,7 @@ test "a leading slash merges a note with the previous note" {
     _ => fail("expected merged notes")
   }
   match diagram.events[1] {
-    Note(note) => @test.assert_eq(note.text, "standalone")
+    @seq.Note(note) => @test.assert_eq(note.text, "standalone")
     _ => fail("expected a plain note after the merged group")
   }
 }
@@ -517,7 +517,7 @@ test "a leading slash merges a note with the previous note" {
 test "a leading slash after a message does not merge" {
   let diagram = parse("@startuml\nAlice -> Bob\n/note across : orphan\n@enduml")
   match diagram.events[1] {
-    Note(note) => @test.assert_eq(note.text, "orphan")
+    @seq.Note(note) => @test.assert_eq(note.text, "orphan")
     _ => fail("expected a plain note after a message")
   }
 }
@@ -583,11 +583,11 @@ test "top and bottom notes attach to the preceding message" {
     "@startuml\nAlice -> Bob\nnote top : above\nnote bottom : below\n@enduml",
   )
   match (result.events[1], result.events[2]) {
-    (Note(top), Note(bottom)) => {
+    (@seq.Note(top), @seq.Note(bottom)) => {
       @test.assert_eq(top.on_arrow, true)
       @test.assert_eq(bottom.on_arrow, true)
       match (top.position, bottom.position) {
-        (Top, Bottom) => ()
+        (@seq.Top, @seq.Bottom) => ()
         _ => fail("wrong note positions")
       }
     }
@@ -639,9 +639,9 @@ test "URL commands do not accept participant aliases" {
 test "ordinary arrows have only an end head" {
   let result = parse("@startuml\nAlice -> Bob\n@enduml")
   match result.events[0] {
-    Message(message) =>
+    @seq.Message(message) =>
       match message.arrow_config.head1 {
-        NoneHead => ()
+        @seq.NoneHead => ()
         _ => fail("unexpected start head")
       }
     _ => fail("not a message")
@@ -703,58 +703,58 @@ test "parse a complete sequence diagram" {
   @test.assert_eq(result.show_footbox, false)
 
   match result.events[0] {
-    Message(message) => @test.assert_eq(message.anchor, Some("request"))
+    @seq.Message(message) => @test.assert_eq(message.anchor, Some("request"))
     _ => fail("not a multicast message")
   }
   match result.events[3] {
-    Note(note) => @test.assert_eq(note.color, Some("yellow"))
+    @seq.Note(note) => @test.assert_eq(note.color, Some("yellow"))
     _ => fail("not a note")
   }
   match result.events[4] {
-    GroupingStart(group) => {
+    @seq.GroupingStart(group) => {
       @test.assert_eq(group.header, "cache hit")
       @test.assert_eq(group.back_color_header, Some("palegreen"))
     }
     _ => fail("not a grouping start")
   }
   match result.events[7] {
-    Message(message) =>
+    @seq.Message(message) =>
       match message.activation_spec {
-        Some(Activate) => ()
+        Some(@seq.Activate) => ()
         _ => fail("message did not activate")
       }
     _ => fail("not an activating message")
   }
   match result.events[10] {
-    Reference(reference) => {
+    @seq.Reference(reference) => {
       @test.assert_eq(reference.participant_codes, ["client", "Service"])
       @test.assert_eq(reference.label, Some("External system"))
     }
     _ => fail("not a reference")
   }
   match result.events[15] {
-    MessageExo(message) =>
+    @seq.MessageExo(message) =>
       match message.exo_type {
-        FromLeft => ()
+        @seq.FromLeft => ()
         _ => fail("wrong external message direction")
       }
     _ => fail("not a left external message")
   }
   match result.events[16] {
-    MessageExo(message) =>
+    @seq.MessageExo(message) =>
       match message.exo_type {
-        ToRight => ()
+        @seq.ToRight => ()
         _ => fail("wrong external message direction")
       }
     _ => fail("not a right external message")
   }
   match result.events[17] {
-    BoxStart(box) => @test.assert_eq(box.color, Some("lightblue"))
+    @seq.BoxStart(box) => @test.assert_eq(box.color, Some("lightblue"))
     _ => fail("not a box")
   }
   let mut autonumber = None
   for event in result.events {
-    if event is Autonumber(config) {
+    if event is @seq.Autonumber(config) {
       autonumber = Some(config)
     }
   }
@@ -790,19 +790,19 @@ test "parse note variants with shared participants and arrow attachment" {
   )
   @test.assert_eq(result.events.length(), 3)
   match result.events[0] {
-    Note(note) => {
+    @seq.Note(note) => {
       @test.assert_eq(note.participant_codes, ["Alice", "Bob"])
       @test.assert_eq(note.color, Some("yellow"))
       @test.assert_eq(note.on_arrow, false)
       match (note.position, note.note_style) {
-        (OverSeveral, Hexagonal) => ()
+        (@seq.OverSeveral, @seq.Hexagonal) => ()
         _ => fail("expected a shared hexagonal note")
       }
     }
     _ => fail("expected note")
   }
   match result.events[2] {
-    Note(note) => {
+    @seq.Note(note) => {
       @test.assert_eq(note.text, "attached")
       @test.assert_eq(note.on_arrow, true)
     }
@@ -824,7 +824,7 @@ test "top and bottom notes are dropped after a reference carrier" {
     "@startuml\nAlice -> Bob\nref over Alice, Bob : call\nnote top : gone\nnote bottom : also gone\n@enduml",
   )
   match result.events[1] {
-    Reference(_) => ()
+    @seq.Reference(_) => ()
     _ => fail("expected the reference")
   }
   @test.assert_eq(result.events.length(), 2)
@@ -837,7 +837,7 @@ test "left and right notes survive a reference carrier" {
   )
   @test.assert_eq(result.events.length(), 3)
   match result.events[2] {
-    Note(note) => {
+    @seq.Note(note) => {
       @test.assert_eq(note.text, "kept")
       @test.assert_eq(note.on_arrow, true)
     }
@@ -852,7 +852,7 @@ test "parse grouping colors and parallel groups" {
   )
   @test.assert_eq(result.events.length(), 3)
   match result.events[0] {
-    GroupingStart(group) => {
+    @seq.GroupingStart(group) => {
       @test.assert_eq(group.parallel, true)
       @test.assert_eq(group.back_color_header, Some("header"))
       @test.assert_eq(group.back_color_body, Some("body"))
@@ -860,7 +860,7 @@ test "parse grouping colors and parallel groups" {
     _ => fail("expected group start")
   }
   match result.events[1] {
-    GroupingLeaf(leaf) => {
+    @seq.GroupingLeaf(leaf) => {
       @test.assert_eq(leaf.label, Some("second"))
       @test.assert_eq(leaf.back_color, Some("leaf"))
     }
@@ -873,11 +873,11 @@ test "dispatch hide commands without consuming the wrong prefix" {
   let result = parse("@startuml\nhide unlinked\nhide footbox\n@enduml")
   @test.assert_eq(result.events.length(), 2)
   match result.events[0] {
-    HideUnlinked(true) => ()
+    @seq.HideUnlinked(true) => ()
     _ => fail("expected hide unlinked")
   }
   match result.events[1] {
-    Footbox(false) => ()
+    @seq.Footbox(false) => ()
     _ => fail("expected hidden footbox")
   }
 }

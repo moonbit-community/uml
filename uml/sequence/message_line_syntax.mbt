@@ -5,22 +5,22 @@
 /// (see `manageActivations`). Never consumes input when it fails.
 fn take_message_activation(
   cursor : @parse.Cursor,
-) -> (ActivationSpec, ActivationSpec?)? {
+) -> (@seq.ActivationSpec, @seq.ActivationSpec?)? {
   if cursor.consume_literal("++") {
     if cursor.consume_literal("--") {
-      Some((Activate, Some(Deactivate)))
+      Some((@seq.Activate, Some(@seq.Deactivate)))
     } else {
-      Some((Activate, None))
+      Some((@seq.Activate, None))
     }
   } else if cursor.consume_literal("**") {
-    Some((Create, None))
+    Some((@seq.Create, None))
   } else if cursor.consume_literal("!!") {
-    Some((Destroy, None))
+    Some((@seq.Destroy, None))
   } else if cursor.consume_literal("--") {
     if cursor.consume_literal("++") {
-      Some((Deactivate, Some(Activate)))
+      Some((@seq.Deactivate, Some(@seq.Activate)))
     } else {
-      Some((Deactivate, None))
+      Some((@seq.Deactivate, None))
     }
   } else {
     None
@@ -31,24 +31,24 @@ fn take_message_activation(
 /// Matches the exo activation run `[+*!-]+`; only its first character has
 /// an effect, mirroring `CommandExoArrowAny`. Never consumes input when it
 /// fails.
-fn take_exo_activation(cursor : @parse.Cursor) -> ActivationSpec? {
+fn take_exo_activation(cursor : @parse.Cursor) -> @seq.ActivationSpec? {
   let start = cursor.offset()
   match cursor.peek() {
     Some('+') => {
       ignore(cursor.skip_while(char => is_exo_activation_char(char)))
-      Some(Activate)
+      Some(@seq.Activate)
     }
     Some('-') => {
       ignore(cursor.skip_while(char => is_exo_activation_char(char)))
-      Some(Deactivate)
+      Some(@seq.Deactivate)
     }
     Some('!') => {
       ignore(cursor.skip_while(char => is_exo_activation_char(char)))
-      Some(Destroy)
+      Some(@seq.Destroy)
     }
     Some('*') => {
       ignore(cursor.skip_while(char => is_exo_activation_char(char)))
-      Some(Create)
+      Some(@seq.Create)
     }
     _ => {
       ignore(cursor.restore(start))
@@ -184,51 +184,55 @@ fn take_space_o_x(cursor : @parse.Cursor) -> (Bool, Bool)? {
 
 ///|
 /// Matches the arrow head on the left side, always succeeding with
-/// `NoneHead`/`Full` when no head is present. The `_` suffix allowed by
+/// `@seq.NoneHead`/`@seq.Full` when no head is present. The `_` suffix allowed by
 /// Java's `<<?_?` is consumed and discarded.
-fn take_left_arrow_head(cursor : @parse.Cursor) -> (ArrowHead, ArrowPart) {
+fn take_left_arrow_head(
+  cursor : @parse.Cursor,
+) -> (@seq.ArrowHead, @seq.ArrowPart) {
   match cursor.peek() {
     Some('<') => {
       ignore(cursor.advance())
       let is_async = cursor.consume('<')
       ignore(cursor.consume('_'))
-      (if is_async { Async } else { Normal }, Full)
+      (if is_async { @seq.Async } else { @seq.Normal }, @seq.Full)
     }
     Some('/') => {
       ignore(cursor.advance())
       let is_async = cursor.consume('/')
-      (if is_async { Async } else { Normal }, TopPart)
+      (if is_async { @seq.Async } else { @seq.Normal }, @seq.TopPart)
     }
     Some('\\') => {
       ignore(cursor.advance())
       let is_async = cursor.consume('\\')
-      (if is_async { Async } else { Normal }, BottomPart)
+      (if is_async { @seq.Async } else { @seq.Normal }, @seq.BottomPart)
     }
-    _ => (NoneHead, Full)
+    _ => (@seq.NoneHead, @seq.Full)
   }
 }
 
 ///|
 /// Matches the arrow head on the right side, always succeeding with
-/// `NoneHead`/`Full` when no head is present.
-fn take_right_arrow_head(cursor : @parse.Cursor) -> (ArrowHead, ArrowPart) {
+/// `@seq.NoneHead`/`@seq.Full` when no head is present.
+fn take_right_arrow_head(
+  cursor : @parse.Cursor,
+) -> (@seq.ArrowHead, @seq.ArrowPart) {
   match cursor.peek() {
     Some('>') => {
       ignore(cursor.advance())
       let is_async = cursor.consume('>')
-      (if is_async { Async } else { Normal }, Full)
+      (if is_async { @seq.Async } else { @seq.Normal }, @seq.Full)
     }
     Some('/') => {
       ignore(cursor.advance())
       let is_async = cursor.consume('/')
-      (if is_async { Async } else { Normal }, BottomPart)
+      (if is_async { @seq.Async } else { @seq.Normal }, @seq.BottomPart)
     }
     Some('\\') => {
       ignore(cursor.advance())
       let is_async = cursor.consume('\\')
-      (if is_async { Async } else { Normal }, TopPart)
+      (if is_async { @seq.Async } else { @seq.Normal }, @seq.TopPart)
     }
-    _ => (NoneHead, Full)
+    _ => (@seq.NoneHead, @seq.Full)
   }
 }
 
@@ -238,7 +242,7 @@ fn take_right_arrow_head(cursor : @parse.Cursor) -> (ArrowHead, ArrowPart) {
 /// optional `_` after `<`/`<<`, and no `o`/`x` together with `(digits)`.
 /// Consumes its own leading spaces so the `o`/`x` can demand the extra
 /// space Java's `[%s][ox]` needs. Always succeeds.
-fn take_left_dressing(cursor : @parse.Cursor) -> DressingResult {
+fn take_left_dressing(cursor : @parse.Cursor) -> @seq.DressingResult {
   let spaces = cursor.skip_inline_whitespace()
   if spaces > 0 && (cursor.peek() == Some('o') || cursor.peek() == Some('x')) {
     let circle = cursor.consume('o')
@@ -273,18 +277,18 @@ fn take_left_dressing(cursor : @parse.Cursor) -> DressingResult {
 /// (the `_` only when no `>` starts the dressing), `/`/`\` heads, then
 /// either `o`/`x` with a following space or `(digits)` (never both), or a
 /// standalone `o`/`x` with a following space. Always succeeds.
-fn take_right_dressing(cursor : @parse.Cursor) -> DressingResult {
+fn take_right_dressing(cursor : @parse.Cursor) -> @seq.DressingResult {
   let start = cursor.offset()
-  let mut head : ArrowHead = NoneHead
-  let mut part : ArrowPart = Full
+  let mut head : @seq.ArrowHead = @seq.NoneHead
+  let mut part : @seq.ArrowPart = @seq.Full
   let mut circle = false
   let mut cross = false
   match cursor.peek() {
     Some('>') => {
       ignore(cursor.advance())
-      head = Normal
+      head = @seq.Normal
       if cursor.consume('>') {
-        head = Async
+        head = @seq.Async
       }
       match take_o_x_space(cursor) {
         Some((o, x)) => {
@@ -297,9 +301,9 @@ fn take_right_dressing(cursor : @parse.Cursor) -> DressingResult {
     Some('_') => {
       ignore(cursor.advance())
       if cursor.consume('>') {
-        head = Normal
+        head = @seq.Normal
         if cursor.consume('>') {
-          head = Async
+          head = @seq.Async
         }
         match take_o_x_space(cursor) {
           Some((o, x)) => {
@@ -314,11 +318,11 @@ fn take_right_dressing(cursor : @parse.Cursor) -> DressingResult {
     }
     Some('/') => {
       ignore(cursor.advance())
-      head = Normal
+      head = @seq.Normal
       if cursor.consume('/') {
-        head = Async
+        head = @seq.Async
       }
-      part = BottomPart
+      part = @seq.BottomPart
       match take_o_x_space(cursor) {
         Some((o, x)) => {
           circle = o
@@ -329,11 +333,11 @@ fn take_right_dressing(cursor : @parse.Cursor) -> DressingResult {
     }
     Some('\\') => {
       ignore(cursor.advance())
-      head = Normal
+      head = @seq.Normal
       if cursor.consume('\\') {
-        head = Async
+        head = @seq.Async
       }
-      part = TopPart
+      part = @seq.TopPart
       match take_o_x_space(cursor) {
         Some((o, x)) => {
           circle = o
@@ -426,7 +430,7 @@ fn is_style_keyword(word : String) -> Bool {
 /// dash, mirroring the talc "arrow body" failure.
 fn take_arrow_dressing(
   cursor : @parse.Cursor,
-) -> (DressingResult, ArrowBody, DressingResult)? {
+) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult)? {
   let left = take_left_dressing(cursor)
   let first = cursor.take_while(char => char == '-')
   take_arrow_style(cursor)
@@ -434,7 +438,7 @@ fn take_arrow_dressing(
   let dashes = first.length() + second.length()
   guard dashes > 0 else { return None }
   let right = take_right_dressing(cursor)
-  let body = if dashes > 1 { Dotted } else { Solid }
+  let body = if dashes > 1 { @seq.Dotted } else { @seq.Solid }
   Some((left, body, right))
 }
 
@@ -442,10 +446,10 @@ fn take_arrow_dressing(
 /// Matches the exo arrow body: an optional left head (`<<?|//?|\\\\?`),
 /// dashes, an optional `[style]`, more dashes and an optional right head
 /// (`>>?|//?|\\\\?`). Requires at least one dash and one head, mirroring
-/// `CommandExoArrowLeft`/`Right` alternatives.
+/// `CommandExoArrowLeft`/`@seq.Right` alternatives.
 fn take_exo_arrow_dressing(
   cursor : @parse.Cursor,
-) -> (DressingResult, ArrowBody, DressingResult)? {
+) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult)? {
   let start = cursor.offset()
   let (left_head, left_part) = take_left_arrow_head(cursor)
   let first = cursor.take_while(char => char == '-')
@@ -457,11 +461,11 @@ fn take_exo_arrow_dressing(
     return None
   }
   let (right_head, right_part) = take_right_arrow_head(cursor)
-  guard !(left_head is NoneHead) || !(right_head is NoneHead) else {
+  guard !(left_head is @seq.NoneHead) || !(right_head is @seq.NoneHead) else {
     ignore(cursor.restore(start))
     return None
   }
-  let body = if dashes > 1 { Dotted } else { Solid }
+  let body = if dashes > 1 { @seq.Dotted } else { @seq.Solid }
   Some(
     (
       {
@@ -576,7 +580,14 @@ fn take_life_color_value(cursor : @parse.Cursor) -> String? {
 /// UrlBuilder.OPTIONAL : MESSAGE?`. Always succeeds.
 fn take_message_tail(
   cursor : @parse.Cursor,
-) -> (ActivationSpec?, ActivationSpec?, String?, String?, String?, String?) {
+) -> (
+  @seq.ActivationSpec?,
+  @seq.ActivationSpec?,
+  String?,
+  String?,
+  String?,
+  String?,
+) {
   cursor.skip_inline_spaces()
   let activation = take_message_activation(cursor)
   cursor.skip_inline_spaces()
@@ -598,10 +609,10 @@ fn take_message_tail(
 ///|
 /// Matches the exo tail: optional activation run, optional `#color`,
 /// optional `[[url]]`, optional `:` label. Exo arrows accept no stereotype,
-/// mirroring `CommandExoArrowLeft`/`Right`. Always succeeds.
+/// mirroring `CommandExoArrowLeft`/`@seq.Right`. Always succeeds.
 fn take_exo_tail(
   cursor : @parse.Cursor,
-) -> (ActivationSpec?, String?, String?, String?) {
+) -> (@seq.ActivationSpec?, String?, String?, String?) {
   cursor.skip_inline_spaces()
   let activation_spec = take_exo_activation(cursor)
   cursor.skip_inline_spaces()
@@ -619,7 +630,7 @@ fn take_exo_tail(
 ///|
 /// Matches a complete message between two participants, requiring the
 /// full line to be consumed.
-fn message_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn message_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
@@ -659,7 +670,7 @@ fn message_line_syntax(cursor : @parse.Cursor) -> Event? {
   let (activation_spec, activation_spec2, life_color, stereotype, url, label) = take_message_tail(
     cursor,
   )
-  let direction = match message_direction(left, right) {
+  let direction = match @seq.message_direction(left, right) {
     Some(direction) => direction
     None => {
       ignore(cursor.restore(start))
@@ -671,15 +682,17 @@ fn message_line_syntax(cursor : @parse.Cursor) -> Event? {
     return None
   }
   let (from, to) = match direction {
-    Reverse => (second.code, first.code)
-    Forward => (first.code, second.code)
+    @seq.Reverse => (second.code, first.code)
+    @seq.Forward => (first.code, second.code)
   }
   Some(
-    Message({
+    @seq.Message({
       from_code: from,
       to_code: to,
       label,
-      arrow_config: ArrowConfig::from_dressing(left, right, body, direction),
+      arrow_config: @seq.ArrowConfig::from_dressing(
+        left, right, body, direction,
+      ),
       anchor,
       activation_spec,
       activation_spec2,
@@ -693,7 +706,7 @@ fn message_line_syntax(cursor : @parse.Cursor) -> Event? {
 ///|
 /// Matches an exogenous message arriving from or leaving to the left
 /// border, requiring the full line to be consumed.
-fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
+fn left_exo_message_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
@@ -724,7 +737,7 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
       return None
     }
   }
-  let exo_type = match exo_left_type(symbol_char, left, right) {
+  let exo_type = match @seq.exo_left_type(symbol_char, left, right) {
     Some(exo_type) => exo_type
     None => {
       ignore(cursor.restore(start))
@@ -743,18 +756,18 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
     cross: participant_cross,
   }
   Some(
-    MessageExo({
+    @seq.MessageExo({
       participant_code: participant.code,
       exo_type,
       label,
-      arrow_config: ArrowConfig::from_dressing(
+      arrow_config: @seq.ArrowConfig::from_dressing(
         border,
         participant_side,
         body,
         if border.has_dir {
-          Reverse
+          @seq.Reverse
         } else {
-          Forward
+          @seq.Forward
         },
       ),
       short_arrow,
@@ -768,7 +781,7 @@ fn left_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
 ///|
 /// Matches an exogenous message arriving from or leaving to the right
 /// border, requiring the full line to be consumed.
-fn right_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
+fn right_exo_message_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
@@ -799,7 +812,7 @@ fn right_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
     return None
   }
   let (symbol_char, short_arrow, border_circle, border_cross) = symbol.unwrap()
-  let exo_type = match exo_right_type(symbol_char, left, right) {
+  let exo_type = match @seq.exo_right_type(symbol_char, left, right) {
     Some(exo_type) => exo_type
     None => {
       ignore(cursor.restore(start))
@@ -818,18 +831,18 @@ fn right_exo_message_syntax(cursor : @parse.Cursor) -> Event? {
     cross: participant_cross,
   }
   Some(
-    MessageExo({
+    @seq.MessageExo({
       participant_code: participant.code,
       exo_type,
       label,
-      arrow_config: ArrowConfig::from_dressing(
+      arrow_config: @seq.ArrowConfig::from_dressing(
         participant_side,
         border,
         body,
         if participant_side.has_dir {
-          Reverse
+          @seq.Reverse
         } else {
-          Forward
+          @seq.Forward
         },
       ),
       short_arrow,
@@ -882,7 +895,7 @@ fn take_exo_right_symbol(cursor : @parse.Cursor) -> (Char, Bool, Bool, Bool)? {
 /// Tries the left exo, right exo and plain message forms in order,
 /// mirroring the talc `choice` with the two exo forms wrapped in
 /// `attempt`.
-fn complete_message_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn complete_message_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if left_exo_message_syntax(cursor) is Some(event) {
     return Some(event)

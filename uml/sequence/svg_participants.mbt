@@ -17,7 +17,7 @@ fn append_participant(
       append_vertical_participant(output, layout, y, is_tail, fill)
     Queue => append_queue_participant(output, layout, y, fill)
     Collections => append_collections_participant(output, layout, y, fill)
-    Participant => {
+    @seq.Participant => {
       output <+
         $|<rect x="\{left}" y="\{y}" width="\{layout.width}" height="36" rx="2" fill="\{fill}"/>
       append_text(
@@ -120,7 +120,7 @@ fn append_collections_participant(
 ///|
 fn append_participant_symbol(
   output : StringBuilder,
-  typ : ParticipantType,
+  typ : @seq.ParticipantType,
   x : Int,
   y : Int,
   fill : String,
@@ -160,24 +160,24 @@ fn append_participant_symbol(
       output <+
         $|<path d="M\{x - 18} \{y + 10}c0 13 36 13 36 0" fill="none" class="participant-icon"/>
     }
-    Participant | Queue | Collections => ()
+    @seq.Participant | Queue | Collections => ()
   }
 }
 
 ///|
-fn ParticipantType::symbol_height(self : ParticipantType) -> Int {
+fn @seq.ParticipantType::symbol_height(self : @seq.ParticipantType) -> Int {
   match self {
     Actor => 60
     Boundary | Control | Entity => 32
     Database => 51
-    Participant | Queue | Collections => 0
+    @seq.Participant | Queue | Collections => 0
   }
 }
 
 ///|
-fn ParticipantType::css_class(self : ParticipantType) -> String {
+fn @seq.ParticipantType::css_class(self : @seq.ParticipantType) -> String {
   match self {
-    Participant => "participant-box"
+    @seq.Participant => "participant-box"
     Actor => "actor"
     Boundary => "boundary"
     Control => "control"
@@ -192,7 +192,7 @@ fn ParticipantType::css_class(self : ParticipantType) -> String {
 fn append_participant_box(
   output : StringBuilder,
   layouts : Array[ParticipantLayout],
-  box : ParticipantBox,
+  box : @seq.ParticipantBox,
   depth : Int,
   diagram_layout : DiagramLayout,
 ) -> Unit {
@@ -227,7 +227,7 @@ fn append_participant_boxes(
     depth.max(participant.participant.boxes.length())
   })
   for depth in 0..<max_depth {
-    let mut active : ParticipantBox? = None
+    let mut active : @seq.ParticipantBox? = None
     let mut start = 0
     for index, participant in layout.participants {
       let current = participant.participant.boxes.get(depth)

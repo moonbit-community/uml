@@ -1,5 +1,5 @@
 ///|
-fn increment_autonumber_at(
+pub fn increment_autonumber_at(
   value : String,
   index : Int,
   increment : Int,
@@ -23,13 +23,13 @@ fn increment_autonumber_at(
 }
 
 ///|
-fn increment_autonumber(value : String, increment : Int) -> String {
+pub fn increment_autonumber(value : String, increment : Int) -> String {
   let parts = value.split(".").to_array()
   increment_autonumber_at(value, parts.length() - 1, increment)
 }
 
 ///|
-fn format_autonumber(format : String, value : String) -> String {
+pub fn format_autonumber(format : String, value : String) -> String {
   if format.contains("#") {
     format.replace(old="#", new=value)
   } else {
@@ -38,7 +38,7 @@ fn format_autonumber(format : String, value : String) -> String {
 }
 
 ///|
-fn increment_autonumber_part(
+pub fn increment_autonumber_part(
   value : String,
   position : String?,
   increment : Int,
@@ -59,7 +59,7 @@ fn increment_autonumber_part(
 }
 
 ///|
-priv struct AutonumberState {
+pub(all) struct AutonumberState {
   mut enabled : Bool
   mut next : String
   mut increment : Int
@@ -67,12 +67,12 @@ priv struct AutonumberState {
 }
 
 ///|
-fn AutonumberState::new() -> AutonumberState {
+pub fn AutonumberState::new() -> AutonumberState {
   { enabled: false, next: "1", increment: 1, format: None }
 }
 
 ///|
-fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
+pub fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
   match event {
     Autonumber(config) => {
       self.enabled = true
@@ -95,7 +95,7 @@ fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
 }
 
 ///|
-fn AutonumberState::take(self : AutonumberState) -> String? {
+pub fn AutonumberState::take(self : AutonumberState) -> String? {
   guard self.enabled else { return None }
   let value = self.next
   self.next = increment_autonumber(self.next, self.increment)

@@ -33,14 +33,14 @@ test "participant declaration grammar parses complete declarations" {
 ///|
 test "box and grouping order follows the command factory" {
   guard box_line_syntax(@parse.Cursor::new("box Frontend #lightyellow"))
-    is Some(BoxStart(_)) else {
+    is Some(@seq.BoxStart(_)) else {
     @test.fail("box start rejected")
   }
-  guard box_line_syntax(@parse.Cursor::new("end box")) is Some(BoxEnd) else {
+  guard box_line_syntax(@parse.Cursor::new("end box")) is Some(@seq.BoxEnd) else {
     @test.fail("box end rejected")
   }
   match grouping_line_syntax(@parse.Cursor::new("end boxx")) {
-    Some(GroupingLeaf(leaf)) => @test.assert_eq(leaf.is_end, true)
+    Some(@seq.GroupingLeaf(leaf)) => @test.assert_eq(leaf.is_end, true)
     _ => @test.fail("unrecognized text after end box must close a group")
   }
 }
@@ -48,11 +48,11 @@ test "box and grouping order follows the command factory" {
 ///|
 test "bare deactivate matches before participant deactivate" {
   guard deactivate_line_syntax(@parse.Cursor::new("deactivate"))
-    is Some(DeactivateLatest) else {
+    is Some(@seq.DeactivateLatest) else {
     @test.fail("bare deactivate rejected")
   }
   match deactivate_line_syntax(@parse.Cursor::new("deactivate Bob")) {
-    Some(LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
+    Some(@seq.LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
     _ => @test.fail("participant deactivate rejected")
   }
 }
@@ -60,7 +60,7 @@ test "bare deactivate matches before participant deactivate" {
 ///|
 test "divider requires the closing delimiter" {
   match divider_line_syntax(@parse.Cursor::new("== section ==")) {
-    Some(Divider(divider)) => @test.assert_eq(divider.title, "section")
+    Some(@seq.Divider(divider)) => @test.assert_eq(divider.title, "section")
     _ => @test.fail("divider rejected")
   }
   guard divider_line_syntax(@parse.Cursor::new("== section")) is None else {
@@ -71,18 +71,18 @@ test "divider requires the closing delimiter" {
 ///|
 test "delay and hspace delimiters" {
   match delay_line_syntax(@parse.Cursor::new("...")) {
-    Some(Delay(delay)) => @test.assert_eq(delay.label, None)
+    Some(@seq.Delay(delay)) => @test.assert_eq(delay.label, None)
     _ => @test.fail("bare delay rejected")
   }
   match delay_line_syntax(@parse.Cursor::new("... waiting ...")) {
-    Some(Delay(delay)) => @test.assert_eq(delay.label, Some("waiting"))
+    Some(@seq.Delay(delay)) => @test.assert_eq(delay.label, Some("waiting"))
     _ => @test.fail("labeled delay rejected")
   }
   guard delay_line_syntax(@parse.Cursor::new("... waiting")) is None else {
     @test.fail("unclosed delay accepted")
   }
   match hspace_line_syntax(@parse.Cursor::new("||20||")) {
-    Some(HSpace(hspace)) => @test.assert_eq(hspace.pixels, Some(20))
+    Some(@seq.HSpace(hspace)) => @test.assert_eq(hspace.pixels, Some(20))
     _ => @test.fail("hspace rejected")
   }
 }
@@ -90,15 +90,15 @@ test "delay and hspace delimiters" {
 ///|
 test "autonumber branches are tried in factory order" {
   guard autonumber_line_syntax(@parse.Cursor::new("autonumber stop"))
-    is Some(AutonumberStop) else {
+    is Some(@seq.AutonumberStop) else {
     @test.fail("autonumber stop rejected")
   }
   match autonumber_line_syntax(@parse.Cursor::new("autonumber inc b")) {
-    Some(AutonumberIncrement(value)) => @test.assert_eq(value, Some("b"))
+    Some(@seq.AutonumberIncrement(value)) => @test.assert_eq(value, Some("b"))
     _ => @test.fail("autonumber inc rejected")
   }
   match autonumber_line_syntax(@parse.Cursor::new("autonumber 1.2 3 \"(0)\"")) {
-    Some(Autonumber(number)) => {
+    Some(@seq.Autonumber(number)) => {
       @test.assert_eq(number.start, Some("1.2"))
       @test.assert_eq(number.increment, Some(3))
       @test.assert_eq(number.format, Some("(0)"))
@@ -116,7 +116,8 @@ test "autonumber branch keywords commit the whole line" {
     @test.fail("autonumber inc with trailing digits accepted")
   }
   match autonumber_line_syntax(@parse.Cursor::new("autonumber stopx")) {
-    Some(Autonumber(number)) => @test.assert_eq(number.start, Some("stopx"))
+    Some(@seq.Autonumber(number)) =>
+      @test.assert_eq(number.start, Some("stopx"))
     _ => @test.fail("start value starting with stop rejected")
   }
 }
@@ -124,7 +125,7 @@ test "autonumber branch keywords commit the whole line" {
 ///|
 test "a failed box end falls through to a group end" {
   match grouping_line_syntax(@parse.Cursor::new("end box x")) {
-    Some(GroupingLeaf(leaf)) => @test.assert_eq(leaf.is_end, true)
+    Some(@seq.GroupingLeaf(leaf)) => @test.assert_eq(leaf.is_end, true)
     _ => @test.fail("end box with trailing text must close a group")
   }
   guard toggle_line_syntax(@parse.Cursor::new("autoactivate on x")) is None else {
@@ -148,24 +149,24 @@ test "life events require a whole identifier or a closed quote" {
     life_event_line_syntax(
       @parse.Cursor::new("activate Bob"),
       "activate",
-      Activate,
+      @seq.Activate,
     ) {
-    Some(LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
+    Some(@seq.LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
     _ => @test.fail("life event rejected")
   }
   match
     life_event_line_syntax(
       @parse.Cursor::new("activate \"Bob\""),
       "activate",
-      Activate,
+      @seq.Activate,
     ) {
-    Some(LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
+    Some(@seq.LifeEvent(life)) => @test.assert_eq(life.participant_code, "Bob")
     _ => @test.fail("quoted life event rejected")
   }
   guard life_event_line_syntax(
       @parse.Cursor::new("activate \"Bob"),
       "activate",
-      Activate,
+      @seq.Activate,
     )
     is None else {
     @test.fail("unclosed quote accepted")
@@ -183,7 +184,7 @@ test "life event with color parses and carries the color" {
   let diagram = parse(src)
   let has_colored_activation = diagram.events.exists(event => {
     match event {
-      LifeEvent({ participant_code, event_type: Activate, color }) =>
+      @seq.LifeEvent({ participant_code, event_type: @seq.Activate, color }) =>
         participant_code == "Bob" && color == Some("FF0000")
       _ => false
     }
@@ -201,7 +202,7 @@ test "colored notes and activations keep their fill in the svg" {
     #|rnote over Carol #lightcoral : colored box
     #|Bob --> Alice
     #|@enduml
-  let svg = render_sequence_svg(src)
+  let svg = render_sequence(src)
   @test.assert_eq(svg.contains("fill=\"#90EE90\""), true)
   @test.assert_eq(svg.contains("fill=\"#F08080\""), true)
 }

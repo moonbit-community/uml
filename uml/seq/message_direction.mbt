@@ -1,5 +1,5 @@
 ///|
-fn ArrowConfig::from_dressing(
+pub fn ArrowConfig::from_dressing(
   left : DressingResult,
   right : DressingResult,
   body : ArrowBody,
@@ -27,13 +27,24 @@ fn ArrowConfig::from_dressing(
 }
 
 ///|
-priv enum MessageDirection {
+pub(all) enum MessageDirection {
   Forward
   Reverse
 }
 
 ///|
-fn message_direction(
+/// The arrow dressing parsed on one side of a message arrow, mirrored from
+/// `ArrowDressing` in PlantUML.
+pub(all) struct DressingResult {
+  head : ArrowHead
+  circle : Bool
+  cross : Bool
+  has_dir : Bool
+  part : ArrowPart
+}
+
+///|
+pub fn message_direction(
   left : DressingResult,
   right : DressingResult,
 ) -> MessageDirection? {
@@ -52,7 +63,7 @@ fn message_direction(
 /// Derives the exo message type for the left-border commands, mirroring
 /// `CommandExoArrowLeft.getMessageExoType`: a leading `]` selects the
 /// right border, otherwise the border is the left one.
-fn exo_left_type(
+pub fn exo_left_type(
   symbol : Char,
   left : DressingResult,
   right : DressingResult,
@@ -78,7 +89,7 @@ fn exo_left_type(
 /// Derives the exo message type for the right-border commands, mirroring
 /// `CommandExoArrowRight.getMessageExoType`: a leading `[` selects the
 /// left border, otherwise the border is the right one.
-fn exo_right_type(
+pub fn exo_right_type(
   symbol : Char,
   left : DressingResult,
   right : DressingResult,

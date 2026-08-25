@@ -1,8 +1,8 @@
 ///|
 fn DiagramLayout::note_anchor_center(
   self : DiagramLayout,
-  note : Note,
-  arrow_anchor : Message?,
+  note : @seq.Note,
+  arrow_anchor : @seq.Message?,
 ) -> Int {
   guard note.on_arrow else {
     note.participant_codes
@@ -30,17 +30,17 @@ fn DiagramLayout::note_anchor_center(
 ///|
 fn DiagramLayout::content_horizontal_bounds(
   self : DiagramLayout,
-  events : Array[Event],
+  events : Array[@seq.Event],
 ) -> (Int, Int) {
   guard self.participants.length() > 0 else { (0, self.width) }
   let first = self.participants[0]
   let last = self.participants[self.participants.length() - 1]
   let mut min_x = first.center_x - first.width / 2
   let mut max_x = last.center_x + last.width / 2
-  let mut arrow_anchor : Message? = None
+  let mut arrow_anchor : @seq.Message? = None
   for index, event in events {
     match event {
-      Message(message) => {
+      @seq.Message(message) => {
         if message.is_self() {
           if self.participant_at(message.from_code) is Some(participant) {
             max_x = max_x.max(
@@ -52,7 +52,7 @@ fn DiagramLayout::content_horizontal_bounds(
         }
         arrow_anchor = Some(message)
       }
-      MessageExo(message) =>
+      @seq.MessageExo(message) =>
         if self.participant_at(message.participant_code) is Some(participant) {
           let label_width = TextSize::of_with(
               message.label.unwrap_or(""),
@@ -64,13 +64,13 @@ fn DiagramLayout::content_horizontal_bounds(
             (label_width + 32).max(90)
           }
           match message.exo_type {
-            FromLeft | ToLeft =>
+            @seq.FromLeft | @seq.ToLeft =>
               min_x = min_x.min(participant.center_x - extent)
-            FromRight | ToRight =>
+            @seq.FromRight | @seq.ToRight =>
               max_x = max_x.max(participant.center_x + extent)
           }
         }
-      Note(note) => {
+      @seq.Note(note) => {
         let geometry = self.note_geometry(
           note,
           self.placements[index],
@@ -79,7 +79,7 @@ fn DiagramLayout::content_horizontal_bounds(
         min_x = min_x.min(geometry.x)
         max_x = max_x.max(geometry.x + geometry.component.width)
       }
-      Notes(notes) =>
+      @seq.Notes(notes) =>
         for note in notes {
           let geometry = self.note_geometry(
             note,
@@ -101,7 +101,7 @@ fn DiagramLayout::content_horizontal_bounds(
     depth.max(participant.participant.boxes.length())
   })
   for depth in 0..<max_box_depth {
-    let mut active : ParticipantBox? = None
+    let mut active : @seq.ParticipantBox? = None
     let mut start = 0
     for index, participant in self.participants {
       let current = participant.participant.boxes.get(depth)
@@ -132,32 +132,33 @@ fn DiagramLayout::content_horizontal_bounds(
 
 ///|
 fn participant_lifetimes(
-  events : Array[Event],
+  events : Array[@seq.Event],
   placements : Array[EventPlacement],
 ) -> (Map[String, Int], Map[String, Int]) {
   let births : Map[String, Int] = Map([])
   let deaths : Map[String, Int] = Map([])
   for index, event in events {
     match event {
-      Message(message) =>
+      @seq.Message(message) =>
         match message.activation_spec {
-          Some(Create) => births[message.to_code] = placements[index].y
-          Some(Destroy) =>
+          Some(@seq.Create) => births[message.to_code] = placements[index].y
+          Some(@seq.Destroy) =>
             deaths[message.to_code] = placements[index].y + MESSAGE_ARROW_OFFSET
           _ => ()
         }
-      MessageExo(message) =>
+      @seq.MessageExo(message) =>
         match message.activation_spec {
-          Some(Create) => births[message.participant_code] = placements[index].y
-          Some(Destroy) =>
+          Some(@seq.Create) =>
+            births[message.participant_code] = placements[index].y
+          Some(@seq.Destroy) =>
             deaths[message.participant_code] = placements[index].y +
               MESSAGE_ARROW_OFFSET
           _ => ()
         }
-      LifeEvent(life) =>
+      @seq.LifeEvent(life) =>
         match life.event_type {
-          Create => births[life.participant_code] = placements[index].y
-          Destroy => deaths[life.participant_code] = placements[index].y
+          @seq.Create => births[life.participant_code] = placements[index].y
+          @seq.Destroy => deaths[life.participant_code] = placements[index].y
           _ => ()
         }
       _ => ()
@@ -167,7 +168,7 @@ fn participant_lifetimes(
 }
 
 ///|
-fn SequenceDiagram::layout(self : SequenceDiagram) -> DiagramLayout {
+fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
   let text_metrics = SequenceTextMetrics::new(self.style)
   let (participants, participant_index, width) = layout_participants(
     self, text_metrics,

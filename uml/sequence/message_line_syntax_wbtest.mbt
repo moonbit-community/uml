@@ -1,5 +1,5 @@
 ///|
-fn parse_message_line(line : String) -> Event? {
+fn parse_message_line(line : String) -> @seq.Event? {
   let cursor = @parse.Cursor::new(line)
   complete_message_line_syntax(cursor)
 }
@@ -33,8 +33,8 @@ test "message line grammar rejects malformed messages" {
 ///|
 test "message line grammar preserves activation, color and label" {
   match parse_message_line("Alice -> Bob ++ #red : dispatch") {
-    Some(Message(message)) => {
-      guard message.activation_spec is Some(Activate) else {
+    Some(@seq.Message(message)) => {
+      guard message.activation_spec is Some(@seq.Activate) else {
         @test.fail("expected Activate activation spec")
       }
       @test.assert_eq(message.life_color, Some("red"))
@@ -49,7 +49,7 @@ test "message line grammar preserves activation, color and label" {
 ///|
 test "message line grammar maps arrow direction" {
   match parse_message_line("Alice <- Bob") {
-    Some(Message(message)) => {
+    Some(@seq.Message(message)) => {
       @test.assert_eq(message.from_code, "Bob")
       @test.assert_eq(message.to_code, "Alice")
     }
@@ -60,8 +60,8 @@ test "message line grammar maps arrow direction" {
 ///|
 test "message line grammar matches exo arrows" {
   match parse_message_line("[-> Alice : incoming") {
-    Some(MessageExo(message)) => {
-      guard message.exo_type is FromLeft else {
+    Some(@seq.MessageExo(message)) => {
+      guard message.exo_type is @seq.FromLeft else {
         @test.fail("expected a FromLeft exo message")
       }
       @test.assert_eq(message.label, Some("incoming"))
@@ -69,8 +69,8 @@ test "message line grammar matches exo arrows" {
     _ => fail("expected a left exo event")
   }
   match parse_message_line("Alice ->] : outgoing") {
-    Some(MessageExo(message)) => {
-      guard message.exo_type is ToRight else {
+    Some(@seq.MessageExo(message)) => {
+      guard message.exo_type is @seq.ToRight else {
         @test.fail("expected a ToRight exo message")
       }
       @test.assert_eq(message.label, Some("outgoing"))
@@ -82,7 +82,7 @@ test "message line grammar matches exo arrows" {
 ///|
 test "message line grammar matches multicast participants" {
   match parse_message_line("Alice -> Bob & alice & bobby") {
-    Some(Message(_)) => ()
+    Some(@seq.Message(_)) => ()
     _ => fail("expected a message event")
   }
 }

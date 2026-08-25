@@ -5,8 +5,8 @@ test "note line grammar parses supported note headers" {
   }
   guard participant_note_tail(
       @parse.Cursor::new("of Bob #yellow : cached"),
-      Right,
-      NodeNormal,
+      @seq.Right,
+      @seq.NodeNormal,
       true,
       None,
     )
@@ -36,7 +36,7 @@ test "reference line grammar parses inline and multiline headers" {
 ///|
 test "note position dispatch follows the command factory" {
   match note_line_syntax(@parse.Cursor::new("note over Alice, Bob : shared")) {
-    Some(note) => @test.assert_eq(note.position is OverSeveral, true)
+    Some(note) => @test.assert_eq(note.position is @seq.OverSeveral, true)
     _ => @test.fail("over several rejected")
   }
   match note_line_syntax(@parse.Cursor::new("note across : text")) {
@@ -114,8 +114,8 @@ test "participant lists tolerate trailing commas like sep_by1" {
 test "note participants are validated per position" {
   guard participant_note_tail(
       @parse.Cursor::new("of Alice, Bob : text"),
-      Left,
-      NodeNormal,
+      @seq.Left,
+      @seq.NodeNormal,
       true,
       None,
     )
@@ -124,8 +124,8 @@ test "note participants are validated per position" {
   }
   guard participant_note_tail(
       @parse.Cursor::new("of Alice, Bob, Carol : text"),
-      Over,
-      NodeNormal,
+      @seq.Over,
+      @seq.NodeNormal,
       false,
       None,
     )

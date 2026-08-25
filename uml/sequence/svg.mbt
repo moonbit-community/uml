@@ -72,8 +72,8 @@ fn append_svg_preamble(
 /// headers determine horizontal constraints, events reserve vertical space,
 /// and group, lifeline, activation, and message layers are then painted in
 /// that order.
-pub fn SequenceDiagram::render_svg(
-  self : SequenceDiagram,
+fn @seq.SequenceDiagram::render_svg(
+  self : @seq.SequenceDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
@@ -98,7 +98,7 @@ pub fn SequenceDiagram::render_svg(
   for y in layout.auto_page_breaks {
     append_line(output, 18, y, layout.width - 18, y, "page-break")
   }
-  let mut arrow_anchor : Message? = None
+  let mut arrow_anchor : @seq.Message? = None
   // An on-arrow note attaches to the latest event able to carry one (Java's
   // `getLastEventWithNote`). A message/exo carrier wraps its arrow in the
   // note's URL too (`AbstractMessage.getUrl`), first note wins; a reference
@@ -110,15 +110,15 @@ pub fn SequenceDiagram::render_svg(
   let mut last_carrier_is_message = false
   for index, event in self.events {
     match event {
-      Message(_) | MessageExo(_) => {
+      @seq.Message(_) | @seq.MessageExo(_) => {
         last_carrier_index = index
         last_carrier_is_message = true
       }
-      Reference(_) | GroupingLeaf(_) => {
+      @seq.Reference(_) | @seq.GroupingLeaf(_) => {
         last_carrier_index = index
         last_carrier_is_message = false
       }
-      Note(note) if note.on_arrow => {
+      @seq.Note(note) if note.on_arrow => {
         if !last_carrier_is_message {
           note_suppress[index] = true
         }
@@ -129,7 +129,7 @@ pub fn SequenceDiagram::render_svg(
           _ => ()
         }
       }
-      Notes(notes) if notes[0].on_arrow => {
+      @seq.Notes(notes) if notes[0].on_arrow => {
         if !last_carrier_is_message {
           note_suppress[index] = true
         }
@@ -154,7 +154,7 @@ pub fn SequenceDiagram::render_svg(
       note_suppress.get(index).unwrap_or(false),
     )
     match event {
-      Message(message) => arrow_anchor = Some(message)
+      @seq.Message(message) => arrow_anchor = Some(message)
       _ => ()
     }
   }
@@ -168,9 +168,15 @@ pub fn SequenceDiagram::render_svg(
 
 ///|
 /// Parse PlantUML sequence-diagram text and render it as standalone SVG.
+pub fn render_sequence(input : String) -> String raise @parse.ParseError {
+  parse(input).render_svg()
+}
+
+///|
+/// Render a parsed sequence diagram to SVG.
 pub fn render_sequence_svg(
-  input : String,
+  diagram : @seq.SequenceDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String raise @parse.ParseError {
-  parse(input).render_svg(color_scheme~)
+) -> String {
+  diagram.render_svg(color_scheme~)
 }

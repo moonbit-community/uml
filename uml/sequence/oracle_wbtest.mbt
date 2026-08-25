@@ -89,10 +89,10 @@ test "message grammar matches plantuml oracle" {
   for index in 0..<cases.length() {
     let cursor = @parse.Cursor::new(cases[index])
     let signature = match complete_message_line_syntax(cursor) {
-      Some(Message(message)) =>
+      Some(@seq.Message(message)) =>
         "M:\{message.from_code}>\{message.to_code}:a=\{activation_string(message)}:c=\{color_string(message)}:m=\{message.label.unwrap_or("")}:s=\{message.stereotype.unwrap_or("")}:u=\{message.url.unwrap_or("")}"
-      Some(MessageExo(message)) =>
-        if message.exo_type is FromLeft || message.exo_type is ToLeft {
+      Some(@seq.MessageExo(message)) =>
+        if message.exo_type is @seq.FromLeft || message.exo_type is @seq.ToLeft {
           "E:L:\{message.participant_code}:u=\{message.url.unwrap_or("")}"
         } else {
           "E:R:\{message.participant_code}:u=\{message.url.unwrap_or("")}"
@@ -154,9 +154,9 @@ test "note across grammar matches the plantuml across factory oracle" {
 ///|
 fn note_across_signature(syntax : NoteLineSyntax) -> String {
   let style = match syntax.note_style {
-    NodeNormal => "note"
-    Hexagonal => "hnote"
-    Box => "rnote"
+    @seq.NodeNormal => "note"
+    @seq.Hexagonal => "hnote"
+    @seq.Box => "rnote"
   }
   let text = match syntax.text {
     Inline(text) => "text=" + text
@@ -207,18 +207,18 @@ test "participant and on-arrow note tails match the plantuml note factory oracle
 ///|
 fn note_tail_signature(syntax : NoteLineSyntax) -> String {
   let position = match syntax.position {
-    Left => "left"
-    Right => "right"
-    Top => "top"
-    Bottom => "bottom"
-    Over => "over"
-    OverSeveral => "overseveral"
-    Across => "across"
+    @seq.Left => "left"
+    @seq.Right => "right"
+    @seq.Top => "top"
+    @seq.Bottom => "bottom"
+    @seq.Over => "over"
+    @seq.OverSeveral => "overseveral"
+    @seq.Across => "across"
   }
   let style = match syntax.note_style {
-    NodeNormal => "note"
-    Hexagonal => "hnote"
-    Box => "rnote"
+    @seq.NodeNormal => "note"
+    @seq.Hexagonal => "hnote"
+    @seq.Box => "rnote"
   }
   let text = match syntax.text {
     Inline(text) => "text=" + text
@@ -228,19 +228,19 @@ fn note_tail_signature(syntax : NoteLineSyntax) -> String {
 }
 
 ///|
-fn activation_string(message : Message) -> String {
+fn activation_string(message : @seq.Message) -> String {
   match (message.activation_spec, message.activation_spec2) {
-    (Some(Activate), Some(Deactivate)) => "++--"
-    (Some(Deactivate), Some(Activate)) => "--++"
-    (Some(Activate), _) => "++"
-    (Some(Deactivate), _) => "--"
-    (Some(Destroy), _) => "!!"
-    (Some(Create), _) => "**"
+    (Some(@seq.Activate), Some(@seq.Deactivate)) => "++--"
+    (Some(@seq.Deactivate), Some(@seq.Activate)) => "--++"
+    (Some(@seq.Activate), _) => "++"
+    (Some(@seq.Deactivate), _) => "--"
+    (Some(@seq.Destroy), _) => "!!"
+    (Some(@seq.Create), _) => "**"
     (None, _) => ""
   }
 }
 
 ///|
-fn color_string(message : Message) -> String {
+fn color_string(message : @seq.Message) -> String {
   message.life_color.map_or("", color => "#" + color)
 }

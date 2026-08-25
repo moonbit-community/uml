@@ -1,5 +1,5 @@
 ///|
-priv enum ParticipantType {
+pub(all) enum ParticipantType {
   Participant
   Actor
   Boundary
@@ -11,13 +11,13 @@ priv enum ParticipantType {
 }
 
 ///|
-priv struct ParticipantBox {
+pub(all) struct ParticipantBox {
   label : String?
   color : String?
 } derive(Eq)
 
 ///|
-priv struct Participant {
+pub(all) struct Participant {
   code : String
   display : String
   typ : ParticipantType
@@ -28,13 +28,13 @@ priv struct Participant {
 }
 
 ///|
-priv enum ArrowBody {
+pub(all) enum ArrowBody {
   Solid
   Dotted
 } derive(Eq)
 
 ///|
-priv enum ArrowHead {
+pub(all) enum ArrowHead {
   Normal
   Async
   CrossX
@@ -42,14 +42,14 @@ priv enum ArrowHead {
 }
 
 ///|
-priv enum ArrowPart {
+pub(all) enum ArrowPart {
   Full
   TopPart
   BottomPart
 }
 
 ///|
-priv struct ArrowConfig {
+pub(all) struct ArrowConfig {
   body : ArrowBody
   head1 : ArrowHead
   head2 : ArrowHead
@@ -59,7 +59,7 @@ priv struct ArrowConfig {
 }
 
 ///|
-priv enum NotePosition {
+pub(all) enum NotePosition {
   Left
   Right
   Bottom
@@ -70,14 +70,14 @@ priv enum NotePosition {
 }
 
 ///|
-priv enum NoteStyle {
+pub(all) enum NoteStyle {
   NodeNormal
   Hexagonal
   Box
 }
 
 ///|
-priv enum GroupKeyword {
+pub(all) enum GroupKeyword {
   Opt
   Alt
   Loop
@@ -90,7 +90,7 @@ priv enum GroupKeyword {
 }
 
 ///|
-priv enum ActivationSpec {
+pub(all) enum ActivationSpec {
   Activate
   Deactivate
   Destroy
@@ -98,7 +98,7 @@ priv enum ActivationSpec {
 }
 
 ///|
-priv struct GroupingStart {
+pub(all) struct GroupingStart {
   keyword : GroupKeyword
   header : String
   back_color_header : String?
@@ -107,14 +107,14 @@ priv struct GroupingStart {
 }
 
 ///|
-priv struct GroupingLeaf {
+pub(all) struct GroupingLeaf {
   is_end : Bool
   label : String?
   back_color : String?
 }
 
 ///|
-priv struct Message {
+pub(all) struct Message {
   from_code : String
   to_code : String
   label : String?
@@ -129,12 +129,12 @@ priv struct Message {
 
 ///|
 /// A self-message loops back to the same participant.
-fn Message::is_self(self : Message) -> Bool {
+pub fn Message::is_self(self : Message) -> Bool {
   self.from_code == self.to_code
 }
 
 ///|
-priv enum MessageExoType {
+pub(all) enum MessageExoType {
   FromLeft
   ToLeft
   FromRight
@@ -142,7 +142,7 @@ priv enum MessageExoType {
 }
 
 ///|
-priv struct MessageExo {
+pub(all) struct MessageExo {
   participant_code : String
   exo_type : MessageExoType
   label : String?
@@ -154,7 +154,7 @@ priv struct MessageExo {
 }
 
 ///|
-priv struct Note {
+pub(all) struct Note {
   participant_codes : Array[String]
   position : NotePosition
   text : String
@@ -166,64 +166,64 @@ priv struct Note {
 }
 
 ///|
-priv struct Delay {
+pub(all) struct Delay {
   label : String?
 }
 
 ///|
-priv struct Divider {
+pub(all) struct Divider {
   title : String
 }
 
 ///|
-priv struct HSpace {
+pub(all) struct HSpace {
   pixels : Int?
 }
 
 ///|
-priv struct Newpage {
+pub(all) struct Newpage {
   title : String?
 }
 
 ///|
-priv struct Reference {
+pub(all) struct Reference {
   participant_codes : Array[String]
   label : String?
 }
 
 ///|
-priv struct BoxStart {
+pub(all) struct BoxStart {
   label : String?
   color : String?
 }
 
 ///|
-priv struct Autonumber {
+pub(all) struct Autonumber {
   start : String?
   increment : Int?
   format : String?
 }
 
 ///|
-priv struct AutonumberResume {
+pub(all) struct AutonumberResume {
   increment : Int?
   format : String?
 }
 
 ///|
-priv struct Return {
+pub(all) struct Return {
   value : String?
 }
 
 ///|
-priv struct LifeEvent {
+pub(all) struct LifeEvent {
   participant_code : String
   event_type : ActivationSpec
   color : String?
 }
 
 ///|
-priv enum Event {
+pub(all) enum Event {
   Message(Message)
   MessageExo(MessageExo)
   Note(Note)
@@ -255,7 +255,7 @@ priv enum Event {
 }
 
 ///|
-struct SequenceDiagram {
+pub(all) struct SequenceDiagram {
   participants : Map[String, Participant]
   events : Array[Event]
   autoactivate : Bool

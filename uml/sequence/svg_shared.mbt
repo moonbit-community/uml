@@ -94,17 +94,17 @@ fn DiagramLayout::participant_tail_y(self : DiagramLayout) -> Int {
 }
 
 ///|
-fn GroupKeyword::label(self : GroupKeyword) -> String {
+fn @seq.GroupKeyword::label(self : @seq.GroupKeyword) -> String {
   match self {
-    Opt => "opt"
-    Alt => "alt"
-    Loop => "loop"
-    Par => "par"
-    Par2 => "par"
-    Break => "break"
-    Critical => "critical"
-    Group => "group"
-    Partition => "partition"
+    @seq.Opt => "opt"
+    @seq.Alt => "alt"
+    @seq.Loop => "loop"
+    @seq.Par => "par"
+    @seq.Par2 => "par"
+    @seq.Break => "break"
+    @seq.Critical => "critical"
+    @seq.Group => "group"
+    @seq.Partition => "partition"
   }
 }
 

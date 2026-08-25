@@ -2,9 +2,9 @@
 fn append_note(
   output : StringBuilder,
   layout : DiagramLayout,
-  note : Note,
+  note : @seq.Note,
   placement : EventPlacement,
-  arrow_anchor : Message?,
+  arrow_anchor : @seq.Message?,
   suppress_url : Bool,
 ) -> Unit {
   let geometry = layout.note_geometry(note, placement, arrow_anchor)
@@ -12,9 +12,9 @@ fn append_note(
   let y = geometry.y
   let component = geometry.component
   let class_name = match note.note_style {
-    NodeNormal => "note"
-    Hexagonal => "note hex-note"
-    Box => "note box-note"
+    @seq.NodeNormal => "note"
+    @seq.Hexagonal => "note hex-note"
+    @seq.Box => "note box-note"
   }
   let fill = note_color(note.color, note.stereotype, layout.defaults)
   match note.url {
@@ -23,7 +23,7 @@ fn append_note(
     _ => ()
   }
   match note.note_style {
-    NodeNormal => {
+    @seq.NodeNormal => {
       let fold_x = x + component.width - component.fold
       let fold_y = y + component.fold
       output <+
@@ -31,10 +31,10 @@ fn append_note(
       output <+
         $|<path d="M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}" class="note-fold" fill="none" />
     }
-    Hexagonal =>
+    @seq.Hexagonal =>
       output <+
         $|<polygon points="\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}" class="\{class_name}" fill="\{fill}" />
-    Box =>
+    @seq.Box =>
       output <+
         $|<rect x="\{x}" y="\{y}" width="\{component.width}" height="\{component.height}" class="\{class_name}" fill="\{fill}" />
   }
@@ -58,7 +58,7 @@ fn append_note(
 fn append_divider(
   output : StringBuilder,
   layout : DiagramLayout,
-  divider : Divider,
+  divider : @seq.Divider,
   placement : EventPlacement,
 ) -> Unit {
   let y = placement.y + 17
@@ -83,7 +83,7 @@ fn append_divider(
 fn append_delay(
   output : StringBuilder,
   layout : DiagramLayout,
-  delay : Delay,
+  delay : @seq.Delay,
   placement : EventPlacement,
 ) -> Unit {
   let y = placement.y + 14
@@ -106,7 +106,7 @@ fn append_delay(
 fn append_reference(
   output : StringBuilder,
   layout : DiagramLayout,
-  reference : Reference,
+  reference : @seq.Reference,
   placement : EventPlacement,
 ) -> Unit {
   let centers = reference.participant_codes.map(code => {
@@ -149,9 +149,9 @@ fn append_reference(
 fn append_return(
   output : StringBuilder,
   layout : DiagramLayout,
-  value : Return,
+  value : @seq.Return,
   placement : EventPlacement,
-  preceding_message : Message?,
+  preceding_message : @seq.Message?,
 ) -> Unit {
   guard layout.participants.length() >= 2 else { return }
   let y = placement.y + MESSAGE_ARROW_OFFSET
@@ -205,31 +205,31 @@ fn append_return(
 fn append_event(
   output : StringBuilder,
   layout : DiagramLayout,
-  event : Event,
+  event : @seq.Event,
   placement : EventPlacement,
-  arrow_anchor : Message?,
+  arrow_anchor : @seq.Message?,
   note_url : String?,
   suppress_url : Bool,
 ) -> Unit {
   guard !placement.ignored else { return }
   match event {
-    Message(message) =>
+    @seq.Message(message) =>
       append_message(output, layout, message, placement, note_url)
-    MessageExo(message) =>
+    @seq.MessageExo(message) =>
       append_exo_message(output, layout, message, placement, note_url)
-    Note(note) =>
+    @seq.Note(note) =>
       append_note(output, layout, note, placement, arrow_anchor, suppress_url)
-    Notes(notes) =>
+    @seq.Notes(notes) =>
       notes.each(note => {
         append_note(output, layout, note, placement, arrow_anchor, suppress_url)
       })
-    Divider(divider) => append_divider(output, layout, divider, placement)
-    Delay(delay) => append_delay(output, layout, delay, placement)
-    Reference(reference) =>
+    @seq.Divider(divider) => append_divider(output, layout, divider, placement)
+    @seq.Delay(delay) => append_delay(output, layout, delay, placement)
+    @seq.Reference(reference) =>
       append_reference(output, layout, reference, placement)
-    Return(value) =>
+    @seq.Return(value) =>
       append_return(output, layout, value, placement, arrow_anchor)
-    Newpage(page) => {
+    @seq.Newpage(page) => {
       append_line(
         output,
         18,
@@ -251,8 +251,8 @@ fn append_event(
         )
       }
     }
-    LinkAnchor => ()
-    AutoNewpage(size) =>
+    @seq.LinkAnchor => ()
+    @seq.AutoNewpage(size) =>
       size.map_or_else(
         () => output.write_string("<metadata class=\"auto-newpage\"/>\n"),
         height => {
@@ -260,23 +260,23 @@ fn append_event(
             $|<metadata class="auto-newpage" data-height="\{height}"/>,
         },
       )
-    GroupingStart(_)
-    | GroupingLeaf(_)
-    | LifeEvent(_)
-    | HSpace(_)
-    | BoxStart(_)
-    | BoxEnd
-    | Autonumber(_)
-    | AutonumberStop
-    | AutonumberResume(_)
-    | AutonumberIncrement(_)
-    | Autoactivate(_)
-    | Footbox(_)
-    | HideUnlinked(_)
-    | Create
-    | Url(_, _)
-    | DeactivateLatest
-    | IgnoreNewpage => ()
+    @seq.GroupingStart(_)
+    | @seq.GroupingLeaf(_)
+    | @seq.LifeEvent(_)
+    | @seq.HSpace(_)
+    | @seq.BoxStart(_)
+    | @seq.BoxEnd
+    | @seq.Autonumber(_)
+    | @seq.AutonumberStop
+    | @seq.AutonumberResume(_)
+    | @seq.AutonumberIncrement(_)
+    | @seq.Autoactivate(_)
+    | @seq.Footbox(_)
+    | @seq.HideUnlinked(_)
+    | @seq.Create
+    | @seq.Url(_, _)
+    | @seq.DeactivateLatest
+    | @seq.IgnoreNewpage => ()
   }
 }
 

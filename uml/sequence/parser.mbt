@@ -34,13 +34,13 @@ priv struct DiagramOptions {
 }
 
 ///|
-fn diagram_options(events : Array[Event]) -> DiagramOptions {
+fn diagram_options(events : Array[@seq.Event]) -> DiagramOptions {
   let mut autoactivate = false
   let mut show_footbox = true
   for event in events {
     match event {
-      Autoactivate(enabled) => autoactivate = enabled
-      Footbox(enabled) => show_footbox = enabled
+      @seq.Autoactivate(enabled) => autoactivate = enabled
+      @seq.Footbox(enabled) => show_footbox = enabled
       _ => ()
     }
   }
@@ -59,14 +59,14 @@ fn skip_ignored_line(source : @parse.Cursor) -> Bool {
 }
 
 ///|
-/// Parse a PlantUML sequence diagram string into a `SequenceDiagram`.
+/// Parse a PlantUML sequence diagram string into a `@seq.SequenceDiagram`.
 ///
 /// Parameters:
 ///
 /// - `input`: the raw PlantUML source text, optionally wrapped with `@startuml` / `@enduml`.
 ///
-/// Returns a `SequenceDiagram` containing the parsed participants and events.
-pub fn parse(input : String) -> SequenceDiagram raise @parse.ParseError {
+/// Returns a `@seq.SequenceDiagram` containing the parsed participants and events.
+pub fn parse(input : String) -> @seq.SequenceDiagram raise @parse.ParseError {
   let ctx = ParseCtx::new(input)
 
   while !ctx.source.is_eof() {

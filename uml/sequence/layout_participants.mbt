@@ -2,7 +2,7 @@
 fn constrain_message_gap(
   gaps : Array[Int],
   participant_index : Map[String, Int],
-  message : Message,
+  message : @seq.Message,
   number : String?,
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
@@ -23,10 +23,10 @@ fn constrain_message_gap(
 fn constrain_note_gap(
   gaps : Array[Int],
   participant_index : Map[String, Int],
-  note : Note,
+  note : @seq.Note,
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
-  guard note.position is OverSeveral else { return }
+  guard note.position is @seq.OverSeveral else { return }
   guard note.participant_codes.get(0) is Some(first_code) else { return }
   guard note.participant_codes.last() is Some(last_code) else { return }
   guard participant_index.get(first_code) is Some(first) else { return }
@@ -48,7 +48,7 @@ fn constrain_participant_box_gap(
   layouts : Array[ParticipantLayout],
   start : Int,
   end : Int,
-  box : ParticipantBox,
+  box : @seq.ParticipantBox,
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
   let gap_count = end - start - 1
@@ -75,7 +75,7 @@ fn constrain_participant_box_gaps(
     depth.max(layout.participant.boxes.length())
   })
   for depth in 0..<max_depth {
-    let mut active : ParticipantBox? = None
+    let mut active : @seq.ParticipantBox? = None
     let mut start = 0
     for index, layout in layouts {
       let current = layout.participant.boxes.get(depth)
@@ -103,8 +103,8 @@ fn constrain_participant_box_gaps(
 }
 
 ///|
-fn SequenceDiagram::participant_box_header_height(
-  self : SequenceDiagram,
+fn @seq.SequenceDiagram::participant_box_header_height(
+  self : @seq.SequenceDiagram,
   text_metrics : SequenceTextMetrics,
 ) -> Int {
   let mut max_depth = 0
@@ -116,7 +116,7 @@ fn SequenceDiagram::participant_box_header_height(
 
 ///|
 fn initial_participant_layout(
-  diagram : SequenceDiagram,
+  diagram : @seq.SequenceDiagram,
   text_metrics : SequenceTextMetrics,
 ) -> Array[ParticipantLayout] {
   let layouts = []
@@ -166,7 +166,7 @@ fn initial_participant_layout(
 
 ///|
 fn layout_participants(
-  diagram : SequenceDiagram,
+  diagram : @seq.SequenceDiagram,
   text_metrics : SequenceTextMetrics,
 ) -> (Array[ParticipantLayout], Map[String, Int], Int) {
   let layouts = initial_participant_layout(diagram, text_metrics)
@@ -179,17 +179,17 @@ fn layout_participants(
     let right = layouts[participant_index + 1]
     gaps.push(left.width / 2 + right.width / 2 + 21)
   }
-  let autonumber = AutonumberState::new()
+  let autonumber = @seq.AutonumberState::new()
   for event in diagram.events {
     autonumber.apply(event)
     match event {
-      Message(message) => {
+      @seq.Message(message) => {
         let number = autonumber.take()
         constrain_message_gap(gaps, index, message, number, text_metrics)
       }
-      MessageExo(_) | Return(_) => ignore(autonumber.take())
-      Note(note) => constrain_note_gap(gaps, index, note, text_metrics)
-      Notes(notes) =>
+      @seq.MessageExo(_) | @seq.Return(_) => ignore(autonumber.take())
+      @seq.Note(note) => constrain_note_gap(gaps, index, note, text_metrics)
+      @seq.Notes(notes) =>
         notes.each(note => constrain_note_gap(gaps, index, note, text_metrics))
       _ => ()
     }

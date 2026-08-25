@@ -16,13 +16,13 @@ priv struct NoteGeometry {
 }
 
 ///|
-fn Note::component(
-  self : Note,
+fn @seq.Note::component(
+  self : @seq.Note,
   text_metrics : SequenceTextMetrics,
 ) -> NoteComponent {
   let text = TextSize::of_with(self.text, text_metrics.note)
   match self.note_style {
-    NodeNormal =>
+    @seq.NodeNormal =>
       {
         // PlantUML's Rose note has 10px horizontal and 5px vertical padding.
         // Its folded corner is part of the component, not extra outer margin.
@@ -32,7 +32,7 @@ fn Note::component(
         text_y: 18,
         fold: 10,
       }
-    Hexagonal =>
+    @seq.Hexagonal =>
       {
         width: (text.width + 26).max(56),
         height: text.height + 8,
@@ -40,7 +40,7 @@ fn Note::component(
         text_y: 17,
         fold: 10,
       }
-    Box =>
+    @seq.Box =>
       {
         width: (text.width + 8).max(56),
         height: text.height + 8,
@@ -84,33 +84,34 @@ fn DiagramLayout::participant_segment(
 ///|
 fn DiagramLayout::note_geometry(
   self : DiagramLayout,
-  note : Note,
+  note : @seq.Note,
   placement : EventPlacement,
-  arrow_anchor : Message?,
+  arrow_anchor : @seq.Message?,
 ) -> NoteGeometry {
   let component = note.component(self.text_metrics)
   let center = self.note_anchor_center(note, arrow_anchor)
   let x = if note.on_arrow {
     match note.position {
-      Left => center - component.width
-      Right => center
-      Bottom | Top | Over | OverSeveral => center - component.width / 2
-      Across => 24
+      @seq.Left => center - component.width
+      @seq.Right => center
+      @seq.Bottom | @seq.Top | @seq.Over | @seq.OverSeveral =>
+        center - component.width / 2
+      @seq.Across => 24
     }
   } else {
     match note.position {
-      Left =>
+      @seq.Left =>
         note.participant_codes
         .get(0)
         .map_or(center - component.width, code => {
           self.participant_segment(code, placement.y).0 - component.width
         })
-      Right =>
+      @seq.Right =>
         note.participant_codes
         .get(0)
         .map_or(center, code => self.participant_segment(code, placement.y).1)
-      Bottom | Top | Over => center - component.width / 2
-      OverSeveral =>
+      @seq.Bottom | @seq.Top | @seq.Over => center - component.width / 2
+      @seq.OverSeveral =>
         match (note.participant_codes.get(0), note.participant_codes.last()) {
           (Some(first), Some(last)) => {
             let start = self
@@ -121,10 +122,10 @@ fn DiagramLayout::note_geometry(
           }
           _ => center - component.width / 2
         }
-      Across => 24
+      @seq.Across => 24
     }
   }
-  let component = if note.position is Across {
+  let component = if note.position is @seq.Across {
     { ..component, width: self.width - 48 }
   } else {
     component

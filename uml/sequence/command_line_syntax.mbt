@@ -1,10 +1,10 @@
 ///|
 /// Matches a participant type keyword.
-fn participant_type(cursor : @parse.Cursor) -> ParticipantType? {
+fn participant_type(cursor : @parse.Cursor) -> @seq.ParticipantType? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
-    "participant" => Some(Participant)
+    "participant" => Some(@seq.Participant)
     "actor" => Some(Actor)
     "boundary" => Some(Boundary)
     "control" => Some(Control)
@@ -23,19 +23,19 @@ fn participant_type(cursor : @parse.Cursor) -> ParticipantType? {
 
 ///|
 /// Matches a group keyword.
-fn group_keyword(cursor : @parse.Cursor) -> GroupKeyword? {
+fn group_keyword(cursor : @parse.Cursor) -> @seq.GroupKeyword? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
-    "opt" => Some(Opt)
-    "alt" => Some(Alt)
-    "loop" => Some(Loop)
-    "par2" => Some(Par2)
-    "par" => Some(Par)
-    "break" => Some(Break)
-    "critical" => Some(Critical)
-    "group" => Some(Group)
-    "partition" => Some(Partition)
+    "opt" => Some(@seq.Opt)
+    "alt" => Some(@seq.Alt)
+    "loop" => Some(@seq.Loop)
+    "par2" => Some(@seq.Par2)
+    "par" => Some(@seq.Par)
+    "break" => Some(@seq.Break)
+    "critical" => Some(@seq.Critical)
+    "group" => Some(@seq.Group)
+    "partition" => Some(@seq.Partition)
     _ => None
   }
   guard result is Some(_) else {
@@ -203,7 +203,7 @@ fn optional_quoted(cursor : @parse.Cursor) -> String? {
 ///|
 fn participant_declaration_tail(
   cursor : @parse.Cursor,
-  typ : ParticipantType,
+  typ : @seq.ParticipantType,
   reference : PartRef,
   created : Bool,
 ) -> ParticipantDecl? {
@@ -272,7 +272,7 @@ fn participant_declaration_line_syntax(
         None
       }
     }
-    let typ = typ.unwrap_or(Participant)
+    let typ = typ.unwrap_or(@seq.Participant)
     match participant_decl_ref(cursor) {
       None => {
         ignore(cursor.restore(start))
@@ -321,8 +321,8 @@ fn participant_declaration_line_syntax(
 fn life_event_line_syntax(
   cursor : @parse.Cursor,
   keyword : String,
-  event_type : ActivationSpec,
-) -> Event? {
+  event_type : @seq.ActivationSpec,
+) -> @seq.Event? {
   let start = cursor.offset()
   guard take_keyword(cursor, keyword) else { return None }
   guard cursor.skip_inline_space1() else {
@@ -341,32 +341,32 @@ fn life_event_line_syntax(
         ignore(cursor.restore(start))
         return None
       }
-      Some(LifeEvent({ participant_code, event_type, color }))
+      Some(@seq.LifeEvent({ participant_code, event_type, color }))
     }
   }
 }
 
 ///|
-fn deactivate_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn deactivate_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "deactivate") {
     cursor.skip_inline_spaces()
     if cursor.is_eof() {
-      return Some(DeactivateLatest)
+      return Some(@seq.DeactivateLatest)
     }
   }
   ignore(cursor.restore(start))
-  life_event_line_syntax(cursor, "deactivate", Deactivate)
+  life_event_line_syntax(cursor, "deactivate", @seq.Deactivate)
 }
 
 ///|
-fn box_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn box_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "end") {
     if cursor.skip_inline_space1() && take_keyword(cursor, "box") {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(BoxEnd)
+        return Some(@seq.BoxEnd)
       }
     }
     ignore(cursor.restore(start))
@@ -382,11 +382,11 @@ fn box_line_syntax(cursor : @parse.Cursor) -> Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(BoxStart({ label: @parse.normalize_label(label), color }))
+  Some(@seq.BoxStart({ label: @parse.normalize_label(label), color }))
 }
 
 ///|
-fn grouping_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn grouping_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   let parallel = cursor.consume('&')
   cursor.skip_inline_spaces()
@@ -397,7 +397,7 @@ fn grouping_line_syntax(cursor : @parse.Cursor) -> Event? {
       cursor.skip_inline_spaces()
       let header = cursor.take_while(_ => true).trim().to_owned()
       Some(
-        GroupingStart({
+        @seq.GroupingStart({
           keyword,
           header,
           back_color_header,
@@ -413,7 +413,7 @@ fn grouping_line_syntax(cursor : @parse.Cursor) -> Event? {
         cursor.skip_inline_spaces()
         let label = cursor.take_while(_ => true)
         Some(
-          GroupingLeaf({
+          @seq.GroupingLeaf({
             is_end: false,
             label: @parse.normalize_label(label),
             back_color,
@@ -423,7 +423,9 @@ fn grouping_line_syntax(cursor : @parse.Cursor) -> Event? {
         ignore(cursor.restore(start))
         if take_keyword(cursor, "end") {
           ignore(cursor.take_while(_ => true))
-          Some(GroupingLeaf({ is_end: true, label: None, back_color: None }))
+          Some(
+            @seq.GroupingLeaf({ is_end: true, label: None, back_color: None }),
+          )
         } else {
           ignore(cursor.restore(start))
           None
@@ -434,7 +436,7 @@ fn grouping_line_syntax(cursor : @parse.Cursor) -> Event? {
 }
 
 ///|
-fn divider_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn divider_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   guard cursor.consume_literal("==") else { return None }
   let title = StringBuilder()
@@ -456,11 +458,11 @@ fn divider_line_syntax(cursor : @parse.Cursor) -> Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(Divider({ title: title.to_string().trim().to_owned() }))
+  Some(@seq.Divider({ title: title.to_string().trim().to_owned() }))
 }
 
 ///|
-fn delay_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn delay_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   let delimiter = if cursor.starts_with_literal("...") {
     Some("...")
@@ -474,7 +476,7 @@ fn delay_line_syntax(cursor : @parse.Cursor) -> Event? {
       ignore(cursor.consume_literal(value))
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(Delay({ label: None }))
+        return Some(@seq.Delay({ label: None }))
       }
     }
     None => ()
@@ -497,11 +499,11 @@ fn delay_line_syntax(cursor : @parse.Cursor) -> Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(Delay({ label: @parse.normalize_label(label.to_string()) }))
+  Some(@seq.Delay({ label: @parse.normalize_label(label.to_string()) }))
 }
 
 ///|
-fn hspace_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn hspace_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   guard cursor.consume_literal("||") else { return None }
   let raw_pixels = cursor.take_while(Char::is_ascii_digit)
@@ -517,7 +519,7 @@ fn hspace_line_syntax(cursor : @parse.Cursor) -> Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(HSpace({ pixels: optional_digits(raw_pixels) }))
+  Some(@seq.HSpace({ pixels: optional_digits(raw_pixels) }))
 }
 
 ///|
@@ -532,14 +534,14 @@ fn optional_digits(value : String) -> Int? {
 /// A `stop`/`resume`/`inc` branch that matches its keyword commits the whole
 /// autonumber line: trailing junk fails the line instead of falling through
 /// to the start branch, mirroring the talc choice followed by `eof`.
-fn autonumber_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn autonumber_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "autonumber") {
     if cursor.skip_inline_space1() {
       if take_keyword(cursor, "stop") {
         cursor.skip_inline_spaces()
         if cursor.is_eof() {
-          return Some(AutonumberStop)
+          return Some(@seq.AutonumberStop)
         }
         ignore(cursor.restore(start))
         return None
@@ -549,7 +551,7 @@ fn autonumber_line_syntax(cursor : @parse.Cursor) -> Event? {
         let format = optional_quoted(cursor)
         cursor.skip_inline_spaces()
         if cursor.is_eof() {
-          return Some(AutonumberResume({ increment, format }))
+          return Some(@seq.AutonumberResume({ increment, format }))
         }
         ignore(cursor.restore(start))
         return None
@@ -558,7 +560,7 @@ fn autonumber_line_syntax(cursor : @parse.Cursor) -> Event? {
         let value = optional_alpha_run(cursor)
         cursor.skip_inline_spaces()
         if cursor.is_eof() {
-          return Some(AutonumberIncrement(value))
+          return Some(@seq.AutonumberIncrement(value))
         }
         ignore(cursor.restore(start))
         return None
@@ -578,7 +580,7 @@ fn autonumber_line_syntax(cursor : @parse.Cursor) -> Event? {
     let format = optional_quoted(cursor)
     cursor.skip_inline_spaces()
     if cursor.is_eof() {
-      return Some(Autonumber({ start: start_value, increment, format }))
+      return Some(@seq.Autonumber({ start: start_value, increment, format }))
     }
     ignore(cursor.restore(start))
     return None
@@ -591,14 +593,14 @@ fn autonumber_line_syntax(cursor : @parse.Cursor) -> Event? {
 /// A branch whose pattern matches commits the toggle line: trailing junk
 /// fails the whole line instead of retrying later branches, mirroring the
 /// talc choice followed by the trailing `inline_spaces` and `eof`.
-fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn toggle_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "autoactivate") {
     let saved = cursor.offset()
     if cursor.skip_inline_space1() && take_keyword(cursor, "on") {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(Autoactivate(true))
+        return Some(@seq.Autoactivate(true))
       }
       ignore(cursor.restore(start))
       return None
@@ -607,7 +609,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
     if cursor.skip_inline_space1() && take_keyword(cursor, "off") {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(Autoactivate(false))
+        return Some(@seq.Autoactivate(false))
       }
       ignore(cursor.restore(start))
       return None
@@ -618,7 +620,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
     if cursor.skip_inline_space1() && take_keyword(cursor, "footbox") {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(Footbox(false))
+        return Some(@seq.Footbox(false))
       }
       ignore(cursor.restore(start))
       return None
@@ -630,7 +632,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
     if cursor.skip_inline_space1() && take_keyword(cursor, "on") {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(Footbox(true))
+        return Some(@seq.Footbox(true))
       }
       ignore(cursor.restore(start))
       return None
@@ -639,7 +641,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
     if cursor.skip_inline_space1() && take_keyword(cursor, "off") {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(Footbox(false))
+        return Some(@seq.Footbox(false))
       }
       ignore(cursor.restore(start))
       return None
@@ -660,7 +662,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
         if take_keyword(cursor, "unlinked") {
           cursor.skip_inline_spaces()
           if cursor.is_eof() {
-            return Some(HideUnlinked(hidden))
+            return Some(@seq.HideUnlinked(hidden))
           }
           ignore(cursor.restore(start))
           return None
@@ -679,7 +681,7 @@ fn toggle_line_syntax(cursor : @parse.Cursor) -> Event? {
 }
 
 ///|
-fn url_command_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn url_command_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   guard take_keyword(cursor, "url") else { return None }
   guard cursor.skip_inline_space1() else {
@@ -719,7 +721,7 @@ fn url_command_line_syntax(cursor : @parse.Cursor) -> Event? {
             ignore(cursor.restore(start))
             return None
           }
-          Some(Url(code, url))
+          Some(@seq.Url(code, url))
         }
       }
     }
@@ -742,14 +744,14 @@ fn anchor(cursor : @parse.Cursor) -> String? {
 /// A branch whose pattern matches commits the miscellaneous line: trailing
 /// junk fails the whole line instead of retrying later branches, mirroring
 /// the talc choice followed by the trailing `inline_spaces` and `eof`.
-fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   if take_keyword(cursor, "ignore") &&
     cursor.skip_inline_space1() &&
     take_keyword(cursor, "newpage") {
     cursor.skip_inline_spaces()
     if cursor.is_eof() {
-      return Some(IgnoreNewpage)
+      return Some(@seq.IgnoreNewpage)
     }
     ignore(cursor.restore(start))
     return None
@@ -760,7 +762,7 @@ fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> Event? {
     if digits.length() > 0 {
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(AutoNewpage(optional_digits(digits)))
+        return Some(@seq.AutoNewpage(optional_digits(digits)))
       }
       ignore(cursor.restore(start))
       return None
@@ -771,7 +773,7 @@ fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> Event? {
   cursor.skip_inline_spaces()
   if take_keyword(cursor, "return") {
     let value = cursor.take_while(_ => true)
-    return Some(Return({ value: @parse.normalize_label(value) }))
+    return Some(@seq.Return({ value: @parse.normalize_label(value) }))
   }
   ignore(cursor.restore(start))
   match anchor(cursor) {
@@ -786,7 +788,7 @@ fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> Event? {
           }
           cursor.skip_inline_spaces()
           if cursor.is_eof() {
-            return Some(LinkAnchor)
+            return Some(@seq.LinkAnchor)
           }
           ignore(cursor.restore(start))
           return None
@@ -806,7 +808,7 @@ fn miscellaneous_event_line_syntax(cursor : @parse.Cursor) -> Event? {
 }
 
 ///|
-fn newpage_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn newpage_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   ignore(cursor.consume('@'))
   guard take_keyword(cursor, "newpage") else {
@@ -814,23 +816,25 @@ fn newpage_line_syntax(cursor : @parse.Cursor) -> Event? {
     return None
   }
   let title = cursor.take_while(_ => true)
-  Some(Newpage({ title: @parse.normalize_label(title) }))
+  Some(@seq.Newpage({ title: @parse.normalize_label(title) }))
 }
 
 ///|
 /// Command matching follows `SequenceDiagramFactory` order for the simple
 /// commands; each alternative consumes the whole line before succeeding.
-fn simple_event_line_syntax(cursor : @parse.Cursor) -> Event? {
+fn simple_event_line_syntax(cursor : @parse.Cursor) -> @seq.Event? {
   let start = cursor.offset()
   let event = if box_line_syntax(cursor) is Some(value) {
     value
   } else if grouping_line_syntax(cursor) is Some(value) {
     value
-  } else if life_event_line_syntax(cursor, "activate", Activate) is Some(value) {
+  } else if life_event_line_syntax(cursor, "activate", @seq.Activate)
+    is Some(value) {
     value
   } else if deactivate_line_syntax(cursor) is Some(value) {
     value
-  } else if life_event_line_syntax(cursor, "destroy", Destroy) is Some(value) {
+  } else if life_event_line_syntax(cursor, "destroy", @seq.Destroy)
+    is Some(value) {
     value
   } else if divider_line_syntax(cursor) is Some(value) {
     value

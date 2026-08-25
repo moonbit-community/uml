@@ -1,12 +1,12 @@
 ///|
 fn append_arrow_head(
   output : StringBuilder,
-  head : ArrowHead,
+  head : @seq.ArrowHead,
   x : Int,
   y : Int,
 ) -> Unit {
   match head {
-    CrossX => {
+    @seq.CrossX => {
       append_line(output, x - 5, y - 5, x + 5, y + 5, "cross")
       append_line(output, x - 5, y + 5, x + 5, y - 5, "cross")
     }
@@ -17,37 +17,37 @@ fn append_arrow_head(
 ///|
 fn append_partial_arrow_head(
   output : StringBuilder,
-  head : ArrowHead,
-  part : ArrowPart,
+  head : @seq.ArrowHead,
+  part : @seq.ArrowPart,
   x : Int,
   y : Int,
   points_right : Bool,
 ) -> Unit {
   match head {
-    Normal => {
+    @seq.Normal => {
       let base = if points_right { x - 10 } else { x + 10 }
       let path = match part {
-        TopPart => "M\{base} \{y - 4}L\{x} \{y}L\{base} \{y}Z"
-        BottomPart => "M\{base} \{y}L\{x} \{y}L\{base} \{y + 4}Z"
-        Full => ""
+        @seq.TopPart => "M\{base} \{y - 4}L\{x} \{y}L\{base} \{y}Z"
+        @seq.BottomPart => "M\{base} \{y}L\{x} \{y}L\{base} \{y + 4}Z"
+        @seq.Full => ""
       }
-      if part is TopPart || part is BottomPart {
+      if part is @seq.TopPart || part is @seq.BottomPart {
         output <+
           $|<path d="\{path}" class="partial-arrow"/>
       }
     }
-    Async => {
+    @seq.Async => {
       let base = if points_right { x - 10 } else { x + 10 }
       match part {
-        TopPart => {
+        @seq.TopPart => {
           append_line(output, base, y - 4, x, y, "partial-arrow")
           append_line(output, x, y, base, y, "partial-arrow")
         }
-        BottomPart => {
+        @seq.BottomPart => {
           append_line(output, base, y, x, y, "partial-arrow")
           append_line(output, x, y, base, y + 4, "partial-arrow")
         }
-        Full => ()
+        @seq.Full => ()
       }
     }
     _ => ()
@@ -64,13 +64,13 @@ fn message_label_x(from : ParticipantLayout, to : ParticipantLayout) -> Int {
 }
 
 ///|
-fn ArrowHead::marker(self : ArrowHead, start : Bool) -> String {
+fn @seq.ArrowHead::marker(self : @seq.ArrowHead, start : Bool) -> String {
   match (self, start) {
-    (Normal, true) => " marker-start=\"url(#arrow-start)\""
-    (Normal, false) => " marker-end=\"url(#arrow)\""
-    (Async, true) => " marker-start=\"url(#open-arrow-start)\""
-    (Async, false) => " marker-end=\"url(#open-arrow)\""
-    (CrossX | NoneHead, _) => ""
+    (@seq.Normal, true) => " marker-start=\"url(#arrow-start)\""
+    (@seq.Normal, false) => " marker-end=\"url(#arrow)\""
+    (@seq.Async, true) => " marker-start=\"url(#open-arrow-start)\""
+    (@seq.Async, false) => " marker-end=\"url(#open-arrow)\""
+    (@seq.CrossX | @seq.NoneHead, _) => ""
   }
 }
 
@@ -85,7 +85,7 @@ fn link_url(own : String?, note : String?) -> String? {
 fn append_message(
   output : StringBuilder,
   layout : DiagramLayout,
-  message : Message,
+  message : @seq.Message,
   placement : EventPlacement,
   note_url : String?,
 ) -> Unit {
@@ -102,7 +102,11 @@ fn append_message(
   }
   let y = placement.y + MESSAGE_ARROW_OFFSET
   let label = message.rendered_label(placement.number)
-  let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
+  let dotted = if message.arrow_config.body is @seq.Dotted {
+    " dotted"
+  } else {
+    ""
+  }
   let line_class = "message\{dotted}"
   let start_y = y
   let end_y = y
@@ -113,8 +117,8 @@ fn append_message(
   if from.participant.code == to.participant.code {
     let loop_x = from.center_x + 34
     let end_marker = match message.arrow_config.part {
-      Full => message.arrow_config.head2.marker(false)
-      TopPart | BottomPart => ""
+      @seq.Full => message.arrow_config.head2.marker(false)
+      @seq.TopPart | @seq.BottomPart => ""
     }
     output <+
       $|<path d="M\{from.center_x} \{start_y}h34v22h-34" class="\{line_class}"\{end_marker}/>
@@ -141,8 +145,8 @@ fn append_message(
     let start_x = from.center_x
     let end_x = to.center_x
     let end_marker = match message.arrow_config.part {
-      Full => message.arrow_config.head2.marker(false)
-      TopPart | BottomPart => ""
+      @seq.Full => message.arrow_config.head2.marker(false)
+      @seq.TopPart | @seq.BottomPart => ""
     }
     output <+
       $|<line x1="\{start_x}" y1="\{start_y}" x2="\{end_x}" y2="\{end_y}" class="\{line_class}"\{message.arrow_config.head1.marker(true)}\{end_marker}/>
@@ -176,7 +180,7 @@ fn append_message(
       $|<circle cx="\{to.center_x}" cy="\{end_y}" r="4" class="endpoint"/>
   }
   append_arrow_head(output, message.arrow_config.head1, from.center_x, start_y)
-  if message.arrow_config.part is Full {
+  if message.arrow_config.part is @seq.Full {
     append_arrow_head(output, message.arrow_config.head2, to.center_x, end_y)
   }
   if message.anchor is Some(_) {
@@ -191,7 +195,7 @@ fn append_message(
 fn append_exo_message(
   output : StringBuilder,
   layout : DiagramLayout,
-  message : MessageExo,
+  message : @seq.MessageExo,
   placement : EventPlacement,
   note_url : String?,
 ) -> Unit {
@@ -203,7 +207,7 @@ fn append_exo_message(
   }
   let y = placement.y + MESSAGE_ARROW_OFFSET
   let (outside_x, participant_x) = match message.exo_type {
-    FromLeft | ToLeft =>
+    @seq.FromLeft | @seq.ToLeft =>
       (
         if message.short_arrow {
           participant.center_x - 40
@@ -212,7 +216,7 @@ fn append_exo_message(
         },
         participant.center_x,
       )
-    FromRight | ToRight =>
+    @seq.FromRight | @seq.ToRight =>
       (
         if message.short_arrow {
           participant.center_x + 40
@@ -223,10 +227,14 @@ fn append_exo_message(
       )
   }
   let (start_x, end_x) = match message.exo_type {
-    FromLeft | FromRight => (outside_x, participant_x)
-    ToLeft | ToRight => (participant_x, outside_x)
+    @seq.FromLeft | @seq.FromRight => (outside_x, participant_x)
+    @seq.ToLeft | @seq.ToRight => (participant_x, outside_x)
   }
-  let dotted = if message.arrow_config.body is Dotted { " dotted" } else { "" }
+  let dotted = if message.arrow_config.body is @seq.Dotted {
+    " dotted"
+  } else {
+    ""
+  }
   output <+
     $|<line x1="\{start_x}" y1="\{y}" x2="\{end_x}" y2="\{y}" class="message\{dotted}"\{message.arrow_config.head1.marker(true)}\{message.arrow_config.head2.marker(false)}/>
   let raw_label = message.label.unwrap_or("")

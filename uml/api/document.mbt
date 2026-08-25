@@ -1,7 +1,7 @@
 ///|
 /// The parsed PlantUML document. Diagram-specific state stays in its own package.
 pub enum Diagram {
-  Sequence(@sequence.SequenceDiagram)
+  Sequence(@seq.SequenceDiagram)
   Activity(@activity.ActivityDiagram)
   Class(@entity.EntityDiagram)
   Object(@entity.EntityDiagram)
@@ -34,7 +34,7 @@ pub fn Diagram::render_svg(
   class_member_collapsible? : Bool = false,
 ) -> String raise {
   match self {
-    Sequence(diagram) => diagram.render_svg(color_scheme~)
+    Sequence(diagram) => @sequence.render_sequence_svg(diagram, color_scheme~)
     Activity(diagram) => diagram.render_svg(color_scheme~)
     Class(diagram)
     | Object(diagram)

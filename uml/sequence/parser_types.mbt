@@ -6,7 +6,7 @@ priv struct PartRef {
 
 ///|
 priv struct ParticipantDecl {
-  typ : ParticipantType
+  typ : @seq.ParticipantType
   reference : PartRef
   created : Bool
   color : String?
@@ -15,20 +15,11 @@ priv struct ParticipantDecl {
 }
 
 ///|
-priv struct DressingResult {
-  head : ArrowHead
-  circle : Bool
-  cross : Bool
-  has_dir : Bool
-  part : ArrowPart
-}
-
-///|
 priv struct ParseCtx {
   source : @parse.Cursor
-  participants : Map[String, Participant]
-  events : Array[Event]
-  box_stack : Array[ParticipantBox]
+  participants : Map[String, @seq.Participant]
+  events : Array[@seq.Event]
+  box_stack : Array[@seq.ParticipantBox]
   mut grouping_depth : Int
   mut pending_create : String?
   activating_messages : Array[String]
@@ -58,7 +49,7 @@ fn ParseCtx::ensure_participant(
   self : ParseCtx,
   code : String,
   display : String,
-  typ : ParticipantType,
+  typ : @seq.ParticipantType,
 ) -> Unit {
   guard !self.participants.contains(code) else { return }
   self.participants[code] = {
@@ -107,41 +98,50 @@ fn ParseCtx::declare_participant(
     boxes: self.box_stack.copy(),
   }
   if declaration.created {
-    self.events.push(Create)
+    self.events.push(@seq.Create)
     self.pending_create = Some(reference.code)
   }
 }
 
 ///|
-fn ParseCtx::register_event(self : ParseCtx, event : Event) -> Unit {
+fn ParseCtx::register_event(self : ParseCtx, event : @seq.Event) -> Unit {
   match event {
-    Message(message) => {
-      self.ensure_participant(message.from_code, message.from_code, Participant)
-      self.ensure_participant(message.to_code, message.to_code, Participant)
+    @seq.Message(message) => {
+      self.ensure_participant(
+        message.from_code,
+        message.from_code,
+        @seq.Participant,
+      )
+      self.ensure_participant(
+        message.to_code,
+        message.to_code,
+        @seq.Participant,
+      )
     }
-    MessageExo(message) =>
+    @seq.MessageExo(message) =>
       self.ensure_participant(
         message.participant_code,
         message.participant_code,
-        Participant,
+        @seq.Participant,
       )
-    Note(note) =>
+    @seq.Note(note) =>
       note.participant_codes.each(code => {
-        self.ensure_participant(code, code, Participant)
+        self.ensure_participant(code, code, @seq.Participant)
       })
-    LifeEvent(life) =>
+    @seq.LifeEvent(life) =>
       self.ensure_participant(
         life.participant_code,
         life.participant_code,
-        Participant,
+        @seq.Participant,
       )
-    Url(code, url) => {
-      self.ensure_participant(code, code, Participant)
+    @seq.Url(code, url) => {
+      self.ensure_participant(code, code, @seq.Participant)
       let participant = self.participants[code]
       self.participants[code] = { ..participant, url: Some(url) }
     }
-    BoxStart(box) => self.box_stack.push({ label: box.label, color: box.color })
-    BoxEnd => {
+    @seq.BoxStart(box) =>
+      self.box_stack.push({ label: box.label, color: box.color })
+    @seq.BoxEnd => {
       let _ = self.box_stack.pop()
       ()
     }
@@ -160,18 +160,19 @@ fn ParseCtx::ensure_no_pending_create(
 ///|
 fn ParseCtx::validate_event(
   self : ParseCtx,
-  event : Event,
+  event : @seq.Event,
 ) -> Unit raise @parse.ParseError {
   if self.pending_create is Some(code) {
     match event {
-      Message(message) if message.to_code == code => self.pending_create = None
+      @seq.Message(message) if message.to_code == code =>
+        self.pending_create = None
       _ =>
         self.source.raise_parse_error("after create, send a message to \{code}")
     }
   }
   match event {
-    GroupingStart(_) => self.grouping_depth += 1
-    GroupingLeaf(leaf) => {
+    @seq.GroupingStart(_) => self.grouping_depth += 1
+    @seq.GroupingLeaf(leaf) => {
       guard self.grouping_depth > 0 else {
         self.source.raise_parse_error("group leaf without a group")
       }
@@ -179,7 +180,7 @@ fn ParseCtx::validate_event(
         self.grouping_depth -= 1
       }
     }
-    BoxEnd => {
+    @seq.BoxEnd => {
       guard !self.box_stack.is_empty() else {
         self.source.raise_parse_error("end box without a box")
       }
@@ -194,17 +195,18 @@ fn ParseCtx::validate_event(
 /// the second participant, `--`/`!!` act on the first one.
 fn ParseCtx::apply_message_activation(
   self : ParseCtx,
-  spec : ActivationSpec?,
-  message : Message,
+  spec : @seq.ActivationSpec?,
+  message : @seq.Message,
 ) -> Unit {
   let participant = match spec {
-    Some(Activate) | Some(Create) => message.to_code
-    Some(Deactivate) | Some(Destroy) => message.from_code
+    Some(@seq.Activate) | Some(@seq.Create) => message.to_code
+    Some(@seq.Deactivate) | Some(@seq.Destroy) => message.from_code
     None => return
   }
   match spec {
-    Some(Activate) | Some(Create) => self.activating_messages.push(participant)
-    Some(Deactivate) | Some(Destroy) =>
+    Some(@seq.Activate) | Some(@seq.Create) =>
+      self.activating_messages.push(participant)
+    Some(@seq.Deactivate) | Some(@seq.Destroy) =>
       if self.activating_messages
         .last()
         .map_or(false, code => code == participant) {
@@ -217,14 +219,18 @@ fn ParseCtx::apply_message_activation(
 ///|
 fn ParseCtx::resolve_event(
   self : ParseCtx,
-  event : Event,
-) -> Event raise @parse.ParseError {
+  event : @seq.Event,
+) -> @seq.Event raise @parse.ParseError {
   match event {
-    DeactivateLatest =>
+    @seq.DeactivateLatest =>
       match self.activating_messages.last() {
         Some(participant_code) => {
           let _ = self.activating_messages.pop()
-          LifeEvent({ participant_code, event_type: Deactivate, color: None })
+          @seq.LifeEvent({
+            participant_code,
+            event_type: @seq.Deactivate,
+            color: None,
+          })
         }
         None => {
           let diagnostic = self.source.diagnostic("nothing to deactivate")
@@ -238,21 +244,21 @@ fn ParseCtx::resolve_event(
 ///|
 fn ParseCtx::push_event(
   self : ParseCtx,
-  event : Event,
+  event : @seq.Event,
 ) -> Unit raise @parse.ParseError {
   let event = self.resolve_event(event)
   self.validate_event(event)
   self.register_event(event)
   self.events.push(event)
   match event {
-    Message(message) => {
+    @seq.Message(message) => {
       self.last_message_from = Some(message.from_code)
       self.last_message_to = Some(message.to_code)
       self.apply_message_activation(message.activation_spec, message)
       self.apply_message_activation(message.activation_spec2, message)
     }
-    LifeEvent(life) => {
-      if life.event_type is Activate &&
+    @seq.LifeEvent(life) => {
+      if life.event_type is @seq.Activate &&
         (
           self.last_message_from.map_or(false, code => {
             code == life.participant_code
@@ -263,7 +269,7 @@ fn ParseCtx::push_event(
         ) {
         self.activating_messages.push(life.participant_code)
       }
-      if life.event_type is Deactivate || life.event_type is Destroy {
+      if life.event_type is @seq.Deactivate || life.event_type is @seq.Destroy {
         if self.activating_messages
           .last()
           .map_or(false, code => code == life.participant_code) {
@@ -290,6 +296,6 @@ fn is_ident_char(char : Char) -> Bool {
 }
 
 ///|
-fn ArrowHead::has_direction(self : ArrowHead) -> Bool {
-  !(self is NoneHead)
+fn @seq.ArrowHead::has_direction(self : @seq.ArrowHead) -> Bool {
+  !(self is @seq.NoneHead)
 }

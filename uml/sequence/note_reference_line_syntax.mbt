@@ -7,8 +7,8 @@ priv enum SequenceTextSyntax {
 ///|
 priv struct NoteLineSyntax {
   participant_codes : Array[String]
-  position : NotePosition
-  note_style : NoteStyle
+  position : @seq.NotePosition
+  note_style : @seq.NoteStyle
   on_arrow : Bool
   color : String?
   text : SequenceTextSyntax
@@ -26,11 +26,11 @@ priv struct ReferenceLineSyntax {
 
 ///|
 fn parsed_note_position(
-  position : NotePosition,
+  position : @seq.NotePosition,
   participants : Array[String],
-) -> NotePosition {
-  if position is Over && participants.length() > 1 {
-    OverSeveral
+) -> @seq.NotePosition {
+  if position is @seq.Over && participants.length() > 1 {
+    @seq.OverSeveral
   } else {
     position
   }
@@ -38,13 +38,13 @@ fn parsed_note_position(
 
 ///|
 /// Matches a note style keyword.
-fn note_style(cursor : @parse.Cursor) -> NoteStyle? {
+fn note_style(cursor : @parse.Cursor) -> @seq.NoteStyle? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
-    "note" => Some(NodeNormal)
-    "hnote" => Some(Hexagonal)
-    "rnote" => Some(Box)
+    "note" => Some(@seq.NodeNormal)
+    "hnote" => Some(@seq.Hexagonal)
+    "rnote" => Some(@seq.Box)
     _ => None
   }
   guard result is Some(_) else {
@@ -58,17 +58,17 @@ fn note_style(cursor : @parse.Cursor) -> NoteStyle? {
 /// Matches a note position keyword, returning the position and the matched
 /// word. `accross` is accepted and reported like Java's regex, then rejected
 /// at execution time with an explicit error.
-fn note_position(cursor : @parse.Cursor) -> (NotePosition, String)? {
+fn note_position(cursor : @parse.Cursor) -> (@seq.NotePosition, String)? {
   let start = cursor.offset()
   let word = take_ident(cursor)
   let result = match word.to_lower() {
-    "left" => Some((Left, word))
-    "right" => Some((Right, word))
-    "bottom" => Some((Bottom, word))
-    "top" => Some((Top, word))
-    "over" => Some((Over, word))
-    "across" => Some((Across, word))
-    "accross" => Some((Across, word))
+    "left" => Some((@seq.Left, word))
+    "right" => Some((@seq.Right, word))
+    "bottom" => Some((@seq.Bottom, word))
+    "top" => Some((@seq.Top, word))
+    "over" => Some((@seq.Over, word))
+    "across" => Some((@seq.Across, word))
+    "accross" => Some((@seq.Across, word))
     _ => None
   }
   guard result is Some(_) else {
@@ -204,8 +204,8 @@ fn note_tail(
 ///|
 fn note_on_arrow_tail(
   cursor : @parse.Cursor,
-  position : NotePosition,
-  note_style : NoteStyle,
+  position : @seq.NotePosition,
+  note_style : @seq.NoteStyle,
   stereotype : String?,
 ) -> NoteLineSyntax? {
   let (stereotype, color, url, text) = note_tail(cursor, stereotype)
@@ -226,8 +226,8 @@ fn note_on_arrow_tail(
 ///|
 fn participant_note_tail(
   cursor : @parse.Cursor,
-  position : NotePosition,
-  note_style : NoteStyle,
+  position : @seq.NotePosition,
+  note_style : @seq.NoteStyle,
   require_of : Bool,
   stereotype : String?,
 ) -> NoteLineSyntax? {
@@ -252,8 +252,8 @@ fn participant_note_tail(
     }
     Some(participant_codes) => {
       let valid = match position {
-        Left | Right => participant_codes.length() == 1
-        Over =>
+        @seq.Left | @seq.Right => participant_codes.length() == 1
+        @seq.Over =>
           participant_codes.length() >= 1 && participant_codes.length() <= 2
         _ => false
       }
@@ -355,14 +355,14 @@ fn across_tail_continues(cursor : @parse.Cursor) -> Bool {
 /// consumes its own spaces.
 fn across_note_tail(
   cursor : @parse.Cursor,
-  note_style : NoteStyle,
+  note_style : @seq.NoteStyle,
   stereotype : String?,
   misspelled_across : Bool,
 ) -> NoteLineSyntax? {
   let (stereotype, color, url, text) = note_tail(cursor, stereotype)
   Some({
     participant_codes: [],
-    position: Across,
+    position: @seq.Across,
     note_style,
     on_arrow: false,
     color,
@@ -399,10 +399,10 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
           None
         }
         Some((position, word)) => {
-          let misspelled_across = position is Across &&
+          let misspelled_across = position is @seq.Across &&
             word.to_lower() == "accross"
           let syntax = match position {
-            Top | Bottom => {
+            @seq.Top | @seq.Bottom => {
               guard !parallel else {
                 ignore(cursor.restore(start))
                 return None
@@ -410,7 +410,7 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
               cursor.skip_inline_spaces()
               note_on_arrow_tail(cursor, position, note_style, stereotype)
             }
-            Left | Right => {
+            @seq.Left | @seq.Right => {
               cursor.skip_inline_spaces()
               let saved = cursor.offset()
               match
@@ -430,13 +430,13 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
                 }
               }
             }
-            Over => {
+            @seq.Over => {
               cursor.skip_inline_spaces()
               participant_note_tail(
                 cursor, position, note_style, false, stereotype,
               )
             }
-            Across => {
+            @seq.Across => {
               guard !parallel else {
                 ignore(cursor.restore(start))
                 return None
@@ -445,7 +445,7 @@ fn note_line_syntax(cursor : @parse.Cursor) -> NoteLineSyntax? {
                 cursor, note_style, stereotype, misspelled_across,
               )
             }
-            OverSeveral => None
+            @seq.OverSeveral => None
           }
           match syntax {
             Some(value) => {
