@@ -54,8 +54,8 @@ fn has_mbti_marker(line : String) -> Bool {
 pub fn parse(
   input : String,
   standalone_alias? : Bool = false,
-  options? : MbtiOptions = MbtiOptions::default(),
-) -> MbtiDiagram raise @parse.ParseError {
+  options? : @entity.MbtiOptions = @entity.MbtiOptions::default(),
+) -> @entity.MbtiDiagram raise @parse.ParseError {
   match mbti_body(input) {
     None => raise @parse.SyntaxError(1, "expected @startuml '.mbti")
     Some((body, body_line)) => {

@@ -10,7 +10,7 @@ pub enum Diagram {
   UseCase(@entity.EntityDiagram)
   State(@flow.StateDiagram)
   Mindmap(@tree.MindmapDiagram)
-  Mbti(@mbti.MbtiDiagram)
+  Mbti(@entity.MbtiDiagram)
   Json(@structured.StructuredDiagram)
   Yaml(@structured.StructuredDiagram)
   Toml(@structured.StructuredDiagram)
@@ -41,11 +41,19 @@ pub fn Diagram::render_svg(
     | Component(diagram)
     | UseCase(diagram)
     | Deployment(diagram) =>
-      diagram.render_svg(color_scheme~, class_member_collapsible~)
+      @entity_family.render_entity_svg(
+        diagram,
+        color_scheme~,
+        class_member_collapsible~,
+      )
     State(diagram) => @state.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @mindmap.render_mindmap_svg(diagram, color_scheme~)
     Mbti(diagram) =>
-      diagram.render_svg(color_scheme~, class_member_collapsible~)
+      @entity_family.render_mbti_svg(
+        diagram,
+        color_scheme~,
+        class_member_collapsible~,
+      )
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
       diagram.render_svg(color_scheme~)
     Dot(diagram) => diagram.render_svg()
@@ -100,28 +108,32 @@ pub fn parse(source : String) -> Document raise {
       match family {
         ClassDiagram =>
           {
-            diagram: Class(@entity.parse(source, family=@entity.ClassDiagram)),
+            diagram: Class(
+              @entity_family.parse(source, family=@entity.ClassDiagram),
+            ),
           }
         ObjectDiagram =>
           {
-            diagram: Object(@entity.parse(source, family=@entity.ObjectDiagram)),
+            diagram: Object(
+              @entity_family.parse(source, family=@entity.ObjectDiagram),
+            ),
           }
         ComponentDiagram =>
           {
             diagram: Component(
-              @entity.parse(source, family=@entity.ComponentDiagram),
+              @entity_family.parse(source, family=@entity.ComponentDiagram),
             ),
           }
         UseCaseDiagram =>
           {
             diagram: UseCase(
-              @entity.parse(source, family=@entity.UseCaseDiagram),
+              @entity_family.parse(source, family=@entity.UseCaseDiagram),
             ),
           }
         DeploymentDiagram =>
           {
             diagram: Deployment(
-              @entity.parse(source, family=@entity.DeploymentDiagram),
+              @entity_family.parse(source, family=@entity.DeploymentDiagram),
             ),
           }
         Mbti => raise @parse.SyntaxError(1, "unreachable mbti family")

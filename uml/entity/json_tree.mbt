@@ -31,7 +31,7 @@ pub extend JsonMember with Debug::{to_repr}
 
 ///|
 /// Inline text shown for a scalar value; compounds have no inline display.
-fn JsonNode::display(self : JsonNode) -> String {
+pub fn JsonNode::display(self : JsonNode) -> String {
   match self {
     JsonString(text) => text
     JsonNumber(repr) => repr
@@ -52,7 +52,7 @@ priv struct JsonTreeCursor {
 ///
 /// PlantUML's bundled parser accepts a plain value (scalar, array, object),
 /// rejects trailing commas and malformed input, and reports a stable error.
-fn parse_json_tree(source : String) -> JsonNode raise @parse.ParseError {
+pub fn parse_json_tree(source : String) -> JsonNode raise @parse.ParseError {
   let cursor = { chars: source.to_array(), index: 0, }
   cursor.skip_whitespace()
   guard cursor.index < cursor.chars.length() else {
@@ -67,7 +67,7 @@ fn parse_json_tree(source : String) -> JsonNode raise @parse.ParseError {
 }
 
 ///|
-fn[A] json_tree_error(message : String) -> A raise @parse.ParseError {
+pub fn[A] json_tree_error(message : String) -> A raise @parse.ParseError {
   raise @parse.SyntaxError(1, message)
 }
 

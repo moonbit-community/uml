@@ -128,7 +128,7 @@ pub extend Entity with Eq::{not_equal, equal}
 pub extend Entity with Debug::{to_repr}
 
 ///|
-pub struct MapEntry {
+pub(all) struct MapEntry {
   key : String
   value : String?
   link_target : String?
@@ -240,7 +240,7 @@ pub extend Relation with Eq::{not_equal, equal}
 pub extend Relation with Debug::{to_repr}
 
 ///|
-fn Relation::new(
+pub fn Relation::new(
   left : String,
   right : String,
   kind : RelationKind,
@@ -278,7 +278,7 @@ fn Relation::new(
 }
 
 ///|
-pub struct Package {
+pub(all) struct Package {
   name : String
   qualified_name : String
   display : String
@@ -329,7 +329,7 @@ pub extend NoteTargetKind with Eq::{not_equal, equal}
 pub extend NoteTargetKind with Debug::{to_repr}
 
 ///|
-pub struct Note {
+pub(all) struct Note {
   target : String
   position : NotePosition
   text : String
@@ -350,7 +350,7 @@ pub extend Note with Eq::{not_equal, equal}
 pub extend Note with Debug::{to_repr}
 
 ///|
-pub struct LinkConstraint {
+pub(all) struct LinkConstraint {
   first_relation : Int
   second_relation : Int
   text : String
@@ -421,7 +421,7 @@ pub extend EntityDiagram with Eq::{not_equal, equal}
 pub extend EntityDiagram with Debug::{to_repr}
 
 ///|
-priv struct Declaration {
+pub(all) struct Declaration {
   kind : EntityKind
   code : String
   display : String
@@ -439,7 +439,7 @@ priv struct Declaration {
 }
 
 ///|
-priv struct GroupDeclaration {
+pub(all) struct GroupDeclaration {
   code : String
   display : String
   is_namespace : Bool
@@ -452,7 +452,7 @@ priv struct GroupDeclaration {
 }
 
 ///|
-priv enum EntitySelector {
+pub(all) enum EntitySelector {
   AllEntities
   KindEntities(EntityKind)
   StereotypedEntities(String)
@@ -461,7 +461,7 @@ priv enum EntitySelector {
 }
 
 ///|
-priv enum EntityPortion {
+pub(all) enum EntityPortion {
   MemberPortion
   FieldPortion
   MethodPortion
@@ -470,7 +470,7 @@ priv enum EntityPortion {
 }
 
 ///|
-priv struct PortionRule {
+pub(all) struct PortionRule {
   selector : EntitySelector
   portion : EntityPortion
   show : Bool
@@ -480,7 +480,7 @@ priv struct PortionRule {
 }
 
 ///|
-priv enum EntityAction {
+pub(all) enum EntityAction {
   HideEntity
   ShowEntity
   RemoveEntity
@@ -488,7 +488,7 @@ priv enum EntityAction {
 }
 
 ///|
-priv struct EntityRule {
+pub(all) struct EntityRule {
   selector : EntitySelector
   action : EntityAction
 }

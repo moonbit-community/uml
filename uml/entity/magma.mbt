@@ -62,7 +62,7 @@ fn EntityFamily::applies_magma_grid(self : EntityFamily) -> Bool {
 /// `CucaDiagram.isStandalone`: the entity participates in no link. PlantUML
 /// creates real links for notes attached to an entity, so an annotated entity
 /// is not standalone either.
-fn EntityDiagram::is_grid_standalone(
+pub fn EntityDiagram::is_grid_standalone(
   self : EntityDiagram,
   code : String,
 ) -> Bool {
@@ -82,7 +82,7 @@ fn EntityDiagram::is_grid_standalone(
 
 ///|
 /// The parent scope of a package scope, `None` for the root.
-fn EntityDiagram::package_parent(
+pub fn EntityDiagram::package_parent(
   self : EntityDiagram,
   scope : String,
 ) -> String? {
@@ -95,7 +95,10 @@ fn EntityDiagram::package_parent(
 }
 
 ///|
-fn EntityDiagram::find_package(self : EntityDiagram, code : String) -> Package? {
+pub fn EntityDiagram::find_package(
+  self : EntityDiagram,
+  code : String,
+) -> Package? {
   for group in self.packages {
     if group.qualified_name == code {
       return Some(group)

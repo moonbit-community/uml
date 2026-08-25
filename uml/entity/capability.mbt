@@ -2,7 +2,7 @@
 /// Entity nodes are painted relative to relations in different orders across
 /// PlantUML diagram families. Description/use-case diagrams put their symbols
 /// down first, while class-like diagrams put relation paths behind the nodes.
-priv enum EntityPaintOrder {
+pub(all) enum EntityPaintOrder {
   EntitiesBeforeRelations
   RelationsBeforeEntities
 }
@@ -13,7 +13,7 @@ priv enum EntityPaintOrder {
 /// Node image selection intentionally lives in `EntityRenderCapability`: the
 /// Java `GeneralImageBuilder` chooses an image from `LeafType`, even when that
 /// leaf appears in a mixed-family source.
-priv struct EntityFamilyCapability {
+pub(all) struct EntityFamilyCapability {
   parser_allow_mixing : Bool
   unclosed_body_message : String
   aria_label : String
@@ -30,7 +30,7 @@ priv struct EntityFamilyCapability {
 }
 
 ///|
-fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
+pub fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
   match self {
     ClassDiagram =>
       {
@@ -108,7 +108,7 @@ fn EntityFamily::capability(self : EntityFamily) -> EntityFamilyCapability {
 }
 
 ///|
-priv enum EntityRendererKind {
+pub(all) enum EntityRendererKind {
   ClassRenderer
   ObjectRenderer
   MapRenderer
@@ -123,7 +123,7 @@ priv enum EntityRendererKind {
 }
 
 ///|
-priv enum EntityHeaderCapability {
+pub(all) enum EntityHeaderCapability {
   ClassHeader
   ObjectHeader
   DescriptionHeader
@@ -133,7 +133,7 @@ priv enum EntityHeaderCapability {
 /// The body variant also fixes the AST field that later renderers consume.
 /// Renderers must not parse `Member.raw`, `MapEntry.raw`, or `json_data` again
 /// to rediscover a different private model.
-priv enum EntityBodyCapability {
+pub(all) enum EntityBodyCapability {
   ClassCompartments
   OrderedMembers
   MapEntries
@@ -142,7 +142,7 @@ priv enum EntityBodyCapability {
 }
 
 ///|
-priv enum EntityPortCapability {
+pub(all) enum EntityPortCapability {
   MemberPorts
   MapEntryPorts
   JsonTreePorts
@@ -150,20 +150,20 @@ priv enum EntityPortCapability {
 }
 
 ///|
-priv enum EntitySpotCapability {
+pub(all) enum EntitySpotCapability {
   ClassSpot
   NoSpot
 }
 
 ///|
-priv enum EntityRelationEndpointCapability {
+pub(all) enum EntityRelationEndpointCapability {
   CenterEndpoint
   ShapeBoundaryEndpoint
   PortOrShapeBoundaryEndpoint
 }
 
 ///|
-priv enum EntityStyleRole {
+pub(all) enum EntityStyleRole {
   ClassStyle
   ObjectStyle
   MapStyle
@@ -177,7 +177,7 @@ priv enum EntityStyleRole {
 
 ///|
 /// The single image contract consumed by metrics, Graphviz and SVG painting.
-priv struct EntityRenderCapability {
+pub(all) struct EntityRenderCapability {
   renderer : EntityRendererKind
   header : EntityHeaderCapability
   body : EntityBodyCapability
@@ -195,7 +195,7 @@ priv struct EntityRenderCapability {
 /// use-case, actor, and component forms). Kind selection is the only
 /// difference between description and class parsing: the Java description
 /// factory rejects every other declaration without an `allowmixing` fallback.
-fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
+pub fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
   self
   is (Person
   | Artifact
@@ -240,7 +240,7 @@ fn EntityKind::is_description_kind(self : EntityKind) -> Bool {
 /// across families: the class factory parses them as class-like leaves, while
 /// the description factories (component, deployment, use-case) produce a
 /// `DESCRIPTION` leaf with the corresponding symbol.
-fn EntityKind::render_capability(
+pub fn EntityKind::render_capability(
   self : EntityKind,
   family : EntityFamily,
 ) -> EntityRenderCapability {
@@ -438,7 +438,7 @@ fn EntityKind::render_capability(
 }
 
 ///|
-fn Entity::render_capability(
+pub fn Entity::render_capability(
   self : Entity,
   family : EntityFamily,
 ) -> EntityRenderCapability {
@@ -446,7 +446,9 @@ fn Entity::render_capability(
 }
 
 ///|
-fn EntityRenderCapability::node_class(self : EntityRenderCapability) -> String {
+pub fn EntityRenderCapability::node_class(
+  self : EntityRenderCapability,
+) -> String {
   match self.style_role {
     ClassStyle => "class-node"
     ObjectStyle => "object-node"
@@ -461,7 +463,9 @@ fn EntityRenderCapability::node_class(self : EntityRenderCapability) -> String {
 }
 
 ///|
-fn EntityRenderCapability::title_class(self : EntityRenderCapability) -> String {
+pub fn EntityRenderCapability::title_class(
+  self : EntityRenderCapability,
+) -> String {
   match self.style_role {
     ObjectStyle => "object-title"
     MapStyle => "map-title"
@@ -473,7 +477,7 @@ fn EntityRenderCapability::title_class(self : EntityRenderCapability) -> String 
 }
 
 ///|
-fn EntityRenderCapability::stereotype_class(
+pub fn EntityRenderCapability::stereotype_class(
   self : EntityRenderCapability,
 ) -> String {
   match self.style_role {
@@ -487,7 +491,7 @@ fn EntityRenderCapability::stereotype_class(
 }
 
 ///|
-fn EntityRenderCapability::graphviz_shape(
+pub fn EntityRenderCapability::graphviz_shape(
   self : EntityRenderCapability,
 ) -> String {
   match (self.shape, self.ports) {
@@ -499,4 +503,14 @@ fn EntityRenderCapability::graphviz_shape(
     (InterfaceCircle, _) => "box"
     (Hexagon, _) => "hexagon"
   }
+}
+
+///|
+/// The geometric shape of an entity node, selected by its family and kind.
+pub(all) enum NodeShape {
+  Box
+  Ellipse
+  Circle
+  InterfaceCircle
+  Hexagon
 }

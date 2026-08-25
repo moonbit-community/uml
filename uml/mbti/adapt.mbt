@@ -12,8 +12,8 @@
 fn adapt(
   mbti : @mbti_ast.Mbti,
   standalone_alias : Bool,
-  options : MbtiOptions,
-) -> MbtiDiagram {
+  options : @entity.MbtiOptions,
+) -> @entity.MbtiDiagram {
   let adapter = Adapter::new(options)
   mbti.sigs.each(sig => {
     match sig.0 {
@@ -57,11 +57,11 @@ priv struct Adapter {
   entities : Array[@entity.Entity]
   entity_indices : Map[String, Int]
   relations : Array[@entity.Relation]
-  options : MbtiOptions
+  options : @entity.MbtiOptions
 }
 
 ///|
-fn Adapter::new(options : MbtiOptions) -> Adapter {
+fn Adapter::new(options : @entity.MbtiOptions) -> Adapter {
   { entities: [], entity_indices: Map([]), relations: [], options, }
 }
 
