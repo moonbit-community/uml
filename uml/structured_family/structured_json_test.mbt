@@ -1,6 +1,8 @@
 ///|
 test "parses an object into PlantUML record rows in document order" {
-  let diagram = parse_json("{\"z\":true,\"user\":{\"name\":\"Ada\"}}")
+  let diagram = @parser.parse_structured_json(
+    "{\"z\":true,\"user\":{\"name\":\"Ada\"}}",
+  )
   @test.assert_eq(diagram.format, @structured.Json)
   @test.assert_eq(diagram.root.kind, Object)
   @test.assert_eq(diagram.root.rows[0].key, Some("z"))
@@ -10,7 +12,7 @@ test "parses an object into PlantUML record rows in document order" {
 
 ///|
 test "structured renderer derives its label from the diagram format" {
-  let diagram = parse_json("{\"value\":1}")
+  let diagram = @parser.parse_structured_json("{\"value\":1}")
   @test.assert_eq(
     render_structured_svg(diagram),
     render_structured_svg(diagram),
@@ -19,7 +21,7 @@ test "structured renderer derives its label from the diagram format" {
 
 ///|
 test "uses builtin JSON scalar display" {
-  let diagram = parse_json(
+  let diagram = @parser.parse_structured_json(
     "{\"enabled\":true,\"missing\":null,\"number\":6.02e23}",
   )
   @test.assert_eq(diagram.root.rows[0].value, @structured.True)
@@ -29,7 +31,7 @@ test "uses builtin JSON scalar display" {
 
 ///|
 test "renders empty compound values as linked empty records" {
-  let diagram = parse_json("{\"empty\":[]}")
+  let diagram = @parser.parse_structured_json("{\"empty\":[]}")
   @test.assert_eq(diagram.root.rows[0].value, @structured.Compound)
   @test.assert_eq(diagram.root.rows[0].child is Some(_), true)
 }

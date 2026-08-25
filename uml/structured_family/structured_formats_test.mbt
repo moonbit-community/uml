@@ -10,7 +10,7 @@ fn svg_height(svg : String) -> Int {
 
 ///|
 test "YAML preserves scalar kinds and nested mapping structure" {
-  let diagram = parse_yaml(
+  let diagram = @parser.parse_structured_yaml(
     (
       #|@startyaml
       #|version: 9223372036854775807
@@ -35,7 +35,7 @@ test "YAML preserves scalar kinds and nested mapping structure" {
 
 ///|
 test "TOML tables arrays and datetimes use the shared structure renderer" {
-  let diagram = parse_toml(
+  let diagram = @parser.parse_structured_toml(
     (
       #|@starttoml
       #|title = "service"
@@ -67,7 +67,7 @@ test "TOML tables arrays and datetimes use the shared structure renderer" {
 
 ///|
 test "YAML block scalars render as multiline record cells" {
-  let diagram = parse_yaml(
+  let diagram = @parser.parse_structured_yaml(
     (
       #|@startyaml
       #|notes: |
@@ -79,7 +79,7 @@ test "YAML block scalars render as multiline record cells" {
   )
   let svg = render_structured_svg(diagram)
   let single_line_svg = render_structured_svg(
-    parse_yaml(
+    @parser.parse_structured_yaml(
       (
         #|@startyaml
         #|notes: first line
@@ -94,7 +94,7 @@ test "YAML block scalars render as multiline record cells" {
 
 ///|
 test "TOML multiline basic strings render as multiline record cells" {
-  let diagram = parse_toml(
+  let diagram = @parser.parse_structured_toml(
     (
       #|@starttoml
       #|multiline = """line one
@@ -109,7 +109,7 @@ test "TOML multiline basic strings render as multiline record cells" {
   )
   let svg = render_structured_svg(diagram)
   let single_line_svg = render_structured_svg(
-    parse_toml(
+    @parser.parse_structured_toml(
       (
         #|@starttoml
         #|multiline = "line one"

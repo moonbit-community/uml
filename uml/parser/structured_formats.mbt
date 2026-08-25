@@ -31,7 +31,7 @@ fn yaml_root(documents : Array[@yaml.Yaml]) -> @structured.StructuredNode {
 }
 
 ///|
-pub fn parse_yaml(
+pub fn parse_structured_yaml(
   input : String,
 ) -> @structured.StructuredDiagram raise @yaml.YamlError {
   let source = source_between_markers(input, "@startyaml", "@endyaml")
@@ -70,7 +70,9 @@ fn toml_value_view(
 }
 
 ///|
-pub fn parse_toml(input : String) -> @structured.StructuredDiagram raise {
+pub fn parse_structured_toml(
+  input : String,
+) -> @structured.StructuredDiagram raise {
   let source = source_between_markers(input, "@starttoml", "@endtoml")
   {
     format: @structured.Toml,

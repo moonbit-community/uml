@@ -27,7 +27,7 @@ fn json_root(value : Json) -> @structured.StructuredNode {
 }
 
 ///|
-pub fn parse_json(
+pub fn parse_structured_json(
   input : String,
 ) -> @structured.StructuredDiagram raise @json.ParseError {
   let source = source_between_markers(input, "@startjson", "@endjson")

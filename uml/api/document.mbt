@@ -91,11 +91,11 @@ pub fn parse(source : String) -> Document raise {
     _ if @parser.is_mbti_source(source) =>
       { diagram: Mbti(@parser.parse_mbti(source)), }
     _ if is_json_source(source) =>
-      { diagram: Json(@structured_family.parse_json(source)), }
+      { diagram: Json(@parser.parse_structured_json(source)), }
     _ if is_yaml_source(source) =>
-      { diagram: Yaml(@structured_family.parse_yaml(source)), }
+      { diagram: Yaml(@parser.parse_structured_yaml(source)), }
     _ if is_toml_source(source) =>
-      { diagram: Toml(@structured_family.parse_toml(source)), }
+      { diagram: Toml(@parser.parse_structured_toml(source)), }
     _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)), }
     _ if is_mindmap_source(source) =>
       { diagram: Mindmap(@parser.parse_mindmap(source)), }
