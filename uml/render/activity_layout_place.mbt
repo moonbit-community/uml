@@ -386,9 +386,10 @@ fn place_if_chain(
       metrics,
       small_metrics,
     )
-    let decision_size = branch.decision.map_or({ width: 0, height: 0, }, index => {
-      nodes[index].size(metrics, small_metrics)
-    })
+    let decision_size = branch.decision.map_or(
+      ({ width: 0, height: 0, } : TileMeasure),
+      index => nodes[index].size(metrics, small_metrics),
+    )
     let branch_width = body_size.width.max(decision_size.width)
     if branch.decision is Some(decision) {
       place_leaf(
@@ -475,9 +476,10 @@ fn measure_chain_width(
   let mut width = 0
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    let decision = branch.decision.map_or({ width: 0, height: 0, }, index => {
-      nodes[index].size(metrics, small_metrics)
-    })
+    let decision = branch.decision.map_or(
+      ({ width: 0, height: 0, } : TileMeasure),
+      index => nodes[index].size(metrics, small_metrics),
+    )
     if index > 0 {
       width += BRANCH_GAP
     }

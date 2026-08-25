@@ -35,7 +35,7 @@ pub fn Diagram::render_svg(
 ) -> String raise {
   match self {
     Sequence(diagram) => @render.render_sequence_svg(diagram, color_scheme~)
-    Activity(diagram) => @activity.render_activity_svg(diagram, color_scheme~)
+    Activity(diagram) => @render.render_activity_svg(diagram, color_scheme~)
     Class(diagram)
     | Object(diagram)
     | Component(diagram)

@@ -1,7 +1,9 @@
 import {
+  "moonbitlang/core/string",
   "moonbitlang/core/test",
   "kokic/uml/parser",
   "kokic/uml/metrics",
+  "kokic/uml/flow",
   "kokic/uml/seq",
   "kokic/uml/tree",
   "kokic/uml/style",

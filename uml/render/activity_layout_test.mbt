@@ -465,7 +465,7 @@ test "plain sequences are never compressed" {
   for node in layout.nodes {
     min_x = min_x.min(node.x)
   }
-  @test.assert_eq(min_x == @activity.CANVAS_LEFT, true)
+  @test.assert_eq(min_x == CANVAS_LEFT, true)
   let axis = one_x + one_right
   @test.assert_eq(two_x + two_right - axis <= 1, true)
   @test.assert_eq(three_x + three_right - axis <= 1, true)
