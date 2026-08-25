@@ -3,7 +3,7 @@ import {
   "kokic/uml/flow",
   "kokic/uml/entity",
   "kokic/uml/entity_family",
-  "kokic/uml/mindmap",
+  "kokic/uml/render",
   "kokic/uml/structured",
   "kokic/uml/structured_family",
   "kokic/uml/render",

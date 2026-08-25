@@ -8,7 +8,7 @@
 /// one edge (its parent -> child), and relations that lose the tree race are
 /// dropped instead of connecting nodes with extra beziers.
 priv struct MindmapClassLayout {
-  layout : @mindmap.MindmapLayout
+  layout : @render.MindmapLayout
   rects : Array[(Int, Int, Int, Int)]
   /// Tree edges from the packing.
   structure_edges : Array[MindmapClassEdge]
@@ -48,7 +48,7 @@ fn creates_cycle(parent : Array[Int?], source : Int, target : Int) -> Bool {
 /// its first relation. Exposed so callers can inspect the geometry.
 fn @entity.EntityDiagram::mindmap_layout(
   self : @entity.EntityDiagram,
-) -> @mindmap.MindmapLayout {
+) -> @render.MindmapLayout {
   let text_metrics = ClassTextMetrics::new(self.style)
   self.mindmap_class_layout(text_metrics).layout
 }
@@ -84,7 +84,7 @@ fn @entity.EntityDiagram::mindmap_class_layout(
     }
   }
   let roots : Array[Int] = []
-  let items : Array[@mindmap.LayoutItem] = []
+  let items : Array[@render.LayoutItem] = []
   for entity_index, entity in self.entities {
     let geometry = entity.node_geometry(text_metrics, self.family)
     items.push({
@@ -101,7 +101,7 @@ fn @entity.EntityDiagram::mindmap_class_layout(
       roots.push(entity_index)
     }
   }
-  let layout = @mindmap.layout_tree(items, roots)
+  let layout = @render.layout_tree(items, roots)
   let rects : Array[(Int, Int, Int, Int)] = Array::make(count, (0, 0, 0, 0))
   for node in layout.nodes {
     rects[node.idea_index] = (node.x, node.y, node.width, node.height)
@@ -252,6 +252,6 @@ fn append_mindmap_edge_state(
 /// The mindmap tree layout for a parsed entity diagram.
 pub fn mindmap_layout_entity(
   diagram : @entity.EntityDiagram,
-) -> @mindmap.MindmapLayout {
+) -> @render.MindmapLayout {
   diagram.mindmap_layout()
 }

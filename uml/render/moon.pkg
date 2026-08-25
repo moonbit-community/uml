@@ -3,6 +3,7 @@ import {
   "kokic/uml/parser",
   "kokic/uml/metrics",
   "kokic/uml/seq",
+  "kokic/uml/tree",
   "kokic/uml/style",
   "kokic/uml/svg",
   "kokic/uml/parse",
