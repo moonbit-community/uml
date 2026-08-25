@@ -14,11 +14,8 @@ pub(all) struct Magma {
 /// `SquareMaker.computeBranch`: the number of columns of the near-square grid.
 pub fn magma_branch(size : Int) -> Int {
   let r = size.to_double().sqrt().floor().to_int()
-  if r * r == size {
-    r
-  } else {
-    r + 1
-  }
+  guard r * r == size else { return r + 1 }
+  r
 }
 
 ///|
@@ -39,12 +36,12 @@ pub fn[T] put_in_square(
   let mut head_branch = 0
   for i in 1..<data.length() {
     let dist = i - head_branch
-    if dist == branch {
-      top_down(data[head_branch], data[i])
-      head_branch = i
-    } else {
+    guard dist == branch else {
       left_right(data[i - 1], data[i])
+      continue
     }
+    top_down(data[head_branch], data[i])
+    head_branch = i
   }
 }
 
@@ -66,18 +63,13 @@ pub fn EntityDiagram::is_grid_standalone(
   self : EntityDiagram,
   code : String,
 ) -> Bool {
-  for relation in self.relations {
-    if relation.left == code || relation.right == code {
-      return false
-    }
-  }
-  for note in self.notes {
-    if (note.target_kind is EntityNote || note.target_kind is MemberTip) &&
-      note.target == code {
-      return false
-    }
-  }
-  true
+  let touched = self.relations.any(
+    relation => relation.left == code || relation.right == code,
+  ) || self.notes.any(
+    note => (note.target_kind is EntityNote || note.target_kind is MemberTip) &&
+      note.target == code,
+  )
+  !touched
 }
 
 ///|
@@ -86,12 +78,10 @@ pub fn EntityDiagram::package_parent(
   self : EntityDiagram,
   scope : String,
 ) -> String? {
-  for group in self.packages {
-    if group.qualified_name == scope {
-      return Some(group.parent)
-    }
-  }
-  None
+  self.packages
+    .iter()
+    .find_first(group => group.qualified_name == scope)
+    .map(group => group.parent)
 }
 
 ///|
@@ -99,12 +89,7 @@ pub fn EntityDiagram::find_package(
   self : EntityDiagram,
   code : String,
 ) -> Package? {
-  for group in self.packages {
-    if group.qualified_name == code {
-      return Some(group)
-    }
-  }
-  None
+  self.packages.iter().find_first(group => group.qualified_name == code)
 }
 
 ///|
