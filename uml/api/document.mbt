@@ -41,7 +41,7 @@ pub fn Diagram::render_svg(
     | Component(diagram)
     | UseCase(diagram)
     | Deployment(diagram) =>
-      @entity_family.render_entity_svg(
+      @render.render_entity_svg(
         diagram,
         color_scheme~,
         class_member_collapsible~,
@@ -49,11 +49,7 @@ pub fn Diagram::render_svg(
     State(diagram) => @render.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @render.render_mindmap_svg(diagram, color_scheme~)
     Mbti(diagram) =>
-      @entity_family.render_mbti_svg(
-        diagram,
-        color_scheme~,
-        class_member_collapsible~,
-      )
+      @render.render_mbti_svg(diagram, color_scheme~, class_member_collapsible~)
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
       @structured_family.render_structured_svg(diagram, color_scheme~)
     Dot(diagram) => diagram.render_svg()
