@@ -9,8 +9,7 @@
   "mbti": [
     "01-geometry.uml",
     "02-flow.uml",
-    "04-entity.uml",
-    "05-activity.uml"
+    "04-entity.uml"
   ],
   "class": [
     "01-basic.uml",
