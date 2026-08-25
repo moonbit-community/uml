@@ -222,7 +222,7 @@ test "renders the adapted graph to svg" {
     #|}
     #|impl Eq for Point;
     #|@enduml
-  let svg = render_mbti_svg(@parser.parse_mbti(source)) catch {
+  let svg = @render.render_mbti_svg(@parser.parse_mbti(source)) catch {
     _ => @test.fail("svg rendering failed")
   }
   @test.assert_eq(svg.contains("<svg"), true)

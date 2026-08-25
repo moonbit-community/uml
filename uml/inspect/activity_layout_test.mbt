@@ -1,5 +1,8 @@
 ///|
-fn position_of(layout : ActivityLayout, node_index : Int) -> (Int, Int)? {
+fn position_of(
+  layout : @render.ActivityLayout,
+  node_index : Int,
+) -> (Int, Int)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
     return Some((node.x, node.y))
@@ -8,7 +11,7 @@ fn position_of(layout : ActivityLayout, node_index : Int) -> (Int, Int)? {
 }
 
 ///|
-fn action_index(layout : ActivityLayout, label : String) -> Int? {
+fn action_index(layout : @render.ActivityLayout, label : String) -> Int? {
   for index, node in layout.source_nodes {
     guard node is @flow.ActivityNode::Action(candidate) && candidate == label else {
       continue
@@ -20,7 +23,7 @@ fn action_index(layout : ActivityLayout, label : String) -> Int? {
 
 ///|
 fn anchor_index(
-  layout : ActivityLayout,
+  layout : @render.ActivityLayout,
   name : String,
   is_label : Bool,
 ) -> Int? {
@@ -43,7 +46,7 @@ fn anchor_index(
 }
 
 ///|
-fn control_index(layout : ActivityLayout, condition : String) -> Int? {
+fn control_index(layout : @render.ActivityLayout, condition : String) -> Int? {
   for index, node in layout.source_nodes {
     guard (node is @flow.ActivityNode::While(value) && value == condition) ||
       (node is @flow.ActivityNode::RepeatWhile(value) && value == condition) ||
@@ -57,10 +60,10 @@ fn control_index(layout : ActivityLayout, condition : String) -> Int? {
 
 ///|
 fn region_for(
-  layout : ActivityLayout,
-  kind : ActivityRegionKind,
+  layout : @render.ActivityLayout,
+  kind : @render.ActivityRegionKind,
   label : String,
-) -> ActivityRegionLayout? {
+) -> @render.ActivityRegionLayout? {
   for region in layout.regions {
     guard region.kind == kind && region.label == label else { continue }
     return Some(region)
@@ -70,7 +73,7 @@ fn region_for(
 
 ///|
 test "conditional branches are horizontal siblings and join at endif" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "if (ready?) then (yes)\n:Accept;\nelse (no)\n:Reject;\nendif\n:Continue;",
     ),
@@ -110,7 +113,7 @@ test "conditional branches are horizontal siblings and join at endif" {
 
 ///|
 test "parallel branches are horizontal and converge at the ending fork" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "fork\n:Build;\nfork again\n:Test;\nend fork\n:Ship;",
     ),
@@ -148,7 +151,7 @@ test "parallel branches are horizontal and converge at the ending fork" {
 
 ///|
 test "loops include a routed back edge" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity("while (more?)\n:Read;\nendwhile (done)\n:Finish;"),
   )
   @test.assert_eq(
@@ -161,7 +164,7 @@ test "loops include a routed back edge" {
 
 ///|
 test "loop labels remain attached to control-flow edges" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "while (more?) is (yes)\n:Read;\nendwhile (done)\nrepeat\n:Retry;\nrepeat while (failed?) is (again) not (sent)\n:Finish;",
     ),
@@ -174,7 +177,7 @@ test "loop labels remain attached to control-flow edges" {
 
 ///|
 test "while exits from its controlling decision rather than its loop body" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "while (more?) is (yes)\n:Read;\nendwhile (done)\n:Finish;",
     ),
@@ -200,7 +203,7 @@ test "while exits from its controlling decision rather than its loop body" {
     layout.edges.any(edge => {
       edge.from_node_index == while_decision &&
       edge.label == Some("done") &&
-      edge.route is ActivityEdgeRoute::WhileExitLeft
+      edge.route is @render.ActivityEdgeRoute::WhileExitLeft
     }),
     true,
   )
@@ -208,12 +211,12 @@ test "while exits from its controlling decision rather than its loop body" {
 
 ///|
 test "conditional and switch labels belong to incoming branch edges" {
-  let conditional = layout_activity(
+  let conditional = @render.layout_activity(
     @parser.parse_activity(
       "if (ready?) then (accept)\n:Accept;\nelse (reject)\n:Reject;\nendif",
     ),
   )
-  let switch_layout = layout_activity(
+  let switch_layout = @render.layout_activity(
     @parser.parse_activity(
       "switch (method)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\nendswitch",
     ),
@@ -238,7 +241,7 @@ test "conditional and switch labels belong to incoming branch edges" {
 
 ///|
 test "elseif decisions form a horizontal cascade" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "if (first?) then (yes)\n:First;\nelseif (second?) then (yes)\n:Second;\nelse (no)\n:Fallback;\nendif",
     ),
@@ -260,18 +263,19 @@ test "elseif decisions form a horizontal cascade" {
 
 ///|
 test "partitions and swimlanes contain their visible instructions" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "|Customer|\n:Submit;\n|Store|\npartition Fulfilment {\n:Validate;\n:Reserve;\n}\n|Customer|\n:Confirm;",
     ),
   )
-  guard region_for(layout, ActivityRegionKind::Partition, "Fulfilment")
+  guard region_for(layout, @render.ActivityRegionKind::Partition, "Fulfilment")
     is Some(partition) else {
     @test.fail("missing partition region")
   }
   @test.assert_eq(
     layout.regions.any(region => {
-      region.kind is ActivityRegionKind::Swimlane && region.label == "Customer"
+      region.kind is @render.ActivityRegionKind::Swimlane &&
+      region.label == "Customer"
     }),
     true,
   )
@@ -299,7 +303,7 @@ test "partitions and swimlanes contain their visible instructions" {
 
 ///|
 test "explicit arrow text labels the following visible edge" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(":Receive;\n-> validate input\n:Validate;"),
   )
   @test.assert_eq(
@@ -310,7 +314,7 @@ test "explicit arrow text labels the following visible edge" {
 
 ///|
 test "goto connects its anchor directly to the matching label anchor" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "label retry\n:Retry;\nif (again?) then (yes)\ngoto retry\nendif",
     ),
@@ -325,14 +329,14 @@ test "goto connects its anchor directly to the matching label anchor" {
     layout.edges.any(edge => {
       edge.from_node_index == goto_anchor &&
       edge.to_node_index == label_anchor &&
-      edge.route is ActivityEdgeRoute::Goto
+      edge.route is @render.ActivityEdgeRoute::Goto
     }),
     true,
   )
 }
 
 ///|
-fn fork_bar_index(layout : ActivityLayout) -> Int? {
+fn fork_bar_index(layout : @render.ActivityLayout) -> Int? {
   for index, node in layout.source_nodes {
     guard node is @flow.ActivityNode::Fork else { continue }
     return Some(index)
@@ -341,7 +345,7 @@ fn fork_bar_index(layout : ActivityLayout) -> Int? {
 }
 
 ///|
-fn box_extent(layout : ActivityLayout, node_index : Int) -> (Int, Int)? {
+fn box_extent(layout : @render.ActivityLayout, node_index : Int) -> (Int, Int)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
     return Some((node.x, node.x + node.width))
@@ -350,7 +354,7 @@ fn box_extent(layout : ActivityLayout, node_index : Int) -> (Int, Int)? {
 }
 
 ///|
-fn box_gap(layout : ActivityLayout, left : Int, right : Int) -> Int? {
+fn box_gap(layout : @render.ActivityLayout, left : Int, right : Int) -> Int? {
   guard box_extent(layout, left) is Some((_, left_right)) else { return None }
   guard box_extent(layout, right) is Some((right_x, _)) else { return None }
   Some(right_x - left_right)
@@ -358,7 +362,7 @@ fn box_gap(layout : ActivityLayout, left : Int, right : Int) -> Int? {
 
 ///|
 test "fork columns compress toward the bars when the gaps are empty" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity("fork\n:A;\nfork again\n:BB;\nend fork"),
   )
   guard fork_bar_index(layout) is Some(bar_index) else {
@@ -386,10 +390,10 @@ test "fork columns compress toward the bars when the gaps are empty" {
 
 ///|
 test "fork compression is blocked by elements spanning the gaps" {
-  let empty = layout_activity(
+  let empty = @render.layout_activity(
     @parser.parse_activity("fork\n:A;\nfork again\n:BB;\nend fork"),
   )
-  let covered = layout_activity(
+  let covered = @render.layout_activity(
     @parser.parse_activity(
       ":WWWWWWWWWWWWWWWWWWWW;\nfork\n:A;\nfork again\n:BB;\nend fork\n:WWWWWWWWWWWWWWWWWWWW;",
     ),
@@ -419,7 +423,7 @@ test "fork compression is blocked by elements spanning the gaps" {
 
 ///|
 test "switch case columns compress when nothing spans the gaps" {
-  let layout = layout_activity(
+  let layout = @render.layout_activity(
     @parser.parse_activity(
       "switch (x)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\ncase (other)\n:Other;\nendswitch",
     ),
@@ -442,7 +446,9 @@ test "switch case columns compress when nothing spans the gaps" {
 
 ///|
 test "plain sequences are never compressed" {
-  let layout = layout_activity(@parser.parse_activity(":One;\n:Two;\n:Three;"))
+  let layout = @render.layout_activity(
+    @parser.parse_activity(":One;\n:Two;\n:Three;"),
+  )
   guard action_index(layout, "One") is Some(one_index) else {
     @test.fail("missing first action")
   }
@@ -465,7 +471,7 @@ test "plain sequences are never compressed" {
   for node in layout.nodes {
     min_x = min_x.min(node.x)
   }
-  @test.assert_eq(min_x == CANVAS_LEFT, true)
+  @test.assert_eq(min_x == @render.CANVAS_LEFT, true)
   let axis = one_x + one_right
   @test.assert_eq(two_x + two_right - axis <= 1, true)
   @test.assert_eq(three_x + three_right - axis <= 1, true)

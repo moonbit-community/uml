@@ -189,11 +189,6 @@ fn @flow.Decimal::is_zero(self : @flow.Decimal) -> Bool {
 }
 
 ///|
-fn @flow.Decimal::negate(self : @flow.Decimal) -> @flow.Decimal {
-  { ..self, sign: if self.sign < 0 { 1 } else { -1 }, }
-}
-
-///|
 fn @flow.Decimal::scaled(self : @flow.Decimal, target : Int) -> String {
   shift_digits(self.coeff, target - self.scale)
 }

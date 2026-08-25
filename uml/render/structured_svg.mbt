@@ -348,30 +348,6 @@ fn structured_append_node(output : StringBuilder, node : PlacedNode) -> Unit {
 }
 
 ///|
-fn @structured.StructuredDiagram::render_json_svg(
-  diagram : @structured.StructuredDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String {
-  diagram.render_svg(color_scheme~)
-}
-
-///|
-fn @structured.StructuredDiagram::render_yaml_svg(
-  diagram : @structured.StructuredDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String {
-  diagram.render_svg(color_scheme~)
-}
-
-///|
-fn @structured.StructuredDiagram::render_toml_svg(
-  diagram : @structured.StructuredDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String {
-  diagram.render_svg(color_scheme~)
-}
-
-///|
 fn @structured.StructuredDiagram::render_svg(
   diagram : @structured.StructuredDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),

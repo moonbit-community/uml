@@ -94,17 +94,17 @@ test "explicit direction arrows collapse the queue length" {
     family=DeploymentDiagram,
   )
   @test.assert_eq(rightward.relations.length(), 1)
-  @test.assert_eq(relation_graphviz_minlen(rightward.relations[0]), 0)
+  @test.assert_eq(@render.relation_graphviz_minlen(rightward.relations[0]), 0)
   let plain = @parser.parse_entity(
     "@startuml\nnode a\nnode b\na --> b : side\n@enduml",
     family=DeploymentDiagram,
   )
-  @test.assert_eq(relation_graphviz_minlen(plain.relations[0]), 1)
+  @test.assert_eq(@render.relation_graphviz_minlen(plain.relations[0]), 1)
   let heavy = @parser.parse_entity(
     "@startuml\nnode a\nnode b\na ==> b : side\n@enduml",
     family=DeploymentDiagram,
   )
-  @test.assert_eq(relation_graphviz_minlen(heavy.relations[0]), 1)
+  @test.assert_eq(@render.relation_graphviz_minlen(heavy.relations[0]), 1)
 }
 
 ///|
@@ -126,7 +126,7 @@ test "relations to packages do not create phantom entities" {
 /// its output ports to the sink rank: the input ports render on the same row
 /// as the external node.
 test "port clusters pin inputs to the source rank" {
-  let svg = render_entity_svg(
+  let svg = @render.render_entity_svg(
     @parser.parse_entity(
       "\nnode app {\n  port http\n  portin ingress\n  portout egress\n}\nnode client\nclient --> app\n",
       family=DeploymentDiagram,

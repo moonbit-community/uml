@@ -1,5 +1,5 @@
 ///|
-pub struct StateNodeLayout {
+pub(all) struct StateNodeLayout {
   code : String
   x : Double
   y : Double
@@ -14,7 +14,7 @@ pub extend StateNodeLayout with Eq::{not_equal, equal}
 pub extend StateNodeLayout with Debug::{to_repr}
 
 ///|
-pub struct StateEdgeLayout {
+pub(all) struct StateEdgeLayout {
   transition_index : Int
   paths : Array[Array[(Double, Double)]]
   label : (Double, Double)?
@@ -27,7 +27,7 @@ pub extend StateEdgeLayout with Eq::{not_equal, equal}
 pub extend StateEdgeLayout with Debug::{to_repr}
 
 ///|
-pub struct StateRegionLayout {
+pub(all) struct StateRegionLayout {
   parent : String
   region_index : Int
   separator : @flow.StateRegionSeparator?
@@ -44,7 +44,7 @@ pub extend StateRegionLayout with Eq::{not_equal, equal}
 pub extend StateRegionLayout with Debug::{to_repr}
 
 ///|
-pub struct StateNoteLayout {
+pub(all) struct StateNoteLayout {
   note_index : Int
   x : Double
   y : Double
@@ -59,7 +59,7 @@ pub extend StateNoteLayout with Eq::{not_equal, equal}
 pub extend StateNoteLayout with Debug::{to_repr}
 
 ///|
-pub struct StateLayout {
+pub(all) struct StateLayout {
   width : Double
   height : Double
   nodes : Array[StateNodeLayout]

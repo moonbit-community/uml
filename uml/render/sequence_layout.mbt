@@ -223,3 +223,15 @@ fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
   )
   { ..layout, participants, width, }
 }
+
+///|
+/// Calculate PlantUML-style sequence-diagram geometry without rendering it.
+pub fn layout_sequence(diagram : @seq.SequenceDiagram) -> DiagramLayout {
+  diagram.layout()
+}
+
+///|
+/// Whether unlinked participants are hidden by the parsed directives.
+pub fn sequence_hides_unlinked(diagram : @seq.SequenceDiagram) -> Bool {
+  diagram.hides_unlinked()
+}

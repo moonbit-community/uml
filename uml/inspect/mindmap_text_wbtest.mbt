@@ -1,6 +1,6 @@
 ///|
 test "strikethrough spans preserve surrounding text" {
-  let spans = parse_mindmap_text_line("a <s>b</s> c")
+  let spans = @render.parse_mindmap_text_line("a <s>b</s> c")
   @test.assert_eq(spans.length(), 3)
   @test.assert_eq(spans[0].text, "a ")
   @test.assert_eq(spans[1].text, "b")
@@ -29,9 +29,11 @@ fn int_attribute(chunk : String, name : String) -> Int {
 
 ///|
 test "strikethrough text never stretches beyond its node" {
-  let svg = @parser.parse_mindmap(
-    "* Root\n** <s>Raspmbc</s> => OSMC\n** plain <s>mid</s> tail",
-  ).render_svg()
+  let svg = @render.render_mindmap_svg(
+    @parser.parse_mindmap(
+      "* Root\n** <s>Raspmbc</s> => OSMC\n** plain <s>mid</s> tail",
+    ),
+  )
   for chunk in svg.split("<g class=\"mindmap-node") {
     let box_width = int_attribute(chunk.to_owned(), "width")
     let text_length = int_attribute(chunk.to_owned(), "textLength")

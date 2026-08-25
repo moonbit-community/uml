@@ -1,5 +1,8 @@
 ///|
-fn layout_node(layout : StateLayout, code : String) -> StateNodeLayout {
+fn layout_node(
+  layout : @render.StateLayout,
+  code : String,
+) -> @render.StateNodeLayout {
   for node in layout.nodes {
     if node.code == code {
       return node
@@ -9,7 +12,10 @@ fn layout_node(layout : StateLayout, code : String) -> StateNodeLayout {
 }
 
 ///|
-fn layout_edge(layout : StateLayout, transition_index : Int) -> StateEdgeLayout {
+fn layout_edge(
+  layout : @render.StateLayout,
+  transition_index : Int,
+) -> @render.StateEdgeLayout {
   for edge in layout.edges {
     if edge.transition_index == transition_index {
       return edge
@@ -19,9 +25,9 @@ fn layout_edge(layout : StateLayout, transition_index : Int) -> StateEdgeLayout 
 }
 
 ///|
-fn StateNodeLayout::contains(
-  self : StateNodeLayout,
-  child : StateNodeLayout,
+fn @render.StateNodeLayout::contains(
+  self : @render.StateNodeLayout,
+  child : @render.StateNodeLayout,
 ) -> Bool {
   child.x >= self.x &&
   child.y >= self.y &&
@@ -30,9 +36,9 @@ fn StateNodeLayout::contains(
 }
 
 ///|
-fn StateNodeLayout::does_not_overlap(
-  self : StateNodeLayout,
-  other : StateNodeLayout,
+fn @render.StateNodeLayout::does_not_overlap(
+  self : @render.StateNodeLayout,
+  other : @render.StateNodeLayout,
 ) -> Bool {
   self.x + self.width <= other.x ||
   other.x + other.width <= self.x ||
@@ -41,7 +47,9 @@ fn StateNodeLayout::does_not_overlap(
 }
 
 ///|
-fn StateEdgeLayout::has_drawable_path(self : StateEdgeLayout) -> Bool {
+fn @render.StateEdgeLayout::has_drawable_path(
+  self : @render.StateEdgeLayout,
+) -> Bool {
   self.paths.any(path => {
     guard path.length() > 1 else { false }
     path[0] != path[path.length() - 1]
@@ -50,7 +58,7 @@ fn StateEdgeLayout::has_drawable_path(self : StateEdgeLayout) -> Bool {
 
 ///|
 test "circle and cross decorations render at the semantic transition ends" {
-  let svg = render_state_svg(
+  let svg = @render.render_state_svg(
     @parser.parse_state(
       "@startuml\nA x--> B\nC -->o D\nE o <-- F\nG <--x H\n@enduml",
     ),
@@ -92,7 +100,7 @@ test "recursive layout keeps composite contents inside their rendered parent" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Work {\n[*] --> Input\nInput --> Capacity\n}\nWork --> Done\n@enduml",
   )
-  let layout = layout_state(diagram)
+  let layout = @render.layout_state(diagram)
   let work = layout_node(layout, "Work")
   for state in diagram.states {
     guard state.parent == Some("Work") else { continue }
@@ -105,7 +113,7 @@ test "concurrent regions preserve orientation and never overlap" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Work {\nstate Input\n--\nstate Capacity\n--\nstate Audit\n}\n@enduml",
   )
-  let layout = layout_state(diagram)
+  let layout = @render.layout_state(diagram)
   @test.assert_eq(
     layout.regions.any(region => {
       region.separator == Some(@flow.StateRegionSeparator::Horizontal)
@@ -130,7 +138,7 @@ test "fixture transitions retain drawable paths" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Open\nstate Closed\nstate Archived\nOpen -[dashed]-> Closed : close\nArchived <-[bold]- Closed : archive\nOpen x--> Archived : cancel\n@enduml",
   )
-  let layout = layout_state(diagram)
+  let layout = @render.layout_state(diagram)
   @test.assert_eq(layout.edges.length(), diagram.transitions.length())
   for transition_index in 0..<diagram.transitions.length() {
     @test.assert_eq(
@@ -145,7 +153,7 @@ test "state and link notes participate in layout" {
   let diagram = @parser.parse_state(
     "@startuml\nA --> B : next\nnote right of A\nremember\nend note\nnote on link : transition detail\n@enduml",
   )
-  let layout = layout_state(diagram)
+  let layout = @render.layout_state(diagram)
   @test.assert_eq(layout.notes.length(), diagram.notes.length())
 }
 
@@ -163,7 +171,7 @@ test "note position words are preserved on entity notes" {
 
 ///|
 test "entity notes land on the requested side of their anchor" {
-  let layout = layout_state(
+  let layout = @render.layout_state(
     @parser.parse_state(
       "@startuml\nstate A\nstate B\nnote left of A\nleft note\nend note\nnote right of B\nright note\nend note\nnote bottom of B\nbottom note\nend note\n@enduml",
     ),
@@ -186,12 +194,12 @@ test "entity notes land on the requested side of their anchor" {
 
 ///|
 test "note font metrics participate in Graphviz node sizing" {
-  let regular = layout_state(
+  let regular = @render.layout_state(
       @parser.parse_state(
         "@startuml\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
       ),
     ).notes[0]
-  let enlarged = layout_state(
+  let enlarged = @render.layout_state(
       @parser.parse_state(
         "@startuml\nskinparam NoteFontSize 24\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
       ),
@@ -211,7 +219,7 @@ test "nested pseudo-states belong to their composite scope" {
   )
   @test.assert_eq(diagram.state("__final__Work").unwrap().parent, Some("Work"))
   @test.assert_eq(
-    layout_state(diagram).nodes
+    @render.layout_state(diagram).nodes
     .filter(node => node.code == "__initial__Work")
     .length(),
     1,
@@ -223,7 +231,7 @@ test "layout direction is forwarded to the Graphviz state pass" {
   let diagram = @parser.parse_state(
     "@startuml\nleft to right direction\nA --> B\n@enduml",
   )
-  let layout = layout_state(diagram)
+  let layout = @render.layout_state(diagram)
   let a = layout_node(layout, "A")
   let b = layout_node(layout, "B")
   @test.assert_eq(a.x + a.width <= b.x || b.x + b.width <= a.x, true)

@@ -1,11 +1,11 @@
 ///|
-priv struct MindmapTextSpan {
+pub(all) struct MindmapTextSpan {
   text : String
   strike : Bool
 }
 
 ///|
-fn parse_mindmap_text_line(line : String) -> Array[MindmapTextSpan] {
+pub fn parse_mindmap_text_line(line : String) -> Array[MindmapTextSpan] {
   let lower = line.to_lower()
   let spans = []
   let mut cursor = 0

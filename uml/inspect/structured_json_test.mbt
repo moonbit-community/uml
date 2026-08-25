@@ -14,8 +14,8 @@ test "parses an object into PlantUML record rows in document order" {
 test "structured renderer derives its label from the diagram format" {
   let diagram = @parser.parse_structured_json("{\"value\":1}")
   @test.assert_eq(
-    render_structured_svg(diagram),
-    render_structured_svg(diagram),
+    @render.render_structured_svg(diagram),
+    @render.render_structured_svg(diagram),
   )
 }
 

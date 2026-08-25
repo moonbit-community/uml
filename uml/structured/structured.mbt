@@ -86,3 +86,6 @@ pub(all) struct StructuredDiagram {
 pub extend StructuredDiagram with Eq::{not_equal, equal}
 
 ///|
+pub extend StructuredDiagram with Debug::{to_repr}
+
+///|

@@ -3,7 +3,7 @@ const MINDMAP_BRANCH_GAP : Int = 30
 
 ///|
 /// A positioned mindmap item in document coordinates.
-pub struct NodeLayout {
+pub(all) struct NodeLayout {
   idea_index : Int
   x : Int
   y : Int
@@ -19,7 +19,7 @@ pub extend NodeLayout with Debug::{to_repr}
 
 ///|
 /// A cubic parent-to-child connector in document coordinates.
-pub struct EdgeLayout {
+pub(all) struct EdgeLayout {
   parent_index : Int
   child_index : Int
   x1 : Int
@@ -40,7 +40,7 @@ pub extend EdgeLayout with Debug::{to_repr}
 
 ///|
 /// Complete geometry for a mindmap SVG.
-pub struct MindmapLayout {
+pub(all) struct MindmapLayout {
   nodes : Array[NodeLayout]
   edges : Array[EdgeLayout]
   width : Int

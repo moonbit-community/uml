@@ -1,6 +1,6 @@
 ///|
 /// Geometry for one visible activity instruction.
-pub struct ActivityNodeLayout {
+pub(all) struct ActivityNodeLayout {
   node_index : Int
   x : Int
   y : Int
@@ -37,7 +37,7 @@ pub extend ActivityEdgeRoute with Debug::{to_repr}
 
 ///|
 /// A directed connector between visible activity instructions.
-pub struct ActivityEdgeLayout {
+pub(all) struct ActivityEdgeLayout {
   from_node_index : Int
   to_node_index : Int
   route : ActivityEdgeRoute
@@ -63,7 +63,7 @@ pub extend ActivityRegionKind with Eq::{not_equal, equal}
 pub extend ActivityRegionKind with Debug::{to_repr}
 
 ///|
-pub struct ActivityRegionLayout {
+pub(all) struct ActivityRegionLayout {
   kind : ActivityRegionKind
   label : String
   x : Int
@@ -80,7 +80,7 @@ pub extend ActivityRegionLayout with Debug::{to_repr}
 
 ///|
 /// Complete geometry emitted by the built-in activity layout stage.
-pub struct ActivityLayout {
+pub(all) struct ActivityLayout {
   nodes : Array[ActivityNodeLayout]
   edges : Array[ActivityEdgeLayout]
   regions : Array[ActivityRegionLayout]

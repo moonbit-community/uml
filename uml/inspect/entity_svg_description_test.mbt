@@ -8,7 +8,7 @@
 ///|
 fn render_description(source : String) -> String raise {
   let diagram = @parser.parse_entity(source, family=@entity.DeploymentDiagram)
-  render_entity_svg(diagram)
+  @render.render_entity_svg(diagram)
 }
 
 ///|

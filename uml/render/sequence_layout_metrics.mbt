@@ -5,7 +5,7 @@ priv struct TextSize {
 }
 
 ///|
-priv struct SequenceTextMetrics {
+pub(all) struct SequenceTextMetrics {
   participant : @metrics.FontMetrics
   note : @metrics.FontMetrics
   body : @metrics.FontMetrics
@@ -47,7 +47,7 @@ fn SequenceTextMetrics::new(
 }
 
 ///|
-priv struct ParticipantLayout {
+pub(all) struct ParticipantLayout {
   participant : @seq.Participant
   text_metrics : SequenceTextMetrics
   defaults : @style.SequenceColors
@@ -59,7 +59,7 @@ priv struct ParticipantLayout {
 }
 
 ///|
-priv struct EventPlacement {
+pub(all) struct EventPlacement {
   y : Int
   height : Int
   number : String?
@@ -67,7 +67,7 @@ priv struct EventPlacement {
 }
 
 ///|
-priv struct ActivationSpan {
+pub(all) struct ActivationSpan {
   participant_code : String
   caller_code : String?
   depth : Int
@@ -77,7 +77,7 @@ priv struct ActivationSpan {
 }
 
 ///|
-priv struct GroupSpan {
+pub(all) struct GroupSpan {
   start_y : Int
   end_y : Int
   depth : Int
@@ -92,7 +92,7 @@ priv struct GroupSpan {
 }
 
 ///|
-priv struct GroupBranch {
+pub(all) struct GroupBranch {
   start_y : Int
   end_y : Int
   label : String?
@@ -100,13 +100,13 @@ priv struct GroupBranch {
 }
 
 ///|
-priv struct DestroyMark {
+pub(all) struct DestroyMark {
   participant_code : String
   y : Int
 }
 
 ///|
-priv struct DiagramLayout {
+pub(all) struct DiagramLayout {
   participants : Array[ParticipantLayout]
   participant_index : Map[String, Int]
   placements : Array[EventPlacement]

@@ -17,6 +17,9 @@ pub(all) struct ParticipantBox {
 } derive(Eq)
 
 ///|
+pub extend ParticipantBox with Eq::{not_equal, equal}
+
+///|
 pub(all) struct Participant {
   code : String
   display : String
@@ -32,6 +35,9 @@ pub(all) enum ArrowBody {
   Solid
   Dotted
 } derive(Eq)
+
+///|
+pub extend ArrowBody with Eq::{not_equal, equal}
 
 ///|
 pub(all) enum ArrowHead {

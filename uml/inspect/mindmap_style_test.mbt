@@ -3,8 +3,8 @@ test "parses node, stereotype, and arrow style blocks" {
   let diagram = @parser.parse_mindmap(
     "@startmindmap\n<style>\nNode {\n  MinimumWidth 100\n  SameClassWidth true\n  Padding 6\n  Margin 8\n  FontSize 17\n  BackgroundColor #aabbcc\n  LineColor #102030\n}\n.Test1 {\n  HorizontalAlignment Right\n  FontColor #ff0000\n}\narrow {\n  LineColor #00aa00\n  LineThickness 3\n}\n</style>\n* Root\n** Child <<Test1>>\n@endmindmap",
   )
-  let root_style = mindmap_node_style(diagram, 0)
-  let child_style = mindmap_node_style(diagram, 1)
+  let root_style = @render.mindmap_node_style(diagram, 0)
+  let child_style = @render.mindmap_node_style(diagram, 1)
   @test.assert_eq(root_style.minimum_width, Some(100))
   @test.assert_eq(root_style.padding_x, Some(6))
   @test.assert_eq(root_style.margin_right, Some(8))
@@ -17,8 +17,8 @@ test "parses node, stereotype, and arrow style blocks" {
 
 ///|
 test "skinparam node dimensions participate in layout" {
-  let plain = layout_mindmap(@parser.parse_mindmap("* Root\n** Child"))
-  let styled = layout_mindmap(
+  let plain = @render.layout_mindmap(@parser.parse_mindmap("* Root\n** Child"))
+  let styled = @render.layout_mindmap(
     @parser.parse_mindmap(
       "skinparam MindMapNodeMinimumWidth 140\nskinparam MindMapNodePadding 18\n* Root\n** Child",
     ),
@@ -35,7 +35,7 @@ test "hyphenated mindmap skinparam prefixes use normalized suffixes" {
     "skinparam MindMap-Node-BackgroundColor #aabbcc\n* Root",
   )
   @test.assert_eq(
-    mindmap_node_style(diagram, 0).background_color,
+    @render.mindmap_node_style(diagram, 0).background_color,
     Some("#aabbcc"),
   )
 }
@@ -45,7 +45,7 @@ test "same class width and margins affect layout without overlaps" {
   let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n  SameClassWidth true\n  Margin 30\n}\n</style>\n* Root\n** short\n** a considerably longer sibling",
   )
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   let short = node_for(layout, 1)
   let long = node_for(layout, 2)
   @test.assert_eq(short.width, long.width)
@@ -57,7 +57,7 @@ test "style box shorthand keeps horizontal and vertical layout values" {
   let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n  Padding 5 13\n  Margin 7 11 17 19\n}\n</style>\n* Root",
   )
-  let node_style = mindmap_node_style(diagram, 0)
+  let node_style = @render.mindmap_node_style(diagram, 0)
   @test.assert_eq(node_style.padding_x, Some(13))
   @test.assert_eq(node_style.padding_y, Some(5))
   @test.assert_eq(node_style.margin_top, Some(7))
@@ -71,8 +71,8 @@ test "root and leaf selectors layer over the node rule" {
   let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n MinimumWidth 80\n}\nrootNode {\n MinimumWidth 120\n}\nleafNode {\n Padding 4\n}\n</style>\n* Root\n** Leaf",
   )
-  let root_style = mindmap_node_style(diagram, 0)
-  let leaf_style = mindmap_node_style(diagram, 1)
+  let root_style = @render.mindmap_node_style(diagram, 0)
+  let leaf_style = @render.mindmap_node_style(diagram, 1)
   @test.assert_eq(root_style.minimum_width, Some(120))
   @test.assert_eq(leaf_style.minimum_width, Some(80))
   @test.assert_eq(leaf_style.padding_x, Some(4))

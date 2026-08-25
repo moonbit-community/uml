@@ -1,5 +1,8 @@
 ///|
-fn node_for(layout : MindmapLayout, idea_index : Int) -> NodeLayout {
+fn node_for(
+  layout : @render.MindmapLayout,
+  idea_index : Int,
+) -> @render.NodeLayout {
   for node in layout.nodes {
     if node.idea_index == idea_index {
       return node
@@ -9,7 +12,10 @@ fn node_for(layout : MindmapLayout, idea_index : Int) -> NodeLayout {
 }
 
 ///|
-fn edge_for(layout : MindmapLayout, child_index : Int) -> EdgeLayout {
+fn edge_for(
+  layout : @render.MindmapLayout,
+  child_index : Int,
+) -> @render.EdgeLayout {
   for edge in layout.edges {
     if edge.child_index == child_index {
       return edge
@@ -19,7 +25,10 @@ fn edge_for(layout : MindmapLayout, child_index : Int) -> EdgeLayout {
 }
 
 ///|
-fn rectangles_overlap(left : NodeLayout, right : NodeLayout) -> Bool {
+fn rectangles_overlap(
+  left : @render.NodeLayout,
+  right : @render.NodeLayout,
+) -> Bool {
   left.x < right.x + right.width &&
   right.x < left.x + left.width &&
   left.y < right.y + right.height &&
@@ -29,7 +38,7 @@ fn rectangles_overlap(left : NodeLayout, right : NodeLayout) -> Bool {
 ///|
 test "layout keeps reverse and regular branches on opposite sides" {
   let diagram = @parser.parse_mindmap("* Root\n++ Right\n-- Left")
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   let root = node_for(layout, 0)
   let right = node_for(layout, 1)
   let left = node_for(layout, 2)
@@ -41,7 +50,7 @@ test "layout keeps reverse and regular branches on opposite sides" {
 ///|
 test "layout connects a shared root directly to its reverse branch" {
   let diagram = @parser.parse_mindmap("* Root\n++ Right\n-- Left")
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   let root = node_for(layout, 0)
   let left = node_for(layout, 2)
   let left_edge = edge_for(layout, 2)
@@ -52,7 +61,7 @@ test "layout connects a shared root directly to its reverse branch" {
 ///|
 test "layout puts a reverse-only root on the reverse branch" {
   let diagram = @parser.parse_mindmap("* Root\n-- Left")
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   let root = node_for(layout, 0)
   let left_edge = edge_for(layout, 1)
   @test.assert_eq(left_edge.x1, root.x)
@@ -63,7 +72,7 @@ test "layout separates sibling subtrees without fixed coordinates" {
   let diagram = @parser.parse_mindmap(
     "* Root\n** First\n*** First leaf\n** Second\n*** Second leaf",
   )
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   for left_index in 0..<layout.nodes.length() {
     for right_index in (left_index + 1)..<layout.nodes.length() {
       @test.assert_eq(
@@ -81,7 +90,7 @@ test "layout keeps multiple roots and both branch directions disjoint" {
   let diagram = @parser.parse_mindmap(
     "* First root\n++ Right branch\n-- Left branch\n* Second root\n** Child",
   )
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
   for left_index in 0..<layout.nodes.length() {
     for right_index in (left_index + 1)..<layout.nodes.length() {
@@ -99,7 +108,7 @@ test "layout keeps multiple roots and both branch directions disjoint" {
 ///|
 test "layout represents every parsed parent-child relation once" {
   let diagram = @parser.parse_mindmap("* Root\n** One\n*** Leaf\n** Two")
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   let expected = diagram.ideas.filter(idea => idea.parent is Some(_)).length()
   @test.assert_eq(layout.edges.length(), expected)
   for edge in layout.edges {
@@ -112,7 +121,7 @@ test "layout represents every parsed parent-child relation once" {
 
 ///|
 test "generic layout_tree packs explicit items without overlap" {
-  let items : Array[LayoutItem] = [
+  let items : Array[@render.LayoutItem] = [
     {
       width: 60,
       height: 30,
@@ -154,7 +163,7 @@ test "generic layout_tree packs explicit items without overlap" {
       right_children: [],
     },
   ]
-  let layout = layout_tree(items, [0])
+  let layout = @render.layout_tree(items, [0])
   @test.assert_eq(layout.nodes.length(), items.length())
   @test.assert_eq(layout.edges.length(), 3)
   for left_index in 0..<layout.nodes.length() {
@@ -169,7 +178,7 @@ test "generic layout_tree packs explicit items without overlap" {
 
 ///|
 test "labels are left-aligned at the box padding" {
-  let svg = render_mindmap_svg(
+  let svg = @render.render_mindmap_svg(
     @parser.parse_mindmap("@startmindmap\n* Root\n** Child\n@endmindmap"),
   )
   @test.assert_eq(svg.contains("text-anchor=\"start\""), true)
@@ -178,7 +187,7 @@ test "labels are left-aligned at the box padding" {
 
 ///|
 test "strikethrough spans split into positioned text elements" {
-  let svg = render_mindmap_svg(
+  let svg = @render.render_mindmap_svg(
     @parser.parse_mindmap(
       "@startmindmap\n* Root\n** <s>Old</s> New\n@endmindmap",
     ),
@@ -194,7 +203,7 @@ test "consecutive roots stack with a modest gap" {
   let diagram = @parser.parse_mindmap(
     "* First root\n** Deep child\n* Second root\n** Child",
   )
-  let layout = layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(diagram)
   let first = node_for(layout, 0)
   let second = node_for(layout, 3)
   @test.assert_eq(second.y > first.y + first.height, true)
@@ -203,7 +212,7 @@ test "consecutive roots stack with a modest gap" {
 
 ///|
 test "width emulation leaves the rendered font size untouched" {
-  let svg = render_mindmap_svg(
+  let svg = @render.render_mindmap_svg(
     @parser.parse_mindmap(
       "@startmindmap\n* Root\n** Child with a long label here\n@endmindmap",
     ),
@@ -216,7 +225,7 @@ test "width emulation leaves the rendered font size untouched" {
 test "generic layout_tree keeps one edge per non-root node" {
   // 17 nodes: 0 = root, children of 0 = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15},
   // node 1 has children {16}, etc. Mirror the mbti 05-activity shape.
-  let items : Array[LayoutItem] = []
+  let items : Array[@render.LayoutItem] = []
   // root
   items.push({
     width: 100,
@@ -251,7 +260,7 @@ test "generic layout_tree keeps one edge per non-root node" {
     right_children: [],
   })
   items[1] = { ..items[1], right_children: [16], }
-  let layout = layout_tree(items, [0])
+  let layout = @render.layout_tree(items, [0])
   @test.assert_eq(layout.edges.length(), items.length() - 1)
   // every non-root node appears as a child exactly once
   let child_seen : Array[Int] = Array::make(items.length(), 0)
