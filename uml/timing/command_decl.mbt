@@ -4,11 +4,11 @@
 fn parse_robust_concise(parser : Parser, cursor : @parse.Cursor) -> Bool {
   let compact = take_compact(cursor)
   let kind = if match_keyword(cursor, "robust") {
-    Robust
+    @flow.PlayerKind::Robust
   } else if match_keyword(cursor, "concise") {
-    Concise
+    @flow.PlayerKind::Concise
   } else if match_keyword(cursor, "rectangle") {
-    Rectangle
+    @flow.PlayerKind::Rectangle
   } else {
     return false
   }
@@ -109,10 +109,10 @@ fn parse_clock(parser : Parser, cursor : @parse.Cursor) -> Bool {
   // the current player, like every other declaration. (The Java
   // `createPlayerClock` drops both by mistake.)
   let compact = parser.diagram.compact_by_default || compact
-  let player = {
+  let player : @flow.TimingPlayer = {
     code,
     title,
-    kind: Clock,
+    kind: @flow.PlayerKind::Clock,
     compact,
     stereotype,
     background_color: None,
@@ -131,7 +131,10 @@ fn parse_clock(parser : Parser, cursor : @parse.Cursor) -> Bool {
   upsert_player(parser.diagram, player)
   parser.diagram.clocks.push(code)
   parser.diagram.last_player = Some(code)
-  let time = tick(Decimal::parse(period).unwrap(), TimingFormat::Decimal)
+  let time = tick(
+    @flow.Decimal::parse(period).unwrap(),
+    @flow.TimingFormat::Decimal,
+  )
   // The period becomes a ruler mark but, unlike `@time`, does not move the
   // current time forward.
   add_time_mark(parser.diagram, time)
@@ -191,7 +194,7 @@ fn parse_analog(parser : Parser, cursor : @parse.Cursor) -> Bool {
   let player = parser.declare_player(
     code,
     title,
-    Analog,
+    @flow.PlayerKind::Analog,
     compact,
     stereotype,
     None,
@@ -227,7 +230,16 @@ fn parse_binary(parser : Parser, cursor : @parse.Cursor) -> Bool {
   skip_spaces(cursor)
   guard cursor.is_eof() else { return false }
   let stereotype = stereotype.map_or(stereotype2, value => Some(value))
-  ignore(parser.declare_player(code, title, Binary, compact, stereotype, None))
+  ignore(
+    parser.declare_player(
+      code,
+      title,
+      @flow.PlayerKind::Binary,
+      compact,
+      stereotype,
+      None,
+    ),
+  )
   true
 }
 
@@ -376,7 +388,7 @@ fn parse_ticks(
   guard parser.player(code) is Some(player) else {
     raise parser.error("No such participant " + code)
   }
-  if player.kind is Analog {
+  if player.kind is @flow.PlayerKind::Analog {
     player.ticks_every = Some(parse_positive_int(digits))
   }
   true

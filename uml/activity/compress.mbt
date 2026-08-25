@@ -39,7 +39,7 @@ fn edge_x_extent(
   let x = from.x + from.width / 2
   let target_x = to.x + to.width / 2
   let from_is_decision = from_source.is_decision()
-  let to_is_switch_exit = to_source is ActivityNode::EndSwitch
+  let to_is_switch_exit = to_source is @flow.ActivityNode::EndSwitch
   let start_end = match edge.route {
     Forward =>
       if to_is_switch_exit {

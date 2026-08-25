@@ -1,7 +1,7 @@
 ///|
 fn place_sequence(
   tiles : Array[Tile],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -21,8 +21,8 @@ fn place_sequence(
         continue
       }
       Swimlane(_) => continue
-      Leaf(index) if nodes[index] is ActivityNode::Arrow(value) => {
-        pending_label = arrow_label(value).text
+      Leaf(index) if nodes[index] is @flow.ActivityNode::Arrow(value) => {
+        pending_label = @flow.arrow_label(value).text
         continue
       }
       _ => ()
@@ -111,7 +111,7 @@ fn sequence_gap(
 ///|
 fn place_branches(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -149,7 +149,7 @@ fn place_branches(
 ///|
 fn place_leaf(
   index : Int,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -192,7 +192,7 @@ fn is_if_down(branches : Array[BranchTiles]) -> Bool {
 ///|
 fn place_tile(
   tile : Tile,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -254,7 +254,7 @@ fn place_tile(
 fn place_if_down(
   branches : Array[BranchTiles],
   exit : Int,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -353,7 +353,7 @@ fn place_if_down(
 fn place_if_chain(
   branches : Array[BranchTiles],
   exit : Int,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -452,7 +452,7 @@ fn place_if_chain(
 /// Max body height across the branch columns.
 fn measure_branches_height(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> Int {
@@ -468,7 +468,7 @@ fn measure_branches_height(
 /// Sum of branch column widths plus the gaps between them.
 fn measure_chain_width(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> Int {
@@ -491,7 +491,7 @@ fn place_switch(
   entry : Int,
   branches : Array[BranchTiles],
   exit : Int,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -566,7 +566,7 @@ fn place_switch(
 /// Width of the packed case columns (gaps included, without the entry node).
 fn measure_branches_width(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> Int {
@@ -588,7 +588,7 @@ fn place_while(
   exit : Int,
   enter_label : String?,
   exit_label : String?,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -666,7 +666,7 @@ fn place_repeat(
   exit : Int,
   retry_label : String?,
   exit_label : String?,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -710,7 +710,7 @@ fn place_parallel(
   entry : Int,
   branches : Array[BranchTiles],
   exit : Int,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
   x : Int,
@@ -779,7 +779,7 @@ fn place_parallel(
 ///|
 fn fork_branches_height(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> Int {
@@ -794,7 +794,7 @@ fn fork_branches_height(
 ///|
 fn measure_fork_columns(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> Int {
@@ -814,7 +814,9 @@ fn measure_fork_columns(
 /// `InstructionIf`, `InstructionWhile`, and `InstructionFork` decomposition:
 /// branches are horizontal siblings, their exits join, and loops own a back
 /// edge to the controlling decision.
-pub fn ActivityDiagram::layout(self : ActivityDiagram) -> ActivityLayout {
+fn @flow.ActivityDiagram::layout(
+  self : @flow.ActivityDiagram,
+) -> ActivityLayout {
   let style = self.style
   let family = style.font_family()
   let metrics = style.font_metrics_for(family, font_size=ACTION_FONT)
@@ -826,7 +828,8 @@ pub fn ActivityDiagram::layout(self : ActivityDiagram) -> ActivityLayout {
   let edges = []
   let content_x = CANVAS_LEFT
   let top_padding = if source_nodes.any(node => {
-      node is ActivityNode::Partition(_) || node is ActivityNode::Swimlane(_)
+      node is @flow.ActivityNode::Partition(_) ||
+      node is @flow.ActivityNode::Swimlane(_)
     }) {
     CANVAS_TOP + REGION_HEADER_HEIGHT + REGION_PADDING
   } else {
@@ -847,7 +850,9 @@ pub fn ActivityDiagram::layout(self : ActivityDiagram) -> ActivityLayout {
     width: 0,
     height: content.height + top_padding + CANVAS_BOTTOM,
   }
-  let has_swimlanes = source_nodes.any(node => node is ActivityNode::Swimlane(_))
+  let has_swimlanes = source_nodes.any(node => {
+    node is @flow.ActivityNode::Swimlane(_)
+  })
   if !has_swimlanes {
     result = result.compress_x()
   }
@@ -925,4 +930,10 @@ fn edge_label_extent(
     }
     _ => None
   }
+}
+
+///|
+/// Calculate PlantUML-style activity-diagram geometry without rendering it.
+pub fn layout_activity(diagram : @flow.ActivityDiagram) -> ActivityLayout {
+  diagram.layout()
 }

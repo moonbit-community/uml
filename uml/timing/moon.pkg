@@ -1,5 +1,6 @@
 import {
   "kokic/unicode",
+  "kokic/uml/flow",
   "kokic/uml/parse",
   "kokic/uml/style",
   "moonbitlang/core/string",

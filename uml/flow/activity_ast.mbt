@@ -1,6 +1,6 @@
 ///|
 /// A command recognized by PlantUML's modern activity-diagram parser.
-pub enum ActivityNode {
+pub(all) enum ActivityNode {
   Start
   Stop
   End
@@ -37,7 +37,7 @@ pub extend ActivityNode with Debug::{to_repr}
 
 ///|
 /// Text carried by a control-flow edge rather than by an activity node.
-pub struct ActivityEdgeLabel {
+pub(all) struct ActivityEdgeLabel {
   text : String?
 } derive(Eq, Debug)
 
@@ -50,7 +50,7 @@ pub extend ActivityEdgeLabel with Debug::{to_repr}
 ///|
 /// A branch in an `if` chain or `switch`. `condition` is present for the initial
 /// `if` and every `elseif`; `None` represents the terminal `else` branch.
-pub struct ActivityBranch {
+pub(all) struct ActivityBranch {
   condition : String?
   incoming : ActivityEdgeLabel
   instructions : Array[ActivityInstruction]
@@ -64,7 +64,7 @@ pub extend ActivityBranch with Debug::{to_repr}
 
 ///|
 /// PlantUML's chained conditional instruction.
-pub struct ActivityIfChain {
+pub(all) struct ActivityIfChain {
   branches : Array[ActivityBranch]
 } derive(Eq, Debug)
 
@@ -76,7 +76,7 @@ pub extend ActivityIfChain with Debug::{to_repr}
 
 ///|
 /// A `while` instruction with distinct enter and exit edge labels.
-pub struct ActivityWhile {
+pub(all) struct ActivityWhile {
   condition : String
   enter : ActivityEdgeLabel
   exit : ActivityEdgeLabel
@@ -91,7 +91,7 @@ pub extend ActivityWhile with Debug::{to_repr}
 
 ///|
 /// A `repeat` instruction whose terminal condition owns return and exit labels.
-pub struct ActivityRepeat {
+pub(all) struct ActivityRepeat {
   condition : String
   retry : ActivityEdgeLabel
   exit : ActivityEdgeLabel
@@ -106,7 +106,7 @@ pub extend ActivityRepeat with Debug::{to_repr}
 
 ///|
 /// A parallel fork with independently laid out instruction lists.
-pub struct ActivityFork {
+pub(all) struct ActivityFork {
   branches : Array[Array[ActivityInstruction]]
 } derive(Eq, Debug)
 
@@ -118,7 +118,7 @@ pub extend ActivityFork with Debug::{to_repr}
 
 ///|
 /// A multi-way switch. Case text is an incoming edge label, not a node.
-pub struct ActivitySwitch {
+pub(all) struct ActivitySwitch {
   condition : String
   branches : Array[ActivityBranch]
 } derive(Eq, Debug)
@@ -131,7 +131,7 @@ pub extend ActivitySwitch with Debug::{to_repr}
 
 ///|
 /// A named activity partition enclosing a flow.
-pub struct ActivityPartition {
+pub(all) struct ActivityPartition {
   label : String
   instructions : Array[ActivityInstruction]
 } derive(Eq, Debug)
@@ -145,7 +145,7 @@ pub extend ActivityPartition with Debug::{to_repr}
 ///|
 /// A semantic activity instruction corresponding to PlantUML's instruction
 /// layer before it is converted to an `Ftile` or `Gtile`.
-pub enum ActivityInstruction {
+pub(all) enum ActivityInstruction {
   Start
   Stop
   End
@@ -173,7 +173,7 @@ pub extend ActivityInstruction with Debug::{to_repr}
 ///|
 /// Parsed activity-diagram source. `nodes` preserves the grammar-level stream;
 /// `instructions` is the nested semantic flow consumed by layout.
-pub struct ActivityDiagram {
+pub(all) struct ActivityDiagram {
   nodes : Array[ActivityNode]
   instructions : Array[ActivityInstruction]
   style : @style.DocumentStyle

@@ -13,12 +13,12 @@ fn append_layout_edge(
 
 ///|
 fn goto_target(
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
   label : String,
 ) -> Int? {
   for index, node in nodes {
-    guard node is ActivityNode::Label(candidate) && candidate == label else {
+    guard node is @flow.ActivityNode::Label(candidate) && candidate == label else {
       continue
     }
     return layout_for_node(layouts, index)
@@ -28,7 +28,7 @@ fn goto_target(
 
 ///|
 fn append_goto_edges(
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> Unit {
@@ -109,19 +109,22 @@ fn region_for_range(
 }
 
 ///|
-fn swimlane_for_node(nodes : Array[ActivityNode], node_index : Int) -> String? {
+fn swimlane_for_node(
+  nodes : Array[@flow.ActivityNode],
+  node_index : Int,
+) -> String? {
   for index = node_index.min(nodes.length() - 1); index >= 0; index = index - 1 {
-    guard nodes[index] is ActivityNode::Swimlane(name) else { continue }
+    guard nodes[index] is @flow.ActivityNode::Swimlane(name) else { continue }
     return Some(name)
   }
   None
 }
 
 ///|
-fn swimlane_names(nodes : Array[ActivityNode]) -> Array[String] {
+fn swimlane_names(nodes : Array[@flow.ActivityNode]) -> Array[String] {
   let names = []
   for node in nodes {
-    guard node is ActivityNode::Swimlane(name) else { continue }
+    guard node is @flow.ActivityNode::Swimlane(name) else { continue }
     guard !names.contains(name) else { continue }
     names.push(name)
   }
@@ -139,7 +142,7 @@ fn swimlane_index(names : Array[String], name : String) -> Int? {
 
 ///|
 fn reposition_swimlanes(
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
 ) -> Int {
   let names = swimlane_names(nodes)
@@ -176,7 +179,7 @@ fn reposition_swimlanes(
 
 ///|
 fn region_for_swimlane(
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
   label : String,
 ) -> ActivityRegionLayout? {
@@ -187,7 +190,7 @@ fn region_for_swimlane(
 
 ///|
 fn regions_from_nodes(
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
 ) -> Array[ActivityRegionLayout] {
   let regions = []
@@ -223,7 +226,7 @@ fn regions_from_nodes(
 }
 
 ///|
-fn partition_end(nodes : Array[ActivityNode], index : Int) -> Int {
+fn partition_end(nodes : Array[@flow.ActivityNode], index : Int) -> Int {
   for next = index + 1; next < nodes.length(); next = next + 1 {
     guard nodes[next] is EndPartition else { continue }
     return next

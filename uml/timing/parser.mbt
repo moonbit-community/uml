@@ -1,7 +1,7 @@
 ///|
-/// The parsing context mirroring `TimingDiagram` as mutated by the commands.
+/// The parsing context mirroring `@flow.TimingDiagram` as mutated by the commands.
 priv struct Parser {
-  diagram : TimingDiagram
+  diagram : @flow.TimingDiagram
   lines : Array[String]
   mut index : Int
 }
@@ -18,7 +18,7 @@ fn Parser::new(input : String) -> Parser {
       time_marks: [],
       now: None,
       last_player: None,
-      time_axis: Automatic,
+      time_axis: @flow.TimeAxisStrategy::Automatic,
       compact_by_default: false,
       date_format: None,
       scale: None,
@@ -43,7 +43,7 @@ fn Parser::error(self : Parser, message : String) -> @parse.ParseError {
 }
 
 ///|
-fn Parser::player(self : Parser, code : String) -> TimingPlayer? {
+fn Parser::player(self : Parser, code : String) -> @flow.TimingPlayer? {
   self.diagram.player(code)
 }
 
@@ -60,7 +60,7 @@ fn take_rest(cursor : @parse.Cursor) -> String {
 fn Parser::require_player(
   self : Parser,
   code : String,
-) -> TimingPlayer raise @parse.ParseError {
+) -> @flow.TimingPlayer raise @parse.ParseError {
   guard self.player(code) is Some(player) else {
     raise self.error("No such participant " + code)
   }
@@ -70,7 +70,10 @@ fn Parser::require_player(
 ///|
 /// Replaces or appends a player by code, mirroring the `LinkedHashMap.put`
 /// of the Java `players` map: an existing code keeps its position.
-fn upsert_player(diagram : TimingDiagram, player : TimingPlayer) -> Unit {
+fn upsert_player(
+  diagram : @flow.TimingDiagram,
+  player : @flow.TimingPlayer,
+) -> Unit {
   for index in 0..<diagram.players.length() {
     if diagram.players[index].code == player.code {
       diagram.players[index] = player
@@ -81,7 +84,11 @@ fn upsert_player(diagram : TimingDiagram, player : TimingPlayer) -> Unit {
 }
 
 ///|
-fn upsert_code(diagram : TimingDiagram, code : String, tick : TimeTick) -> Unit {
+fn upsert_code(
+  diagram : @flow.TimingDiagram,
+  code : String,
+  tick : @flow.TimeTick,
+) -> Unit {
   for index in 0..<diagram.codes.length() {
     if diagram.codes[index].0 == code {
       diagram.codes[index] = (code, tick)
@@ -94,7 +101,7 @@ fn upsert_code(diagram : TimingDiagram, code : String, tick : TimeTick) -> Unit 
 ///|
 /// Adds a time mark to the ruler, mirroring `TimingRuler.addTime`: the mark is
 /// kept sorted and deduplicated by value.
-fn add_time_mark(diagram : TimingDiagram, tick : TimeTick) -> Unit {
+fn add_time_mark(diagram : @flow.TimingDiagram, tick : @flow.TimeTick) -> Unit {
   let mut index = 0
   while index < diagram.time_marks.length() {
     let compared = diagram.time_marks[index].compare(tick)
@@ -110,7 +117,11 @@ fn add_time_mark(diagram : TimingDiagram, tick : TimeTick) -> Unit {
 }
 
 ///|
-fn Parser::add_time(self : Parser, tick : TimeTick, code : String?) -> Unit {
+fn Parser::add_time(
+  self : Parser,
+  tick : @flow.TimeTick,
+  code : String?,
+) -> Unit {
   self.diagram.now = Some(tick)
   add_time_mark(self.diagram, tick)
   if code is Some(value) {
@@ -123,8 +134,8 @@ fn Parser::add_time(self : Parser, tick : TimeTick, code : String?) -> Unit {
 /// collections: sorted by tick; duplicates keep the first entry for state
 /// players and are replaced for binary and analog players.
 fn insert_change(
-  player : TimingPlayer,
-  change : ChangeState,
+  player : @flow.TimingPlayer,
+  change : @flow.ChangeState,
   replace_duplicates : Bool,
 ) -> Unit {
   let mut index = 0
@@ -147,7 +158,7 @@ fn insert_change(
 }
 
 ///|
-fn decode_state(player : TimingPlayer, code : String) -> String {
+fn decode_state(player : @flow.TimingPlayer, code : String) -> String {
   for item in player.states {
     if item.0 == code {
       return item.1
@@ -169,7 +180,7 @@ fn convert_binary_state(value : String) -> String {
 /// Parses a state value for an analog player, mirroring `Double.parseDouble`
 /// with a fallback of `0` on failure.
 fn parse_analog_value(value : String) -> String {
-  match Decimal::parse(value) {
+  match @flow.Decimal::parse(value) {
     Some(decimal) => decimal.to_plain_string()
     None =>
       (@string.parse_double(value.to_string()) catch { _ => 0.0 }).to_string()
@@ -183,14 +194,16 @@ fn parse_analog_value(value : String) -> String {
 /// their initial state when none exists yet.
 fn Parser::set_player_state(
   self : Parser,
-  player : TimingPlayer,
-  when : TimeTick?,
+  player : @flow.TimingPlayer,
+  when : @flow.TimeTick?,
   states : Array[String],
   comment : String?,
   color : String?,
 ) -> Unit raise @parse.ParseError {
   match player.kind {
-    Robust | Concise | Rectangle => {
+    @flow.PlayerKind::Robust
+    | @flow.PlayerKind::Concise
+    | @flow.PlayerKind::Rectangle => {
       let decoded = states.map(state => decode_state(player, state))
       match when {
         None =>
@@ -208,7 +221,7 @@ fn Parser::set_player_state(
           )
       }
     }
-    Binary => {
+    @flow.PlayerKind::Binary => {
       let converted = states.map(convert_binary_state)
       match when {
         None =>
@@ -226,9 +239,14 @@ fn Parser::set_player_state(
           )
       }
     }
-    Analog => {
+    @flow.PlayerKind::Analog => {
       let value = parse_analog_value(states[0])
-      let change = { when, comment: None, color: None, states: [value], }
+      let change : @flow.ChangeState = {
+        when,
+        comment: None,
+        color: None,
+        states: [value],
+      }
       match when {
         None => player.initial = Some(change)
         Some(tick) => {
@@ -239,7 +257,8 @@ fn Parser::set_player_state(
         }
       }
     }
-    Clock => raise self.error("unsupported state change on a clock player")
+    @flow.PlayerKind::Clock =>
+      raise self.error("unsupported state change on a clock player")
   }
 }
 
@@ -306,13 +325,13 @@ fn Parser::declare_player(
   self : Parser,
   code : String,
   title : String,
-  kind : PlayerKind,
+  kind : @flow.PlayerKind,
   compact : Bool,
   stereotype : String?,
   background_color : String?,
-) -> TimingPlayer {
+) -> @flow.TimingPlayer {
   let compact = self.diagram.compact_by_default || compact
-  let player = {
+  let player : @flow.TimingPlayer = {
     code,
     title,
     kind,
@@ -503,12 +522,12 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
 }
 
 ///|
-/// Parse a PlantUML timing diagram source into a `TimingDiagram`.
+/// Parse a PlantUML timing diagram source into a `@flow.TimingDiagram`.
 ///
 /// Commands are matched in the registration order of
 /// `TimingDiagramFactory.initCommandsList`, and each command follows the
 /// regex grammar and side effects of its Java `Command` counterpart.
-pub fn parse(input : String) -> TimingDiagram raise @parse.ParseError {
+pub fn parse(input : String) -> @flow.TimingDiagram raise @parse.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()

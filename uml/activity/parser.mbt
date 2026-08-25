@@ -82,7 +82,7 @@ fn is_activity_arrow(line : String) -> Bool {
 /// Parse PlantUML's modern activity-diagram commands. The supported command
 /// set follows `activitydiagram3.ActivityDiagramFactory3`; unsupported
 /// commands are rejected rather than being silently treated as activities.
-pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
+pub fn parse(input : String) -> @flow.ActivityDiagram raise @parse.ParseError {
   let lines = @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
@@ -130,21 +130,21 @@ pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
     }
     if lower.has_prefix("note ") && !line.contains(":") {
       let (text, end) = parse_note(lines, index)
-      nodes.push(ActivityNode::Note(text))
+      nodes.push(@flow.ActivityNode::Note(text))
       index = end + 1
       continue
     }
     if lower == "start" {
-      nodes.push(ActivityNode::Start)
+      nodes.push(@flow.ActivityNode::Start)
     } else if lower == "stop" {
-      nodes.push(ActivityNode::Stop)
+      nodes.push(@flow.ActivityNode::Stop)
     } else if lower == "end" {
-      nodes.push(ActivityNode::End)
+      nodes.push(@flow.ActivityNode::End)
     } else if lower == "kill" {
-      nodes.push(ActivityNode::Kill)
+      nodes.push(@flow.ActivityNode::Kill)
     } else if line.has_prefix(":") && line.has_suffix(";") {
       nodes.push(
-        ActivityNode::Action(line[1:line.length() - 1].trim().to_owned()),
+        @flow.ActivityNode::Action(line[1:line.length() - 1].trim().to_owned()),
       )
     } else if lower.has_prefix("if ") {
       stack.push(BlockKind::Conditional)
@@ -213,5 +213,5 @@ pub fn parse(input : String) -> ActivityDiagram raise @parse.ParseError {
       "unclosed \{block_name(stack.last().unwrap())}",
     )
   }
-  { nodes, instructions: reduce(nodes), style, }
+  { nodes, instructions: @flow.reduce(nodes), style, }
 }

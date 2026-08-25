@@ -1,5 +1,6 @@
 import {
   "kokic/uml/metrics",
+  "kokic/uml/flow",
   "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/geom",
   "moonbit-community/graphviz/layout/dot" @dot_layout,

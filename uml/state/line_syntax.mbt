@@ -2,7 +2,7 @@
 priv struct StateDeclarationSyntax {
   code : String
   display : String
-  kind : StateKind
+  kind : @flow.StateKind
   description : String?
   stereotype : String?
   url : String?
@@ -14,7 +14,7 @@ priv struct StateDeclarationSyntax {
 priv struct StateTransitionSyntax {
   source : String
   target : String
-  direction : TransitionDirection
+  direction : @flow.TransitionDirection
   line_style : String?
   has_cross_start : Bool
   has_circle_end : Bool
@@ -23,7 +23,7 @@ priv struct StateTransitionSyntax {
 
 ///|
 priv struct StateEntityNoteSyntax {
-  position : StateNotePosition
+  position : @flow.StateNotePosition
   target : String
   color : String?
 }
@@ -36,7 +36,7 @@ priv struct StateLinkNoteSyntax {
 
 ///|
 priv struct TransitionArrowSyntax {
-  direction : TransitionDirection
+  direction : @flow.TransitionDirection
   line_style : String?
   has_cross_start : Bool
   has_circle_end : Bool
@@ -45,7 +45,7 @@ priv struct TransitionArrowSyntax {
 
 ///|
 priv struct TransitionArrowParts {
-  direction : TransitionDirection?
+  direction : @flow.TransitionDirection?
   first_style : String?
   second_style : String?
   has_cross_start : Bool
@@ -211,8 +211,9 @@ fn declaration_syntax(
     None => (first.value, first.value)
   }
   let kind = match values.stereotype {
-    Some(value) if value.equal_ignore_ascii_case("<<choice>>") => Choice
-    _ => Normal
+    Some(value) if value.equal_ignore_ascii_case("<<choice>>") =>
+      @flow.StateKind::Choice
+    _ => @flow.StateKind::Normal
   }
   {
     code,
@@ -269,39 +270,39 @@ fn state_endpoint(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn transition_direction(cursor : @parse.Cursor) -> TransitionDirection? {
+fn transition_direction(cursor : @parse.Cursor) -> @flow.TransitionDirection? {
   if cursor.consume_literal("left") {
-    return Some(Leftward)
+    return Some(@flow.TransitionDirection::Leftward)
   }
   if cursor.consume_literal("right") {
-    return Some(Rightward)
+    return Some(@flow.TransitionDirection::Rightward)
   }
   if cursor.consume_literal("down") {
-    return Some(Downward)
+    return Some(@flow.TransitionDirection::Downward)
   }
   if cursor.consume_literal("up") {
-    return Some(Upward)
+    return Some(@flow.TransitionDirection::Upward)
   }
   if cursor.consume_literal("le") {
-    return Some(Leftward)
+    return Some(@flow.TransitionDirection::Leftward)
   }
   if cursor.consume_literal("ri") {
-    return Some(Rightward)
+    return Some(@flow.TransitionDirection::Rightward)
   }
   if cursor.consume_literal("do") {
-    return Some(Downward)
+    return Some(@flow.TransitionDirection::Downward)
   }
   if cursor.consume_literal("l") {
-    return Some(Leftward)
+    return Some(@flow.TransitionDirection::Leftward)
   }
   if cursor.consume_literal("r") {
-    return Some(Rightward)
+    return Some(@flow.TransitionDirection::Rightward)
   }
   if cursor.consume_literal("u") {
-    return Some(Upward)
+    return Some(@flow.TransitionDirection::Upward)
   }
   if cursor.consume_literal("d") {
-    return Some(Downward)
+    return Some(@flow.TransitionDirection::Downward)
   }
   None
 }
@@ -323,7 +324,7 @@ fn transition_arrow_from(parts : TransitionArrowParts) -> TransitionArrowSyntax 
     Some(value)
   })
   {
-    direction: parts.direction.unwrap_or(Automatic),
+    direction: parts.direction.unwrap_or(@flow.TransitionDirection::Automatic),
     line_style,
     has_cross_start: parts.has_cross_start,
     has_circle_end: parts.has_circle_end,
@@ -457,15 +458,15 @@ fn state_transition(cursor : @parse.Cursor) -> StateTransitionSyntax? {
 }
 
 ///|
-fn note_position(cursor : @parse.Cursor) -> StateNotePosition? {
+fn note_position(cursor : @parse.Cursor) -> @flow.StateNotePosition? {
   let position = if cursor.consume_literal("left") {
-    Some(NoteLeft)
+    Some(@flow.StateNotePosition::NoteLeft)
   } else if cursor.consume_literal("right") {
-    Some(NoteRight)
+    Some(@flow.StateNotePosition::NoteRight)
   } else if cursor.consume_literal("top") {
-    Some(NoteTop)
+    Some(@flow.StateNotePosition::NoteTop)
   } else if cursor.consume_literal("bottom") {
-    Some(NoteBottom)
+    Some(@flow.StateNotePosition::NoteBottom)
   } else {
     None
   }

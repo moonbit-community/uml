@@ -38,8 +38,11 @@ test "state changes before any time mark become the initial state" {
   @test.assert_eq(player.initial.unwrap().states, ["Inactive"])
   @test.assert_eq(player.changes.length(), 1)
   @test.assert_eq(player.changes[0].states, ["busy"])
-  @test.assert_eq(player.changes[0].when.unwrap().time.to_plain_string(), "3")
-  @test.assert_eq(diagram.now.unwrap().time.to_plain_string(), "3")
+  @test.assert_eq(
+    decimal_to_plain_string(player.changes[0].when.unwrap().time),
+    "3",
+  )
+  @test.assert_eq(decimal_to_plain_string(diagram.now.unwrap().time), "3")
 }
 
 ///|
@@ -60,7 +63,7 @@ test "time marks stay sorted and deduplicated" {
   let diagram = parse(
     "@startuml\nrobust R\n@5\nR is a\n@3\nR is b\n@5\nR is c\n@enduml",
   )
-  let values = diagram.time_marks.map(mark => mark.time.to_plain_string())
+  let values = diagram.time_marks.map(mark => decimal_to_plain_string(mark.time))
   @test.assert_eq(values, ["3", "5"])
 }
 

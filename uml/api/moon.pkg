@@ -1,5 +1,6 @@
 import {
   "kokic/uml/activity",
+  "kokic/uml/flow",
   "kokic/uml/entity",
   "kokic/uml/mbti",
   "kokic/uml/mindmap",

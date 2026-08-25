@@ -7,12 +7,12 @@ priv struct StateScope {
 ///|
 priv struct Parser {
   lines : Array[String]
-  states : Array[StateNode]
-  transitions : Array[StateTransition]
-  notes : Array[StateNote]
+  states : Array[@flow.StateNode]
+  transitions : Array[@flow.StateTransition]
+  notes : Array[@flow.StateNote]
   stack : Array[StateScope]
   concurrent_regions : Array[String]
-  regions : Array[StateRegion]
+  regions : Array[@flow.StateRegion]
   style : @style.DocumentStyle
   mut index : Int
 }
@@ -54,7 +54,7 @@ fn Parser::region_index(self : Parser) -> Int {
 fn Parser::open_region(
   self : Parser,
   parent : String,
-  separator : StateRegionSeparator?,
+  separator : @flow.StateRegionSeparator?,
 ) -> Int {
   let index = self.regions.length()
   self.regions.push({ parent, separator, index, })
@@ -68,17 +68,18 @@ priv enum EndpointRole {
 }
 
 ///|
-fn endpoint_kind(value : String, role : EndpointRole) -> StateKind {
+fn endpoint_kind(value : String, role : EndpointRole) -> @flow.StateKind {
   match value {
     "[*]" =>
       match role {
-        TransitionSource => Initial
-        TransitionTarget => Final
+        TransitionSource => @flow.StateKind::Initial
+        TransitionTarget => @flow.StateKind::Final
       }
-    "[H]" => History
-    "[H*]" => DeepHistory
-    _ if value.has_prefix("==") && value.has_suffix("==") => Synchronization
-    _ => Normal
+    "[H]" => @flow.StateKind::History
+    "[H*]" => @flow.StateKind::DeepHistory
+    _ if value.has_prefix("==") && value.has_suffix("==") =>
+      @flow.StateKind::Synchronization
+    _ => @flow.StateKind::Normal
   }
 }
 
@@ -129,7 +130,7 @@ fn Parser::ensure_endpoint(
 }
 
 ///|
-fn Parser::upsert_state(self : Parser, state : StateNode) -> Unit {
+fn Parser::upsert_state(self : Parser, state : @flow.StateNode) -> Unit {
   for index, existing in self.states {
     if existing.code == state.code {
       self.states[index] = state
@@ -142,7 +143,7 @@ fn Parser::upsert_state(self : Parser, state : StateNode) -> Unit {
 ///|
 fn Parser::consume_entity_note(
   self : Parser,
-  position : StateNotePosition,
+  position : @flow.StateNotePosition,
   target : String,
   color : String?,
 ) -> Unit raise @parse.ParseError {
@@ -166,7 +167,7 @@ fn Parser::consume_entity_note(
   }
   self.index = index - 1
   self.notes.push({
-    target: StateNote(target),
+    target: @flow.StateNote(target),
     text: text.join("\n"),
     color,
     position: Some(position),
@@ -237,7 +238,9 @@ fn Parser::apply_line_syntax(
         raise SyntaxError(self.line_number(), "link note without transition")
       }
       self.notes.push({
-        target: TransitionNote(self.transitions.length() - 1),
+        target: @flow.StateNoteTarget::TransitionNote(
+          self.transitions.length() - 1,
+        ),
         text: note.text,
         color: note.color,
         position: None,
@@ -285,7 +288,13 @@ fn Parser::parse_line(
     self.concurrent_regions.push(parent)
     let region_index = self.open_region(
       parent,
-      Some(if line == "||" { Vertical } else { Horizontal }),
+      Some(
+        if line == "||" {
+          @flow.StateRegionSeparator::Vertical
+        } else {
+          @flow.StateRegionSeparator::Horizontal
+        },
+      ),
     )
     if self.stack.last() is Some(scope) {
       self.stack[self.stack.length() - 1] = { ..scope, region_index, }
@@ -298,7 +307,7 @@ fn Parser::parse_line(
 ///|
 /// Parse the command family registered by PlantUML's `StateDiagramFactory`.
 /// The AST preserves state-specific pseudo-states and composite-state scope.
-pub fn parse(input : String) -> StateDiagram raise @parse.ParseError {
+pub fn parse(input : String) -> @flow.StateDiagram raise @parse.ParseError {
   let parser = Parser::new(input)
   while parser.index < parser.lines.length() {
     let line = @parse.strip_line_comment(parser.lines[parser.index])

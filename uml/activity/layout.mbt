@@ -84,7 +84,7 @@ pub struct ActivityLayout {
   nodes : Array[ActivityNodeLayout]
   edges : Array[ActivityEdgeLayout]
   regions : Array[ActivityRegionLayout]
-  source_nodes : Array[ActivityNode]
+  source_nodes : Array[@flow.ActivityNode]
   width : Int
   height : Int
 } derive(Eq, Debug)
@@ -259,7 +259,10 @@ const REGION_HEADER_HEIGHT : Int = 24
 const SWIMLANE_GAP : Int = 24
 
 ///|
-fn add_layout_node(nodes : Array[ActivityNode], node : ActivityNode) -> Int {
+fn add_layout_node(
+  nodes : Array[@flow.ActivityNode],
+  node : @flow.ActivityNode,
+) -> Int {
   let index = nodes.length()
   nodes.push(node)
   index
@@ -270,42 +273,44 @@ fn add_layout_node(nodes : Array[ActivityNode], node : ActivityNode) -> Int {
 /// array contains only renderer-facing primitives; command boundaries never
 /// become decision nodes merely to carry a branch label.
 fn tiles_from_instructions(
-  instructions : Array[ActivityInstruction],
-  nodes : Array[ActivityNode],
+  instructions : Array[@flow.ActivityInstruction],
+  nodes : Array[@flow.ActivityNode],
 ) -> Array[Tile] {
   let tiles = []
   for instruction in instructions {
     match instruction {
-      ActivityInstruction::Start =>
-        tiles.push(Tile::Leaf(add_layout_node(nodes, ActivityNode::Start)))
-      ActivityInstruction::Stop =>
-        tiles.push(Tile::Leaf(add_layout_node(nodes, ActivityNode::Stop)))
-      ActivityInstruction::End =>
-        tiles.push(Tile::Leaf(add_layout_node(nodes, ActivityNode::End)))
-      ActivityInstruction::Kill =>
-        tiles.push(Tile::Leaf(add_layout_node(nodes, ActivityNode::Kill)))
-      ActivityInstruction::Action(label) =>
+      @flow.ActivityInstruction::Start =>
         tiles.push(
-          Tile::Leaf(add_layout_node(nodes, ActivityNode::Action(label))),
+          Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Start)),
         )
-      ActivityInstruction::Note(label) =>
+      @flow.ActivityInstruction::Stop =>
+        tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Stop)))
+      @flow.ActivityInstruction::End =>
+        tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::End)))
+      @flow.ActivityInstruction::Kill =>
+        tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Kill)))
+      @flow.ActivityInstruction::Action(label) =>
         tiles.push(
-          Tile::Leaf(add_layout_node(nodes, ActivityNode::Note(label))),
+          Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Action(label))),
         )
-      ActivityInstruction::Edge(label) =>
+      @flow.ActivityInstruction::Note(label) =>
+        tiles.push(
+          Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Note(label))),
+        )
+      @flow.ActivityInstruction::Edge(label) =>
         tiles.push(
           Tile::Leaf(
             add_layout_node(
               nodes,
-              ActivityNode::Arrow("-> " + label.text.unwrap_or("")),
+              @flow.ActivityNode::Arrow("-> " + label.text.unwrap_or("")),
             ),
           ),
         )
-      ActivityInstruction::IfChain(chain) => {
+      @flow.ActivityInstruction::IfChain(chain) => {
         guard chain.branches.length() > 0 else { continue }
         let branches = chain.branches.map(branch => {
           let decision = branch.condition.map(condition => {
-            add_layout_node(nodes, ActivityNode::If(condition))
+            add_layout_node(nodes, @flow.ActivityNode::If(condition))
           })
           {
             decision,
@@ -313,15 +318,15 @@ fn tiles_from_instructions(
             label: branch.incoming.text,
           }
         })
-        let exit = add_layout_node(nodes, ActivityNode::EndIf)
+        let exit = add_layout_node(nodes, @flow.ActivityNode::EndIf)
         tiles.push(Tile::IfChain(branches, exit))
       }
-      ActivityInstruction::While(while_instruction) => {
+      @flow.ActivityInstruction::While(while_instruction) => {
         let entry = add_layout_node(
           nodes,
-          ActivityNode::While(while_instruction.condition),
+          @flow.ActivityNode::While(while_instruction.condition),
         )
-        let exit = add_layout_node(nodes, ActivityNode::EndWhile(""))
+        let exit = add_layout_node(nodes, @flow.ActivityNode::EndWhile(""))
         tiles.push(
           Tile::WhileLoop(
             entry,
@@ -332,10 +337,10 @@ fn tiles_from_instructions(
           ),
         )
       }
-      ActivityInstruction::Repeat(repeat_instruction) => {
+      @flow.ActivityInstruction::Repeat(repeat_instruction) => {
         let exit = add_layout_node(
           nodes,
-          ActivityNode::RepeatWhile(repeat_instruction.condition),
+          @flow.ActivityNode::RepeatWhile(repeat_instruction.condition),
         )
         tiles.push(
           Tile::RepeatLoop(
@@ -346,50 +351,54 @@ fn tiles_from_instructions(
           ),
         )
       }
-      ActivityInstruction::Fork(fork) => {
-        let entry = add_layout_node(nodes, ActivityNode::Fork)
+      @flow.ActivityInstruction::Fork(fork) => {
+        let entry = add_layout_node(nodes, @flow.ActivityNode::Fork)
         let branches = fork.branches.map(branch => {
           decision: None,
           tiles: tiles_from_instructions(branch, nodes),
           label: None,
         })
-        let exit = add_layout_node(nodes, ActivityNode::EndFork)
+        let exit = add_layout_node(nodes, @flow.ActivityNode::EndFork)
         tiles.push(Tile::Parallel(entry, branches, exit))
       }
-      ActivityInstruction::Switch(switch) => {
+      @flow.ActivityInstruction::Switch(switch) => {
         let entry = add_layout_node(
           nodes,
-          ActivityNode::Switch(switch.condition),
+          @flow.ActivityNode::Switch(switch.condition),
         )
         let branches = switch.branches.map(branch => {
           decision: None,
           tiles: tiles_from_instructions(branch.instructions, nodes),
           label: branch.incoming.text,
         })
-        let exit = add_layout_node(nodes, ActivityNode::EndSwitch)
+        let exit = add_layout_node(nodes, @flow.ActivityNode::EndSwitch)
         tiles.push(Tile::Switch(entry, branches, exit))
       }
-      ActivityInstruction::Partition(partition) => {
-        add_layout_node(nodes, ActivityNode::Partition(partition.label))
+      @flow.ActivityInstruction::Partition(partition) => {
+        add_layout_node(nodes, @flow.ActivityNode::Partition(partition.label))
         |> ignore
         tiles.push(
           Tile::Partition(
             tiles_from_instructions(partition.instructions, nodes),
           ),
         )
-        add_layout_node(nodes, ActivityNode::EndPartition) |> ignore
+        add_layout_node(nodes, @flow.ActivityNode::EndPartition) |> ignore
       }
-      ActivityInstruction::Swimlane(name) => {
-        add_layout_node(nodes, ActivityNode::Swimlane(name)) |> ignore
+      @flow.ActivityInstruction::Swimlane(name) => {
+        add_layout_node(nodes, @flow.ActivityNode::Swimlane(name)) |> ignore
         tiles.push(Tile::Swimlane)
       }
-      ActivityInstruction::Label(name) =>
+      @flow.ActivityInstruction::Label(name) =>
         tiles.push(
-          Tile::LabelAnchor(add_layout_node(nodes, ActivityNode::Label(name))),
+          Tile::LabelAnchor(
+            add_layout_node(nodes, @flow.ActivityNode::Label(name)),
+          ),
         )
-      ActivityInstruction::Goto(name) =>
+      @flow.ActivityInstruction::Goto(name) =>
         tiles.push(
-          Tile::GotoAnchor(add_layout_node(nodes, ActivityNode::Goto(name))),
+          Tile::GotoAnchor(
+            add_layout_node(nodes, @flow.ActivityNode::Goto(name)),
+          ),
         )
     }
   }
@@ -397,7 +406,7 @@ fn tiles_from_instructions(
 }
 
 ///|
-fn ActivityNode::label(self : ActivityNode) -> String? {
+fn @flow.ActivityNode::label(self : @flow.ActivityNode) -> String? {
   match self {
     Action(label) | Note(label) => Some(label)
     If(label) | ElseIf(label) | Switch(label) =>
@@ -415,24 +424,24 @@ fn test_text(value : String, separator : String) -> String {
 }
 
 ///|
-fn ActivityNode::is_decision(self : ActivityNode) -> Bool {
+fn @flow.ActivityNode::is_decision(self : @flow.ActivityNode) -> Bool {
   self
   is (If(_) | While(_) | EndWhile(_) | RepeatWhile(_) | Switch(_) | Case(_))
 }
 
 ///|
-fn ActivityNode::is_fork(self : ActivityNode) -> Bool {
+fn @flow.ActivityNode::is_fork(self : @flow.ActivityNode) -> Bool {
   self is (Fork | EndFork)
 }
 
 ///|
-fn ActivityNode::is_exit(self : ActivityNode) -> Bool {
+fn @flow.ActivityNode::is_exit(self : @flow.ActivityNode) -> Bool {
   self is (EndIf | EndWhile(_) | EndSwitch)
 }
 
 ///|
-fn ActivityNode::size(
-  self : ActivityNode,
+fn @flow.ActivityNode::size(
+  self : @flow.ActivityNode,
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
@@ -469,7 +478,7 @@ fn ActivityNode::size(
 ///|
 fn measure_sequence(
   tiles : Array[Tile],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
@@ -480,8 +489,8 @@ fn measure_sequence(
   for tile in tiles {
     match tile {
       LabelAnchor(_) | GotoAnchor(_) | Swimlane(_) => continue
-      Leaf(index) if nodes[index] is ActivityNode::Arrow(value) => {
-        pending_label = arrow_label(value).text
+      Leaf(index) if nodes[index] is @flow.ActivityNode::Arrow(value) => {
+        pending_label = @flow.arrow_label(value).text
         continue
       }
       _ => ()
@@ -509,7 +518,7 @@ fn line_count(label : String) -> Int {
 ///|
 fn measure_branches(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
@@ -529,7 +538,7 @@ fn measure_branches(
 ///|
 fn measure_if_down(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
@@ -553,7 +562,7 @@ fn measure_if_down(
 ///|
 fn measure_if_chain(
   branches : Array[BranchTiles],
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
@@ -587,7 +596,7 @@ fn measure_if_chain(
 ///|
 fn measure_tile(
   tile : Tile,
-  nodes : Array[ActivityNode],
+  nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {

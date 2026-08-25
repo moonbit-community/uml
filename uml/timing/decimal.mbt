@@ -140,7 +140,7 @@ fn parse_digits(cursor : @parse.Cursor) -> String? {
 ///
 /// `10.`, `.5`, `+12` and `-0.25` are all accepted; scientific notation is
 /// rejected because the grammars never produce it.
-pub fn Decimal::parse(raw : String) -> Decimal? {
+fn @flow.Decimal::parse(raw : String) -> @flow.Decimal? {
   let cursor = @parse.Cursor::new(raw)
   let sign = if cursor.consume('-') {
     -1
@@ -176,7 +176,7 @@ fn decimal(
   whole : String,
   fraction : String,
   trailing_dot : Bool,
-) -> Decimal {
+) -> @flow.Decimal {
   let scale = if trailing_dot { 1 } else { fraction.length() }
   let tail = if trailing_dot { "0" } else { "" }
   let coeff = normalize_digits(whole + fraction + tail)
@@ -184,23 +184,26 @@ fn decimal(
 }
 
 ///|
-pub fn Decimal::is_zero(self : Decimal) -> Bool {
+fn @flow.Decimal::is_zero(self : @flow.Decimal) -> Bool {
   self.coeff == "0"
 }
 
 ///|
-pub fn Decimal::negate(self : Decimal) -> Decimal {
+fn @flow.Decimal::negate(self : @flow.Decimal) -> @flow.Decimal {
   { ..self, sign: if self.sign < 0 { 1 } else { -1 }, }
 }
 
 ///|
-fn Decimal::scaled(self : Decimal, target : Int) -> String {
+fn @flow.Decimal::scaled(self : @flow.Decimal, target : Int) -> String {
   shift_digits(self.coeff, target - self.scale)
 }
 
 ///|
 /// Exact decimal addition, mirroring `BigDecimal.add`.
-pub fn Decimal::add(self : Decimal, other : Decimal) -> Decimal {
+fn @flow.Decimal::add(
+  self : @flow.Decimal,
+  other : @flow.Decimal,
+) -> @flow.Decimal {
   let scale = self.scale.max(other.scale)
   let a = self.scaled(scale)
   let b = other.scaled(scale)
@@ -217,14 +220,14 @@ pub fn Decimal::add(self : Decimal, other : Decimal) -> Decimal {
 ///|
 /// Exact multiplication by a positive integer, mirroring
 /// `BigDecimal.multiply(BigDecimal.valueOf(nb))`.
-pub fn Decimal::mul_int(self : Decimal, factor : Int) -> Decimal {
+fn @flow.Decimal::mul_int(self : @flow.Decimal, factor : Int) -> @flow.Decimal {
   { ..self, coeff: mul_digits_int(self.coeff, factor), }
 }
 
 ///|
 /// Value comparison, mirroring `BigDecimal.compareTo`: equal values with
 /// different scales compare equal.
-pub fn Decimal::compare(self : Decimal, other : Decimal) -> Int {
+fn @flow.Decimal::compare(self : @flow.Decimal, other : @flow.Decimal) -> Int {
   if self.sign != other.sign {
     return compare_int(self.sign, other.sign)
   }
@@ -261,7 +264,7 @@ fn compare_int(a : Int, b : Int) -> Int {
 ///|
 /// Renders the value like `BigDecimal.toPlainString`: no exponent, no
 /// trailing dot, keeping the fraction exactly as scaled.
-pub fn Decimal::to_plain_string(self : Decimal) -> String {
+fn @flow.Decimal::to_plain_string(self : @flow.Decimal) -> String {
   let output = StringBuilder()
   if self.sign < 0 && !self.is_zero() {
     output.write_char('-')
@@ -288,6 +291,15 @@ pub fn Decimal::to_plain_string(self : Decimal) -> String {
 }
 
 ///|
-pub fn TimeTick::compare(self : TimeTick, other : TimeTick) -> Int {
+fn @flow.TimeTick::compare(
+  self : @flow.TimeTick,
+  other : @flow.TimeTick,
+) -> Int {
   self.time.compare(other.time)
+}
+
+///|
+/// Render a decimal time value in its plain source form.
+pub fn decimal_to_plain_string(decimal : @flow.Decimal) -> String {
+  decimal.to_plain_string()
 }

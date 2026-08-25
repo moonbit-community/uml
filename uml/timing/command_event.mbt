@@ -426,7 +426,11 @@ fn parse_hide_time_axis(parser : Parser, cursor : @parse.Cursor) -> Bool {
     guard match_keyword(cursor, "axis") else { return false }
   }
   guard cursor.is_eof() else { return false }
-  parser.diagram.time_axis = if manual { Manual } else { Hidden }
+  parser.diagram.time_axis = if manual {
+    @flow.TimeAxisStrategy::Manual
+  } else {
+    @flow.TimeAxisStrategy::Hidden
+  }
   true
 }
 

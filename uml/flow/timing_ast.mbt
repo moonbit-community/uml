@@ -51,7 +51,7 @@ pub extend TimeAxisStrategy with Debug::{to_repr}
 ///|
 /// An exact decimal time value, mirroring the `BigDecimal` carried by
 /// `TimeTick` in the Java implementation.
-pub struct Decimal {
+pub(all) struct Decimal {
   sign : Int
   coeff : String
   scale : Int
@@ -64,7 +64,7 @@ pub extend Decimal with Eq::{not_equal, equal}
 pub extend Decimal with Debug::{to_repr}
 
 ///|
-pub struct TimeTick {
+pub(all) struct TimeTick {
   time : Decimal
   format : TimingFormat
 } derive(Eq, Debug)
@@ -80,7 +80,7 @@ pub extend TimeTick with Debug::{to_repr}
 ///
 /// `when` is the tick the change applies at; the initial state is the change
 /// recorded before any time mark exists, and keeps `when = None`.
-pub struct ChangeState {
+pub(all) struct ChangeState {
   when : TimeTick?
   comment : String?
   color : String?
@@ -94,7 +94,7 @@ pub extend ChangeState with Eq::{not_equal, equal}
 pub extend ChangeState with Debug::{to_repr}
 
 ///|
-pub struct TimingNote {
+pub(all) struct TimingNote {
   when : TimeTick?
   position : String
   text : String
@@ -108,7 +108,7 @@ pub extend TimingNote with Eq::{not_equal, equal}
 pub extend TimingNote with Debug::{to_repr}
 
 ///|
-pub struct TimeConstraint {
+pub(all) struct TimeConstraint {
   tick1 : TimeTick
   tick2 : TimeTick
   message : String?
@@ -126,7 +126,7 @@ pub extend TimeConstraint with Debug::{to_repr}
 ///
 /// Player endpoints are kept as codes; the tick of an endpoint is null when
 /// the optional `@time` expression was absent or unresolved.
-pub struct TimingMessage {
+pub(all) struct TimingMessage {
   player1 : String
   tick1 : TimeTick?
   player2 : String
@@ -142,7 +142,7 @@ pub extend TimingMessage with Eq::{not_equal, equal}
 pub extend TimingMessage with Debug::{to_repr}
 
 ///|
-pub struct Highlight {
+pub(all) struct Highlight {
   from : TimeTick?
   to : TimeTick?
   caption : String?
@@ -161,7 +161,7 @@ pub extend Highlight with Debug::{to_repr}
 /// Kind-specific data lives in dedicated fields: `states` holds the
 /// code-to-label mapping of state players, `period`/`pulse`/`offset` belong to
 /// clocks, and `bounds`/`ticks_every` to analog players.
-pub struct TimingPlayer {
+pub(all) struct TimingPlayer {
   code : String
   title : String
   kind : PlayerKind
@@ -182,7 +182,7 @@ pub struct TimingPlayer {
 }
 
 ///|
-pub struct TimingDiagram {
+pub(all) struct TimingDiagram {
   players : Array[TimingPlayer]
   clocks : Array[String]
   codes : Array[(String, TimeTick)]

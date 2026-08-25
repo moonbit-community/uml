@@ -2,13 +2,13 @@
 /// The parsed PlantUML document. Diagram-specific state stays in its own package.
 pub enum Diagram {
   Sequence(@seq.SequenceDiagram)
-  Activity(@activity.ActivityDiagram)
+  Activity(@flow.ActivityDiagram)
   Class(@entity.EntityDiagram)
   Object(@entity.EntityDiagram)
   Component(@entity.EntityDiagram)
   Deployment(@entity.EntityDiagram)
   UseCase(@entity.EntityDiagram)
-  State(@state.StateDiagram)
+  State(@flow.StateDiagram)
   Mindmap(@tree.MindmapDiagram)
   Mbti(@mbti.MbtiDiagram)
   Json(@structured.StructuredDiagram)
@@ -35,14 +35,14 @@ pub fn Diagram::render_svg(
 ) -> String raise {
   match self {
     Sequence(diagram) => @sequence.render_sequence_svg(diagram, color_scheme~)
-    Activity(diagram) => diagram.render_svg(color_scheme~)
+    Activity(diagram) => @activity.render_activity_svg(diagram, color_scheme~)
     Class(diagram)
     | Object(diagram)
     | Component(diagram)
     | UseCase(diagram)
     | Deployment(diagram) =>
       diagram.render_svg(color_scheme~, class_member_collapsible~)
-    State(diagram) => diagram.render_svg(color_scheme~)
+    State(diagram) => @state.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @mindmap.render_mindmap_svg(diagram, color_scheme~)
     Mbti(diagram) =>
       diagram.render_svg(color_scheme~, class_member_collapsible~)

@@ -1,0 +1,4 @@
+import {
+  "kokic/uml/parse",
+  "kokic/uml/style",
+}

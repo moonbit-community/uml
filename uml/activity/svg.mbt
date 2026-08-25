@@ -302,8 +302,8 @@ fn append_node(
 
 ///|
 /// Render a parsed activity diagram with the built-in, non-Graphviz layout.
-pub fn ActivityDiagram::render_svg(
-  self : ActivityDiagram,
+fn @flow.ActivityDiagram::render_svg(
+  self : @flow.ActivityDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
@@ -389,4 +389,13 @@ pub fn ActivityDiagram::render_svg(
   })
   output.close()
   output.to_string()
+}
+
+///|
+/// Render a parsed activity diagram to SVG.
+pub fn render_activity_svg(
+  diagram : @flow.ActivityDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String {
+  diagram.render_svg(color_scheme~)
 }

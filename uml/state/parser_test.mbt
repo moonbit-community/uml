@@ -1,8 +1,14 @@
 ///|
 test "parses initial and final pseudo-states as distinct state nodes" {
   let diagram = parse("@startuml\n[*] --> Idle\nIdle --> [*]\n@enduml")
-  @test.assert_eq(diagram.state("__initial__").unwrap().kind, Initial)
-  @test.assert_eq(diagram.state("__final__").unwrap().kind, Final)
+  @test.assert_eq(
+    diagram.state("__initial__").unwrap().kind,
+    @flow.StateKind::Initial,
+  )
+  @test.assert_eq(
+    diagram.state("__final__").unwrap().kind,
+    @flow.StateKind::Final,
+  )
   @test.assert_eq(diagram.transitions.length(), 2)
 }
 
@@ -35,14 +41,23 @@ test "preserves history synchronization transition metadata and notes" {
   let diagram = parse(
     "@startuml\nstate A\nstate B\nA -right-> B : next\nB --> [H]\n[H] --> ==join==\nnote right of A\nremember\nend note\nnote on link : transition note\n@enduml",
   )
-  @test.assert_eq(diagram.transitions[0].direction, Rightward)
-  @test.assert_eq(diagram.state("__history__").unwrap().kind, History)
+  @test.assert_eq(
+    diagram.transitions[0].direction,
+    @flow.TransitionDirection::Rightward,
+  )
+  @test.assert_eq(
+    diagram.state("__history__").unwrap().kind,
+    @flow.StateKind::History,
+  )
   @test.assert_eq(
     diagram.state("__synchronization_join").unwrap().kind,
-    Synchronization,
+    @flow.StateKind::Synchronization,
   )
-  @test.assert_eq(diagram.notes[0].target, StateNote("A"))
-  @test.assert_eq(diagram.notes[1].target, TransitionNote(2))
+  @test.assert_eq(diagram.notes[0].target, @flow.StateNote("A"))
+  @test.assert_eq(
+    diagram.notes[1].target,
+    @flow.StateNoteTarget::TransitionNote(2),
+  )
 }
 
 ///|
@@ -50,7 +65,10 @@ test "preserves declaration stereotypes and frame aliases in scope" {
   let diagram = parse(
     "@startuml\nstate Decision <<choice>>\nframe \"Order flow\" as Flow {\nstate Paid\n}\n@enduml",
   )
-  @test.assert_eq(diagram.state("Decision").unwrap().kind, Choice)
+  @test.assert_eq(
+    diagram.state("Decision").unwrap().kind,
+    @flow.StateKind::Choice,
+  )
   @test.assert_eq(
     diagram.state("Decision").unwrap().stereotype,
     Some("<<choice>>"),
@@ -95,9 +113,9 @@ test "transition arrow splits hyphens and styles around the direction" {
     "@startuml\nA -[dashed]left-> B\nC -up-> D\nE x-[bold]-> F\n@enduml",
   )
   let transitions = diagram.transitions
-  @test.assert_eq(transitions[0].direction, Leftward)
+  @test.assert_eq(transitions[0].direction, @flow.TransitionDirection::Leftward)
   @test.assert_eq(transitions[0].line_style, Some("dashed"))
-  @test.assert_eq(transitions[1].direction, Upward)
+  @test.assert_eq(transitions[1].direction, @flow.TransitionDirection::Upward)
   @test.assert_eq(transitions[2].line_style, Some("bold"))
   @test.assert_eq(transitions[2].has_cross_start, true)
 }
@@ -110,7 +128,7 @@ test "reverse arrow keeps reversed endpoints and a bare cross marker" {
   let transitions = diagram.transitions
   @test.assert_eq(transitions[0].source, "B")
   @test.assert_eq(transitions[0].target, "A")
-  @test.assert_eq(transitions[0].direction, Leftward)
+  @test.assert_eq(transitions[0].direction, @flow.TransitionDirection::Leftward)
   @test.assert_eq(transitions[1].source, "D")
   @test.assert_eq(transitions[1].target, "C")
   @test.assert_eq(transitions[1].line_style, None)
@@ -143,7 +161,7 @@ test "synchronization endpoints consume surrounding spaces in transitions" {
   @test.assert_eq(diagram.transitions.length(), 2)
   @test.assert_eq(
     diagram.state("__synchronization_join").unwrap().kind,
-    Synchronization,
+    @flow.StateKind::Synchronization,
   )
 }
 
@@ -209,7 +227,7 @@ fn StateEdgeLayout::has_drawable_path(self : StateEdgeLayout) -> Bool {
 
 ///|
 test "circle and cross decorations render at the semantic transition ends" {
-  let svg = render_state_svg(
+  let svg = render_state(
     "@startuml\nA x--> B\nC -->o D\nE o <-- F\nG <--x H\n@enduml",
   )
   @test.assert_eq(
@@ -249,7 +267,7 @@ test "recursive layout keeps composite contents inside their rendered parent" {
   let diagram = parse(
     "@startuml\nstate Work {\n[*] --> Input\nInput --> Capacity\n}\nWork --> Done\n@enduml",
   )
-  let layout = diagram.layout()
+  let layout = layout_state(diagram)
   let work = layout_node(layout, "Work")
   for state in diagram.states {
     guard state.parent == Some("Work") else { continue }
@@ -262,9 +280,11 @@ test "concurrent regions preserve orientation and never overlap" {
   let diagram = parse(
     "@startuml\nstate Work {\nstate Input\n--\nstate Capacity\n--\nstate Audit\n}\n@enduml",
   )
-  let layout = diagram.layout()
+  let layout = layout_state(diagram)
   @test.assert_eq(
-    layout.regions.any(region => region.separator == Some(Horizontal)),
+    layout.regions.any(region => {
+      region.separator == Some(@flow.StateRegionSeparator::Horizontal)
+    }),
     true,
   )
   let region_nodes = ["Input", "Capacity", "Audit"].map(code => {
@@ -285,7 +305,7 @@ test "fixture transitions retain drawable paths" {
   let diagram = parse(
     "@startuml\nstate Open\nstate Closed\nstate Archived\nOpen -[dashed]-> Closed : close\nArchived <-[bold]- Closed : archive\nOpen x--> Archived : cancel\n@enduml",
   )
-  let layout = diagram.layout()
+  let layout = layout_state(diagram)
   @test.assert_eq(layout.edges.length(), diagram.transitions.length())
   for transition_index in 0..<diagram.transitions.length() {
     @test.assert_eq(
@@ -300,7 +320,7 @@ test "state and link notes participate in layout" {
   let diagram = parse(
     "@startuml\nA --> B : next\nnote right of A\nremember\nend note\nnote on link : transition detail\n@enduml",
   )
-  let layout = diagram.layout()
+  let layout = layout_state(diagram)
   @test.assert_eq(layout.notes.length(), diagram.notes.length())
 }
 
@@ -310,17 +330,19 @@ test "note position words are preserved on entity notes" {
     "@startuml\nstate A\nstate B\nnote left of A\nleft text\nend note\nnote right of B\nright text\nend note\nnote top of A\ntop text\nend note\nnote bottom of B\nbottom text\nend note\n@enduml",
   )
   let positions = diagram.notes.map(note => note.position)
-  @test.assert_eq(positions[0], Some(NoteLeft))
-  @test.assert_eq(positions[1], Some(NoteRight))
-  @test.assert_eq(positions[2], Some(NoteTop))
-  @test.assert_eq(positions[3], Some(NoteBottom))
+  @test.assert_eq(positions[0], Some(@flow.StateNotePosition::NoteLeft))
+  @test.assert_eq(positions[1], Some(@flow.StateNotePosition::NoteRight))
+  @test.assert_eq(positions[2], Some(@flow.StateNotePosition::NoteTop))
+  @test.assert_eq(positions[3], Some(@flow.StateNotePosition::NoteBottom))
 }
 
 ///|
 test "entity notes land on the requested side of their anchor" {
-  let layout = parse(
-    "@startuml\nstate A\nstate B\nnote left of A\nleft note\nend note\nnote right of B\nright note\nend note\nnote bottom of B\nbottom note\nend note\n@enduml",
-  ).layout()
+  let layout = layout_state(
+    parse(
+      "@startuml\nstate A\nstate B\nnote left of A\nleft note\nend note\nnote right of B\nright note\nend note\nnote bottom of B\nbottom note\nend note\n@enduml",
+    ),
+  )
   let node_center = (code : String) => {
     let node = layout.nodes.filter(node => node.code == code)[0]
     (node.x + node.width / 2.0, node.y + node.height / 2.0)
@@ -339,12 +361,16 @@ test "entity notes land on the requested side of their anchor" {
 
 ///|
 test "note font metrics participate in Graphviz node sizing" {
-  let regular = parse(
-      "@startuml\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
-    ).layout().notes[0]
-  let enlarged = parse(
-      "@startuml\nskinparam NoteFontSize 24\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
-    ).layout().notes[0]
+  let regular = layout_state(
+      parse(
+        "@startuml\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
+      ),
+    ).notes[0]
+  let enlarged = layout_state(
+      parse(
+        "@startuml\nskinparam NoteFontSize 24\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
+      ),
+    ).notes[0]
   @test.assert_eq(enlarged.width > regular.width, true)
   @test.assert_eq(enlarged.height > regular.height, true)
 }
@@ -360,7 +386,7 @@ test "nested pseudo-states belong to their composite scope" {
   )
   @test.assert_eq(diagram.state("__final__Work").unwrap().parent, Some("Work"))
   @test.assert_eq(
-    diagram.layout().nodes
+    layout_state(diagram).nodes
     .filter(node => node.code == "__initial__Work")
     .length(),
     1,
@@ -370,7 +396,7 @@ test "nested pseudo-states belong to their composite scope" {
 ///|
 test "layout direction is forwarded to the Graphviz state pass" {
   let diagram = parse("@startuml\nleft to right direction\nA --> B\n@enduml")
-  let layout = diagram.layout()
+  let layout = layout_state(diagram)
   let a = layout_node(layout, "A")
   let b = layout_node(layout, "B")
   @test.assert_eq(a.x + a.width <= b.x || b.x + b.width <= a.x, true)

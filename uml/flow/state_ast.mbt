@@ -31,7 +31,7 @@ pub extend TransitionDirection with Eq::{not_equal, equal}
 pub extend TransitionDirection with Debug::{to_repr}
 
 ///|
-pub struct StateNode {
+pub(all) struct StateNode {
   code : String
   display : String
   kind : StateKind
@@ -50,12 +50,12 @@ pub extend StateNode with Eq::{not_equal, equal}
 pub extend StateNode with Debug::{to_repr}
 
 ///|
-fn StateNode::has_description(self : StateNode) -> Bool {
+pub fn StateNode::has_description(self : StateNode) -> Bool {
   self.description is Some(text) && text.length() > 0
 }
 
 ///|
-pub struct StateTransition {
+pub(all) struct StateTransition {
   source : String
   target : String
   label : String?
@@ -84,7 +84,7 @@ pub extend StateRegionSeparator with Eq::{not_equal, equal}
 pub extend StateRegionSeparator with Debug::{to_repr}
 
 ///|
-pub struct StateRegion {
+pub(all) struct StateRegion {
   parent : String
   separator : StateRegionSeparator?
   index : Int
@@ -123,7 +123,7 @@ pub extend StateNotePosition with Eq::{not_equal, equal}
 pub extend StateNotePosition with Debug::{to_repr}
 
 ///|
-pub struct StateNote {
+pub(all) struct StateNote {
   target : StateNoteTarget
   text : String
   color : String?
@@ -137,7 +137,7 @@ pub extend StateNote with Eq::{not_equal, equal}
 pub extend StateNote with Debug::{to_repr}
 
 ///|
-pub struct StateDiagram {
+pub(all) struct StateDiagram {
   states : Array[StateNode]
   transitions : Array[StateTransition]
   notes : Array[StateNote]
@@ -153,7 +153,7 @@ pub extend StateDiagram with Eq::{not_equal, equal}
 pub extend StateDiagram with Debug::{to_repr}
 
 ///|
-fn StateDiagram::hide_empty_description(self : StateDiagram) -> Bool {
+pub fn StateDiagram::hide_empty_description(self : StateDiagram) -> Bool {
   self.style.property("hide empty description") == Some("true")
 }
 

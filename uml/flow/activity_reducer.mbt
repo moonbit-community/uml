@@ -13,7 +13,7 @@ priv enum ReductionBoundary {
 }
 
 ///|
-fn edge_label(value : String) -> ActivityEdgeLabel {
+pub fn edge_label(value : String) -> ActivityEdgeLabel {
   let value = value.trim().to_owned()
   let text = {
     guard value.has_prefix("(") && value.has_suffix(")") else { value }
@@ -68,7 +68,7 @@ fn repeat_labels(
 }
 
 ///|
-fn arrow_label(value : String) -> ActivityEdgeLabel {
+pub fn arrow_label(value : String) -> ActivityEdgeLabel {
   let words = @parse.syntax_words(value)
   guard words.length() > 1 else { return { text: None, } }
   let text = words[1:].to_owned().join(" ").trim_end(chars=";").to_owned()

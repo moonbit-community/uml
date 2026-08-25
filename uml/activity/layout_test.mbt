@@ -10,7 +10,7 @@ fn position_of(layout : ActivityLayout, node_index : Int) -> (Int, Int)? {
 ///|
 fn action_index(layout : ActivityLayout, label : String) -> Int? {
   for index, node in layout.source_nodes {
-    guard node is ActivityNode::Action(candidate) && candidate == label else {
+    guard node is @flow.ActivityNode::Action(candidate) && candidate == label else {
       continue
     }
     return Some(index)
@@ -26,9 +26,15 @@ fn anchor_index(
 ) -> Int? {
   for index, node in layout.source_nodes {
     guard (
-        is_label && node is ActivityNode::Label(candidate) && candidate == name
+        is_label &&
+        node is @flow.ActivityNode::Label(candidate) &&
+        candidate == name
       ) ||
-      (!is_label && node is ActivityNode::Goto(candidate) && candidate == name) else {
+      (
+        !is_label &&
+        node is @flow.ActivityNode::Goto(candidate) &&
+        candidate == name
+      ) else {
       continue
     }
     return Some(index)
@@ -39,9 +45,9 @@ fn anchor_index(
 ///|
 fn control_index(layout : ActivityLayout, condition : String) -> Int? {
   for index, node in layout.source_nodes {
-    guard (node is ActivityNode::While(value) && value == condition) ||
-      (node is ActivityNode::RepeatWhile(value) && value == condition) ||
-      (node is ActivityNode::If(value) && value == condition) else {
+    guard (node is @flow.ActivityNode::While(value) && value == condition) ||
+      (node is @flow.ActivityNode::RepeatWhile(value) && value == condition) ||
+      (node is @flow.ActivityNode::If(value) && value == condition) else {
       continue
     }
     return Some(index)
@@ -64,9 +70,11 @@ fn region_for(
 
 ///|
 test "conditional branches are horizontal siblings and join at endif" {
-  let layout = parse(
-    "if (ready?) then (yes)\n:Accept;\nelse (no)\n:Reject;\nendif\n:Continue;",
-  ).layout()
+  let layout = layout_activity(
+    parse(
+      "if (ready?) then (yes)\n:Accept;\nelse (no)\n:Reject;\nendif\n:Continue;",
+    ),
+  )
   guard action_index(layout, "Accept") is Some(accept_index) else {
     @test.fail("missing accepted branch index")
   }
@@ -102,7 +110,9 @@ test "conditional branches are horizontal siblings and join at endif" {
 
 ///|
 test "parallel branches are horizontal and converge at the ending fork" {
-  let layout = parse("fork\n:Build;\nfork again\n:Test;\nend fork\n:Ship;").layout()
+  let layout = layout_activity(
+    parse("fork\n:Build;\nfork again\n:Test;\nend fork\n:Ship;"),
+  )
   guard action_index(layout, "Build") is Some(build_index) else {
     @test.fail("missing build branch index")
   }
@@ -136,7 +146,9 @@ test "parallel branches are horizontal and converge at the ending fork" {
 
 ///|
 test "loops include a routed back edge" {
-  let layout = parse("while (more?)\n:Read;\nendwhile (done)\n:Finish;").layout()
+  let layout = layout_activity(
+    parse("while (more?)\n:Read;\nendwhile (done)\n:Finish;"),
+  )
   @test.assert_eq(
     layout.edges.any(edge => {
       edge.route is BackwardLeft || edge.route is BackwardRight
@@ -147,9 +159,11 @@ test "loops include a routed back edge" {
 
 ///|
 test "loop labels remain attached to control-flow edges" {
-  let layout = parse(
-    "while (more?) is (yes)\n:Read;\nendwhile (done)\nrepeat\n:Retry;\nrepeat while (failed?) is (again) not (sent)\n:Finish;",
-  ).layout()
+  let layout = layout_activity(
+    parse(
+      "while (more?) is (yes)\n:Read;\nendwhile (done)\nrepeat\n:Retry;\nrepeat while (failed?) is (again) not (sent)\n:Finish;",
+    ),
+  )
   @test.assert_eq(layout.edges.any(edge => edge.label == Some("yes")), true)
   @test.assert_eq(layout.edges.any(edge => edge.label == Some("done")), true)
   @test.assert_eq(layout.edges.any(edge => edge.label == Some("again")), true)
@@ -158,9 +172,9 @@ test "loop labels remain attached to control-flow edges" {
 
 ///|
 test "while exits from its controlling decision rather than its loop body" {
-  let layout = parse(
-    "while (more?) is (yes)\n:Read;\nendwhile (done)\n:Finish;",
-  ).layout()
+  let layout = layout_activity(
+    parse("while (more?) is (yes)\n:Read;\nendwhile (done)\n:Finish;"),
+  )
   guard control_index(layout, "more?") is Some(while_decision) else {
     @test.fail("missing while decision")
   }
@@ -190,12 +204,14 @@ test "while exits from its controlling decision rather than its loop body" {
 
 ///|
 test "conditional and switch labels belong to incoming branch edges" {
-  let conditional = parse(
-    "if (ready?) then (accept)\n:Accept;\nelse (reject)\n:Reject;\nendif",
-  ).layout()
-  let switch_layout = parse(
-    "switch (method)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\nendswitch",
-  ).layout()
+  let conditional = layout_activity(
+    parse("if (ready?) then (accept)\n:Accept;\nelse (reject)\n:Reject;\nendif"),
+  )
+  let switch_layout = layout_activity(
+    parse(
+      "switch (method)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\nendswitch",
+    ),
+  )
   @test.assert_eq(
     conditional.edges.any(edge => edge.label == Some("accept")),
     true,
@@ -216,9 +232,11 @@ test "conditional and switch labels belong to incoming branch edges" {
 
 ///|
 test "elseif decisions form a horizontal cascade" {
-  let layout = parse(
-    "if (first?) then (yes)\n:First;\nelseif (second?) then (yes)\n:Second;\nelse (no)\n:Fallback;\nendif",
-  ).layout()
+  let layout = layout_activity(
+    parse(
+      "if (first?) then (yes)\n:First;\nelseif (second?) then (yes)\n:Second;\nelse (no)\n:Fallback;\nendif",
+    ),
+  )
   guard control_index(layout, "first?") is Some(first) else {
     @test.fail("missing first decision")
   }
@@ -236,9 +254,11 @@ test "elseif decisions form a horizontal cascade" {
 
 ///|
 test "partitions and swimlanes contain their visible instructions" {
-  let layout = parse(
-    "|Customer|\n:Submit;\n|Store|\npartition Fulfilment {\n:Validate;\n:Reserve;\n}\n|Customer|\n:Confirm;",
-  ).layout()
+  let layout = layout_activity(
+    parse(
+      "|Customer|\n:Submit;\n|Store|\npartition Fulfilment {\n:Validate;\n:Reserve;\n}\n|Customer|\n:Confirm;",
+    ),
+  )
   guard region_for(layout, ActivityRegionKind::Partition, "Fulfilment")
     is Some(partition) else {
     @test.fail("missing partition region")
@@ -273,7 +293,9 @@ test "partitions and swimlanes contain their visible instructions" {
 
 ///|
 test "explicit arrow text labels the following visible edge" {
-  let layout = parse(":Receive;\n-> validate input\n:Validate;").layout()
+  let layout = layout_activity(
+    parse(":Receive;\n-> validate input\n:Validate;"),
+  )
   @test.assert_eq(
     layout.edges.any(edge => edge.label == Some("validate input")),
     true,
@@ -282,9 +304,9 @@ test "explicit arrow text labels the following visible edge" {
 
 ///|
 test "goto connects its anchor directly to the matching label anchor" {
-  let layout = parse(
-    "label retry\n:Retry;\nif (again?) then (yes)\ngoto retry\nendif",
-  ).layout()
+  let layout = layout_activity(
+    parse("label retry\n:Retry;\nif (again?) then (yes)\ngoto retry\nendif"),
+  )
   guard anchor_index(layout, "retry", true) is Some(label_anchor) else {
     @test.fail("missing label anchor")
   }
@@ -304,7 +326,7 @@ test "goto connects its anchor directly to the matching label anchor" {
 ///|
 fn fork_bar_index(layout : ActivityLayout) -> Int? {
   for index, node in layout.source_nodes {
-    guard node is ActivityNode::Fork else { continue }
+    guard node is @flow.ActivityNode::Fork else { continue }
     return Some(index)
   }
   None
@@ -328,7 +350,7 @@ fn box_gap(layout : ActivityLayout, left : Int, right : Int) -> Int? {
 
 ///|
 test "fork columns compress toward the bars when the gaps are empty" {
-  let layout = parse("fork\n:A;\nfork again\n:BB;\nend fork").layout()
+  let layout = layout_activity(parse("fork\n:A;\nfork again\n:BB;\nend fork"))
   guard fork_bar_index(layout) is Some(bar_index) else {
     @test.fail("missing fork bar")
   }
@@ -354,10 +376,12 @@ test "fork columns compress toward the bars when the gaps are empty" {
 
 ///|
 test "fork compression is blocked by elements spanning the gaps" {
-  let empty = parse("fork\n:A;\nfork again\n:BB;\nend fork").layout()
-  let covered = parse(
-    ":WWWWWWWWWWWWWWWWWWWW;\nfork\n:A;\nfork again\n:BB;\nend fork\n:WWWWWWWWWWWWWWWWWWWW;",
-  ).layout()
+  let empty = layout_activity(parse("fork\n:A;\nfork again\n:BB;\nend fork"))
+  let covered = layout_activity(
+    parse(
+      ":WWWWWWWWWWWWWWWWWWWW;\nfork\n:A;\nfork again\n:BB;\nend fork\n:WWWWWWWWWWWWWWWWWWWW;",
+    ),
+  )
   guard action_index(empty, "A") is Some(empty_a) else {
     @test.fail("missing first branch")
   }
@@ -383,9 +407,11 @@ test "fork compression is blocked by elements spanning the gaps" {
 
 ///|
 test "switch case columns compress when nothing spans the gaps" {
-  let layout = parse(
-    "switch (x)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\ncase (other)\n:Other;\nendswitch",
-  ).layout()
+  let layout = layout_activity(
+    parse(
+      "switch (x)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\ncase (other)\n:Other;\nendswitch",
+    ),
+  )
   guard action_index(layout, "Email") is Some(email_index) else {
     @test.fail("missing email branch")
   }
@@ -404,7 +430,7 @@ test "switch case columns compress when nothing spans the gaps" {
 
 ///|
 test "plain sequences are never compressed" {
-  let layout = parse(":One;\n:Two;\n:Three;").layout()
+  let layout = layout_activity(parse(":One;\n:Two;\n:Three;"))
   guard action_index(layout, "One") is Some(one_index) else {
     @test.fail("missing first action")
   }

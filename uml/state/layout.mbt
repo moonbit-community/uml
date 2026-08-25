@@ -30,7 +30,7 @@ pub extend StateEdgeLayout with Debug::{to_repr}
 pub struct StateRegionLayout {
   parent : String
   region_index : Int
-  separator : StateRegionSeparator?
+  separator : @flow.StateRegionSeparator?
   x : Double
   y : Double
   width : Double
@@ -86,7 +86,7 @@ priv struct StateFragment {
 
 ///|
 priv struct StateVisibleNode {
-  state : StateNode
+  state : @flow.StateNode
   child : StateFragment?
 }
 
@@ -187,7 +187,10 @@ fn shift_state_note(
 }
 
 ///|
-fn StateDiagram::has_children(self : StateDiagram, code : String) -> Bool {
+fn @flow.StateDiagram::has_children(
+  self : @flow.StateDiagram,
+  code : String,
+) -> Bool {
   for state in self.states {
     if state.parent == Some(code) {
       return true
@@ -197,16 +200,16 @@ fn StateDiagram::has_children(self : StateDiagram, code : String) -> Bool {
 }
 
 ///|
-fn StateDiagram::regions_for(
-  self : StateDiagram,
+fn @flow.StateDiagram::regions_for(
+  self : @flow.StateDiagram,
   parent : String,
-) -> Array[StateRegion] {
+) -> Array[@flow.StateRegion] {
   self.regions.filter(region => region.parent == parent)
 }
 
 ///|
-fn StateDiagram::scope_path(
-  self : StateDiagram,
+fn @flow.StateDiagram::scope_path(
+  self : @flow.StateDiagram,
   code : String,
 ) -> Array[String] {
   let path : Array[String] = []
@@ -240,9 +243,9 @@ fn longest_common_state_path(
 }
 
 ///|
-fn StateDiagram::transition_scope(
-  self : StateDiagram,
-  transition : StateTransition,
+fn @flow.StateDiagram::transition_scope(
+  self : @flow.StateDiagram,
+  transition : @flow.StateTransition,
 ) -> String? {
   longest_common_state_path(
     self.scope_path(transition.source),
@@ -251,9 +254,9 @@ fn StateDiagram::transition_scope(
 }
 
 ///|
-fn StateDiagram::transition_region_index(
-  self : StateDiagram,
-  transition : StateTransition,
+fn @flow.StateDiagram::transition_region_index(
+  self : @flow.StateDiagram,
+  transition : @flow.StateTransition,
   scope : String?,
 ) -> Int {
   match scope {
@@ -269,8 +272,8 @@ fn StateDiagram::transition_region_index(
 }
 
 ///|
-fn StateDiagram::transition_visible_endpoint(
-  self : StateDiagram,
+fn @flow.StateDiagram::transition_visible_endpoint(
+  self : @flow.StateDiagram,
   code : String,
   scope : String?,
 ) -> String {
@@ -286,16 +289,16 @@ fn StateDiagram::transition_visible_endpoint(
 }
 
 ///|
-fn StateDiagram::state_note_scope(
-  self : StateDiagram,
+fn @flow.StateDiagram::state_note_scope(
+  self : @flow.StateDiagram,
   target : String,
 ) -> String? {
   self.state(target).bind(state => state.parent)
 }
 
 ///|
-fn StateDiagram::state_note_region_index(
-  self : StateDiagram,
+fn @flow.StateDiagram::state_note_region_index(
+  self : @flow.StateDiagram,
   target : String,
   scope : String?,
 ) -> Int {
@@ -307,10 +310,13 @@ fn StateDiagram::state_note_region_index(
 }
 
 ///|
-fn StateDiagram::note_scope(self : StateDiagram, note : StateNote) -> String? {
+fn @flow.StateDiagram::note_scope(
+  self : @flow.StateDiagram,
+  note : @flow.StateNote,
+) -> String? {
   match note.target {
-    StateNote(target) => self.state_note_scope(target)
-    TransitionNote(index) =>
+    @flow.StateNote(target) => self.state_note_scope(target)
+    @flow.StateNoteTarget::TransitionNote(index) =>
       if index < self.transitions.length() {
         self.transition_scope(self.transitions[index])
       } else {
@@ -320,14 +326,14 @@ fn StateDiagram::note_scope(self : StateDiagram, note : StateNote) -> String? {
 }
 
 ///|
-fn StateDiagram::note_region_index(
-  self : StateDiagram,
-  note : StateNote,
+fn @flow.StateDiagram::note_region_index(
+  self : @flow.StateDiagram,
+  note : @flow.StateNote,
   scope : String?,
 ) -> Int {
   match note.target {
-    StateNote(target) => self.state_note_region_index(target, scope)
-    TransitionNote(index) =>
+    @flow.StateNote(target) => self.state_note_region_index(target, scope)
+    @flow.StateNoteTarget::TransitionNote(index) =>
       if index < self.transitions.length() {
         self.transition_region_index(self.transitions[index], scope)
       } else {
@@ -337,14 +343,15 @@ fn StateDiagram::note_region_index(
 }
 
 ///|
-fn StateDiagram::note_anchor(
-  self : StateDiagram,
-  note : StateNote,
+fn @flow.StateDiagram::note_anchor(
+  self : @flow.StateDiagram,
+  note : @flow.StateNote,
   scope : String?,
 ) -> String? {
   match note.target {
-    StateNote(target) => Some(self.transition_visible_endpoint(target, scope))
-    TransitionNote(index) =>
+    @flow.StateNote(target) =>
+      Some(self.transition_visible_endpoint(target, scope))
+    @flow.StateNoteTarget::TransitionNote(index) =>
       if index < self.transitions.length() {
         Some(
           self.transition_visible_endpoint(
@@ -369,7 +376,7 @@ fn state_text_size(
 
 ///|
 fn state_note_size(
-  note : StateNote,
+  note : @flow.StateNote,
   metrics : @metrics.FontMetrics,
 ) -> (Double, Double) {
   let (width, height) = state_text_size(note.text, metrics)
@@ -377,17 +384,20 @@ fn state_note_size(
 }
 
 ///|
-fn StateNode::leaf_size(
-  self : StateNode,
+fn @flow.StateNode::leaf_size(
+  self : @flow.StateNode,
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
   hide_empty_description : Bool,
 ) -> (Double, Double) {
   match self.kind {
-    Initial | Final | History | DeepHistory | Choice =>
-      (STATE_TERMINAL_SIZE, STATE_TERMINAL_SIZE)
-    Synchronization => (STATE_SYNC_WIDTH, STATE_SYNC_HEIGHT)
-    Normal => {
+    @flow.StateKind::Initial
+    | @flow.StateKind::Final
+    | @flow.StateKind::History
+    | @flow.StateKind::DeepHistory
+    | @flow.StateKind::Choice => (STATE_TERMINAL_SIZE, STATE_TERMINAL_SIZE)
+    @flow.StateKind::Synchronization => (STATE_SYNC_WIDTH, STATE_SYNC_HEIGHT)
+    @flow.StateKind::Normal => {
       let name = state_text_size(self.display, name_metrics)
       if !self.has_description() && hide_empty_description {
         (
@@ -412,9 +422,9 @@ fn StateNode::leaf_size(
 }
 
 ///|
-fn StateDiagram::composite_fragment(
-  self : StateDiagram,
-  state : StateNode,
+fn @flow.StateDiagram::composite_fragment(
+  self : @flow.StateDiagram,
+  state : @flow.StateNode,
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
 ) -> StateFragment? raise @dot_layout.DotLayoutError {
@@ -423,8 +433,8 @@ fn StateDiagram::composite_fragment(
 }
 
 ///|
-fn StateDiagram::visible_nodes_for_scope(
-  self : StateDiagram,
+fn @flow.StateDiagram::visible_nodes_for_scope(
+  self : @flow.StateDiagram,
   scope : String?,
   region_index : Int,
   name_metrics : @metrics.FontMetrics,
@@ -464,8 +474,8 @@ fn append_shifted_fragment(
 }
 
 ///|
-fn StateDiagram::layout_scope(
-  self : StateDiagram,
+fn @flow.StateDiagram::layout_scope(
+  self : @flow.StateDiagram,
   scope : String?,
   region_index : Int,
   name_metrics : @metrics.FontMetrics,
@@ -522,7 +532,7 @@ fn StateDiagram::layout_scope(
       edge.set_attr("label", label)
     }
     match transition.direction {
-      Leftward => edge.set_attr("dir", "back")
+      @flow.TransitionDirection::Leftward => edge.set_attr("dir", "back")
       _ => edge.set_attr("dir", "forward")
     }
     match transition.line_style {
@@ -546,13 +556,16 @@ fn StateDiagram::layout_scope(
         guard node_names.get(anchor) is Some(anchor_name) else { continue }
         let anchor_node = graph.node(anchor_name)
         let edge = match note.position {
-          Some(NoteRight) | Some(NoteBottom) => graph.edge(anchor_node, node)
+          Some(@flow.StateNotePosition::NoteRight)
+          | Some(@flow.StateNotePosition::NoteBottom) =>
+            graph.edge(anchor_node, node)
           _ => graph.edge(node, anchor_node)
         }
         edge.set_attr("dir", "none")
         edge.set_attr("style", "invis")
         match note.position {
-          Some(NoteLeft) | Some(NoteRight) => {
+          Some(@flow.StateNotePosition::NoteLeft)
+          | Some(@flow.StateNotePosition::NoteRight) => {
             let same_rank = graph.subgraph()
             same_rank.set_attr("rank", "same")
             ignore(same_rank.node(name))
@@ -682,8 +695,8 @@ fn StateDiagram::layout_scope(
 /// Graphviz places a same-rank note beside its anchor, but the flat-edge
 /// ordering is not honored for isolated rank pairs, so the note may land on
 /// the wrong side. Mirror the note across its anchor with the same gap.
-fn StateDiagram::correct_note_side(
-  self : StateDiagram,
+fn @flow.StateDiagram::correct_note_side(
+  self : @flow.StateDiagram,
   scope : String?,
   nodes : Array[StateNodeLayout],
   note : @graphviz.GraphvizNote,
@@ -698,7 +711,11 @@ fn StateDiagram::correct_note_side(
   }
   guard note_index < self.notes.length() else { return layout }
   let position = self.notes[note_index].position
-  guard position is (Some(NoteLeft) | Some(NoteRight)) else { return layout }
+  guard position
+    is (Some(@flow.StateNotePosition::NoteLeft)
+    | Some(@flow.StateNotePosition::NoteRight)) else {
+    return layout
+  }
   guard self.note_anchor(self.notes[note_index], scope) is Some(anchor) else {
     return layout
   }
@@ -707,7 +724,7 @@ fn StateDiagram::correct_note_side(
   }
   let note_center = note.x + note.width / 2.0
   let anchor_center = anchor_x + anchor_w / 2.0
-  let on_correct_side = if position is Some(NoteLeft) {
+  let on_correct_side = if position is Some(@flow.StateNotePosition::NoteLeft) {
     note_center <= anchor_center
   } else {
     note_center >= anchor_center
@@ -720,7 +737,7 @@ fn StateDiagram::correct_note_side(
   } else {
     anchor_x - (note.x + note.width)
   }
-  let corrected_x = if position is Some(NoteLeft) {
+  let corrected_x = if position is Some(@flow.StateNotePosition::NoteLeft) {
     anchor_x - gap - note.width
   } else {
     anchor_x + anchor_w + gap
@@ -744,7 +761,7 @@ fn note_anchor_rect(
 ///|
 fn stack_region_fragments(
   parent : String,
-  regions : Array[StateRegion],
+  regions : Array[@flow.StateRegion],
   fragments : Array[StateFragment],
 ) -> StateFragment {
   let output : StateFragment = {
@@ -755,7 +772,9 @@ fn stack_region_fragments(
     regions: [],
     notes: [],
   }
-  let horizontal = regions.any(region => region.separator == Some(Vertical))
+  let horizontal = regions.any(region => {
+    region.separator == Some(@flow.StateRegionSeparator::Vertical)
+  })
   if horizontal {
     let mut x = 0.0
     let mut height = 1.0
@@ -804,9 +823,9 @@ fn stack_region_fragments(
 }
 
 ///|
-fn StateDiagram::layout_composite_state(
-  self : StateDiagram,
-  state : StateNode,
+fn @flow.StateDiagram::layout_composite_state(
+  self : @flow.StateDiagram,
+  state : @flow.StateNode,
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
@@ -831,8 +850,8 @@ fn StateDiagram::layout_composite_state(
 }
 
 ///|
-pub fn StateDiagram::layout(
-  self : StateDiagram,
+fn @flow.StateDiagram::layout(
+  self : @flow.StateDiagram,
 ) -> StateLayout raise @dot_layout.DotLayoutError {
   let name_metrics = state_font_metrics(self.style)
   let description_metrics = state_description_font_metrics(self.style)
@@ -853,4 +872,12 @@ pub fn StateDiagram::layout(
       shift_state_note(note, STATE_CANVAS_PADDING, STATE_CANVAS_PADDING)
     }),
   }
+}
+
+///|
+/// Calculate PlantUML-style state-diagram geometry without rendering it.
+pub fn layout_state(
+  diagram : @flow.StateDiagram,
+) -> StateLayout raise @dot_layout.DotLayoutError {
+  diagram.layout()
 }

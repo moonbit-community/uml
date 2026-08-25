@@ -1,5 +1,5 @@
 ///|
-fn has_action(diagram : ActivityDiagram, label : String) -> Bool {
+fn has_action(diagram : @flow.ActivityDiagram, label : String) -> Bool {
   diagram.nodes.any(node => {
     match node {
       Action(value) => value == label
@@ -9,7 +9,7 @@ fn has_action(diagram : ActivityDiagram, label : String) -> Bool {
 }
 
 ///|
-fn has_control(diagram : ActivityDiagram, label : String) -> Bool {
+fn has_control(diagram : @flow.ActivityDiagram, label : String) -> Bool {
   diagram.nodes.any(node => {
     match node {
       If(value)

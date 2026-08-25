@@ -86,7 +86,7 @@ fn synchronization_background_color(style : @style.DocumentStyle) -> String {
 
 ///|
 fn state_style_property(
-  state : StateNode,
+  state : @flow.StateNode,
   style : @style.DocumentStyle,
   key : String,
 ) -> String? {
@@ -101,7 +101,7 @@ fn state_style_property(
 
 ///|
 fn state_style_color(
-  state : StateNode,
+  state : @flow.StateNode,
   style : @style.DocumentStyle,
   key : String,
   fallback : String,
@@ -112,7 +112,7 @@ fn state_style_color(
 ///|
 /// Resolve normal-state paint with PlantUML's inline-color precedence.
 fn state_background_color(
-  state : StateNode,
+  state : @flow.StateNode,
   style : @style.DocumentStyle,
 ) -> String {
   let fallback = state_style_color(
@@ -126,7 +126,7 @@ fn state_background_color(
 
 ///|
 fn state_border_color(
-  state : StateNode,
+  state : @flow.StateNode,
   style : @style.DocumentStyle,
 ) -> String {
   state_style_color(
@@ -139,7 +139,7 @@ fn state_border_color(
 
 ///|
 fn composite_state_background_color(
-  state : StateNode,
+  state : @flow.StateNode,
   style : @style.DocumentStyle,
 ) -> String {
   state_background_color(state, style)
@@ -147,7 +147,7 @@ fn composite_state_background_color(
 
 ///|
 fn composite_state_border_color(
-  state : StateNode,
+  state : @flow.StateNode,
   style : @style.DocumentStyle,
 ) -> String {
   state_border_color(state, style)
@@ -199,7 +199,7 @@ fn state_description_font_metrics(
 
 ///|
 fn note_background_color(
-  note : StateNote,
+  note : @flow.StateNote,
   style : @style.DocumentStyle,
 ) -> String {
   let fallback = style.property_color(
@@ -324,7 +324,7 @@ fn append_state_label(
 ///|
 fn append_state_node(
   output : @svg.XmlWriter,
-  diagram : StateDiagram,
+  diagram : @flow.StateDiagram,
   layout : StateNodeLayout,
 ) -> Unit {
   guard diagram.state(layout.code) is Some(state) else { return }
@@ -335,7 +335,7 @@ fn append_state_node(
   let center_x = x + width / 2.0
   let center_y = y + height / 2.0
   let composite = diagram.has_children(state.code)
-  let empty_description = state.kind == Normal &&
+  let empty_description = state.kind == @flow.StateKind::Normal &&
     !state.has_description() &&
     diagram.hide_empty_description()
   let group_attributes = [
@@ -354,7 +354,7 @@ fn append_state_node(
         "composite"
       } else if empty_description {
         "empty"
-      } else if state.kind == Normal {
+      } else if state.kind == @flow.StateKind::Normal {
         "compartment"
       } else {
         "pseudo"
@@ -447,7 +447,7 @@ fn append_state_node(
     return
   }
   match state.kind {
-    Initial =>
+    @flow.StateKind::Initial =>
       output.empty("circle", attributes=[
         ("class", "state-initial"),
         ("cx", center_x.to_string()),
@@ -457,7 +457,7 @@ fn append_state_node(
         ("stroke", terminal_border_color(diagram.style)),
         ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
       ])
-    Final => {
+    @flow.StateKind::Final => {
       let radius = width.min(height) / 2.0
       output.empty("circle", attributes=[
         ("class", "state-final-outer"),
@@ -478,11 +478,11 @@ fn append_state_node(
         ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
       ])
     }
-    History | DeepHistory => {
+    @flow.StateKind::History | @flow.StateKind::DeepHistory => {
       output.empty("circle", attributes=[
         (
           "class",
-          if state.kind == DeepHistory {
+          if state.kind == @flow.StateKind::DeepHistory {
             "state-deep-history"
           } else {
             "state-history"
@@ -497,7 +497,7 @@ fn append_state_node(
       ])
       append_state_label(
         output,
-        if state.kind == DeepHistory {
+        if state.kind == @flow.StateKind::DeepHistory {
           "H*"
         } else {
           "H"
@@ -508,7 +508,7 @@ fn append_state_node(
         diamond_font_metrics(diagram.style),
       )
     }
-    Synchronization =>
+    @flow.StateKind::Synchronization =>
       output.empty("rect", attributes=[
         ("class", "state-synchronization"),
         ("x", x.to_string()),
@@ -518,7 +518,7 @@ fn append_state_node(
         ("fill", synchronization_background_color(diagram.style)),
         ("stroke", "none"),
       ])
-    Choice =>
+    @flow.StateKind::Choice =>
       output.empty("path", attributes=[
         ("class", "state-choice"),
         (
@@ -545,7 +545,7 @@ fn append_state_node(
         ("stroke", diamond_border_color(diagram.style)),
         ("stroke-width", STATE_THIN_STROKE_WIDTH),
       ])
-    Normal => {
+    @flow.StateKind::Normal => {
       output.empty("rect", attributes=[
         ("x", x.to_string()),
         ("y", y.to_string()),
@@ -610,7 +610,7 @@ fn append_state_node(
 ///|
 fn append_state_edge(
   output : @svg.XmlWriter,
-  diagram : StateDiagram,
+  diagram : @flow.StateDiagram,
   edge : StateEdgeLayout,
 ) -> Unit {
   guard edge.transition_index < diagram.transitions.length() else { return }
@@ -683,7 +683,7 @@ fn append_state_region_separator(
   region : StateRegionLayout,
 ) -> Unit {
   match region.separator {
-    Some(Horizontal) =>
+    Some(@flow.StateRegionSeparator::Horizontal) =>
       output.empty("line", attributes=[
         ("x1", region.x.to_string()),
         ("y1", (region.y - STATE_REGION_GAP / 2.0).to_string()),
@@ -691,7 +691,7 @@ fn append_state_region_separator(
         ("y2", (region.y - STATE_REGION_GAP / 2.0).to_string()),
         ("class", "state-region-separator"),
       ])
-    Some(Vertical) =>
+    Some(@flow.StateRegionSeparator::Vertical) =>
       output.empty("line", attributes=[
         ("x1", (region.x - STATE_REGION_GAP / 2.0).to_string()),
         ("y1", region.y.to_string()),
@@ -706,7 +706,7 @@ fn append_state_region_separator(
 ///|
 fn append_state_note(
   output : @svg.XmlWriter,
-  diagram : StateDiagram,
+  diagram : @flow.StateDiagram,
   layout : StateNoteLayout,
 ) -> Unit {
   guard layout.note_index < diagram.notes.length() else { return }
@@ -736,8 +736,8 @@ fn append_state_note(
 }
 
 ///|
-pub fn StateDiagram::render_svg(
-  self : StateDiagram,
+fn @flow.StateDiagram::render_svg(
+  self : @flow.StateDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
@@ -833,9 +833,15 @@ pub fn StateDiagram::render_svg(
 }
 
 ///|
+pub fn render_state(input : String) -> String raise {
+  parse(input).render_svg()
+}
+
+///|
+/// Render a parsed state diagram to SVG.
 pub fn render_state_svg(
-  input : String,
+  diagram : @flow.StateDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> String raise {
-  parse(input).render_svg(color_scheme~)
+) -> String raise @dot_layout.DotLayoutError {
+  diagram.render_svg(color_scheme~)
 }
