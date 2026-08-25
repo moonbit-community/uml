@@ -97,7 +97,7 @@ pub fn parse(source : String) -> Document raise {
       { diagram: Toml(@structured_family.parse_toml(source)), }
     _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)), }
     _ if is_mindmap_source(source) =>
-      { diagram: Mindmap(@mindmap.parse(source)), }
+      { diagram: Mindmap(@parser.parse_mindmap(source)), }
     _ if is_sequence_source(source) =>
       { diagram: Sequence(@parser.parse_sequence(source)), }
     _ if is_activity_source(source) =>

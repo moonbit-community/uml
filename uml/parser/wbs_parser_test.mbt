@@ -36,7 +36,7 @@ fn style_property_named(
 
 ///|
 test "builds WBS hierarchy from smart marker levels" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n* Root\n** First\n*** Leaf\n** Second\n@endwbs",
   )
   let root = node_named(diagram, "Root")
@@ -51,7 +51,7 @@ test "builds WBS hierarchy from smart marker levels" {
 
 ///|
 test "uses marker and explicit directions independently" {
-  let diagram = parse("@startwbs\n* Root\n**> Right\n--< Left\n@endwbs")
+  let diagram = parse_wbs("@startwbs\n* Root\n**> Right\n--< Left\n@endwbs")
   @test.assert_eq(
     node_named(diagram, "Right").direction,
     @tree.WbsDirection::Right,
@@ -68,7 +68,7 @@ test "uses marker and explicit directions independently" {
 
 ///|
 test "parses modern and legacy node modifiers" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n* Root\n**_>[#abc](right) Boxless <<tag>>\n**>_(direction_first) Direction first\n**[#def](left)_> Legacy\n@endwbs",
   )
   let modern = node_named(diagram, "Boxless")
@@ -87,7 +87,7 @@ test "parses modern and legacy node modifiers" {
 
 ///|
 test "supports quoted aliases, pseudo nodes, and multiline labels" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n* Root\n** \"Alpha\" as alpha\n**_(group)\n***: first line\nsecond line; <<note>>\n@endwbs",
   )
   let alpha = node_named(diagram, "Alpha")
@@ -102,7 +102,7 @@ test "supports quoted aliases, pseudo nodes, and multiline labels" {
 
 ///|
 test "completes a multiline root before parsing its descendants" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n*: root line\nroot continuation;\n** Child\n@endwbs",
   )
   let root = node_named(diagram, "root line\nroot continuation")
@@ -114,7 +114,7 @@ test "completes a multiline root before parsing its descendants" {
 
 ///|
 test "joins PlantUML line continuations before parsing node labels" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     (
       #|@startwbs
       #|* Root \
@@ -128,7 +128,7 @@ test "joins PlantUML line continuations before parsing node labels" {
 
 ///|
 test "resolves links after coded nodes and preserves link metadata" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n* Root\n** \"Alpha\" as alpha\n** \"Beta\" as beta\nalpha .> beta #red <<critical>> : ignored\n@endwbs",
   )
   let link = first_link(diagram)
@@ -147,7 +147,7 @@ test "resolves links after coded nodes and preserves link metadata" {
 
 ///|
 test "retains document and nested WBS style properties" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\nskinparam BackgroundColor #eeeeee\n<style>\nwbsDiagram {\n  node {\n    width auto\n  }\n}\n</style>\n* Root\n@endwbs",
   )
   @test.assert_eq(diagram.style.canvas_color(), "#eeeeee")
@@ -159,7 +159,7 @@ test "retains document and nested WBS style properties" {
 
 ///|
 test "accepts common title and legend blocks" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\ntitle\nWork plan\nend title\nlegend left\nLegend text\nendlegend\n* Root\n@endwbs",
   )
   @test.assert_eq(diagram.style.title, Some("Work plan"))
@@ -168,32 +168,38 @@ test "accepts common title and legend blocks" {
 
 ///|
 test "rejects invalid tree structure and unresolved links" {
-  @test.assert_raise(() => ignore(parse("@startwbs\n* Root\n*** Gap\n@endwbs")))
-  @test.assert_raise(() => ignore(parse("@startwbs\n* Root\n* Second\n@endwbs")))
   @test.assert_raise(() => {
-    ignore(parse("@startwbs\n* Root\nmissing -> node\n@endwbs"))
+    ignore(parse_wbs("@startwbs\n* Root\n*** Gap\n@endwbs"))
+  })
+  @test.assert_raise(() => {
+    ignore(parse_wbs("@startwbs\n* Root\n* Second\n@endwbs"))
+  })
+  @test.assert_raise(() => {
+    ignore(parse_wbs("@startwbs\n* Root\nmissing -> node\n@endwbs"))
   })
   @test.assert_raise(() => {
     ignore(
-      parse("@startwbs\n* \"Root\" as root\n** Child\nroot -> child\n@endwbs"),
+      parse_wbs(
+        "@startwbs\n* \"Root\" as root\n** Child\nroot -> child\n@endwbs",
+      ),
     )
   })
-  @test.assert_raise(() => ignore(parse("@startwbs\n*\n@endwbs")))
+  @test.assert_raise(() => ignore(parse_wbs("@startwbs\n*\n@endwbs")))
 }
 
 ///|
 test "keeps reading a multiline item past a semicolon on the first line" {
   @test.assert_raise(() => {
-    ignore(parse("@startwbs\n*: foo;\n** Child\n@endwbs"))
+    ignore(parse_wbs("@startwbs\n*: foo;\n** Child\n@endwbs"))
   })
   @test.assert_raise(() => {
-    ignore(parse("@startwbs\n*: foo; <<x>>\n** Child\n@endwbs"))
+    ignore(parse_wbs("@startwbs\n*: foo; <<x>>\n** Child\n@endwbs"))
   })
 }
 
 ///|
 test "drops comment lines and keeps trailing comments in labels" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n* Root 'note\n**: first\n'comment line\nsecond line 'tail;\n@endwbs",
   )
   @test.assert_eq(node_named(diagram, "Root 'note").parent, None)
@@ -202,33 +208,33 @@ test "drops comment lines and keeps trailing comments in labels" {
     None,
   )
   @test.assert_raise(() => {
-    ignore(parse("@startwbs\n*: first\n'; only\n@endwbs"))
+    ignore(parse_wbs("@startwbs\n*: first\n'; only\n@endwbs"))
   })
 }
 
 ///|
 test "accepts only letter-digit-underscore codes" {
   let literal = node_named(
-    parse("@startwbs\n* Root\n** \"a\" as b-c\n@endwbs"),
+    parse_wbs("@startwbs\n* Root\n** \"a\" as b-c\n@endwbs"),
     "\"a\" as b-c",
   )
   @test.assert_eq(literal.code, None)
   let unicode = node_named(
-    parse("@startwbs\n* Root\n** \"a\" as 代码\n@endwbs"),
+    parse_wbs("@startwbs\n* Root\n** \"a\" as 代码\n@endwbs"),
     "a",
   )
   @test.assert_eq(unicode.code, Some("代码"))
   @test.assert_raise(() => {
-    ignore(parse("@startwbs\n* Root\n**(a-b) Child\n@endwbs"))
+    ignore(parse_wbs("@startwbs\n* Root\n**(a-b) Child\n@endwbs"))
   })
   @test.assert_raise(() => {
-    ignore(parse("@startwbs\n* Root\n**(a b) Child\n@endwbs"))
+    ignore(parse_wbs("@startwbs\n* Root\n**(a b) Child\n@endwbs"))
   })
 }
 
 ///|
 test "parses link colors, stereotypes, and rejects empty link labels" {
-  let diagram = parse(
+  let diagram = parse_wbs(
     "@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b #red;line:blue <<x>> : label\n@endwbs",
   )
   let link = first_link(diagram)
@@ -237,12 +243,14 @@ test "parses link colors, stereotypes, and rejects empty link labels" {
   @test.assert_eq(link.label, Some("label"))
   @test.assert_raise(() => {
     ignore(
-      parse("@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b:\n@endwbs"),
+      parse_wbs(
+        "@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b:\n@endwbs",
+      ),
     )
   })
   @test.assert_raise(() => {
     ignore(
-      parse(
+      parse_wbs(
         "@startwbs\n* Root\n** \"A\" as a\n** \"B\" as b\na .> b-c\n@endwbs",
       ),
     )

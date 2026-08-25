@@ -10,7 +10,7 @@ priv struct RawIdea {
 }
 
 ///|
-fn marker_end(line : String) -> Int {
+fn mindmap_marker_end(line : String) -> Int {
   let cursor = @parse.Cursor::new(line)
   ignore(cursor.skip_inline_whitespace())
   ignore(
@@ -80,7 +80,7 @@ fn parse_raw_idea(line : String) -> RawIdea? {
       multiline: false,
     })
   }
-  let end = marker_end(line)
+  let end = mindmap_marker_end(line)
   guard end > 0 else { return None }
   let marker = line[:end].to_owned()
   guard marker_is_valid(marker) else { return None }
@@ -149,7 +149,7 @@ fn smart_level(
 }
 
 ///|
-fn ending_stereotype(label : String) -> (String, String?) {
+fn mindmap_ending_stereotype(label : String) -> (String, String?) {
   let value = label.trim_end().to_owned()
   guard value.has_suffix(">>") else { return (value, None) }
   value
@@ -254,7 +254,9 @@ fn parse_mindmap_style_block(
 /// Parse a PlantUML mindmap source. Both org-mode (`*`/`#`) and plus/minus
 /// syntax are accepted, including colors, boxless items, stereotypes, and
 /// org-mode multiline labels.
-pub fn parse(input : String) -> @tree.MindmapDiagram raise @parse.ParseError {
+pub fn parse_mindmap(
+  input : String,
+) -> @tree.MindmapDiagram raise @parse.ParseError {
   let lines = @parse.preprocess(input)
     .split("\n")
     .map(StringView::to_owned)
@@ -346,7 +348,7 @@ pub fn parse(input : String) -> @tree.MindmapDiagram raise @parse.ParseError {
     let (label, last, stereotype) = if raw.multiline {
       complete_multiline_label(lines, index, raw.label)
     } else {
-      let (text, stereotype) = ending_stereotype(raw.label)
+      let (text, stereotype) = mindmap_ending_stereotype(raw.label)
       (text, index, stereotype)
     }
     let parent : Int? = if normalized_level == 0 {

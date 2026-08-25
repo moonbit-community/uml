@@ -19,7 +19,7 @@ priv struct ItemPrefix {
 }
 
 ///|
-priv struct Parser {
+priv struct WbsParser {
   lines : Array[String]
   nodes : Array[@tree.WbsNode]
   links : Array[@tree.WbsLink]
@@ -56,7 +56,7 @@ fn logical_wbs_lines(input : String) -> Array[String] {
 }
 
 ///|
-fn Parser::new(input : String) -> Parser {
+fn WbsParser::new(input : String) -> WbsParser {
   {
     lines: logical_wbs_lines(@parse.preprocess(input)),
     nodes: [],
@@ -75,7 +75,7 @@ fn is_marker_char(char : Char) -> Bool {
 }
 
 ///|
-fn marker_end(cursor : @parse.Cursor) -> Int? {
+fn wbs_marker_end(cursor : @parse.Cursor) -> Int? {
   ignore(cursor.skip_while(char => char == ' ' || char == '\t'))
   let first = cursor.offset()
   ignore(cursor.skip_while(is_marker_char))
@@ -132,7 +132,7 @@ fn parse_modifiers(
 }
 
 ///|
-fn is_word_char(char : Char) -> Bool {
+fn wbs_is_word_char(char : Char) -> Bool {
   (char >= 'a' && char <= 'z') ||
   (char >= 'A' && char <= 'Z') ||
   (char >= '0' && char <= '9') ||
@@ -146,7 +146,7 @@ fn parse_color(cursor : @parse.Cursor) -> String? {
     ignore(cursor.restore(checkpoint))
     return None
   }
-  let value = cursor.take_while(is_word_char)
+  let value = cursor.take_while(wbs_is_word_char)
   guard value.length() > 0 && cursor.consume(']') else {
     ignore(cursor.restore(checkpoint))
     return None
@@ -306,7 +306,7 @@ fn item_from_prefix(
 ///|
 fn parse_item_line(line : String) -> ItemLine? {
   let cursor = @parse.Cursor::new(line)
-  guard marker_end(cursor) is Some(end) else { return None }
+  guard wbs_marker_end(cursor) is Some(end) else { return None }
   let marker = cursor.slice(0, end)
   let modern = parse_prefix(cursor, end, false)
   match item_from_prefix(cursor, marker, modern) {
@@ -319,7 +319,7 @@ fn parse_item_line(line : String) -> ItemLine? {
 }
 
 ///|
-fn ending_stereotype(label : String) -> (String, String?) {
+fn wbs_ending_stereotype(label : String) -> (String, String?) {
   let value = label.trim_end().to_owned()
   guard value.has_suffix(">>") else { return (value, None) }
   value
@@ -348,8 +348,8 @@ fn multiline_end(line : String) -> (String, String?)? {
 }
 
 ///|
-fn Parser::complete_multiline(
-  self : Parser,
+fn WbsParser::complete_multiline(
+  self : WbsParser,
   first : String,
 ) -> (String, String?) raise @parse.ParseError {
   let values = [first.trim().to_owned()]
@@ -375,8 +375,8 @@ fn Parser::complete_multiline(
 }
 
 ///|
-fn Parser::smart_level(
-  self : Parser,
+fn WbsParser::smart_level(
+  self : WbsParser,
   marker : String,
 ) -> Int raise @parse.ParseError {
   guard self.first_marker is Some(first) else {
@@ -400,8 +400,8 @@ fn Parser::smart_level(
 }
 
 ///|
-fn Parser::parent_for(
-  self : Parser,
+fn WbsParser::parent_for(
+  self : WbsParser,
   level : Int,
 ) -> Int raise @parse.ParseError {
   let last_index = self.nodes.length() - 1
@@ -428,8 +428,8 @@ fn Parser::parent_for(
 }
 
 ///|
-fn Parser::add_item(
-  self : Parser,
+fn WbsParser::add_item(
+  self : WbsParser,
   item : ItemLine,
 ) -> Unit raise @parse.ParseError {
   let level = self.smart_level(item.marker)
@@ -440,7 +440,7 @@ fn Parser::add_item(
     let (label, stereotype) = if item.multiline {
       self.complete_multiline(item.label.unwrap_or(""))
     } else {
-      ending_stereotype(item.label.unwrap_or(""))
+      wbs_ending_stereotype(item.label.unwrap_or(""))
     }
     self.nodes.push({
       code: item.code,
@@ -464,7 +464,7 @@ fn Parser::add_item(
   let (label, stereotype) = if item.multiline {
     self.complete_multiline(item.label.unwrap_or(""))
   } else {
-    ending_stereotype(item.label.unwrap_or(""))
+    wbs_ending_stereotype(item.label.unwrap_or(""))
   }
   let node_index = self.nodes.length()
   self.nodes.push({
@@ -486,14 +486,14 @@ fn Parser::add_item(
 fn parse_link_color(cursor : @parse.Cursor) -> String? {
   let checkpoint = cursor.offset()
   guard cursor.consume('#') else { return None }
-  let first = cursor.take_while(is_word_char)
+  let first = cursor.take_while(wbs_is_word_char)
   guard first.length() > 0 else {
     ignore(cursor.restore(checkpoint))
     return None
   }
   if cursor.peek() is Some(char) && (char == '-' || char == '|' || char == '/') {
     ignore(cursor.advance())
-    let second = cursor.take_while(is_word_char)
+    let second = cursor.take_while(wbs_is_word_char)
     guard second.length() > 0 else {
       ignore(cursor.restore(checkpoint))
       return None
@@ -503,7 +503,7 @@ fn parse_link_color(cursor : @parse.Cursor) -> String? {
   while cursor.peek() == Some(';') {
     ignore(cursor.advance())
     let segment = cursor.take_while(char => {
-      is_word_char(char) ||
+      wbs_is_word_char(char) ||
       char == '.' ||
       char == ':' ||
       char == '-' ||
@@ -521,8 +521,8 @@ fn parse_link_color(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn Parser::parse_link(
-  self : Parser,
+fn WbsParser::parse_link(
+  self : WbsParser,
   line : String,
 ) -> Bool raise @parse.ParseError {
   let cursor = @parse.Cursor::new(line)
@@ -587,7 +587,9 @@ fn Parser::parse_link(
 }
 
 ///|
-fn Parser::consume_style_block(self : Parser) -> Unit raise @parse.ParseError {
+fn WbsParser::consume_style_block(
+  self : WbsParser,
+) -> Unit raise @parse.ParseError {
   let start = self.index
   let selectors = []
   self.index += 1
@@ -632,8 +634,8 @@ fn Parser::consume_style_block(self : Parser) -> Unit raise @parse.ParseError {
 }
 
 ///|
-fn Parser::consume_text_block(
-  self : Parser,
+fn WbsParser::consume_text_block(
+  self : WbsParser,
   kind : String,
 ) -> Unit raise @parse.ParseError {
   let start = self.index
@@ -657,7 +659,7 @@ fn Parser::consume_text_block(
 }
 
 ///|
-fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
+fn WbsParser::parse_line(self : WbsParser) -> Unit raise @parse.ParseError {
   let trimmed = self.lines[self.index].trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
@@ -724,8 +726,8 @@ fn Parser::parse_line(self : Parser) -> Unit raise @parse.ParseError {
 /// Parse the command family registered by PlantUML's `WBSDiagramFactory`.
 /// Both modern and legacy modifier order are accepted, together with coded
 /// nodes, multiline labels, pseudo nodes, and non-tree links.
-pub fn parse(input : String) -> @tree.WbsDiagram raise @parse.ParseError {
-  let parser = Parser::new(input)
+pub fn parse_wbs(input : String) -> @tree.WbsDiagram raise @parse.ParseError {
+  let parser = WbsParser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()
     parser.index += 1

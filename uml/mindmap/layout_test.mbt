@@ -28,7 +28,7 @@ fn rectangles_overlap(left : NodeLayout, right : NodeLayout) -> Bool {
 
 ///|
 test "layout keeps reverse and regular branches on opposite sides" {
-  let diagram = parse("* Root\n++ Right\n-- Left")
+  let diagram = @parser.parse_mindmap("* Root\n++ Right\n-- Left")
   let layout = layout_mindmap(diagram)
   let root = node_for(layout, 0)
   let right = node_for(layout, 1)
@@ -40,7 +40,7 @@ test "layout keeps reverse and regular branches on opposite sides" {
 
 ///|
 test "layout connects a shared root directly to its reverse branch" {
-  let diagram = parse("* Root\n++ Right\n-- Left")
+  let diagram = @parser.parse_mindmap("* Root\n++ Right\n-- Left")
   let layout = layout_mindmap(diagram)
   let root = node_for(layout, 0)
   let left = node_for(layout, 2)
@@ -51,7 +51,7 @@ test "layout connects a shared root directly to its reverse branch" {
 
 ///|
 test "layout puts a reverse-only root on the reverse branch" {
-  let diagram = parse("* Root\n-- Left")
+  let diagram = @parser.parse_mindmap("* Root\n-- Left")
   let layout = layout_mindmap(diagram)
   let root = node_for(layout, 0)
   let left_edge = edge_for(layout, 1)
@@ -60,7 +60,7 @@ test "layout puts a reverse-only root on the reverse branch" {
 
 ///|
 test "layout separates sibling subtrees without fixed coordinates" {
-  let diagram = parse(
+  let diagram = @parser.parse_mindmap(
     "* Root\n** First\n*** First leaf\n** Second\n*** Second leaf",
   )
   let layout = layout_mindmap(diagram)
@@ -78,7 +78,7 @@ test "layout separates sibling subtrees without fixed coordinates" {
 
 ///|
 test "layout keeps multiple roots and both branch directions disjoint" {
-  let diagram = parse(
+  let diagram = @parser.parse_mindmap(
     "* First root\n++ Right branch\n-- Left branch\n* Second root\n** Child",
   )
   let layout = layout_mindmap(diagram)
@@ -98,7 +98,7 @@ test "layout keeps multiple roots and both branch directions disjoint" {
 
 ///|
 test "layout represents every parsed parent-child relation once" {
-  let diagram = parse("* Root\n** One\n*** Leaf\n** Two")
+  let diagram = @parser.parse_mindmap("* Root\n** One\n*** Leaf\n** Two")
   let layout = layout_mindmap(diagram)
   let expected = diagram.ideas.filter(idea => idea.parent is Some(_)).length()
   @test.assert_eq(layout.edges.length(), expected)
@@ -170,7 +170,7 @@ test "generic layout_tree packs explicit items without overlap" {
 ///|
 test "labels are left-aligned at the box padding" {
   let svg = render_mindmap_svg(
-    parse("@startmindmap\n* Root\n** Child\n@endmindmap"),
+    @parser.parse_mindmap("@startmindmap\n* Root\n** Child\n@endmindmap"),
   )
   @test.assert_eq(svg.contains("text-anchor=\"start\""), true)
   @test.assert_eq(svg.contains("text-anchor=\"middle\""), false)
@@ -179,7 +179,9 @@ test "labels are left-aligned at the box padding" {
 ///|
 test "strikethrough spans split into positioned text elements" {
   let svg = render_mindmap_svg(
-    parse("@startmindmap\n* Root\n** <s>Old</s> New\n@endmindmap"),
+    @parser.parse_mindmap(
+      "@startmindmap\n* Root\n** <s>Old</s> New\n@endmindmap",
+    ),
   )
   @test.assert_eq(svg.contains("text-decoration=\"line-through\""), true)
   let old_pos = svg.find(">Old<").unwrap_or(-1)
@@ -189,7 +191,9 @@ test "strikethrough spans split into positioned text elements" {
 
 ///|
 test "consecutive roots stack with a modest gap" {
-  let diagram = parse("* First root\n** Deep child\n* Second root\n** Child")
+  let diagram = @parser.parse_mindmap(
+    "* First root\n** Deep child\n* Second root\n** Child",
+  )
   let layout = layout_mindmap(diagram)
   let first = node_for(layout, 0)
   let second = node_for(layout, 3)
@@ -200,7 +204,9 @@ test "consecutive roots stack with a modest gap" {
 ///|
 test "width emulation leaves the rendered font size untouched" {
   let svg = render_mindmap_svg(
-    parse("@startmindmap\n* Root\n** Child with a long label here\n@endmindmap"),
+    @parser.parse_mindmap(
+      "@startmindmap\n* Root\n** Child with a long label here\n@endmindmap",
+    ),
   )
   @test.assert_eq(svg.contains("font-size=\"14px\""), true)
   @test.assert_eq(svg.contains("font-size=\"15px\""), false)

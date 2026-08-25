@@ -1,6 +1,6 @@
 ///|
 test "parses node, stereotype, and arrow style blocks" {
-  let diagram = parse(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n<style>\nNode {\n  MinimumWidth 100\n  SameClassWidth true\n  Padding 6\n  Margin 8\n  FontSize 17\n  BackgroundColor #aabbcc\n  LineColor #102030\n}\n.Test1 {\n  HorizontalAlignment Right\n  FontColor #ff0000\n}\narrow {\n  LineColor #00aa00\n  LineThickness 3\n}\n</style>\n* Root\n** Child <<Test1>>\n@endmindmap",
   )
   let root_style = mindmap_node_style(diagram, 0)
@@ -17,9 +17,9 @@ test "parses node, stereotype, and arrow style blocks" {
 
 ///|
 test "skinparam node dimensions participate in layout" {
-  let plain = layout_mindmap(parse("* Root\n** Child"))
+  let plain = layout_mindmap(@parser.parse_mindmap("* Root\n** Child"))
   let styled = layout_mindmap(
-    parse(
+    @parser.parse_mindmap(
       "skinparam MindMapNodeMinimumWidth 140\nskinparam MindMapNodePadding 18\n* Root\n** Child",
     ),
   )
@@ -31,7 +31,9 @@ test "skinparam node dimensions participate in layout" {
 
 ///|
 test "hyphenated mindmap skinparam prefixes use normalized suffixes" {
-  let diagram = parse("skinparam MindMap-Node-BackgroundColor #aabbcc\n* Root")
+  let diagram = @parser.parse_mindmap(
+    "skinparam MindMap-Node-BackgroundColor #aabbcc\n* Root",
+  )
   @test.assert_eq(
     mindmap_node_style(diagram, 0).background_color,
     Some("#aabbcc"),
@@ -40,7 +42,7 @@ test "hyphenated mindmap skinparam prefixes use normalized suffixes" {
 
 ///|
 test "same class width and margins affect layout without overlaps" {
-  let diagram = parse(
+  let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n  SameClassWidth true\n  Margin 30\n}\n</style>\n* Root\n** short\n** a considerably longer sibling",
   )
   let layout = layout_mindmap(diagram)
@@ -52,7 +54,7 @@ test "same class width and margins affect layout without overlaps" {
 
 ///|
 test "style box shorthand keeps horizontal and vertical layout values" {
-  let diagram = parse(
+  let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n  Padding 5 13\n  Margin 7 11 17 19\n}\n</style>\n* Root",
   )
   let node_style = mindmap_node_style(diagram, 0)
@@ -66,7 +68,7 @@ test "style box shorthand keeps horizontal and vertical layout values" {
 
 ///|
 test "root and leaf selectors layer over the node rule" {
-  let diagram = parse(
+  let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n MinimumWidth 80\n}\nrootNode {\n MinimumWidth 120\n}\nleafNode {\n Padding 4\n}\n</style>\n* Root\n** Leaf",
   )
   let root_style = mindmap_node_style(diagram, 0)

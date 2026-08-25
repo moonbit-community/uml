@@ -29,7 +29,9 @@ fn int_attribute(chunk : String, name : String) -> Int {
 
 ///|
 test "strikethrough text never stretches beyond its node" {
-  let svg = parse("* Root\n** <s>Raspmbc</s> => OSMC\n** plain <s>mid</s> tail").render_svg()
+  let svg = @parser.parse_mindmap(
+    "* Root\n** <s>Raspmbc</s> => OSMC\n** plain <s>mid</s> tail",
+  ).render_svg()
   for chunk in svg.split("<g class=\"mindmap-node") {
     let box_width = int_attribute(chunk.to_owned(), "width")
     let text_length = int_attribute(chunk.to_owned(), "textLength")

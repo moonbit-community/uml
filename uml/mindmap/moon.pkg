@@ -3,6 +3,7 @@ import {
   "kokic/uml/tree",
   "moonbitlang/core/string",
   "moonbitlang/core/test",
+  "kokic/uml/parser",
   "kokic/uml/parse",
   "kokic/uml/style",
   "kokic/uml/svg",

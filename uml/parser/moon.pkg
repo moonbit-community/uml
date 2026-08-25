@@ -3,5 +3,7 @@ import {
   "moonbitlang/core/test",
   "kokic/uml/parse",
   "kokic/uml/seq",
+  "kokic/uml/tree",
   "kokic/uml/style",
+  "kokic/unicode",
 }

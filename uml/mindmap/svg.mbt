@@ -228,7 +228,7 @@ fn @tree.MindmapDiagram::render_svg(
 
 ///|
 pub fn render_mindmap(input : String) -> String raise @parse.ParseError {
-  parse(input).render_svg()
+  @parser.parse_mindmap(input).render_svg()
 }
 
 ///|
