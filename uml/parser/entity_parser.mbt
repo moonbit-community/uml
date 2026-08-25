@@ -1,12 +1,12 @@
 ///|
-fn Parser::finish_entity(self : Parser) -> Unit {
+fn EntityParser::finish_entity(self : EntityParser) -> Unit {
   self.current_entity = None
   self.body_depth = 0
 }
 
 ///|
-fn Parser::parse_line(
-  self : Parser,
+fn EntityParser::parse_line(
+  self : EntityParser,
   line : String,
 ) -> Unit raise @parse.ParseError {
   let line = @parse.strip_line_comment(line).trim().to_owned()
@@ -53,7 +53,11 @@ fn parse_with_family(
   input : String,
   family : @entity.EntityFamily,
 ) -> @entity.EntityDiagram raise @parse.ParseError {
-  let parser = Parser::new(input, allow_mixing=family.allow_mixing(), family~)
+  let parser = EntityParser::new(
+    input,
+    allow_mixing=family.allow_mixing(),
+    family~,
+  )
   while parser.index < parser.lines.length() {
     let line = parser.lines[parser.index]
     parser.parse_line(line)
@@ -83,7 +87,7 @@ fn parse_with_family(
 ///
 /// The family selects both the mixing policy and, at render time, the SVG
 /// symbols, so diagram-family packages no longer wrap this entry point.
-pub fn parse(
+pub fn parse_entity(
   input : String,
   family? : @entity.EntityFamily = ClassDiagram,
 ) -> @entity.EntityDiagram raise @parse.ParseError {
@@ -91,7 +95,7 @@ pub fn parse(
 }
 
 ///|
-priv struct Parser {
+priv struct EntityParser {
   lines : Array[String]
   mut index : Int
   package_stack : Array[String]
@@ -117,11 +121,11 @@ priv struct Parser {
 }
 
 ///|
-fn Parser::new(
+fn EntityParser::new(
   input : String,
   allow_mixing? : Bool = false,
   family? : @entity.EntityFamily = ClassDiagram,
-) -> Parser {
+) -> EntityParser {
   {
     lines: @parse.preprocess(input)
     .split("\n")
@@ -152,26 +156,26 @@ fn Parser::new(
 }
 
 ///|
-fn Parser::current_package(self : Parser) -> String {
+fn EntityParser::current_package(self : EntityParser) -> String {
   self.package_stack.join(".")
 }
 
 ///|
-fn Parser::line_number(self : Parser) -> Int {
+fn EntityParser::line_number(self : EntityParser) -> Int {
   @parse.line_span(self.index + 1).line
 }
 
 ///|
-fn Parser::diagnostic(
-  self : Parser,
+fn EntityParser::diagnostic(
+  self : EntityParser,
   message : String,
 ) -> @parse.ParseDiagnostic {
   @parse.diagnostic_at_line(self.line_number(), message)
 }
 
 ///|
-fn[A] Parser::raise_parse_error(
-  self : Parser,
+fn[A] EntityParser::raise_parse_error(
+  self : EntityParser,
   message : String,
 ) -> A raise @parse.ParseError {
   let diagnostic = self.diagnostic(message)

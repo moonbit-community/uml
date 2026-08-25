@@ -23,7 +23,7 @@ test "mindmap layout places every entity in a disjoint box" {
     #|}
     #|impl Eq for Point;
     #|@enduml
-  let diagram = @mbti.parse(source)
+  let diagram = @parser.parse_mbti(source)
   let layout = mindmap_layout_entity(diagram.graph)
   @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length())
   for left_index in 0..<layout.nodes.length() {
@@ -58,7 +58,7 @@ test "mindmap layout connects every relation as a tree edge" {
     #|}
     #|impl Show for Point;
     #|@enduml
-  let diagram = @mbti.parse(source)
+  let diagram = @parser.parse_mbti(source)
   let layout = mindmap_layout_entity(diagram.graph)
   // Each non-root node hangs under exactly one parent.
   @test.assert_eq(layout.edges.length(), layout.nodes.length() - 1)
@@ -90,7 +90,7 @@ test "mindmap layout survives a self-referencing struct" {
     #|  next : Node
     #|}
     #|@enduml
-  let diagram = @mbti.parse(source)
+  let diagram = @parser.parse_mbti(source)
   let layout = mindmap_layout_entity(diagram.graph)
   @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length())
   // The self relation is skipped, so Node is a root with no incoming edge.
@@ -114,7 +114,7 @@ test "mindmap layout makes base entities forest roots" {
     #|}
     #|impl Eq for Point;
     #|@enduml
-  let diagram = @mbti.parse(source)
+  let diagram = @parser.parse_mbti(source)
   let layout = mindmap_layout_entity(diagram.graph)
   let root_count = layout.nodes
     .filter(node => {
@@ -143,7 +143,7 @@ test "mindmap layout paints only tree edges" {
     #|}
     #|impl Eq for Line;
     #|@enduml
-  let diagram = @mbti.parse(source)
+  let diagram = @parser.parse_mbti(source)
   let layout = mindmap_layout_entity(diagram.graph)
   let svg = render_mbti_svg(diagram) catch {
     _ => @test.fail("svg rendering failed")
@@ -167,7 +167,10 @@ test "mindmap layout renders collapsible class nodes and edges" {
     #|}
     #|impl Eq for Point;
     #|@enduml
-  let svg = render_mbti_svg(@mbti.parse(source), class_member_collapsible=true) catch {
+  let svg = render_mbti_svg(
+    @parser.parse_mbti(source),
+    class_member_collapsible=true,
+  ) catch {
     _ => @test.fail("svg rendering failed")
   }
   @test.assert_eq(
@@ -192,7 +195,10 @@ test "mindmap layout keeps structure edges collapsible" {
     #|}
     #|impl Eq for Point;
     #|@enduml
-  let svg = render_mbti_svg(@mbti.parse(source), class_member_collapsible=true) catch {
+  let svg = render_mbti_svg(
+    @parser.parse_mbti(source),
+    class_member_collapsible=true,
+  ) catch {
     _ => @test.fail("svg rendering failed")
   }
   @test.assert_eq(svg.contains("data-edge-index=\"-1\""), true)

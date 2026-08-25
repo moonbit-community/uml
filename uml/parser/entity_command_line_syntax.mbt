@@ -240,8 +240,8 @@ fn class_command_line(cursor : @parse.Cursor) -> ClassCommandLineSyntax? {
 }
 
 ///|
-fn Parser::apply_package_declaration(
-  self : Parser,
+fn EntityParser::apply_package_declaration(
+  self : EntityParser,
   group : @entity.GroupDeclaration,
 ) -> Unit {
   let parent = self.current_package()
@@ -300,8 +300,8 @@ fn Parser::apply_package_declaration(
 }
 
 ///|
-fn Parser::apply_class_command(
-  self : Parser,
+fn EntityParser::apply_class_command(
+  self : EntityParser,
   syntax : ClassCommandLineSyntax,
 ) -> Unit raise @parse.ParseError {
   match syntax {

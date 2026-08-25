@@ -1,5 +1,8 @@
 ///|
-fn Parser::implicit_namespace_scope(self : Parser, code : String) -> String {
+fn EntityParser::implicit_namespace_scope(
+  self : EntityParser,
+  code : String,
+) -> String {
   guard self.current_package().length() == 0 &&
     self.namespace_separator is Some(separator) &&
     separator.length() > 0 else {
@@ -15,7 +18,10 @@ fn Parser::implicit_namespace_scope(self : Parser, code : String) -> String {
 }
 
 ///|
-fn Parser::ensure_implicit_namespaces(self : Parser, code : String) -> Unit {
+fn EntityParser::ensure_implicit_namespaces(
+  self : EntityParser,
+  code : String,
+) -> Unit {
   guard self.current_package().length() == 0 &&
     self.namespace_separator is Some(separator) &&
     separator.length() > 0 else {
@@ -54,17 +60,26 @@ fn Parser::ensure_implicit_namespaces(self : Parser, code : String) -> Unit {
 }
 
 ///|
-fn Parser::entity_index(self : Parser, qualified_code : String) -> Int? {
+fn EntityParser::entity_index(
+  self : EntityParser,
+  qualified_code : String,
+) -> Int? {
   self.entity_indices.get(qualified_code)
 }
 
 ///|
-fn Parser::has_entity(self : Parser, qualified_code : String) -> Bool {
+fn EntityParser::has_entity(
+  self : EntityParser,
+  qualified_code : String,
+) -> Bool {
   self.entity_index(qualified_code) is Some(_)
 }
 
 ///|
-fn Parser::append_entity(self : Parser, entity : @entity.Entity) -> Int {
+fn EntityParser::append_entity(
+  self : EntityParser,
+  entity : @entity.Entity,
+) -> Int {
   let index = self.entities.length()
   self.entities.push(entity)
   self.entity_indices[entity.qualified_code] = index
@@ -79,8 +94,8 @@ fn Parser::append_entity(self : Parser, entity : @entity.Entity) -> Int {
 ///|
 /// Create a synthetic entity (lollipop interface circle or association
 /// point) with an empty body and no display metadata.
-fn Parser::append_synthetic_entity(
-  self : Parser,
+fn EntityParser::append_synthetic_entity(
+  self : EntityParser,
   code : String,
   display : String,
   kind : @entity.EntityKind,
@@ -120,8 +135,8 @@ fn Parser::append_synthetic_entity(
 }
 
 ///|
-fn Parser::add_entity(
-  self : Parser,
+fn EntityParser::add_entity(
+  self : EntityParser,
   declaration : @entity.Declaration,
   open : Bool,
 ) -> Unit {
@@ -190,7 +205,7 @@ fn Parser::add_entity(
 }
 
 ///|
-fn Parser::qualify(self : Parser, code : String) -> String {
+fn EntityParser::qualify(self : EntityParser, code : String) -> String {
   if self.current_package().length() == 0 ||
     code.contains(".") ||
     code.contains("::") {
@@ -201,7 +216,7 @@ fn Parser::qualify(self : Parser, code : String) -> String {
 }
 
 ///|
-fn Parser::resolve(self : Parser, code : String) -> String {
+fn EntityParser::resolve(self : EntityParser, code : String) -> String {
   if self.has_entity(code) {
     return code
   }
@@ -221,7 +236,7 @@ fn Parser::resolve(self : Parser, code : String) -> String {
 }
 
 ///|
-fn Parser::ensure_entity(self : Parser, code : String) -> String {
+fn EntityParser::ensure_entity(self : EntityParser, code : String) -> String {
   self.ensure_implicit_namespaces(code)
   let qualified_code = self.resolve(code)
   guard !self.has_entity(qualified_code) else { return qualified_code }
@@ -258,8 +273,8 @@ fn Parser::ensure_entity(self : Parser, code : String) -> String {
 }
 
 ///|
-fn Parser::ensure_entity_as(
-  self : Parser,
+fn EntityParser::ensure_entity_as(
+  self : EntityParser,
   code : String,
   kind : @entity.EntityKind,
 ) -> String {
@@ -273,7 +288,11 @@ fn Parser::ensure_entity_as(
 }
 
 ///|
-fn Parser::set_entity_url(self : Parser, code : String, url : String) -> Bool {
+fn EntityParser::set_entity_url(
+  self : EntityParser,
+  code : String,
+  url : String,
+) -> Bool {
   let qualified_code = self.resolve(code)
   guard self.entity_index(qualified_code) is Some(index) else { return false }
   self.entities[index] = { ..self.entities[index], url: Some(url), }
@@ -281,8 +300,8 @@ fn Parser::set_entity_url(self : Parser, code : String, url : String) -> Bool {
 }
 
 ///|
-fn Parser::set_entity_stereotype(
-  self : Parser,
+fn EntityParser::set_entity_stereotype(
+  self : EntityParser,
   code : String,
   stereotype : String,
 ) -> Bool {
@@ -296,8 +315,8 @@ fn Parser::set_entity_stereotype(
 }
 
 ///|
-fn Parser::add_member_to(
-  self : Parser,
+fn EntityParser::add_member_to(
+  self : EntityParser,
   code : String,
   entry : @entity.Member,
 ) -> Unit {
@@ -309,7 +328,7 @@ fn Parser::add_member_to(
 
 ///|
 test "entity index keeps bare names ambiguous across packages" {
-  let parser = Parser::new("")
+  let parser = EntityParser::new("")
   parser.package_stack.push("first")
   ignore(parser.ensure_entity("User"))
   ignore(parser.package_stack.pop())

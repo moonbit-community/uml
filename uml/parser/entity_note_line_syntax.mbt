@@ -30,7 +30,7 @@ priv enum NoteContentSyntax {
 }
 
 ///|
-priv struct NoteLineSyntax {
+priv struct EntityNoteLineSyntax {
   target : NoteTargetSyntax
   position : @entity.NotePosition
   content : NoteContentSyntax
@@ -45,7 +45,7 @@ priv struct LinkConstraintLineSyntax {
 
 ///|
 priv enum ClassAnnotationLineSyntax {
-  ParsedClassNote(NoteLineSyntax)
+  ParsedClassNote(EntityNoteLineSyntax)
   ParsedLinkConstraint(LinkConstraintLineSyntax)
 }
 
@@ -53,7 +53,7 @@ priv enum ClassAnnotationLineSyntax {
 fn note_position_syntax(cursor : @parse.Cursor) -> @entity.NotePosition? {
   let start = cursor.offset()
   guard take_inline_word(cursor) is Some(word) else { return None }
-  match note_position(word) {
+  match entity_note_position(word) {
     Some(position) => Some(position)
     None => {
       ignore(cursor.restore(start))
@@ -171,7 +171,7 @@ fn note_content(cursor : @parse.Cursor) -> NoteContentSyntax {
 }
 
 ///|
-fn named_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+fn named_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
   let inline = match cursor.take_quoted_value() {
     Some(text) => {
       let as_start = cursor.offset()
@@ -225,7 +225,7 @@ fn named_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
 }
 
 ///|
-fn link_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+fn link_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
   let start = cursor.offset()
   let pos_start = cursor.offset()
   let position = if note_position_syntax(cursor) is Some(value) &&
@@ -255,7 +255,7 @@ fn link_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
 }
 
 ///|
-fn member_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+fn member_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
   let start = cursor.offset()
   guard note_position_syntax(cursor) is Some(position) else { return None }
   guard position is Left || position is Right else {
@@ -309,7 +309,7 @@ fn entity_note_target(cursor : @parse.Cursor) -> String? {
 }
 
 ///|
-fn entity_note_tail(cursor : @parse.Cursor) -> NoteLineSyntax? {
+fn entity_note_tail(cursor : @parse.Cursor) -> EntityNoteLineSyntax? {
   guard note_position_syntax(cursor) is Some(position) else { return None }
   let target = entity_note_target(cursor)
   let metadata = note_metadata(cursor)
@@ -409,9 +409,9 @@ test "class note line grammar rejects trailing or incomplete syntax" {
 }
 
 ///|
-fn Parser::push_note_syntax(
-  self : Parser,
-  syntax : NoteLineSyntax,
+fn EntityParser::push_note_syntax(
+  self : EntityParser,
+  syntax : EntityNoteLineSyntax,
   text : String,
 ) -> Unit raise @parse.ParseError {
   let mut target = ""
@@ -472,9 +472,9 @@ fn Parser::push_note_syntax(
 }
 
 ///|
-fn Parser::consume_note_syntax(
-  self : Parser,
-  syntax : NoteLineSyntax,
+fn EntityParser::consume_note_syntax(
+  self : EntityParser,
+  syntax : EntityNoteLineSyntax,
 ) -> Unit raise @parse.ParseError {
   match syntax.content {
     NoteInline(text) => self.push_note_syntax(syntax, text)
@@ -508,8 +508,8 @@ fn Parser::consume_note_syntax(
 }
 
 ///|
-fn Parser::apply_annotation_syntax(
-  self : Parser,
+fn EntityParser::apply_annotation_syntax(
+  self : EntityParser,
   syntax : ClassAnnotationLineSyntax,
 ) -> Unit raise @parse.ParseError {
   match syntax {

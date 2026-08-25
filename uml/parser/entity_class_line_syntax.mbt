@@ -114,8 +114,8 @@ fn parse_class_line(line : String) -> ClassLineSyntax? {
 }
 
 ///|
-fn Parser::apply_declaration_syntax(
-  self : Parser,
+fn EntityParser::apply_declaration_syntax(
+  self : EntityParser,
   syntax : DeclarationLineSyntax,
 ) -> Unit raise @parse.ParseError {
   let declaration = syntax.declaration
@@ -210,8 +210,8 @@ fn Parser::apply_declaration_syntax(
 }
 
 ///|
-fn Parser::apply_class_line_syntax(
-  self : Parser,
+fn EntityParser::apply_class_line_syntax(
+  self : EntityParser,
   syntax : ClassLineSyntax,
 ) -> Unit raise @parse.ParseError {
   match syntax {
@@ -238,7 +238,7 @@ fn Parser::apply_class_line_syntax(
 }
 
 ///|
-fn note_position(word : String) -> @entity.NotePosition? {
+fn entity_note_position(word : String) -> @entity.NotePosition? {
   match word.to_lower() {
     "left" => Some(Left)
     "right" => Some(Right)
@@ -255,8 +255,8 @@ fn text_block_end(line : String, keyword : String) -> Bool {
 }
 
 ///|
-fn Parser::consume_text_block(
-  self : Parser,
+fn EntityParser::consume_text_block(
+  self : EntityParser,
   keyword : String,
 ) -> Unit raise @parse.ParseError {
   self.index += 1
@@ -281,8 +281,8 @@ fn Parser::consume_text_block(
 }
 
 ///|
-fn Parser::consume_braced_block(
-  self : Parser,
+fn EntityParser::consume_braced_block(
+  self : EntityParser,
   kind : String,
 ) -> Unit raise @parse.ParseError {
   let package_depth = self.package_stack.length()
@@ -318,8 +318,8 @@ fn Parser::consume_braced_block(
 }
 
 ///|
-fn Parser::consume_skinparam_block(
-  self : Parser,
+fn EntityParser::consume_skinparam_block(
+  self : EntityParser,
 ) -> Unit raise @parse.ParseError {
   self.index += 1
   let closed = @style.consume_skinparam_body(
@@ -337,8 +337,8 @@ fn Parser::consume_skinparam_block(
 }
 
 ///|
-fn Parser::consume_common_block(
-  self : Parser,
+fn EntityParser::consume_common_block(
+  self : EntityParser,
   terminator : String,
 ) -> Unit raise @parse.ParseError {
   self.index += 1

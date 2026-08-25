@@ -1,21 +1,25 @@
 ///|
 test "selects the mbti family from the header comment" {
   @test.assert_eq(
-    @mbti.is_mbti_source("@startuml '.mbti\npackage \"demo\";\n@enduml"),
+    @parser.is_mbti_source("@startuml '.mbti\npackage \"demo\";\n@enduml"),
     true,
   )
   @test.assert_eq(
-    @mbti.is_mbti_source("@startuml'.mbti\npackage \"demo\";\n@enduml"),
+    @parser.is_mbti_source("@startuml'.mbti\npackage \"demo\";\n@enduml"),
     true,
   )
-  @test.assert_eq(@mbti.is_mbti_source("@startuml\nclass A\n@enduml"), false)
-  let diagram = @mbti.parse("@startuml '.mbti\npackage \"demo\";\n@enduml")
+  @test.assert_eq(@parser.is_mbti_source("@startuml\nclass A\n@enduml"), false)
+  let diagram = @parser.parse_mbti(
+    "@startuml '.mbti\npackage \"demo\";\n@enduml",
+  )
   @test.assert_eq(diagram.package_name, "demo")
 }
 
 ///|
 test "reports a missing package declaration" {
-  try @mbti.parse("@startuml '.mbti\nstruct A { x : Int }\n@enduml") catch {
+  try
+    @parser.parse_mbti("@startuml '.mbti\nstruct A { x : Int }\n@enduml")
+  catch {
     SyntaxError(line, _) => @test.assert_eq(line > 1, true)
   } noraise {
     _ => @test.fail("expected syntax error")
@@ -37,7 +41,7 @@ test "maps impl and trait inheritance to relations" {
     #|}
     #|impl Show for Point;
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.entities.length(), 3)
   @test.assert_eq(graph.entity("Point").unwrap().kind, @entity.Struct)
   @test.assert_eq(graph.entity("Show").unwrap().kind, @entity.Interface)
@@ -68,7 +72,7 @@ test "attaches fields, constructors, and methods as members" {
     #|}
     #|fn Point::dist(Self, Point) -> Double
     #|@enduml
-  let graph = @mbti.parse(source, options={
+  let graph = @parser.parse_mbti(source, options={
       ..@entity.MbtiOptions::default(),
       show_methods: true,
     }).graph
@@ -103,7 +107,7 @@ test "hides trait and extension methods by default" {
     #|}
     #|fn Point::dist(Self, Point) -> Double
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.entity("Show").unwrap().members.length(), 0)
   let point = graph.entity("Point").unwrap()
   @test.assert_eq(point.members.length(), 1)
@@ -122,7 +126,7 @@ test "ignores top-level functions, constants, and values" {
     #|const MAX : Int = 10
     #|let counter : Int
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.entities.length(), 1)
   @test.assert_eq(graph.has_entity("top_level"), false)
   @test.assert_eq(graph.has_entity("MAX"), false)
@@ -138,7 +142,7 @@ test "drops aliases of undeclared targets and marks abstract types" {
     #|type Abstract
     #|suberror MyError
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.has_entity("Alias"), false)
   @test.assert_eq(graph.entity("Abstract").unwrap().kind, @entity.AbstractClass)
   @test.assert_eq(graph.entity("MyError").unwrap().kind, @entity.Exception)
@@ -151,7 +155,7 @@ test "keeps standalone alias nodes on request" {
     #|package "demo";
     #|type Alias = Int
     #|@enduml
-  let graph = @mbti.parse(source, standalone_alias=true).graph
+  let graph = @parser.parse_mbti(source, standalone_alias=true).graph
   @test.assert_eq(graph.entity("Alias").unwrap().stereotype, Some("alias"))
   @test.assert_eq(graph.entity("Alias").unwrap().kind, @entity.Class)
 }
@@ -167,7 +171,7 @@ test "merges aliases into their declared target node" {
     #|type Alias = Point
     #|type Other = Point
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.entities.length(), 1)
   @test.assert_eq(graph.has_entity("Alias"), false)
   @test.assert_eq(graph.has_entity("Other"), false)
@@ -187,7 +191,7 @@ test "drops impls whose endpoints are not declared here" {
     #|package "demo";
     #|impl @std.Show for Point;
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.entities.length(), 0)
   @test.assert_eq(graph.relations.length(), 0)
 }
@@ -202,7 +206,7 @@ test "ignores content after the closing delimiter" {
     #|}
     #|@enduml
     #|class Noise
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.entities.length(), 1)
   @test.assert_eq(graph.has_entity("Noise"), false)
 }
@@ -218,7 +222,7 @@ test "renders the adapted graph to svg" {
     #|}
     #|impl Eq for Point;
     #|@enduml
-  let svg = render_mbti_svg(@mbti.parse(source)) catch {
+  let svg = render_mbti_svg(@parser.parse_mbti(source)) catch {
     _ => @test.fail("svg rendering failed")
   }
   @test.assert_eq(svg.contains("<svg"), true)
@@ -242,7 +246,7 @@ test "draws association edges for members whose type is declared" {
     #|  Circle(Point)
     #|}
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   let member_edges = graph.relations.filter(r => r.kind == @entity.Association)
   @test.assert_eq(member_edges.length(), 3)
   @test.assert_eq(member_edges[0].left, "Line")
@@ -264,7 +268,7 @@ test "skips member edges for undeclared member types" {
     #|  y : Array[String]
     #|}
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(graph.relations.length(), 0)
 }
 
@@ -285,7 +289,7 @@ test "optionally disables each edge family" {
     #|}
     #|impl Show for Line;
     #|@enduml
-  let graph = @mbti.parse(source).graph
+  let graph = @parser.parse_mbti(source).graph
   @test.assert_eq(
     graph.relations.filter(r => r.kind == @entity.Association).length(),
     1,
@@ -298,7 +302,7 @@ test "optionally disables each edge family" {
     graph.relations.filter(r => r.kind == @entity.Realization).length(),
     1,
   )
-  let no_member = @mbti.parse(source, options={
+  let no_member = @parser.parse_mbti(source, options={
       ..@entity.MbtiOptions::default(),
       member_type_edges: false,
     }).graph
@@ -307,7 +311,7 @@ test "optionally disables each edge family" {
     0,
   )
   @test.assert_eq(no_member.relations.length(), 2)
-  let no_inheritance = @mbti.parse(source, options={
+  let no_inheritance = @parser.parse_mbti(source, options={
       ..@entity.MbtiOptions::default(),
       trait_inheritance_edges: false,
     }).graph
@@ -315,7 +319,7 @@ test "optionally disables each edge family" {
     no_inheritance.relations.filter(r => r.kind == @entity.Extension).length(),
     0,
   )
-  let no_impl = @mbti.parse(source, options={
+  let no_impl = @parser.parse_mbti(source, options={
       ..@entity.MbtiOptions::default(),
       impl_edges: false,
     }).graph

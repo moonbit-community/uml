@@ -182,8 +182,8 @@ fn filter_line(cursor : @parse.Cursor) -> FilterLineSyntax? {
 }
 
 ///|
-fn Parser::apply_filter_syntax(
-  self : Parser,
+fn EntityParser::apply_filter_syntax(
+  self : EntityParser,
   syntax : FilterLineSyntax,
 ) -> Unit {
   match syntax {
@@ -241,7 +241,7 @@ fn @entity.Entity::has_portion(
 }
 
 ///|
-fn Parser::apply_entity_rules(self : Parser) -> Unit {
+fn EntityParser::apply_entity_rules(self : EntityParser) -> Unit {
   for rule in self.entity_rules {
     for index, entity in self.entities {
       guard selector_matches(entity, rule.selector, "") else { continue }
@@ -256,8 +256,8 @@ fn Parser::apply_entity_rules(self : Parser) -> Unit {
 }
 
 ///|
-fn Parser::set_portion_state(
-  self : Parser,
+fn EntityParser::set_portion_state(
+  self : EntityParser,
   entity_index : Int,
   rule : @entity.PortionRule,
 ) -> Unit {
@@ -282,8 +282,8 @@ fn Parser::set_portion_state(
 }
 
 ///|
-fn Parser::apply_portion_rule(
-  self : Parser,
+fn EntityParser::apply_portion_rule(
+  self : EntityParser,
   rule : @entity.PortionRule,
 ) -> Unit {
   for entity_index, entity in self.entities {
@@ -332,7 +332,7 @@ fn Parser::apply_portion_rule(
 }
 
 ///|
-fn Parser::apply_filter_rules(self : Parser) -> Unit {
+fn EntityParser::apply_filter_rules(self : EntityParser) -> Unit {
   self.apply_entity_rules()
   for rule in self.portion_rules {
     self.apply_portion_rule(rule)

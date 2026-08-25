@@ -38,7 +38,7 @@ test "grid edges snake through the group in declaration order" {
   for index in 0..<22 {
     sources.push("node n\{index} as n\{index}")
   }
-  let diagram = parse(
+  let diagram = @parser.parse_entity(
     "@startuml\n" + sources.join("\n") + "\n@enduml",
     family=DeploymentDiagram,
   )
@@ -72,7 +72,7 @@ test "grid edges snake through the group in declaration order" {
 ///|
 /// An entity attached to a note is not standalone, so it leaves the grid.
 test "annotated entities do not join the grid" {
-  let diagram = parse(
+  let diagram = @parser.parse_entity(
     "@startuml\nnode a\nnode b\nnode c\nnode d\nnote right of a : used\n@enduml",
     family=DeploymentDiagram,
   )
@@ -89,18 +89,18 @@ test "annotated entities do not join the grid" {
 /// so those links carry dot `minlen=0`; plain multi-dash arrows keep
 /// `minlen = dash count - 1`.
 test "explicit direction arrows collapse the queue length" {
-  let rightward = parse(
+  let rightward = @parser.parse_entity(
     "@startuml\nnode a\nnode b\na -right-> b : side\n@enduml",
     family=DeploymentDiagram,
   )
   @test.assert_eq(rightward.relations.length(), 1)
   @test.assert_eq(relation_graphviz_minlen(rightward.relations[0]), 0)
-  let plain = parse(
+  let plain = @parser.parse_entity(
     "@startuml\nnode a\nnode b\na --> b : side\n@enduml",
     family=DeploymentDiagram,
   )
   @test.assert_eq(relation_graphviz_minlen(plain.relations[0]), 1)
-  let heavy = parse(
+  let heavy = @parser.parse_entity(
     "@startuml\nnode a\nnode b\na ==> b : side\n@enduml",
     family=DeploymentDiagram,
   )
@@ -111,7 +111,7 @@ test "explicit direction arrows collapse the queue length" {
 /// A relation targeting a package attaches to the group: no phantom entity is
 /// created and the grid ignores the group name.
 test "relations to packages do not create phantom entities" {
-  let diagram = parse(
+  let diagram = @parser.parse_entity(
     "@startuml\nnode app {\n  port http\n  portin ingress\n  portout egress\n}\nnode client\nclient --> app\n@enduml",
     family=DeploymentDiagram,
   )
@@ -127,7 +127,7 @@ test "relations to packages do not create phantom entities" {
 /// as the external node.
 test "port clusters pin inputs to the source rank" {
   let svg = render_entity_svg(
-    parse(
+    @parser.parse_entity(
       "\nnode app {\n  port http\n  portin ingress\n  portout egress\n}\nnode client\nclient --> app\n",
       family=DeploymentDiagram,
     ),

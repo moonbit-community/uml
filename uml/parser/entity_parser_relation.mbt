@@ -141,8 +141,8 @@ fn relation_inside(arrow : String) -> String? {
 }
 
 ///|
-fn Parser::resolve_relation_name(
-  self : Parser,
+fn EntityParser::resolve_relation_name(
+  self : EntityParser,
   syntax : RelationNameSyntax,
 ) -> (String, String?) {
   let full = @parse.unquote_identifier(syntax.name)
@@ -200,7 +200,7 @@ fn lollipop_arrow(arrow : String, at_start : Bool) -> Bool? {
 /// The qualified name of a package referenced by a relation endpoint, so the
 /// relation attaches to the group instead of creating a phantom entity
 /// (PlantUML `CommandLinkElement.getDummy` returns the group for group names).
-fn Parser::package_code(self : Parser, raw : String) -> String? {
+fn EntityParser::package_code(self : EntityParser, raw : String) -> String? {
   let clean = @parse.unquote_identifier(raw)
   for group in self.packages {
     if group.qualified_name == clean || group.name == clean {
@@ -211,8 +211,8 @@ fn Parser::package_code(self : Parser, raw : String) -> String? {
 }
 
 ///|
-fn Parser::ensure_relation_entity(
-  self : Parser,
+fn EntityParser::ensure_relation_entity(
+  self : EntityParser,
   raw : String,
   endpoint : @entity.RelationEnd,
 ) -> String {
@@ -233,8 +233,8 @@ fn Parser::ensure_relation_entity(
 /// `CommandLinkLollipop` creates the interface circle as a new leaf whose
 /// display is the name written next to the `()`; the other endpoint must
 /// already exist.
-fn Parser::ensure_lollipop(
-  self : Parser,
+fn EntityParser::ensure_lollipop(
+  self : EntityParser,
   base : String,
   display : String,
   half : Bool,
@@ -258,15 +258,15 @@ fn Parser::ensure_lollipop(
 
 ///|
 /// The invisible association point between the two couple members.
-fn Parser::ensure_couple_point(self : Parser) -> String {
+fn EntityParser::ensure_couple_point(self : EntityParser) -> String {
   let code = "apoint" + self.synthetic_sequence.to_string()
   self.synthetic_sequence += 1
   self.append_synthetic_entity(code, "", Point)
 }
 
 ///|
-fn Parser::apply_relation_syntax(
-  self : Parser,
+fn EntityParser::apply_relation_syntax(
+  self : EntityParser,
   syntax : RelationLineSyntax,
 ) -> Unit raise @parse.ParseError {
   let arrow = syntax.arrow

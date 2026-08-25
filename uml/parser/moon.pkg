@@ -5,6 +5,10 @@ import {
   "kokic/uml/flow",
   "kokic/uml/seq",
   "kokic/uml/tree",
+  "kokic/uml/entity",
   "kokic/uml/style",
   "kokic/unicode",
+  "moonbitlang/lexer/basic",
+  "moonbitlang/parser/mbti_ast",
+  "moonbitlang/parser/mbti_parser",
 }

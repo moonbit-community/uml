@@ -51,7 +51,7 @@ fn has_mbti_marker(line : String) -> Bool {
 /// set, which keeps a fallback node for them.
 ///
 /// `options` controls which structural connections become graph relations.
-pub fn parse(
+pub fn parse_mbti(
   input : String,
   standalone_alias? : Bool = false,
   options? : @entity.MbtiOptions = @entity.MbtiOptions::default(),

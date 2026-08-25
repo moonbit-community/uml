@@ -88,7 +88,8 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 /// one classifier scan. A source matching none of them fails.
 pub fn parse(source : String) -> Document raise {
   match () {
-    _ if @mbti.is_mbti_source(source) => { diagram: Mbti(@mbti.parse(source)), }
+    _ if @parser.is_mbti_source(source) =>
+      { diagram: Mbti(@parser.parse_mbti(source)), }
     _ if is_json_source(source) =>
       { diagram: Json(@structured_family.parse_json(source)), }
     _ if is_yaml_source(source) =>
@@ -110,31 +111,31 @@ pub fn parse(source : String) -> Document raise {
         ClassDiagram =>
           {
             diagram: Class(
-              @entity_family.parse(source, family=@entity.ClassDiagram),
+              @parser.parse_entity(source, family=@entity.ClassDiagram),
             ),
           }
         ObjectDiagram =>
           {
             diagram: Object(
-              @entity_family.parse(source, family=@entity.ObjectDiagram),
+              @parser.parse_entity(source, family=@entity.ObjectDiagram),
             ),
           }
         ComponentDiagram =>
           {
             diagram: Component(
-              @entity_family.parse(source, family=@entity.ComponentDiagram),
+              @parser.parse_entity(source, family=@entity.ComponentDiagram),
             ),
           }
         UseCaseDiagram =>
           {
             diagram: UseCase(
-              @entity_family.parse(source, family=@entity.UseCaseDiagram),
+              @parser.parse_entity(source, family=@entity.UseCaseDiagram),
             ),
           }
         DeploymentDiagram =>
           {
             diagram: Deployment(
-              @entity_family.parse(source, family=@entity.DeploymentDiagram),
+              @parser.parse_entity(source, family=@entity.DeploymentDiagram),
             ),
           }
         Mbti => raise @parse.SyntaxError(1, "unreachable mbti family")

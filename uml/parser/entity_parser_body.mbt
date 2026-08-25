@@ -122,8 +122,8 @@ priv struct MultilineElementHeader {
 }
 
 ///|
-fn Parser::consume_multiline_element(
-  self : Parser,
+fn EntityParser::consume_multiline_element(
+  self : EntityParser,
   header : MultilineElementHeader,
 ) -> Unit raise @parse.ParseError {
   let display = StringBuilder()
@@ -176,8 +176,8 @@ fn valid_json(source : String) -> Bool {
 }
 
 ///|
-fn Parser::add_single_line_json(
-  self : Parser,
+fn EntityParser::add_single_line_json(
+  self : EntityParser,
   value : JsonSingleDeclaration,
 ) -> Unit raise @parse.ParseError {
   let qualified_code = self.qualify(value.declaration.code)
@@ -196,8 +196,8 @@ fn Parser::add_single_line_json(
 }
 
 ///|
-fn Parser::add_map_link(
-  self : Parser,
+fn EntityParser::add_map_link(
+  self : EntityParser,
   source : @entity.Entity,
   entry : @entity.MapEntry,
   arrow : String,
@@ -223,8 +223,8 @@ fn Parser::add_map_link(
 ///|
 /// `BodierMap` stores entries in a `LinkedHashMap`: replacing a key changes
 /// its value without moving its original row.
-fn Parser::set_map_entry(
-  self : Parser,
+fn EntityParser::set_map_entry(
+  self : EntityParser,
   entity_index : Int,
   entry : @entity.MapEntry,
 ) -> Unit {
@@ -239,8 +239,8 @@ fn Parser::set_map_entry(
 }
 
 ///|
-fn Parser::consume_json_body_line(
-  self : Parser,
+fn EntityParser::consume_json_body_line(
+  self : EntityParser,
   entity_index : Int,
   line : String,
 ) -> Unit raise @parse.ParseError {
@@ -288,8 +288,8 @@ fn complete_json_source(
 }
 
 ///|
-fn Parser::consume_entity_body_line(
-  self : Parser,
+fn EntityParser::consume_entity_body_line(
+  self : EntityParser,
   entity_index : Int,
   line : String,
 ) -> Unit raise @parse.ParseError {
