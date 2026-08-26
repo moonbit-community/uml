@@ -40,13 +40,67 @@ fn dot_source_between_markers(input : String) -> String {
 /// markers. The source is validated only when rendered, like PlantUML's dot
 /// factory which forwards the text verbatim to graphviz.
 pub fn parse_dot_source(input : String) -> DotDiagram {
-  { source: @tokenizer.preprocess(input) |> dot_source_between_markers, }
+  { source: @tokenizer.preprocess(input) |> dot_source_between_markers }
+}
+
+///|
+/// Apply the color scheme to the graphviz defaults: the canvas, the default
+/// node fill, and the default ink. Attributes written by the DOT source
+/// always win over the scheme; a transparent canvas keeps the graphviz
+/// default so the diagram still renders on a bare page.
+fn apply_theme_defaults(
+  graph : @cgraph.Graph,
+  scheme : @style.ColorScheme,
+) -> Unit {
+  let canvas = scheme.canvas.to_lower()
+  let paints_canvas = canvas != "none" && canvas != "transparent"
+  if graph.get_attr("bgcolor") is None && paints_canvas {
+    graph.set_attr("bgcolor", scheme.canvas)
+  }
+  for node in graph.nodes() {
+    let explicit_color = node.get_attr("color")
+    if explicit_color is None {
+      node.set_attr("color", scheme.line)
+    }
+    if node.get_attr("fontcolor") is None {
+      node.set_attr("fontcolor", scheme.text)
+    }
+    guard explicit_color is None else { continue }
+    guard node.get_attr("fillcolor") is None else { continue }
+    guard @attrs.parse_style(node.get_attr("style")).filled else { continue }
+    node.set_attr("fillcolor", scheme.node)
+  }
+  for edge in graph.edges() {
+    if edge.get_attr("color") is None {
+      edge.set_attr("color", scheme.line)
+    }
+    if edge.get_attr("fontcolor") is None {
+      edge.set_attr("fontcolor", scheme.text)
+    }
+  }
+  apply_fontcolor_defaults(graph, scheme.text)
+}
+
+///|
+/// Set the graph text color unless the source already painted it, recursing
+/// into subgraph clusters.
+fn apply_fontcolor_defaults(graph : @cgraph.Graph, text_color : String) -> Unit {
+  if graph.get_attr("fontcolor") is None {
+    graph.set_attr("fontcolor", text_color)
+  }
+  for subgraph in graph.subgraphs() {
+    apply_fontcolor_defaults(subgraph, text_color)
+  }
 }
 
 ///|
 /// Render the raw DOT source with the shared graphviz engine.
-pub fn DotDiagram::render_svg(self : DotDiagram) -> String raise {
+pub fn DotDiagram::render_svg(
+  self : DotDiagram,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+) -> String raise {
   let graph = @gv_dot.parse_dot(self.source)
+  apply_theme_defaults(graph, color_scheme)
   let layout = @dot_layout.layout_dot(graph)
   @svg.render_svg(layout)
 }

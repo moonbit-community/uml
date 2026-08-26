@@ -5,6 +5,8 @@ import {
   "kokic/uml/structured",
   "kokic/uml/tree",
   "kokic/uml/seq",
+  "moonbit-community/graphviz/attrs",
+  "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/dot" @gv_dot,
   "moonbit-community/graphviz/layout/dot" @dot_layout,
   "moonbit-community/graphviz/render/svg",

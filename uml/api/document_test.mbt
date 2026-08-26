@@ -277,6 +277,97 @@ test "dot parse without markers uses the whole input" {
 }
 
 ///|
+test "dot render themes the graphviz defaults" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "#191a1b",
+    "#161718",
+    canvas="#101112",
+    node="#131415",
+  )
+  let source = "@startdot\ndigraph G { a -> b; }\n@enddot"
+  let svg = render_svg(source, color_scheme=scheme)
+  @test.assert_eq(svg.contains("fill=\"#101112\""), true)
+  @test.assert_eq(svg.contains("fill=\"white\""), false)
+  @test.assert_eq(svg.contains("stroke=\"#161718\""), true)
+  @test.assert_eq(svg.contains("fill=\"#191a1b\""), true)
+}
+
+///|
+test "dot render fills filled nodes with the scheme node color" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "#191a1b",
+    "#161718",
+    canvas="#101112",
+    node="#131415",
+  )
+  let source = "@startdot\ndigraph G { a [style=filled]; a -> b; }\n@enddot"
+  let svg = render_svg(source, color_scheme=scheme)
+  @test.assert_eq(svg.contains("fill=\"#131415\""), true)
+}
+
+///|
+test "dot render lets dot attributes win over the scheme" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "#191a1b",
+    "#161718",
+    canvas="#101112",
+    node="#131415",
+  )
+  let source =
+    #|@startdot
+    #|digraph G {
+    #|  bgcolor="#112233";
+    #|  a [style=filled, fillcolor="#445566", color="#778899", fontcolor="#aabbcc"];
+    #|  a -> b [color="#ddeeff", fontcolor="#123456", label="edge"];
+    #|}
+    #|@enduml
+  let svg = render_svg(source, color_scheme=scheme)
+  @test.assert_eq(svg.contains("#112233"), true)
+  @test.assert_eq(svg.contains("#445566"), true)
+  @test.assert_eq(svg.contains("#778899"), true)
+  @test.assert_eq(svg.contains("#aabbcc"), true)
+  @test.assert_eq(svg.contains("#ddeeff"), true)
+  @test.assert_eq(svg.contains("#123456"), true)
+  @test.assert_eq(svg.contains("#101112"), false)
+  @test.assert_eq(svg.contains("#131415"), false)
+  @test.assert_eq(svg.contains("#161718"), true)
+}
+
+///|
+test "dot render accepts a css-variable scheme" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "var(--uml-text)",
+    "var(--uml-line)",
+    canvas="var(--uml-canvas)",
+    node="var(--uml-node)",
+  )
+  let source = "@startdot\ndigraph G { a [style=filled]; a -> b; }\n@enddot"
+  let svg = render_svg(source, color_scheme=scheme)
+  @test.assert_eq(svg.contains("fill=\"var(--uml-canvas)\""), true)
+  @test.assert_eq(svg.contains("fill=\"var(--uml-node)\""), true)
+  @test.assert_eq(svg.contains("stroke=\"var(--uml-line)\""), true)
+  @test.assert_eq(svg.contains("fill=\"var(--uml-text)\""), true)
+}
+
+///|
+test "dot render keeps the graphviz white canvas without a painted scheme" {
+  let svg = render_svg("@startdot\ndigraph G { a -> b; }\n@enddot")
+  @test.assert_eq(svg.contains("fill=\"white\""), true)
+}
+
+///|
+test "document rendering threads the scheme into dot diagrams" {
+  let scheme = @style.ColorScheme::ColorScheme(
+    "#191a1b",
+    "#161718",
+    canvas="#101112",
+  )
+  let source = "@startdot\ndigraph G { a -> b; }\n@enddot"
+  let svg = parse(source).render_svg(color_scheme=scheme)
+  @test.assert_eq(svg.contains("fill=\"#101112\""), true)
+}
+
+///|
 test "dot render surfaces invalid DOT source as an error" {
   let source =
     #|@startdot

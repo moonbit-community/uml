@@ -7,9 +7,9 @@ import {
   "kokic/metrics@0.1.0",
   "kokic/unicode@0.1.0",
   "moonbit-community/yaml@0.0.6",
-  "moonbit-community/graphviz@0.1.3",
+  "moonbit-community/graphviz@0.1.4",
   "moonbitlang/lexer@0.3.15",
-  "moonbitlang/parser@0.3.17",
+  "moonbitlang/parser@0.3.18",
 }
 
 readme = "README.md"
