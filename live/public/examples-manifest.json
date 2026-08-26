@@ -66,6 +66,12 @@
     "06-partitions-and-swimlanes.uml",
     "07-flow-targets.uml"
   ],
+  "dot": [
+    "01-basic.uml",
+    "02-subgraphs.uml",
+    "03-shapes-and-styles.uml",
+    "04-pipeline.uml"
+  ],
   "component": [
     "01-basic.uml",
     "02-interfaces.uml",

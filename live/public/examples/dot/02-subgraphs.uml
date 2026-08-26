@@ -1,0 +1,31 @@
+@startdot
+digraph G {
+  rankdir=TB;
+
+  subgraph cluster_clients {
+    label = "Clients";
+    web;
+    mobile;
+    cli;
+  }
+
+  subgraph cluster_api {
+    label = "API Layer";
+    gateway;
+    auth;
+  }
+
+  subgraph cluster_storage {
+    label = "Storage";
+    cache;
+    database;
+  }
+
+  web -> gateway;
+  mobile -> gateway;
+  cli -> gateway;
+  gateway -> auth;
+  auth -> cache;
+  gateway -> database;
+}
+@enddot

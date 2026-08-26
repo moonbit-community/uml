@@ -1,0 +1,19 @@
+@startdot
+digraph G {
+  rankdir=LR;
+
+  start [shape=circle, label="Start"];
+  decide [shape=diamond, label="Valid?"];
+  process [shape=box, label="Process"];
+  store [shape=cylinder, label="Storage"];
+  log [shape=note, label="Log entry"];
+  schema [shape=record, label="<f0>id|<f1>name"];
+
+  start -> decide;
+  decide -> process [label="yes", style=bold];
+  decide -> log [label="no", style=dotted];
+  process -> store [style=dashed];
+  store -> schema [dir=back];
+  schema -> decide [arrowhead=none];
+}
+@enddot
