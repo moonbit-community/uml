@@ -1,0 +1,19 @@
+@startdot
+digraph G {
+  rankdir=LR;
+  node [shape=box];
+
+  ingest [label="Ingest", style=filled, fillcolor="#dae8fc"];
+  clean [label="Clean", style=filled, fillcolor="#d5e8d4"];
+  transform [label="Transform", style=filled, fillcolor="#fff2cc"];
+  load [label="Load", style=filled, fillcolor="#ffe6cc"];
+  report_a [label="Report A", shape=note];
+  report_b [label="Report B", shape=note];
+
+  ingest -> clean [label="raw"];
+  clean -> transform;
+  transform -> load;
+  load -> report_a;
+  load -> report_b [style=dashed];
+}
+@enddot
