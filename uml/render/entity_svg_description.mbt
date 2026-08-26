@@ -502,11 +502,30 @@ fn append_description_text(
   text : DescriptionTextLayout,
 ) -> Unit {
   if stereotype_position is Some((stereotype_x, stereotype_baseline)) {
-    output <+
-      $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="description-stereotype" fill="\{text_color}" font-size="\{text_metrics.regular.font_size}">\{@svg.xml_escape(text.stereotype.unwrap())}</text>
+    append_paint_text(
+      output,
+      (x + stereotype_x).to_double(),
+      (y + stereotype_baseline).to_double(),
+      text.stereotype.unwrap(),
+      "description-stereotype",
+      text_metrics.regular,
+      attributes=[
+        ("fill", text_color),
+        ("font-size", text_metrics.regular.font_size.to_string()),
+      ],
+    )
+    output.write_char('\n')
   }
-  output <+
-    $|<text x="\{x + label_position.0}" y="\{y + label_position.1}" class="description-title" fill="\{text_color}">\{@svg.xml_escape(entity.display)}</text>
+  append_paint_text(
+    output,
+    (x + label_position.0).to_double(),
+    (y + label_position.1).to_double(),
+    entity.display,
+    "description-title",
+    text_metrics.regular,
+    attributes=[("fill", text_color)],
+  )
+  output.write_char('\n')
 }
 
 ///|
@@ -796,7 +815,17 @@ fn append_port_entity(
     y + height + metrics.height - 3
   }
   output <+
-    $|<g class="port-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}" stroke="\{stroke}" stroke-width="1.5"/><text x="\{label_x}" y="\{label_y}" class="port-title" fill="\{diagram.style.diagram_text_color()}">\{@svg.xml_escape(entity.display)}</text></g>
+    $|<g class="port-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}" stroke="\{stroke}" stroke-width="\{@svg.emphasized_stroke_width()}"/>
+  append_paint_text(
+    output,
+    label_x.to_double(),
+    label_y.to_double(),
+    entity.display,
+    "port-title",
+    text_metrics.regular,
+    attributes=[("fill", diagram.style.diagram_text_color())],
+  )
+  output.write_string("</g>")
 }
 
 ///|
@@ -1228,12 +1257,26 @@ fn append_symbol_package_text(
   match stereo {
     Some((display, x, top)) => {
       let stereo_height = text_metrics.italic.measure(display).height.to_double()
-      output <+
-        $|<text x="\{x}" y="\{top + stereo_height - 3.0}" class="package-stereotype">\{@svg.xml_escape(display)}</text>
+      append_paint_text(
+        output,
+        x,
+        top + stereo_height - 3.0,
+        display,
+        "package-stereotype",
+        text_metrics.italic,
+      )
+      output.write_char('\n')
     }
     None => ()
   }
   let title_height = text_metrics.regular.measure(group.display).height.to_double()
-  output <+
-    $|<text x="\{title_x}" y="\{title_top + title_height - 3.0}" class="package-title">\{@svg.xml_escape(group.display)}</text>
+  append_paint_text(
+    output,
+    title_x,
+    title_top + title_height - 3.0,
+    group.display,
+    "package-title",
+    text_metrics.regular,
+  )
+  output.write_char('\n')
 }

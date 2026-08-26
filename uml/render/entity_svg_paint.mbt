@@ -4,6 +4,23 @@
 const PACKAGE_TAB_HEIGHT : Double = 22.0
 
 ///|
+/// Emit a single-line `<text>` pinned to its measured advance via
+/// `textLength`, matching how PlantUML serializes every text run.
+fn append_paint_text(
+  output : StringBuilder,
+  x : Double,
+  y : Double,
+  text : String,
+  class_name : String,
+  metrics : @metrics.FontMetrics,
+  attributes? : Array[(String, String)] = [],
+) -> Unit {
+  output.write_string(
+    @svg.text_markup(x, y, text, [("class", class_name), ..attributes], metrics),
+  )
+}
+
+///|
 fn append_packages(
   output : StringBuilder,
   diagram : @entity.EntityDiagram,
@@ -33,14 +50,29 @@ fn append_packages(
         $|<g class="package">
         $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + PACKAGE_TAB_HEIGHT} L \{right - 2.5} \{y + PACKAGE_TAB_HEIGHT} Q \{right} \{y + PACKAGE_TAB_HEIGHT} \{right} \{y + PACKAGE_TAB_HEIGHT + 2.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
         $|<line x1="\{x}" y1="\{y + PACKAGE_TAB_HEIGHT}" x2="\{x + tab_width + 1.5}" y2="\{y + PACKAGE_TAB_HEIGHT}" style="stroke:\{border_color}"/>
-        $|<text x="\{x + 4.0}" y="\{y + 16.0}" class="package-title">\{@svg.xml_escape(group.display)}</text>
+      append_paint_text(
+        output,
+        x + 4.0,
+        y + 16.0,
+        group.display,
+        "package-title",
+        text_metrics.regular,
+      )
+      output.write_char('\n')
       if group.stereotype is Some(stereotype) {
         let display = @tokenizer.display_stereotype(stereotype)
         let metrics = text_metrics.italic.measure(display)
         let stereotype_x = x +
           (package_layout.width - metrics.width.to_double()) / 2.0
-        output <+
-          $|<text x="\{stereotype_x}" y="\{y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double()}" class="package-stereotype">\{@svg.xml_escape(display)}</text>
+        append_paint_text(
+          output,
+          stereotype_x,
+          y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double(),
+          display,
+          "package-stereotype",
+          text_metrics.italic,
+        )
+        output.write_char('\n')
       }
       output.write_string("</g>\n")
     }
@@ -198,14 +230,22 @@ fn append_lollipop_entity(
         text_metrics,
       )
       output <+
-        $|<path d="\{lollipop_half_arc(center_x, center_y, direction)}" fill="\{fill}" stroke="\{stroke}" stroke-width="1.5"/>
+        $|<path d="\{lollipop_half_arc(center_x, center_y, direction)}" fill="\{fill}" stroke="\{stroke}" stroke-width="\{@svg.emphasized_stroke_width()}"/>
     }
     _ =>
       output <+
-        $|<ellipse cx="\{center_x}" cy="\{center_y}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" stroke-width="1.5"/>
+        $|<ellipse cx="\{center_x}" cy="\{center_y}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" stroke-width="\{@svg.emphasized_stroke_width()}"/>
   }
-  output <+
-    $|<text x="\{title_x}" y="\{title_y}" class="lollipop-title" fill="\{diagram.style.diagram_text_color()}">\{@svg.xml_escape(entity.display)}</text></g>
+  append_paint_text(
+    output,
+    title_x.to_double(),
+    title_y.to_double(),
+    entity.display,
+    "lollipop-title",
+    text_metrics.regular,
+    attributes=[("fill", diagram.style.diagram_text_color())],
+  )
+  output.write_string("</g>\n")
 }
 
 ///|
@@ -275,12 +315,32 @@ fn append_object_like_entity(
     $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="\{OBJECT_ROUND_CORNER}" ry="\{OBJECT_ROUND_CORNER}" fill="\{fill}" \{line_attributes}/>
   match (capability.renders_stereotype, header.stereotype, placement.2) {
     (true, Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
-      output <+
-        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="\{capability.stereotype_class()}" fill="\{capability.style_role.font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
+      append_paint_text(
+        output,
+        (x + stereotype_x).to_double(),
+        (y + stereotype_baseline).to_double(),
+        stereotype,
+        capability.stereotype_class(),
+        text_metrics.class_stereotype,
+        attributes=[
+          ("fill", capability.style_role.font_color(diagram.style)),
+          ("font-family", text_metrics.class_stereotype_font_family),
+          ("font-size", text_metrics.class_stereotype.font_size.to_string()),
+        ],
+      )
     _ => ()
   }
+  append_paint_text(
+    output,
+    (x + placement.0).to_double(),
+    (y + placement.1).to_double(),
+    entity.display,
+    capability.title_class(),
+    text_metrics.regular,
+    attributes=[("fill", capability.style_role.font_color(diagram.style))],
+  )
   output <+
-    $|<text x="\{x + placement.0}" y="\{y + placement.1}" class="\{capability.title_class()}" fill="\{capability.style_role.font_color(diagram.style)}">\{@svg.xml_escape(entity.display)}</text><line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
+    $|<line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
   match capability.body {
     MapEntries => {
       let body = entity.map_body_layout(text_metrics)
@@ -306,8 +366,16 @@ fn append_object_like_entity(
         let key_y = row_y +
           (row.height - key_metrics.height) / 2 +
           key_metrics.baseline
-        output <+
-          $|<text x="\{key_x}" y="\{key_y}" class="map-key member" fill="\{text_color}">\{@svg.xml_escape(row.key)}</text>
+        append_paint_text(
+          output,
+          key_x.to_double(),
+          key_y.to_double(),
+          row.key,
+          "map-key member",
+          text_metrics.regular,
+          attributes=[("fill", text_color)],
+        )
+        output.write_char('\n')
         match row.entry.value {
           Some(value) => {
             let value_metrics = text_metrics.regular.measure(value)
@@ -318,7 +386,16 @@ fn append_object_like_entity(
               (row.height - value_metrics.height) / 2 +
               value_metrics.baseline
             output <+
-              $|<line class="map-column-separator" x1="\{divider_x}" y1="\{row_y}" x2="\{divider_x}" y2="\{row_y + row.height}"\{separator_attributes}/><text x="\{value_x}" y="\{value_y}" class="map-value member" fill="\{text_color}">\{@svg.xml_escape(value)}</text>
+              $|<line class="map-column-separator" x1="\{divider_x}" y1="\{row_y}" x2="\{divider_x}" y2="\{row_y + row.height}"\{separator_attributes}/>
+            append_paint_text(
+              output,
+              value_x.to_double(),
+              value_y.to_double(),
+              value,
+              "map-value member",
+              text_metrics.regular,
+              attributes=[("fill", text_color)],
+            )
           }
           None => ()
         }
@@ -339,7 +416,16 @@ fn append_object_like_entity(
         } else {
           let member_y = body_y + row_height + 1
           output <+
-            $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g><text x="\{x + text_x}" y="\{member_y}" class="object-member member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
+            $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g>
+          append_paint_text(
+            output,
+            (x + text_x).to_double(),
+            member_y.to_double(),
+            entry.display_without_visibility(),
+            "object-member member",
+            text_metrics.regular,
+          )
+          output.write_char('\n')
           body_y += row_height
         }
       }
@@ -362,16 +448,38 @@ fn append_object_like_entity(
         match row.key {
           Some(key) => {
             let key_metrics = text_metrics.regular.measure(key)
-            output <+
-              $|<text x="\{x + row.hline_from + MAP_CELL_HORIZONTAL_PADDING}" y="\{body_top + row.top + MAP_CELL_VERTICAL_PADDING + key_metrics.ascent}" class="json-key member" fill="\{text_color}">\{@svg.xml_escape(key)}</text>
+            append_paint_text(
+              output,
+              (x + row.hline_from + MAP_CELL_HORIZONTAL_PADDING).to_double(),
+              (body_top +
+              row.top +
+              MAP_CELL_VERTICAL_PADDING +
+              key_metrics.ascent).to_double(),
+              key,
+              "json-key member",
+              text_metrics.regular,
+              attributes=[("fill", text_color)],
+            )
+            output.write_char('\n')
           }
           None => ()
         }
         match row.value {
           Some(value) => {
             let value_metrics = text_metrics.regular.measure(value)
-            output <+
-              $|<text x="\{x + row.value_x + MAP_CELL_HORIZONTAL_PADDING}" y="\{body_top + row.top + MAP_CELL_VERTICAL_PADDING + value_metrics.ascent}" class="json-value member" fill="\{text_color}">\{@svg.xml_escape(value)}</text>
+            append_paint_text(
+              output,
+              (x + row.value_x + MAP_CELL_HORIZONTAL_PADDING).to_double(),
+              (body_top +
+              row.top +
+              MAP_CELL_VERTICAL_PADDING +
+              value_metrics.ascent).to_double(),
+              value,
+              "json-value member",
+              text_metrics.regular,
+              attributes=[("fill", text_color)],
+            )
+            output.write_char('\n')
           }
           None => ()
         }
@@ -411,10 +519,10 @@ fn append_entity(
   let stroke_style = @svg.stroke_style(entity.line_style)
   let line_attributes =
     $| style="stroke:\{stroke};\{stroke_style}"
-  let title_style = match entity.kind {
+  let title_attributes = match entity.kind {
     @entity.EntityKind::AbstractClass | @entity.EntityKind::Interface =>
-      " font-style=\"italic\""
-    _ => ""
+      [("font-style", "italic")]
+    _ => []
   }
   let entity_colors = diagram.style.defaults().entity_colors()
   let (spot_text, spot_fill) = entity.spot(diagram.family, entity_colors)
@@ -433,28 +541,80 @@ fn append_entity(
     $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"\{node_index_attribute}><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
   match
     (entity.render_capability(diagram.family).spot, placement.circle_center) {
-    (ClassSpot, Some((circle_cx, circle_cy))) if diagram.family is Mbti =>
+    (ClassSpot, Some((circle_cx, circle_cy))) if diagram.family is Mbti => {
       // The mbti family labels the node with the bold kind word instead of a
       // circled letter; the shared `.class-spot` style already bolds it.
+      append_paint_text(
+        output,
+        (x + circle_cx).to_double(),
+        (y + circle_cy + 4).to_double(),
+        spot_text,
+        "class-spot",
+        text_metrics.regular,
+      )
+      output.write_char('\n')
+    }
+    (ClassSpot, Some((circle_cx, circle_cy))) => {
       output <+
-        $|<text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
-    (ClassSpot, Some((circle_cx, circle_cy))) =>
-      output <+
-        $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/><text x="\{x + circle_cx}" y="\{y + circle_cy + 4}" class="class-spot">\{spot_text}</text>
+        $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{diagram.style.diagram_line_color()}" stroke-width="1"/>
+      append_paint_text(
+        output,
+        (x + circle_cx).to_double(),
+        (y + circle_cy + 4).to_double(),
+        spot_text,
+        "class-spot",
+        text_metrics.regular,
+      )
+      output.write_char('\n')
+    }
     _ => ()
   }
   match (header.stereotype, placement.stereotype_position) {
-    (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
-      output <+
-        $|<text x="\{x + stereotype_x}" y="\{y + stereotype_baseline}" class="class-stereotype" fill="\{@entity.class_stereotype_font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(stereotype)}</text>
+    (Some(stereotype), Some((stereotype_x, stereotype_baseline))) => {
+      append_paint_text(
+        output,
+        (x + stereotype_x).to_double(),
+        (y + stereotype_baseline).to_double(),
+        stereotype,
+        "class-stereotype",
+        text_metrics.class_stereotype,
+        attributes=[
+          ("fill", @entity.class_stereotype_font_color(diagram.style)),
+          ("font-family", text_metrics.class_stereotype_font_family),
+          ("font-size", text_metrics.class_stereotype.font_size.to_string()),
+        ],
+      )
+      output.write_char('\n')
+    }
     _ => ()
   }
-  output <+
-    $|<text x="\{x + placement.title_x}" y="\{y + placement.title_baseline}" class="class-title"\{title_style}>\{@svg.xml_escape(entity.display)}</text>
+  append_paint_text(
+    output,
+    (x + placement.title_x).to_double(),
+    (y + placement.title_baseline).to_double(),
+    entity.display,
+    "class-title",
+    text_metrics.regular,
+    attributes=title_attributes,
+  )
+  output.write_char('\n')
   match (header.annotation, placement.annotation_position) {
-    (Some(annotation), Some((annotation_x, annotation_baseline))) =>
-      output <+
-        $|<text x="\{x + annotation_x}" y="\{y + annotation_baseline}" class="class-annotation" fill="\{@entity.class_stereotype_font_color(diagram.style)}" font-family="\{@svg.xml_escape(text_metrics.class_stereotype_font_family)}" font-size="\{text_metrics.class_stereotype.font_size}">\{@svg.xml_escape(annotation)}</text>
+    (Some(annotation), Some((annotation_x, annotation_baseline))) => {
+      append_paint_text(
+        output,
+        (x + annotation_x).to_double(),
+        (y + annotation_baseline).to_double(),
+        annotation,
+        "class-annotation",
+        text_metrics.class_stereotype,
+        attributes=[
+          ("fill", @entity.class_stereotype_font_color(diagram.style)),
+          ("font-family", text_metrics.class_stereotype_font_family),
+          ("font-size", text_metrics.class_stereotype.font_size.to_string()),
+        ],
+      )
+      output.write_char('\n')
+    }
     _ => ()
   }
   let member_top = y + header.height
@@ -480,7 +640,16 @@ fn append_entity(
     for member_index, entry in section {
       let member_y = section_y + (member_index + 1) * row_height + 1
       output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g><text x="\{x + entry.member_text_x()}" y="\{member_y}" class="member">\{@svg.xml_escape(entry.display_without_visibility())}</text>
+        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g>
+      append_paint_text(
+        output,
+        (x + entry.member_text_x()).to_double(),
+        member_y.to_double(),
+        entry.display_without_visibility(),
+        "member",
+        text_metrics.regular,
+      )
+      output.write_char('\n')
     }
     section_y += section_height
   }
@@ -543,8 +712,20 @@ fn append_usecase_entity(
       match stereotype {
         Some(value) => {
           let metrics = text_metrics.usecase_italic.measure(value)
-          output <+
-            $|<text x="\{x + width / 2}" y="\{content_top + metrics.baseline}" class="\{capability.stereotype_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_italic.font_size}">\{@svg.xml_escape(value)}</text>
+          append_paint_text(
+            output,
+            (x + width / 2).to_double(),
+            (content_top + metrics.baseline).to_double(),
+            value,
+            capability.stereotype_class(),
+            text_metrics.usecase_italic,
+            attributes=[
+              ("fill", text_color),
+              ("font-family", text_metrics.usecase_font_family),
+              ("font-size", text_metrics.usecase_italic.font_size.to_string()),
+            ],
+          )
+          output.write_char('\n')
         }
         None => ()
       }
@@ -555,8 +736,20 @@ fn append_usecase_entity(
           title_metrics.baseline
         None => content_top + title_metrics.baseline
       }
-      output <+
-        $|<text x="\{x + width / 2}" y="\{title_y}" class="\{capability.title_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.usecase_font_family)}" font-size="\{text_metrics.usecase_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
+      append_paint_text(
+        output,
+        (x + width / 2).to_double(),
+        title_y.to_double(),
+        entity.display,
+        capability.title_class(),
+        text_metrics.usecase_regular,
+        attributes=[
+          ("fill", text_color),
+          ("font-family", text_metrics.usecase_font_family),
+          ("font-size", text_metrics.usecase_regular.font_size.to_string()),
+        ],
+      )
+      output.write_char('\n')
       if entity.kind is @entity.EntityKind::BusinessUsecase {
         let (mark_start, mark_end) = usecase_business_mark(x, y, width, height)
         output <+
@@ -580,8 +773,20 @@ fn append_usecase_entity(
       match stereotype {
         Some(value) => {
           let metrics = text_metrics.actor_italic.measure(value)
-          output <+
-            $|<text x="\{center_x}" y="\{y + metrics.baseline}" class="\{capability.stereotype_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_italic.font_size}">\{@svg.xml_escape(value)}</text>
+          append_paint_text(
+            output,
+            center_x.to_double(),
+            (y + metrics.baseline).to_double(),
+            value,
+            capability.stereotype_class(),
+            text_metrics.actor_italic,
+            attributes=[
+              ("fill", text_color),
+              ("font-family", text_metrics.actor_font_family),
+              ("font-size", text_metrics.actor_italic.font_size.to_string()),
+            ],
+          )
+          output.write_char('\n')
         }
         None => ()
       }
@@ -601,8 +806,20 @@ fn append_usecase_entity(
         output <+
           $|<circle cx="\{center_x}" cy="\{figure_top + 9}" r="8" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x} \{figure_top + 17} L \{center_x} \{figure_top + 43} M \{center_x - 13} \{figure_top + 27} L \{center_x + 13} \{figure_top + 27} M \{center_x} \{figure_top + 43} L \{center_x - 13} \{figure_top + figure_height} M \{center_x} \{figure_top + 43} L \{center_x + 13} \{figure_top + figure_height}" fill="none" stroke="\{stroke}" style="\{line_attributes}"/>
       }
-      output <+
-        $|<text x="\{center_x}" y="\{label_y}" class="\{capability.title_class()}" fill="\{text_color}" font-family="\{@svg.xml_escape(text_metrics.actor_font_family)}" font-size="\{text_metrics.actor_regular.font_size}">\{@svg.xml_escape(entity.display)}</text>
+      append_paint_text(
+        output,
+        center_x.to_double(),
+        label_y.to_double(),
+        entity.display,
+        capability.title_class(),
+        text_metrics.actor_regular,
+        attributes=[
+          ("fill", text_color),
+          ("font-family", text_metrics.actor_font_family),
+          ("font-size", text_metrics.actor_regular.font_size.to_string()),
+        ],
+      )
+      output.write_char('\n')
       if entity.kind is @entity.EntityKind::BusinessActor &&
         figure_width == ACTOR_FIGURE_WIDTH {
         let (mark_start, mark_end) = actor_business_mark(
@@ -622,7 +839,17 @@ fn append_usecase_entity(
       let first_mark_y = tab_y + COMPONENT_TAB_MARK_TOP_OFFSET
       let second_mark_y = first_mark_y + COMPONENT_TAB_MARK_GAP
       output <+
-        $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><text x="\{x + width / 2}" y="\{y + (height + title.height) / 2 - 2}" class="\{capability.title_class()}" fill="\{text_color}">\{@svg.xml_escape(entity.display)}</text>
+        $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/>
+      append_paint_text(
+        output,
+        (x + width / 2).to_double(),
+        (y + (height + title.height) / 2 - 2).to_double(),
+        entity.display,
+        capability.title_class(),
+        text_metrics.regular,
+        attributes=[("fill", text_color)],
+      )
+      output.write_char('\n')
     }
     _ => ()
   }
