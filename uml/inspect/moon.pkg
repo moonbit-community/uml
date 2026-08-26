@@ -6,7 +6,7 @@ import {
 import {
   "kokic/uml/parser",
   "kokic/uml/render",
-  "kokic/uml/metrics",
+  "kokic/metrics",
 } for "wbtest"
 
 import {
