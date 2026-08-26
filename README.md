@@ -39,7 +39,14 @@ PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 | Sequence | interaction | done |
 | Timing | interaction | parsed, renderer pending |
 
-### PlantUML extensions (not UML)
+### Project extensions
+
+| Diagram | Status |
+|---|---|
+| TOML | done |
+| MBTI | done |
+
+### PlantUML extensions
 
 | Diagram | Status |
 |---|---|
@@ -66,10 +73,3 @@ PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 | Flow | planned |
 | Ditaa | planned |
 | JCCKit | planned |
-
-### Project extensions (not in PlantUML)
-
-| Diagram | Status |
-|---|---|
-| TOML | done |
-| MBTI | done |

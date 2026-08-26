@@ -7,9 +7,9 @@
     "05-advanced.uml"
   ],
   "mbti": [
-    "01-geometry.uml",
-    "02-flow.uml",
-    "04-entity.uml"
+    "01-geometry.umlx",
+    "02-flow.umlx",
+    "04-entity.umlx"
   ],
   "class": [
     "01-basic.uml",
@@ -44,10 +44,10 @@
     "04-yaml-features.uml"
   ],
   "toml": [
-    "01-scalars.uml",
-    "02-nested-tables.uml",
-    "03-array-of-tables.uml",
-    "04-inline-and-boundaries.uml"
+    "01-scalars.umlx",
+    "02-nested-tables.umlx",
+    "03-array-of-tables.umlx",
+    "04-inline-and-boundaries.umlx"
   ],
   "json": [
     "01-basic.uml",
