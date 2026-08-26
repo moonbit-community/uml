@@ -31,13 +31,13 @@ svg { font-family: sans-serif; font-size: 14px; background: none }
   height="42" rx="5" ry="5"/>
 <text x="15" y="51" class="structured-key"><tspan x="15" dy="0" textLength="53" lengthAdjust="spacing">package</tspan></text>
 <line x1="79" y1="35" x2="79" y2="56"/>
-<text x="84" y="51">&#160;&#160;&#160;</text>
+<text x="84" y="51" textLength="12" lengthAdjust="spacing">   </text>
 <line
   x1="10" y1="56"
   x2="109" y2="56"/>
 <text x="15" y="72" class="structured-key"><tspan x="15" dy="0" textLength="41" lengthAdjust="spacing">render</tspan></text>
 <line x1="79" y1="56" x2="79" y2="77"/>
-<text x="84" y="72">&#160;&#160;&#160;</text>
+<text x="84" y="72" textLength="12" lengthAdjust="spacing">   </text>
 </g>
 <g class="structured-node">
 <rect
@@ -65,7 +65,7 @@ svg { font-family: sans-serif; font-size: 14px; background: none }
   x2="248" y2="81"/>
 <text x="152" y="97" class="structured-key"><tspan x="152" dy="0" textLength="43" lengthAdjust="spacing">targets</tspan></text>
 <line x1="216" y1="81" x2="216" y2="102"/>
-<text x="221" y="97">&#160;&#160;&#160;</text>
+<text x="221" y="97" textLength="12" lengthAdjust="spacing">   </text>
 </g>
 <g class="structured-node">
 <rect
