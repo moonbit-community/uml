@@ -3,7 +3,8 @@ defaults:
   timeout: 30
   retries: 3
 production:
-  <<: *defaults
+  timeout: 30
+  retries: 3
   endpoint: "https://api.example.test/v1"
 notes: |
   This is a block value.
