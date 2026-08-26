@@ -48,23 +48,10 @@ fn @structured.StructuredValueDisplay::measurement_text(
 ) -> String {
   match self {
     @structured.Text(text) => text
-    @structured.True => "[x] true"
-    @structured.False => "[ ] false"
-    @structured.Null => "[]"
-    @structured.Compound => "   "
-  }
-}
-
-///|
-fn @structured.StructuredValueDisplay::svg_markup(
-  self : @structured.StructuredValueDisplay,
-) -> String {
-  match self {
-    @structured.Text(text) => @svg.xml_escape(text)
-    @structured.True => "&#9745; true"
-    @structured.False => "&#9744; false"
-    @structured.Null => "&#9216;"
-    @structured.Compound => "&#160;&#160;&#160;"
+    @structured.True => "\u{2611} true"
+    @structured.False => "\u{2610} false"
+    @structured.Null => "\u{2400}"
+    @structured.Compound => "\u{a0}\u{a0}\u{a0}"
   }
 }
 
@@ -113,7 +100,20 @@ fn append_value_text(
 ) -> Unit {
   match value {
     @structured.Text(text) => append_multiline_text(output, x, y, text)
-    _ => output <+ "<text x=\"\{x}\" y=\"\{y}\">\{value.svg_markup()}</text>\n"
+    _ => {
+      let markup = @svg.text_markup(
+        x.to_double(),
+        y.to_double(),
+        value.measurement_text(),
+        [],
+        @metrics.FontMetrics::from_defaults(
+          font_size=STRUCTURED_FONT_SIZE,
+          line_height=STRUCTURED_LINE_HEIGHT,
+        ),
+      )
+      output.write_string(markup)
+      output.write_string("\n")
+    }
   }
 }
 
