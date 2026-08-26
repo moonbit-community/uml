@@ -157,7 +157,10 @@ test "port clusters pin inputs to the source rank" {
         let prefix = svg[:start].to_owned()
         let mut y_pos : Int? = None
         let mut offset = 0
-        while @tokenizer.find_unquoted_literal(prefix[offset:].to_owned(), "y=\"")
+        while @tokenizer.find_unquoted_literal(
+                prefix[offset:].to_owned(),
+                "y=\"",
+              )
               is Some(at) {
           y_pos = Some(offset + at)
           offset = offset + at + 3

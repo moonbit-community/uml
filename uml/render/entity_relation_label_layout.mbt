@@ -492,7 +492,11 @@ fn relation_label_layout_from_geometry(
   let entries : Array[RelationLabelEntry] = []
   match relation.label {
     Some(text) => {
-      let display = if usecase { @tokenizer.display_stereotype(text) } else { text }
+      let display = if usecase {
+        @tokenizer.display_stereotype(text)
+      } else {
+        text
+      }
       let center = label_center.unwrap_or(
         (
           (fallback_start.0 + fallback_end.0) / 2.0,

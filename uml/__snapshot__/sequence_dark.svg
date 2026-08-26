@@ -22,7 +22,7 @@ svg{font-family:Arial, sans-serif;font-size:13px;background:#0d1117}
 .note-label{fill:#e6edf3;font-size:13px}
 .note,.note-fold{stroke:#8b949e;stroke-width:.5}
 .partial-arrow{fill:#8b949e}
-.group-body{stroke:#000000;stroke-width:1.5}
+.group-body{stroke:#e6edf3;stroke-width:1.5}
 .group-branch{stroke:none}
 .group-header{stroke:#8b949e;stroke-width:1.1}
 .group-label{font-size:12px;font-weight:bold;fill:#e6edf3}
@@ -32,8 +32,8 @@ svg{font-family:Arial, sans-serif;font-size:13px;background:#0d1117}
 .divider-title{fill:#EEEEEE}
 .divider-label{font-size:12px;font-weight:bold}
 .delay{stroke:#181818;stroke-dasharray:3 3}
-.reference{fill:none;stroke:#000000;stroke-width:1.5}
-.reference-tab{fill:#eee;stroke:#000000;stroke-width:2}
+.reference{fill:none;stroke:#e6edf3;stroke-width:1.5}
+.reference-tab{fill:#eee;stroke:#e6edf3;stroke-width:2}
 .reference-tab-label{fill:#e6edf3;font-size:12px;font-weight:bold}
 .group-separator{stroke:#8b949e;stroke-dasharray:4 3}
 .page-break{stroke:#555;stroke-width:1.2;stroke-dasharray:8 4}

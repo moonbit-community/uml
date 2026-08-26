@@ -44,7 +44,7 @@ fn append_svg_preamble(
     $|.note-label{fill:\{text_color};font-size:\{base_font_size}px}
     $|.note,.note-fold{stroke:\{line_color};stroke-width:.5}
     $|.partial-arrow{fill:\{line_color}}
-    $|.group-body{stroke:#000000;stroke-width:1.5}
+    $|.group-body{stroke:\{defaults.text};stroke-width:1.5}
     $|.group-branch{stroke:none}
     $|.group-header{stroke:\{line_color};stroke-width:\{@svg.secondary_structure_stroke_width()}}
     $|.group-label{font-size:\{body_font_size}px;font-weight:bold;fill:\{text_color}}
@@ -54,8 +54,8 @@ fn append_svg_preamble(
     $|.divider-title{fill:\{defaults.divider_title}}
     $|.divider-label{font-size:\{body_font_size}px;font-weight:bold}
     $|.delay{stroke:\{defaults.delay};stroke-dasharray:\{@svg.delay_dash_pattern()}}
-    $|.reference{fill:none;stroke:#000000;stroke-width:1.5}
-    $|.reference-tab{fill:\{defaults.reference_tab};stroke:#000000;stroke-width:2}
+    $|.reference{fill:none;stroke:\{defaults.text};stroke-width:1.5}
+    $|.reference-tab{fill:\{defaults.reference_tab};stroke:\{defaults.text};stroke-width:2}
     $|.reference-tab-label{fill:\{text_color};font-size:\{body_font_size}px;font-weight:bold}
     $|.group-separator{stroke:\{line_color};stroke-dasharray:\{@svg.separator_dash_pattern()}}
     $|.page-break{stroke:\{defaults.page_break};stroke-width:\{@svg.standard_border_stroke_width()};stroke-dasharray:\{@svg.page_break_dash_pattern()}}
