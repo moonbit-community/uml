@@ -124,7 +124,8 @@ fn relation_direction(arrow : String) -> @entity.RelationDirection {
 ///|
 fn relation_style(arrow : String) -> String? {
   guard @tokenizer.find_literal(arrow, "[") is Some(start) else { return None }
-  guard @tokenizer.find_literal(arrow[start + 1:].to_owned(), "]") is Some(length) else {
+  guard @tokenizer.find_literal(arrow[start + 1:].to_owned(), "]")
+    is Some(length) else {
     return None
   }
   Some(arrow[start + 1:start + 1 + length].to_owned())

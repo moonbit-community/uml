@@ -57,7 +57,7 @@ fn Parser::open_region(
   separator : @flow.StateRegionSeparator?,
 ) -> Int {
   let index = self.regions.length()
-  self.regions.push({ parent, separator, index, })
+  self.regions.push({ parent, separator, index })
   index
 }
 
@@ -195,7 +195,7 @@ fn Parser::apply_line_syntax(
       })
       if syntax.opens_group {
         let region_index = self.open_region(syntax.code, None)
-        self.stack.push({ code: syntax.code, region_index, })
+        self.stack.push({ code: syntax.code, region_index })
       }
       true
     }
@@ -212,7 +212,7 @@ fn Parser::apply_line_syntax(
         color: syntax.color,
       })
       let region_index = self.open_region(syntax.code, None)
-      self.stack.push({ code: syntax.code, region_index, })
+      self.stack.push({ code: syntax.code, region_index })
       true
     }
     Transition(syntax) => {

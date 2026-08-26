@@ -112,7 +112,7 @@ fn MindmapNodeStyle::defaults() -> MindmapNodeStyle {
 
 ///|
 fn MindmapArrowStyle::defaults() -> MindmapArrowStyle {
-  { line_color: None, line_thickness: Some(1), }
+  { line_color: None, line_thickness: Some(1) }
 }
 
 ///|
@@ -234,9 +234,9 @@ pub fn MindmapNodeStyle::with_property(
         ..self,
         font_size: Some(size.max(1)),
       })
-    "backgroundcolor" => { ..self, background_color: Some(value), }
-    "linecolor" | "bordercolor" => { ..self, line_color: Some(value), }
-    "fontcolor" => { ..self, font_color: Some(value), }
+    "backgroundcolor" => { ..self, background_color: Some(value) }
+    "linecolor" | "bordercolor" => { ..self, line_color: Some(value) }
+    "fontcolor" => { ..self, font_color: Some(value) }
     "linethickness" =>
       parse_nonnegative_int(value).map_or(self, thickness => {
         ..self,
@@ -254,9 +254,9 @@ pub fn MindmapNodeStyle::with_property(
       })
     "horizontalalignment" =>
       match value.to_lower() {
-        "left" => { ..self, alignment: Some(Left), }
-        "right" => { ..self, alignment: Some(Right), }
-        "center" | "centre" => { ..self, alignment: Some(Center), }
+        "left" => { ..self, alignment: Some(Left) }
+        "right" => { ..self, alignment: Some(Right) }
+        "center" | "centre" => { ..self, alignment: Some(Center) }
         _ => self
       }
     _ => self
@@ -271,7 +271,7 @@ pub fn MindmapArrowStyle::with_property(
 ) -> MindmapArrowStyle {
   match key.to_lower().replace(old=":", new="") {
     "linecolor" | "color" =>
-      { ..self, line_color: Some(value.trim().to_owned()), }
+      { ..self, line_color: Some(value.trim().to_owned()) }
     "linethickness" =>
       parse_nonnegative_int(value).map_or(self, thickness => {
         ..self,

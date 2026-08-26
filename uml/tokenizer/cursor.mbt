@@ -11,7 +11,7 @@ pub struct Cursor {
 ///|
 /// Creates a cursor positioned at the beginning of `input`.
 pub fn Cursor::new(input : String) -> Cursor {
-  { chars: input.to_array(), offset: 0, }
+  { chars: input.to_array(), offset: 0 }
 }
 
 ///|

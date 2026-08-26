@@ -120,7 +120,7 @@ fn append_value_text(
 ///|
 fn is_blank_node(node : @structured.StructuredNode) -> Bool {
   match node.rows {
-    [{ key: None, value: @structured.Text(text), child: None, }] =>
+    [{ key: None, value: @structured.Text(text), child: None }] =>
       text.is_empty()
     _ => false
   }
@@ -170,11 +170,11 @@ fn @structured.StructuredNode::metrics(
     Object => {
       key_width = key_width.max(STRUCTURED_COLUMN_MIN_WIDTH)
       value_width = value_width.max(STRUCTURED_COLUMN_MIN_WIDTH)
-      { key_width, width: key_width + value_width, height, row_heights, }
+      { key_width, width: key_width + value_width, height, row_heights }
     }
     Array => {
       value_width = value_width.max(STRUCTURED_COLUMN_MIN_WIDTH)
-      { key_width: 0, width: value_width, height, row_heights, }
+      { key_width: 0, width: value_width, height, row_heights }
     }
   }
 }
@@ -199,7 +199,7 @@ fn @structured.StructuredNode::place(
   }
   if children.is_empty() {
     return (
-      { node: self, metrics, x, y: next_y, children, },
+      { node: self, metrics, x, y: next_y, children },
       next_y + metrics.height,
     )
   }
@@ -210,7 +210,7 @@ fn @structured.StructuredNode::place(
     ) /
     2 -
     metrics.height / 2
-  ({ node: self, metrics, x, y, children, }, child_y.max(y + metrics.height))
+  ({ node: self, metrics, x, y, children }, child_y.max(y + metrics.height))
 }
 
 ///|
@@ -265,7 +265,7 @@ fn align_empty_records(node : PlacedNode) -> PlacedNode {
     }
     children.push((row, child))
   }
-  { node: node.node, metrics: node.metrics, x: node.x, y: node.y, children, }
+  { node: node.node, metrics: node.metrics, x: node.x, y: node.y, children }
 }
 
 ///|

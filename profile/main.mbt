@@ -278,7 +278,7 @@ fn comparison_profile(
   let default = @svgdiff.ComparisonProfile::v1_default()
   viewport_dimensions(before, after).map_or(default, dims => {
     let (width, height) = dims
-    { ..default, viewport_width: width, viewport_height: height, }
+    { ..default, viewport_width: width, viewport_height: height }
   })
 }
 

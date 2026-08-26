@@ -86,7 +86,7 @@ pub fn DocumentStyle::with_color_scheme(
   self : DocumentStyle,
   scheme : ColorScheme,
 ) -> DocumentStyle {
-  { ..self, color_scheme: scheme, }
+  { ..self, color_scheme: scheme }
 }
 
 ///|

@@ -208,7 +208,7 @@ fn ParseCtx::apply_reference_syntax(
       }
   }
   self.push_event(
-    @seq.Reference({ participant_codes: syntax.participant_codes, label, }),
+    @seq.Reference({ participant_codes: syntax.participant_codes, label }),
   )
 }
 

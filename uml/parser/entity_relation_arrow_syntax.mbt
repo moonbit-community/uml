@@ -89,7 +89,9 @@ fn take_inside(cursor : @tokenizer.Cursor) -> String? {
 }
 
 ///|
-fn relation_arrow_candidate(cursor : @tokenizer.Cursor) -> RelationArrowCandidate? {
+fn relation_arrow_candidate(
+  cursor : @tokenizer.Cursor,
+) -> RelationArrowCandidate? {
   let start = cursor.offset()
   let left = take_relation_decor(cursor, left_relation_decorations)
   guard relation_stroke(cursor) is Some(stroke) else {

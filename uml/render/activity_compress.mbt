@@ -102,10 +102,10 @@ fn merge_slots(layout : ActivityLayout) -> Array[Slot] {
   for range in ranges {
     let last_index = merged.length() - 1
     if merged.is_empty() || range.0 > merged[last_index].end {
-      merged.push({ start: range.0, end: range.1, })
+      merged.push({ start: range.0, end: range.1 })
     } else {
       let last = merged[last_index]
-      merged[last_index] = { ..last, end: last.end.max(range.1), }
+      merged[last_index] = { ..last, end: last.end.max(range.1) }
     }
   }
   merged
@@ -126,12 +126,12 @@ fn compress_gaps(
     let start = prev_end
     let end = slot.start
     if end - start > 10 {
-      gaps.push({ start: start + 5, end: end - 5, })
+      gaps.push({ start: start + 5, end: end - 5 })
     }
     prev_end = prev_end.max(slot.end)
   }
   if content_max - prev_end > 10 {
-    gaps.push({ start: prev_end + 5, end: content_max - 5, })
+    gaps.push({ start: prev_end + 5, end: content_max - 5 })
   }
   gaps
 }
@@ -144,9 +144,9 @@ fn compress_gaps(
 /// bar sits at the content edge, and is a no-op otherwise.
 fn extend_extreme_slots(merged : Array[Slot]) -> Unit {
   if !merged.is_empty() {
-    merged[0] = { ..merged[0], start: merged[0].start - 2, }
+    merged[0] = { ..merged[0], start: merged[0].start - 2 }
     let last = merged.length() - 1
-    merged[last] = { ..merged[last], end: merged[last].end + 2, }
+    merged[last] = { ..merged[last], end: merged[last].end + 2 }
   }
 }
 
@@ -192,12 +192,12 @@ pub fn ActivityLayout::compress_x(self : ActivityLayout) -> ActivityLayout {
   let nodes = self.nodes.map(node => {
     let x = transform(gaps, node.x)
     let right = transform(gaps, node.x + node.width)
-    { ..node, x, width: right - x, }
+    { ..node, x, width: right - x }
   })
   let regions = self.regions.map(region => {
     let x = transform(gaps, region.x)
     let right = transform(gaps, region.x + region.width)
-    { ..region, x, width: right - x, }
+    { ..region, x, width: right - x }
   })
-  { ..self, nodes, regions, }
+  { ..self, nodes, regions }
 }

@@ -205,7 +205,7 @@ fn RelationDecorationFrame::new(
   let tangent_length = (dx * dx + dy * dy).sqrt()
   guard tangent_length > 0.0 else { return None }
   let tangent = (dx / tangent_length, dy / tangent_length)
-  Some({ endpoint, tangent, normal: (-tangent.1, tangent.0), })
+  Some({ endpoint, tangent, normal: (-tangent.1, tangent.0) })
 }
 
 ///|
@@ -243,7 +243,7 @@ fn relation_decoration_primitive(
   fill : RelationDecorationFill,
   stroke_width? : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
 ) -> RelationDecorationPrimitive {
-  { shape, fill, stroke_width, }
+  { shape, fill, stroke_width }
 }
 
 ///|

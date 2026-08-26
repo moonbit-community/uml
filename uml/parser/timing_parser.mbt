@@ -222,7 +222,7 @@ fn TimingParser::set_player_state(
         Some(tick) =>
           insert_change(
             player,
-            { when: Some(tick), comment, color, states: decoded, },
+            { when: Some(tick), comment, color, states: decoded },
             false,
           )
       }
@@ -240,7 +240,7 @@ fn TimingParser::set_player_state(
         Some(tick) =>
           insert_change(
             player,
-            { when: Some(tick), comment, color, states: converted, },
+            { when: Some(tick), comment, color, states: converted },
             true,
           )
       }
@@ -256,9 +256,9 @@ fn TimingParser::set_player_state(
       match when {
         None => player.initial = Some(change)
         Some(tick) => {
-          insert_change(player, { ..change, when: Some(tick), }, true)
+          insert_change(player, { ..change, when: Some(tick) }, true)
           if player.initial is None {
-            player.initial = Some({ ..change, when: None, })
+            player.initial = Some({ ..change, when: None })
           }
         }
       }

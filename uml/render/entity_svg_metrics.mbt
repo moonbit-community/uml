@@ -340,7 +340,7 @@ fn @entity.Entity::object_body_layout(
     member_count * text_metrics.row_height() +
     separator_count * OBJECT_SEPARATOR_HEIGHT
   }
-  { entries, height, has_visibility, }
+  { entries, height, has_visibility }
 }
 
 ///|
@@ -395,7 +395,7 @@ fn @entity.Entity::map_body_layout(
     let height = (key_metrics.height + MAP_CELL_VERTICAL_PADDING * 2).max(
       value_height,
     )
-    rows.push({ entry, key, top, height, port_id: entry.port_id(), })
+    rows.push({ entry, key, top, height, port_id: entry.port_id() })
     key_column_width = key_column_width.max(key_block_width)
     value_column_width = value_column_width.max(value_block_width)
     top += height
@@ -427,7 +427,7 @@ fn @entity.Entity::graphviz_port(
   guard self.kind is Map else { return None }
   guard port is Some(key) else { return None }
   guard self.map_entries.any(entry => entry.key == key) else { return None }
-  Some({ name: Some(stable_port_identifier(key)), compass: None, })
+  Some({ name: Some(stable_port_identifier(key)), compass: None })
 }
 
 ///|
@@ -536,11 +536,7 @@ fn measure_json_node(
           value_size.height,
         )
       }
-      {
-        key_column_width,
-        width: key_column_width + value_column_width,
-        height,
-      }
+      { key_column_width, width: key_column_width + value_column_width, height }
     }
     JsonArray(elements) => {
       let mut width = 0
@@ -550,7 +546,7 @@ fn measure_json_node(
         width = width.max(size.width)
         height += size.height
       }
-      { key_column_width: 0, width, height, }
+      { key_column_width: 0, width, height }
     }
     _ => {
       let scalar = text_metrics.regular.measure(node.display())
@@ -671,9 +667,9 @@ fn @entity.Entity::json_body_layout(
       let dividers : Array[JsonDividerLayout] = []
       let size = measure_json_node(tree, text_metrics)
       build_json_rows(tree, text_metrics, rows, dividers, 0, size.width, 0)
-      { rows, dividers, width: size.width, height: size.height, }
+      { rows, dividers, width: size.width, height: size.height }
     }
-    None => { rows: [], dividers: [], width: 0, height: 0, }
+    None => { rows: [], dividers: [], width: 0, height: 0 }
   }
 }
 
@@ -686,7 +682,7 @@ fn @entity.Entity::json_header_layout(
   text_metrics : ClassTextMetrics,
 ) -> ObjectHeaderLayout {
   let header = self.object_header_layout(text_metrics)
-  { ..header, height: header.height + 2, }
+  { ..header, height: header.height + 2 }
 }
 
 ///|
@@ -1463,11 +1459,11 @@ fn @entity.Entity::node_geometry(
       let (width, height) = text_block_in_ellipse_geometry(
         content_width, content_height,
       )
-      { width, height, shape: capability.shape, }
+      { width, height, shape: capability.shape }
     }
     (DescriptionHeader, NoBody, ActorRenderer) => {
       let (width, height, _) = self.actor_content_layout(text_metrics)
-      { width, height, shape: capability.shape, }
+      { width, height, shape: capability.shape }
     }
     (DescriptionHeader, NoBody, ComponentRenderer) =>
       self.component_geometry(text_metrics)
@@ -1484,9 +1480,9 @@ fn @entity.Entity::node_geometry(
       }
     }
     (DescriptionHeader, NoBody, PortRenderer) =>
-      { width: PORT_SIZE, height: PORT_SIZE, shape: Box, }
+      { width: PORT_SIZE, height: PORT_SIZE, shape: Box }
     (DescriptionHeader, NoBody, LollipopRenderer) =>
-      { width: LOLLIPOP_SIZE, height: LOLLIPOP_SIZE, shape: Circle, }
+      { width: LOLLIPOP_SIZE, height: LOLLIPOP_SIZE, shape: Circle }
     (DescriptionHeader, NoBody, PointRenderer) =>
       {
         width: ASSOCIATION_POINT_SIZE,

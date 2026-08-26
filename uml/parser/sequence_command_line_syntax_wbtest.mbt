@@ -97,7 +97,8 @@ test "autonumber branches are tried in factory order" {
     Some(@seq.AutonumberIncrement(value)) => @test.assert_eq(value, Some("b"))
     _ => @test.fail("autonumber inc rejected")
   }
-  match autonumber_line_syntax(@tokenizer.Cursor::new("autonumber 1.2 3 \"(0)\"")) {
+  match
+    autonumber_line_syntax(@tokenizer.Cursor::new("autonumber 1.2 3 \"(0)\"")) {
     Some(@seq.Autonumber(number)) => {
       @test.assert_eq(number.start, Some("1.2"))
       @test.assert_eq(number.increment, Some(3))
@@ -109,10 +110,12 @@ test "autonumber branches are tried in factory order" {
 
 ///|
 test "autonumber branch keywords commit the whole line" {
-  guard autonumber_line_syntax(@tokenizer.Cursor::new("autonumber stop 5")) is None else {
+  guard autonumber_line_syntax(@tokenizer.Cursor::new("autonumber stop 5"))
+    is None else {
     @test.fail("autonumber stop with trailing value accepted")
   }
-  guard autonumber_line_syntax(@tokenizer.Cursor::new("autonumber inc 5")) is None else {
+  guard autonumber_line_syntax(@tokenizer.Cursor::new("autonumber inc 5"))
+    is None else {
     @test.fail("autonumber inc with trailing digits accepted")
   }
   match autonumber_line_syntax(@tokenizer.Cursor::new("autonumber stopx")) {
@@ -137,7 +140,9 @@ test "a failed box end falls through to a group end" {
     is None else {
     @test.fail("url with trailing junk accepted")
   }
-  guard miscellaneous_event_line_syntax(@tokenizer.Cursor::new("ignore newpage x"))
+  guard miscellaneous_event_line_syntax(
+      @tokenizer.Cursor::new("ignore newpage x"),
+    )
     is None else {
     @test.fail("ignore newpage with trailing junk accepted")
   }
@@ -184,7 +189,7 @@ test "life event with color parses and carries the color" {
   let diagram = parse_sequence(src)
   let has_colored_activation = diagram.events.exists(event => {
     match event {
-      @seq.LifeEvent({ participant_code, event_type: @seq.Activate, color, }) =>
+      @seq.LifeEvent({ participant_code, event_type: @seq.Activate, color }) =>
         participant_code == "Bob" && color == Some("FF0000")
       _ => false
     }

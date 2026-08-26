@@ -95,7 +95,7 @@ fn note_opale_attachment(
     } else {
       OpaleDown
     }
-    return Some({ strategy, note_point, target_point, })
+    return Some({ strategy, note_point, target_point })
   }
   None
 }

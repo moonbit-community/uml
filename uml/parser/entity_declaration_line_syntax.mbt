@@ -196,11 +196,13 @@ fn declaration_name_atom(cursor : @tokenizer.Cursor) -> DeclarationNameAtom? {
       }
   }
   let generic = declaration_generic(cursor)
-  Some({ value: @tokenizer.unquote_identifier(value), generic, quoted, })
+  Some({ value: @tokenizer.unquote_identifier(value), generic, quoted })
 }
 
 ///|
-fn declaration_name_syntax(cursor : @tokenizer.Cursor) -> DeclarationNameSyntax? {
+fn declaration_name_syntax(
+  cursor : @tokenizer.Cursor,
+) -> DeclarationNameSyntax? {
   guard declaration_name_atom(cursor) is Some(first) else { return None }
   let as_start = cursor.offset()
   let alternate = if cursor.skip_inline_space1() &&
@@ -217,13 +219,13 @@ fn declaration_name_syntax(cursor : @tokenizer.Cursor) -> DeclarationNameSyntax?
     Some(second) => {
       let generic = first.generic.map_or(second.generic, value => Some(value))
       if second.quoted {
-        Some({ display: second.value, code: first.value, generic, })
+        Some({ display: second.value, code: first.value, generic })
       } else {
-        Some({ display: first.value, code: second.value, generic, })
+        Some({ display: first.value, code: second.value, generic })
       }
     }
     None =>
-      Some({ display: first.value, code: first.value, generic: first.generic, })
+      Some({ display: first.value, code: first.value, generic: first.generic })
   }
 }
 
@@ -261,7 +263,9 @@ fn declaration_target_list(cursor : @tokenizer.Cursor) -> Array[String]? {
 }
 
 ///|
-fn declaration_stereotype(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
+fn declaration_stereotype(
+  cursor : @tokenizer.Cursor,
+) -> DeclarationSuffixSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("<<") else { return None }
   let parts = StringBuilder()
@@ -282,7 +286,9 @@ fn declaration_url(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
 }
 
 ///|
-fn declaration_line_style(cursor : @tokenizer.Cursor) -> DeclarationSuffixSyntax? {
+fn declaration_line_style(
+  cursor : @tokenizer.Cursor,
+) -> DeclarationSuffixSyntax? {
   let start = cursor.offset()
   guard cursor.consume_literal("##") else { return None }
   let style = if cursor.consume('[') {
@@ -372,7 +378,7 @@ fn declaration_metadata_from(
       }
     }
   }
-  { extends, implements, stereotype, url, tags, color, line_color, line_style, }
+  { extends, implements, stereotype, url, tags, color, line_color, line_style }
 }
 
 ///|

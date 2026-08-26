@@ -53,7 +53,7 @@ priv struct JsonTreeCursor {
 /// PlantUML's bundled parser accepts a plain value (scalar, array, object),
 /// rejects trailing commas and malformed input, and reports a stable error.
 pub fn parse_json_tree(source : String) -> JsonNode raise @tokenizer.ParseError {
-  let cursor = { chars: source.to_array(), index: 0, }
+  let cursor = { chars: source.to_array(), index: 0 }
   cursor.skip_whitespace()
   guard cursor.index < cursor.chars.length() else {
     json_tree_error("empty JSON data")
@@ -146,7 +146,7 @@ fn JsonTreeCursor::parse_object(
       json_tree_error("expected ':' after object key")
     }
     let value = self.parse_value()
-    members.push({ key, value, })
+    members.push({ key, value })
     self.skip_whitespace()
     guard !self.consume('}') else { return JsonObject(members) }
     guard self.consume(',') else {

@@ -126,9 +126,9 @@ fn DiagramLayout::note_geometry(
     }
   }
   let component = if note.position is @seq.Across {
-    { ..component, width: self.width - 48, }
+    { ..component, width: self.width - 48 }
   } else {
     component
   }
-  { x, y: placement.y, component, }
+  { x, y: placement.y, component }
 }

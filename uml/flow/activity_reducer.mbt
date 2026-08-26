@@ -19,7 +19,7 @@ pub fn edge_label(value : String) -> ActivityEdgeLabel {
     guard value.has_prefix("(") && value.has_suffix(")") else { value }
     value[1:value.length() - 1].trim().to_owned()
   }
-  { text: if text.length() == 0 { None } else { Some(text) }, }
+  { text: if text.length() == 0 { None } else { Some(text) } }
 }
 
 ///|
@@ -30,7 +30,7 @@ fn split_test_and_label(
   let lower = value.to_lower()
   lower
   .find(separator)
-  .map_or((edge_label(value).text.unwrap_or(""), { text: None, }), index => {
+  .map_or((edge_label(value).text.unwrap_or(""), { text: None }), index => {
     (
       edge_label(value[:index].to_owned()).text.unwrap_or(""),
       edge_label(value[index + separator.length():].to_owned()),
@@ -46,19 +46,19 @@ fn repeat_labels(
   guard lower.find(" is ") is Some(is_index) else {
     return (
       edge_label(value).text.unwrap_or(""),
-      { text: None, },
-      { text: None, },
+      { text: None },
+      { text: None },
     )
   }
   let condition = edge_label(value[:is_index].to_owned()).text.unwrap_or("")
   let rest = value[is_index + 4:].trim().to_owned()
   guard rest.length() > 0 else {
-    return (condition, { text: None, }, { text: None, })
+    return (condition, { text: None }, { text: None })
   }
   rest
   .to_lower()
   .find(" not ")
-  .map_or((condition, edge_label(rest), { text: None, }), index => {
+  .map_or((condition, edge_label(rest), { text: None }), index => {
     (
       condition,
       edge_label(rest[:index].to_owned()),
@@ -70,9 +70,9 @@ fn repeat_labels(
 ///|
 pub fn arrow_label(value : String) -> ActivityEdgeLabel {
   let words = @tokenizer.syntax_words(value)
-  guard words.length() > 1 else { return { text: None, } }
+  guard words.length() > 1 else { return { text: None } }
   let text = words[1:].to_owned().join(" ").trim_end(chars=";").to_owned()
-  { text: if text.length() == 0 { None } else { Some(text) }, }
+  { text: if text.length() == 0 { None } else { Some(text) } }
 }
 
 ///|
@@ -172,9 +172,9 @@ fn reduce_flow(
                   (Some(condition), incoming)
                 }
                 ActivityNode::Else(value) => (None, edge_label(value))
-                _ => (None, { text: None, })
+                _ => (None, { text: None })
               }
-              { condition, incoming, instructions: body, }
+              { condition, incoming, instructions: body }
             },
             next => {
               match next {
@@ -195,7 +195,7 @@ fn reduce_flow(
         let (condition, enter) = split_test_and_label(raw, " is ")
         let exit = match nodes[end] {
           ActivityNode::EndWhile(value) => edge_label(value)
-          _ => { text: None, }
+          _ => { text: None }
         }
         instructions.push(
           ActivityInstruction::While({
@@ -212,7 +212,7 @@ fn reduce_flow(
         guard end < nodes.length() else { break }
         let (condition, retry, exit) = match nodes[end] {
           ActivityNode::RepeatWhile(value) => repeat_labels(value)
-          _ => ("", { text: None, }, { text: None, })
+          _ => ("", { text: None }, { text: None })
         }
         instructions.push(
           ActivityInstruction::Repeat({
@@ -257,9 +257,9 @@ fn reduce_flow(
                 (header, body) => {
                   let incoming = match header {
                     ActivityNode::Case(value) => edge_label(value)
-                    _ => { text: None, }
+                    _ => { text: None }
                   }
-                  { condition: None, incoming, instructions: body, }
+                  { condition: None, incoming, instructions: body }
                 },
                 next => {
                   match next {
@@ -284,7 +284,7 @@ fn reduce_flow(
       ActivityNode::Partition(label) => {
         let (body, end) = reduce_flow(nodes, index + 1, [EndPartition])
         instructions.push(
-          ActivityInstruction::Partition({ label, instructions: body, }),
+          ActivityInstruction::Partition({ label, instructions: body }),
         )
         index = if end < nodes.length() { end + 1 } else { end }
       }

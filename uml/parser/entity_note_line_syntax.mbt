@@ -146,7 +146,7 @@ fn note_metadata_from(
       NoteTag(value) => tags.push(value)
     }
   }
-  { color, url, stereotype, tags, braced, }
+  { color, url, stereotype, tags, braced }
 }
 
 ///|
@@ -314,7 +314,7 @@ fn entity_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
   let target = entity_note_target(cursor)
   let metadata = note_metadata(cursor)
   let content = note_content(cursor)
-  Some({ target: NoteEntityTarget(target), position, content, metadata, })
+  Some({ target: NoteEntityTarget(target), position, content, metadata })
 }
 
 ///|
@@ -346,7 +346,9 @@ fn note_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
 }
 
 ///|
-fn link_constraint_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
+fn link_constraint_line(
+  cursor : @tokenizer.Cursor,
+) -> ClassAnnotationLineSyntax? {
   let start = cursor.offset()
   guard consume_inline_keyword(cursor, "constraint") &&
     cursor.skip_inline_space1() &&
@@ -368,11 +370,13 @@ fn link_constraint_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax
   }
   cursor.skip_inline_spaces()
   let text = cursor.take_while(_ => true).trim().to_owned()
-  Some(ParsedLinkConstraint({ text, color, }))
+  Some(ParsedLinkConstraint({ text, color }))
 }
 
 ///|
-fn class_annotation_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
+fn class_annotation_line(
+  cursor : @tokenizer.Cursor,
+) -> ClassAnnotationLineSyntax? {
   guard note_line(cursor) is Some(value) else {
     return link_constraint_line(cursor)
   }

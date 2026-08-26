@@ -39,7 +39,7 @@ fn finish_activation(
   guard active.get(participant_code) is Some(indices) else { false }
   guard indices.pop() is Some(index) else { false }
   let activation = activations[index]
-  activations[index] = { ..activation, end_y: y.max(activation.start_y + 12), }
+  activations[index] = { ..activation, end_y: y.max(activation.start_y + 12) }
   if indices.length() == 0 {
     active.remove(participant_code)
   } else {
@@ -86,7 +86,7 @@ fn apply_activation_spec(
     }
     Some(@seq.Destroy) => {
       let _ = finish_activation(activations, active, participant_code, y)
-      destroys.push({ participant_code, y, })
+      destroys.push({ participant_code, y })
     }
   }
 }
@@ -160,7 +160,7 @@ fn layout_events(
       @seq.Message(_) | @seq.MessageExo(_) | @seq.Return(_) => autonumber.take()
       _ => None
     }
-    placements.push({ y, height, number, ignored, })
+    placements.push({ y, height, number, ignored })
     if !advances {
       ()
     } else {
@@ -267,7 +267,7 @@ fn layout_events(
           first_participant: None,
           last_participant: None,
           branches: [
-            { start_y: y, end_y: y + height, label: None, color: None, },
+            { start_y: y, end_y: y + height, label: None, color: None },
           ],
         })
         group_stack.push(groups.length() - 1)
@@ -280,7 +280,7 @@ fn layout_events(
           let end_y = y.max(last_visual_bottom)
           branches[branch_index] = { ..branches[branch_index], end_y, }
           if leaf.is_end {
-            groups[index] = { ..group, end_y, branches, }
+            groups[index] = { ..group, end_y, branches }
             let _ = group_stack.pop()
           } else {
             let branch_color = leaf.back_color.map_or(
@@ -315,7 +315,7 @@ fn layout_events(
   for _, indices in active {
     for index in indices {
       let activation = activations[index]
-      activations[index] = { ..activation, end_y: current_y, }
+      activations[index] = { ..activation, end_y: current_y }
     }
   }
   for index in group_stack {
@@ -324,7 +324,7 @@ fn layout_events(
     let branches = group.branches
     let end_y = current_y.max(last_visual_bottom)
     branches[branch_index] = { ..branches[branch_index], end_y, }
-    groups[index] = { ..group, end_y, branches, }
+    groups[index] = { ..group, end_y, branches }
   }
   (placements, activations, groups, destroys, auto_page_breaks, current_y)
 }

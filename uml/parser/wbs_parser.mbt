@@ -202,11 +202,11 @@ fn parse_prefix(
   if attributes_first {
     let (background_color, code, _) = parse_attributes(cursor)
     let (shape, direction, end) = parse_modifiers(cursor)
-    { code, direction, shape, background_color, end, }
+    { code, direction, shape, background_color, end }
   } else {
     let (shape, direction, _) = parse_modifiers(cursor)
     let (background_color, code, end) = parse_attributes(cursor)
-    { code, direction, shape, background_color, end, }
+    { code, direction, shape, background_color, end }
   }
 }
 
@@ -582,7 +582,7 @@ fn WbsParser::parse_link(
   guard self.codes.get(target_code) is Some(target) else {
     raise SyntaxError(self.index + 1, "No such node \{target_code}")
   }
-  self.links.push({ source, target, color, stereotype, label, })
+  self.links.push({ source, target, color, stereotype, label })
   true
 }
 
@@ -726,7 +726,9 @@ fn WbsParser::parse_line(self : WbsParser) -> Unit raise @tokenizer.ParseError {
 /// Parse the command family registered by PlantUML's `WBSDiagramFactory`.
 /// Both modern and legacy modifier order are accepted, together with coded
 /// nodes, multiline labels, pseudo nodes, and non-tree links.
-pub fn parse_wbs(input : String) -> @tree.WbsDiagram raise @tokenizer.ParseError {
+pub fn parse_wbs(
+  input : String,
+) -> @tree.WbsDiagram raise @tokenizer.ParseError {
   let parser = WbsParser::new(input)
   while parser.index < parser.lines.length() {
     parser.parse_line()

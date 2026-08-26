@@ -1,7 +1,10 @@
 ///|
 /// `robust`, `concise` and `rectangle` player declarations, mirroring
 /// `CommandRobustConcise`.
-fn parse_robust_concise(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
+fn parse_robust_concise(
+  parser : TimingParser,
+  cursor : @tokenizer.Cursor,
+) -> Bool {
   let compact = take_compact(cursor)
   let kind = if match_keyword(cursor, "robust") {
     @flow.PlayerKind::Robust

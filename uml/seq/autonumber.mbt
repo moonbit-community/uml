@@ -68,7 +68,7 @@ pub(all) struct AutonumberState {
 
 ///|
 pub fn AutonumberState::new() -> AutonumberState {
-  { enabled: false, next: "1", increment: 1, format: None, }
+  { enabled: false, next: "1", increment: 1, format: None }
 }
 
 ///|

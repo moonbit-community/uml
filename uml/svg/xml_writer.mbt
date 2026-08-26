@@ -7,7 +7,7 @@ pub struct XmlWriter {
 
 ///|
 pub fn XmlWriter::new() -> XmlWriter {
-  { output: StringBuilder(), open_tags: [], }
+  { output: StringBuilder(), open_tags: [] }
 }
 
 ///|

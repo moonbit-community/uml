@@ -306,7 +306,7 @@ fn @flow.ActivityDiagram::render_svg(
   self : @flow.ActivityDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
   let layout = self.layout()
   let output = @svg.XmlWriter::new()
   let family = self.style.font_family()

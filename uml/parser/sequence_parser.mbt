@@ -44,7 +44,7 @@ fn diagram_options(events : Array[@seq.Event]) -> DiagramOptions {
       _ => ()
     }
   }
-  { autoactivate, show_footbox, }
+  { autoactivate, show_footbox }
 }
 
 ///|

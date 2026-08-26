@@ -68,14 +68,14 @@ fn relation_name(
       ignore(cursor.restore(start))
       return None
     }
-    return Some({ name: "()" + name, port_base: None, port_value: None, })
+    return Some({ name: "()" + name, port_base: None, port_value: None })
   }
   ignore(cursor.restore(start))
   if declaration_shaped_name(cursor) is Some(name) {
-    return Some({ name, port_base: None, port_value: None, })
+    return Some({ name, port_base: None, port_value: None })
   }
   if cursor.take_quoted_value() is Some(name) {
-    return Some({ name, port_base: None, port_value: None, })
+    return Some({ name, port_base: None, port_value: None })
   }
   let name_character = (char : Char) => {
     !char.is_whitespace() &&
@@ -111,7 +111,7 @@ fn relation_name(
       port_value: Some(segments[1:].to_owned().join("::")),
     })
   } else {
-    Some({ name, port_base: None, port_value: None, })
+    Some({ name, port_base: None, port_value: None })
   }
 }
 
@@ -143,7 +143,7 @@ fn relation_couple(
   }
   let left = @tokenizer.unquote_identifier(first.name)
   let right = @tokenizer.unquote_identifier(second.name)
-  Some(({ name: left, port_base: None, port_value: None, }, (left, right)))
+  Some(({ name: left, port_base: None, port_value: None }, (left, right)))
 }
 
 ///|
@@ -215,16 +215,20 @@ fn relation_endpoint_from(
       RelationQualifier(value) => qualifier = Some(value)
     }
   }
-  { name, cardinality, role, qualifier, couple, }
+  { name, cardinality, role, qualifier, couple }
 }
 
 ///|
-fn take_modifiers(cursor : @tokenizer.Cursor) -> Array[RelationEndpointModifier] {
+fn take_modifiers(
+  cursor : @tokenizer.Cursor,
+) -> Array[RelationEndpointModifier] {
   collect_repeated(cursor, relation_modifier)
 }
 
 ///|
-fn left_relation_endpoint(cursor : @tokenizer.Cursor) -> RelationEndpointSyntax? {
+fn left_relation_endpoint(
+  cursor : @tokenizer.Cursor,
+) -> RelationEndpointSyntax? {
   guard relation_target(cursor, true) is Some((name, couple)) else {
     return None
   }
@@ -233,7 +237,9 @@ fn left_relation_endpoint(cursor : @tokenizer.Cursor) -> RelationEndpointSyntax?
 }
 
 ///|
-fn right_relation_endpoint(cursor : @tokenizer.Cursor) -> RelationEndpointSyntax? {
+fn right_relation_endpoint(
+  cursor : @tokenizer.Cursor,
+) -> RelationEndpointSyntax? {
   let start = cursor.offset()
   // The arrow separator consumes the leading spaces, so modifiers sit at the
   // current position and only a trailing space is required. A bracket may be
@@ -388,7 +394,7 @@ fn relation_line(cursor : @tokenizer.Cursor) -> RelationLineSyntax? {
     return None
   }
   let (color, url, stereotype) = relation_metadata_from(metadata)
-  Some({ weight, left, arrow, right, label, color, url, stereotype, })
+  Some({ weight, left, arrow, right, label, color, url, stereotype })
 }
 
 ///|

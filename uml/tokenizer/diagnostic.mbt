@@ -30,7 +30,7 @@ pub fn ParseDiagnostic::line_number(self : ParseDiagnostic) -> Int {
 
 ///|
 pub fn diagnostic_at_line(line : Int, message : String) -> ParseDiagnostic {
-  { span: line_span(line), message, }
+  { span: line_span(line), message }
 }
 
 ///|
@@ -38,5 +38,5 @@ pub fn diagnostic_at_span(
   span : SourceSpan,
   message : String,
 ) -> ParseDiagnostic {
-  { span, message, }
+  { span, message }
 }

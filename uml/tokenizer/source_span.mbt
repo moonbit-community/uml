@@ -25,10 +25,10 @@ pub fn source_span(chars : Array[Char], offset : Int) -> SourceSpan {
       column += 1
     }
   }
-  { offset: limit, line, column, }
+  { offset: limit, line, column }
 }
 
 ///|
 pub fn line_span(line : Int) -> SourceSpan {
-  { offset: 0, line: line.max(1), column: 1, }
+  { offset: 0, line: line.max(1), column: 1 }
 }

@@ -89,7 +89,7 @@ priv struct StateMetadataValues {
 fn state_identifier(cursor : @tokenizer.Cursor) -> StateIdentifier? {
   if cursor.peek() == Some('"') {
     if cursor.take_quoted_value() is Some(value) {
-      return Some({ value, quoted: true, })
+      return Some({ value, quoted: true })
     }
   }
   let value = cursor.take_while(char => {
@@ -100,7 +100,7 @@ fn state_identifier(cursor : @tokenizer.Cursor) -> StateIdentifier? {
     char != '['
   })
   if value.length() > 0 {
-    Some({ value, quoted: false, })
+    Some({ value, quoted: false })
   } else {
     None
   }
@@ -143,7 +143,7 @@ fn metadata_values(metadata : Array[StateMetadata]) -> StateMetadataValues {
       Color(value) => color = Some(value)
     }
   }
-  { stereotype, url, color, }
+  { stereotype, url, color }
 }
 
 ///|
@@ -270,7 +270,9 @@ fn state_endpoint(cursor : @tokenizer.Cursor) -> String? {
 }
 
 ///|
-fn transition_direction(cursor : @tokenizer.Cursor) -> @flow.TransitionDirection? {
+fn transition_direction(
+  cursor : @tokenizer.Cursor,
+) -> @flow.TransitionDirection? {
   if cursor.consume_literal("left") {
     return Some(@flow.TransitionDirection::Leftward)
   }
@@ -333,7 +335,9 @@ fn transition_arrow_from(parts : TransitionArrowParts) -> TransitionArrowSyntax 
 }
 
 ///|
-fn forward_transition_arrow(cursor : @tokenizer.Cursor) -> TransitionArrowParts? {
+fn forward_transition_arrow(
+  cursor : @tokenizer.Cursor,
+) -> TransitionArrowParts? {
   let has_cross_start = cursor.consume('x')
   guard cursor.consume('-') else { return None }
   while cursor.consume('-') {
@@ -369,7 +373,9 @@ fn forward_transition_arrow(cursor : @tokenizer.Cursor) -> TransitionArrowParts?
 }
 
 ///|
-fn reverse_transition_arrow(cursor : @tokenizer.Cursor) -> TransitionArrowParts? {
+fn reverse_transition_arrow(
+  cursor : @tokenizer.Cursor,
+) -> TransitionArrowParts? {
   let has_circle_end = cursor.consume('o')
   if has_circle_end {
     ignore(cursor.skip_inline_whitespace())
@@ -515,7 +521,7 @@ fn entity_note(cursor : @tokenizer.Cursor) -> StateEntityNoteSyntax? {
     }
   }
   ignore(cursor.take_while(_ => true))
-  Some({ position, target, color, })
+  Some({ position, target, color })
 }
 
 ///|
@@ -546,7 +552,7 @@ fn link_note(cursor : @tokenizer.Cursor) -> StateLinkNoteSyntax? {
   }
   ignore(cursor.skip_inline_whitespace())
   let text = cursor.take_while(_ => true).trim().to_owned()
-  Some({ text, color, })
+  Some({ text, color })
 }
 
 ///|

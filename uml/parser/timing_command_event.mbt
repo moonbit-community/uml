@@ -200,7 +200,7 @@ fn timing_parse_note(
   guard parser.player(code) is Some(player) else {
     raise parser.error("Unknown \"" + code + "\"")
   }
-  player.notes.push({ when: parser.diagram.now, position, text, stereotype, })
+  player.notes.push({ when: parser.diagram.now, position, text, stereotype })
   true
 }
 
@@ -239,7 +239,9 @@ fn timing_parse_note_long(
   let lines = []
   let mut index = parser.index + 1
   while index < parser.lines.length() {
-    let raw = @tokenizer.strip_line_comment_preserving_indent(parser.lines[index])
+    let raw = @tokenizer.strip_line_comment_preserving_indent(
+      parser.lines[index],
+    )
     if raw.trim().length() == 0 {
       index += 1
       continue
@@ -353,7 +355,7 @@ fn parse_constraint(
   let tick2 = resolve_time_expr(parser, Some(expr2))
   parser.diagram.now = saved
   guard tick2 is Some(value) else { raise parser.error("Unknown time label") }
-  player.constraints.push({ tick1, tick2: value, message, style, })
+  player.constraints.push({ tick1, tick2: value, message, style })
   true
 }
 
@@ -418,7 +420,10 @@ fn scale_unit_factor(unit : String?) -> Int64 {
 ///|
 /// `(hide|manual) time.?axis`, mirroring `CommandHideTimeAxis`: the single
 /// character between `time` and `axis` is optional.
-fn parse_hide_time_axis(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
+fn parse_hide_time_axis(
+  parser : TimingParser,
+  cursor : @tokenizer.Cursor,
+) -> Bool {
   let manual = match_keyword(cursor, "manual")
   if !manual && !match_keyword(cursor, "hide") {
     return false
@@ -480,7 +485,10 @@ fn parse_highlight(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
 ///|
 /// `mode compact`, mirroring `CommandModeCompact`: every player declared after
 /// the command becomes compact.
-fn parse_mode_compact(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
+fn parse_mode_compact(
+  parser : TimingParser,
+  cursor : @tokenizer.Cursor,
+) -> Bool {
   guard match_keyword(cursor, "mode") else { return false }
   guard space_one_or_more(cursor) else { return false }
   guard match_keyword(cursor, "compact") else { return false }
@@ -491,7 +499,10 @@ fn parse_mode_compact(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool
 
 ///|
 /// `use date format "FORMAT"`, mirroring `CommandUseDateFormat`.
-fn parse_use_date_format(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
+fn parse_use_date_format(
+  parser : TimingParser,
+  cursor : @tokenizer.Cursor,
+) -> Bool {
   guard match_keyword(cursor, "use") else { return false }
   skip_spaces(cursor)
   guard match_keyword(cursor, "date") else { return false }

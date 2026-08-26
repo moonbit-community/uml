@@ -248,7 +248,7 @@ fn take_left_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
     let circle = cursor.consume('o')
     let cross = if circle { false } else { cursor.consume('x') }
     let (head, part) = take_left_arrow_head(cursor)
-    return { head, circle, cross, has_dir: head.has_direction(), part, }
+    return { head, circle, cross, has_dir: head.has_direction(), part }
   }
   let digits = cursor.offset()
   if cursor.consume('(') {
@@ -269,7 +269,7 @@ fn take_left_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
     }
   }
   let (head, part) = take_left_arrow_head(cursor)
-  { head, circle: false, cross: false, has_dir: head.has_direction(), part, }
+  { head, circle: false, cross: false, has_dir: head.has_direction(), part }
 }
 
 ///|
@@ -355,7 +355,7 @@ fn take_right_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
         None => ()
       }
   }
-  { head, circle, cross, has_dir: head.has_direction(), part, }
+  { head, circle, cross, has_dir: head.has_direction(), part }
 }
 
 ///|
@@ -497,8 +497,8 @@ fn take_part_ref(cursor : @tokenizer.Cursor) -> PartRef? {
   if cursor.peek() == Some('"') {
     if cursor.take_quoted_value() is Some(display) {
       return match take_alias_code(cursor) {
-        Some(code) => Some({ code, display, })
-        None => Some({ code: display, display, })
+        Some(code) => Some({ code, display })
+        None => Some({ code: display, display })
       }
     }
   }
@@ -508,7 +508,7 @@ fn take_part_ref(cursor : @tokenizer.Cursor) -> PartRef? {
     return None
   }
   let display = take_alias_display(cursor).unwrap_or(code)
-  Some({ code, display, })
+  Some({ code, display })
 }
 
 ///|
@@ -540,7 +540,7 @@ fn take_exo_participant(cursor : @tokenizer.Cursor) -> PartRef? {
   let start = cursor.offset()
   if cursor.peek() == Some('"') {
     match cursor.take_quoted_value() {
-      Some(display) => Some({ code: display, display, })
+      Some(display) => Some({ code: display, display })
       None => {
         ignore(cursor.restore(start))
         None
@@ -549,7 +549,7 @@ fn take_exo_participant(cursor : @tokenizer.Cursor) -> PartRef? {
   } else {
     let code = cursor.take_while(is_ident_char)
     if code.length() > 0 {
-      Some({ code, display: code, })
+      Some({ code, display: code })
     } else {
       ignore(cursor.restore(start))
       None
@@ -749,7 +749,7 @@ fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  let border = { ..left, circle: border_circle, cross: border_cross, }
+  let border = { ..left, circle: border_circle, cross: border_cross }
   let participant_side = {
     ..right,
     circle: participant_circle,
@@ -824,7 +824,7 @@ fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  let border = { ..right, circle: border_circle, cross: border_cross, }
+  let border = { ..right, circle: border_circle, cross: border_cross }
   let participant_side = {
     ..left,
     circle: participant_circle,
@@ -857,7 +857,9 @@ fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
 /// Matches the exo border symbol `[?\[\]][ox]?` on the left side,
 /// returning the symbol character, the short-arrow flag and the border
 /// circle/cross decorations.
-fn take_exo_left_symbol(cursor : @tokenizer.Cursor) -> (Char, Bool, Bool, Bool)? {
+fn take_exo_left_symbol(
+  cursor : @tokenizer.Cursor,
+) -> (Char, Bool, Bool, Bool)? {
   let start = cursor.offset()
   let symbol = match cursor.peek() {
     Some(char) if char == '?' || char == '[' || char == ']' => {
@@ -879,7 +881,9 @@ fn take_exo_left_symbol(cursor : @tokenizer.Cursor) -> (Char, Bool, Bool, Bool)?
 /// returning the symbol character and the border circle/cross
 /// decorations. A `?` or `[` here can never complete a line (the closing
 /// `]` is required), so only `]` with an optional `o`/`x` is reachable.
-fn take_exo_right_symbol(cursor : @tokenizer.Cursor) -> (Char, Bool, Bool, Bool)? {
+fn take_exo_right_symbol(
+  cursor : @tokenizer.Cursor,
+) -> (Char, Bool, Bool, Bool)? {
   let start = cursor.offset()
   let circle = cursor.consume('o')
   let cross = if circle { false } else { cursor.consume('x') }

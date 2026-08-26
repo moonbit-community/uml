@@ -8,7 +8,7 @@ fn append_layout_edge(
 ) -> Unit {
   guard from_node_index is Some(from_node_index) else { return }
   guard to_node_index is Some(to_node_index) else { return }
-  edges.push({ from_node_index, to_node_index, route, label, })
+  edges.push({ from_node_index, to_node_index, route, label })
 }
 
 ///|

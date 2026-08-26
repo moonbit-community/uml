@@ -118,7 +118,7 @@ fn @entity.EntityDiagram::mindmap_class_layout(
     left_entity: edge.parent_index,
     right_entity: edge.child_index,
   })
-  { layout, rects, structure_edges, }
+  { layout, rects, structure_edges }
 }
 
 ///|

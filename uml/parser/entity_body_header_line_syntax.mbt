@@ -1,5 +1,7 @@
 ///|
-fn json_single_declaration(cursor : @tokenizer.Cursor) -> JsonSingleDeclaration? {
+fn json_single_declaration(
+  cursor : @tokenizer.Cursor,
+) -> JsonSingleDeclaration? {
   let start = cursor.offset()
   let visibility = declaration_visibility(cursor)
   guard consume_inline_keyword(cursor, "json") && cursor.skip_inline_space1() else {
@@ -55,7 +57,9 @@ fn take_multiline_marker(cursor : @tokenizer.Cursor) -> Char? {
 }
 
 ///|
-fn multiline_element_header(cursor : @tokenizer.Cursor) -> MultilineElementHeader? {
+fn multiline_element_header(
+  cursor : @tokenizer.Cursor,
+) -> MultilineElementHeader? {
   let start = cursor.offset()
   let visibility = declaration_visibility(cursor)
   guard declaration_kind_syntax(cursor) is Some((kind, is_static, _)) else {
@@ -85,7 +89,9 @@ fn multiline_element_header(cursor : @tokenizer.Cursor) -> MultilineElementHeade
 }
 
 ///|
-fn external_member_line(cursor : @tokenizer.Cursor) -> (String, @entity.Member)? {
+fn external_member_line(
+  cursor : @tokenizer.Cursor,
+) -> (String, @entity.Member)? {
   let start = cursor.offset()
   let target = StringBuilder()
   while true {
@@ -102,7 +108,9 @@ fn external_member_line(cursor : @tokenizer.Cursor) -> (String, @entity.Member)?
     ignore(cursor.restore(start))
     return None
   }
-  let target = @tokenizer.unquote_identifier(target.to_string().trim().to_owned())
+  let target = @tokenizer.unquote_identifier(
+    target.to_string().trim().to_owned(),
+  )
   let body = cursor.take_while(_ => true).trim().to_owned()
   let invalid_target = target.length() == 0 ||
     body.length() == 0 ||

@@ -1,6 +1,7 @@
 ///|
 test "note line grammar parses supported note headers" {
-  guard participant_list(@tokenizer.Cursor::new("Bob #yellow : cached")) is Some(_) else {
+  guard participant_list(@tokenizer.Cursor::new("Bob #yellow : cached"))
+    is Some(_) else {
     @test.fail("participant prefix failed")
   }
   guard participant_note_tail(
@@ -35,7 +36,8 @@ test "reference line grammar parses inline and multiline headers" {
 
 ///|
 test "note position dispatch follows the command factory" {
-  match note_line_syntax(@tokenizer.Cursor::new("note over Alice, Bob : shared")) {
+  match
+    note_line_syntax(@tokenizer.Cursor::new("note over Alice, Bob : shared")) {
     Some(note) => @test.assert_eq(note.position is @seq.OverSeveral, true)
     _ => @test.fail("over several rejected")
   }
@@ -62,11 +64,14 @@ test "note position dispatch follows the command factory" {
 ///|
 test "across note tail accepts stereotype, url and misspelling" {
   match
-    note_line_syntax(@tokenizer.Cursor::new("note <<first>> across #yellow : text")) {
+    note_line_syntax(
+      @tokenizer.Cursor::new("note <<first>> across #yellow : text"),
+    ) {
     Some(note) => @test.assert_eq(note.stereotype, Some("<<first>>"))
     _ => @test.fail("stereo1 across note rejected")
   }
-  match note_line_syntax(@tokenizer.Cursor::new("note across <<second>> : text")) {
+  match
+    note_line_syntax(@tokenizer.Cursor::new("note across <<second>> : text")) {
     Some(note) => @test.assert_eq(note.stereotype, Some("<<second>>"))
     _ => @test.fail("stereo2 across note rejected")
   }
@@ -78,7 +83,9 @@ test "across note tail accepts stereotype, url and misspelling" {
     _ => @test.fail("stereo1 must win over stereo2")
   }
   match
-    note_line_syntax(@tokenizer.Cursor::new("note <<one>> <<two>> across : text")) {
+    note_line_syntax(
+      @tokenizer.Cursor::new("note <<one>> <<two>> across : text"),
+    ) {
     Some(note) => @test.assert_eq(note.stereotype, Some("<<one>> <<two>>"))
     _ => @test.fail("backtracking stereotype rejected")
   }

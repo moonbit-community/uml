@@ -104,7 +104,7 @@ fn url_target_prefix(cursor : Cursor) -> UrlTarget? {
       Some(label)
     }
   }
-  Some({ target, label, })
+  Some({ target, label })
 }
 
 ///|
