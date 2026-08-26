@@ -1,16 +1,8 @@
-# Publishes workspace modules to mooncakes.io when their moon.mod version is
-# ahead of the registry. Credentials are required only when the corresponding
-# version has not already been published.
+# Publishes workspace modules to mooncakes.io. Triggered manually from the
+# Actions tab; credentials for both owners must be configured.
 name: publish
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "uml/moon.mod"
-      - "uml_cli/moon.mod"
-      - ".github/scripts/publish-if-new.sh"
-      - ".github/workflows/publish.yml"
   workflow_dispatch:
 
 permissions:
@@ -40,7 +32,6 @@ jobs:
 
       - name: prepublish check
         run: |
-          bash .github/scripts/publish-if-new_test.sh
           moon check
           moon test
           moon -C uml_cli cram test --release tests/cram
@@ -50,7 +41,7 @@ jobs:
       - name: publish kokic/uml
         env:
           MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_KOKIC_CREDENTIALS }}
-        run: .github/scripts/publish-if-new.sh uml kokic/uml
+        run: moon -C uml publish
 
       # Validate outside moon.work so the CLI resolves exactly the version
       # that its published manifest names, rather than the local workspace copy.
@@ -65,4 +56,4 @@ jobs:
       - name: publish moonbit-community/uml_cli
         env:
           MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
-        run: .github/scripts/publish-if-new.sh uml_cli moonbit-community/uml_cli
+        run: moon -C uml_cli publish
