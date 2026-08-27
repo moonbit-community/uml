@@ -78,18 +78,24 @@ fn apply_theme_defaults(
       edge.set_attr("fontcolor", scheme.text)
     }
   }
-  apply_fontcolor_defaults(graph, scheme.text)
+  apply_subgraph_defaults(graph, scheme)
 }
 
 ///|
-/// Set the graph text color unless the source already painted it, recursing
-/// into subgraph clusters.
-fn apply_fontcolor_defaults(graph : @cgraph.Graph, text_color : String) -> Unit {
+/// Set the graph text and border colors unless the source already painted
+/// them, recursing into subgraph clusters.
+fn apply_subgraph_defaults(
+  graph : @cgraph.Graph,
+  scheme : @style.ColorScheme,
+) -> Unit {
   if graph.get_attr("fontcolor") is None {
-    graph.set_attr("fontcolor", text_color)
+    graph.set_attr("fontcolor", scheme.text)
+  }
+  if graph.get_attr("color") is None {
+    graph.set_attr("color", scheme.line)
   }
   for subgraph in graph.subgraphs() {
-    apply_fontcolor_defaults(subgraph, text_color)
+    apply_subgraph_defaults(subgraph, scheme)
   }
 }
 
