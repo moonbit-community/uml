@@ -58,6 +58,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     SVG_MARGIN_TOP.to_double() -
     top_height.to_double()
   let output = StringBuilder()
+  let border_width = @svg.standard_border_stroke_width()
   let scale = diagram_scale(self.style)
   let scaled_width = (output_width.to_double() * scale).ceil().to_int()
   let scaled_height = (output_height.to_double() * scale).ceil().to_int()
@@ -77,10 +78,10 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   let relations_style =
     $|<style>
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
-    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
-    $|.class-node foreignObject line{stroke-width:\{@svg.standard_border_stroke_width()};fill:none}
-    $|.class-node foreignObject rect{stroke-width:\{@svg.standard_border_stroke_width()}}
-    $|.relation{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
+    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{border_width}}
+    $|.class-node foreignObject line{stroke-width:\{border_width};fill:none}
+    $|.class-node foreignObject rect{stroke-width:\{border_width}}
+    $|.relation{stroke:\{line_color};stroke-width:\{border_width}}
     $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
     $|.class-node > line,.relation{fill:none}
     $|.class-title{fill:\{text_color}}
@@ -110,7 +111,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   })
   if has_object_image {
     let object_style =
-      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{@svg.standard_border_stroke_width()}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
+      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{border_width}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
     output.write_string(object_style)
   }
   let has_description_image = self.entities.any(entity => {
@@ -119,12 +120,12 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     self.packages.any(group => group.symbol is Some(_))
   if has_description_image {
     let description_style =
-      $|<style>.description-node > polygon,.description-node > path,.description-node > rect,.description-node > ellipse{stroke-width:\{@svg.standard_border_stroke_width()}}.description-title,.port-title{fill:\{text_color}}.description-stereotype{fill:\{text_color};font-style:italic}.symbol-package{font-weight:bold}.symbol-package > path,.symbol-package > rect,.symbol-package > polygon,.symbol-package > line{fill:none}</style>
+      $|<style>.description-node > polygon,.description-node > path,.description-node > rect,.description-node > ellipse{stroke-width:\{border_width}}.description-title,.port-title{fill:\{text_color}}.description-stereotype{fill:\{text_color};font-style:italic}.symbol-package{font-weight:bold}.symbol-package > path,.symbol-package > rect,.symbol-package > polygon,.symbol-package > line{fill:none}</style>
     output.write_string(description_style)
   }
 
   let style_note =
-    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.package-title{fill:\{text_color};font-weight:bold}.package-stereotype{fill:\{text_color};font-style:italic}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
+    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{border_width}}.package-title{fill:\{text_color};font-weight:bold}.package-stereotype{fill:\{text_color};font-style:italic}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{border_width}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
   output.write_string(style_note)
   if family_capability.renders_packages {
     append_packages(output, self, text_metrics, layout)
@@ -132,10 +133,9 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   append_symbol_packages(output, self, text_metrics, layout)
   match family_capability.paint_order {
     EntitiesBeforeRelations => {
+      let ctx = { output, diagram: self, text_metrics }
       for index, entity in self.entities {
-        append_entity_image(
-          output, self, entity, index, text_metrics, layout, collapsible,
-        )
+        ctx.append_entity_image(entity, index, layout, collapsible)
       }
       for relation_index, relation in self.relations {
         append_relation(
@@ -144,6 +144,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
       }
     }
     RelationsBeforeEntities => {
+      let ctx = { output, diagram: self, text_metrics }
       append_mindmap_structure_edges(
         output, self, text_metrics, layout, collapsible,
       )
@@ -153,9 +154,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
         )
       }
       for index, entity in self.entities {
-        append_entity_image(
-          output, self, entity, index, text_metrics, layout, collapsible,
-        )
+        ctx.append_entity_image(entity, index, layout, collapsible)
       }
     }
   }

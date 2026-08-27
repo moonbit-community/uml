@@ -557,18 +557,15 @@ fn append_relation(
   )
   let style =
     $| style="stroke:\{relation_color};\{relation_style}"
-  let edge_endpoints = match layout.graphviz {
-    Some(graphviz) => {
-      let mut endpoints : ((Double, Double), (Double, Double))? = None
-      for edge in graphviz.edges {
-        if edge.index == relation_index {
-          endpoints = relation_edge_endpoints(edge)
-        }
+  let edge_endpoints = layout.graphviz.bind(graphviz => {
+    let mut endpoints : ((Double, Double), (Double, Double))? = None
+    for edge in graphviz.edges {
+      if edge.index == relation_index {
+        endpoints = relation_edge_endpoints(edge)
       }
-      endpoints
     }
-    None => None
-  }
+    endpoints
+  })
   let (left_endpoint, right_endpoint) = edge_endpoints.unwrap_or(
     ((x1, y1), (x2, y2)),
   )
@@ -593,20 +590,16 @@ fn append_relation(
                   point.pair()
                 },
               )
-              let left_header = match left_index {
-                Some(index) =>
-                  relation_endpoint_header(
-                    layout, diagram, index, text_metrics, class_member_collapsible,
-                  )
-                None => None
-              }
-              let right_header = match right_index {
-                Some(index) =>
-                  relation_endpoint_header(
-                    layout, diagram, index, text_metrics, class_member_collapsible,
-                  )
-                None => None
-              }
+              let left_header = left_index.bind(index => {
+                relation_endpoint_header(
+                  layout, diagram, index, text_metrics, class_member_collapsible,
+                )
+              })
+              let right_header = right_index.bind(index => {
+                relation_endpoint_header(
+                  layout, diagram, index, text_metrics, class_member_collapsible,
+                )
+              })
               let left_contact = graphviz
                 .node(relation.left)
                 .map(node => node.contact(point_from_pair(first_path[0])))

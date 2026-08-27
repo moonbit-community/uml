@@ -13,6 +13,8 @@ fn append_svg_preamble(
   let line_color = style.diagram_line_color()
   let text_color = style.diagram_text_color()
   let defaults = style.defaults().sequence_colors()
+  let border_width = @svg.standard_border_stroke_width()
+  let emphasized_width = @svg.emphasized_stroke_width()
   output <+
     $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Sequence diagram">
   let defs =
@@ -29,7 +31,7 @@ fn append_svg_preamble(
     $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
     $|.participant rect{stroke:\{line_color};stroke-width:0.5}
     $|.activation{stroke:\{line_color};stroke-width:1}
-    $|.note,.divider-title{stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
+    $|.note,.divider-title{stroke:\{line_color};stroke-width:\{border_width}}
     $|.participant-label{font-size:\{base_font_size}px;font-weight:bold;fill:\{text_color}}
     $|.participant-icon{stroke:\{line_color};stroke-width:0.5}
     $|.participant-box-group{stroke:\{line_color};stroke-width:0.5}
@@ -38,8 +40,8 @@ fn append_svg_preamble(
     $|.message,.cross{fill:none;stroke:\{line_color};stroke-width:1.3}
     $|.message.dotted{stroke-dasharray:\{@svg.dotted_message_dash_pattern()}}
     $|.arrow-fill{fill:\{line_color}}
-    $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:\{@svg.emphasized_stroke_width()}}
-    $|.endpoint{fill:\{background};stroke:\{line_color};stroke-width:\{@svg.standard_border_stroke_width()}}
+    $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:\{emphasized_width}}
+    $|.endpoint{fill:\{background};stroke:\{line_color};stroke-width:\{border_width}}
     $|.message-label,.reference-label,.delay-label{fill:\{text_color};font-size:\{body_font_size}px}
     $|.note-label{fill:\{text_color};font-size:\{base_font_size}px}
     $|.note,.note-fold{stroke:\{line_color};stroke-width:.5}
@@ -58,7 +60,7 @@ fn append_svg_preamble(
     $|.reference-tab{fill:\{defaults.reference_tab};stroke:\{defaults.text};stroke-width:2}
     $|.reference-tab-label{fill:\{text_color};font-size:\{body_font_size}px;font-weight:bold}
     $|.group-separator{stroke:\{line_color};stroke-dasharray:\{@svg.separator_dash_pattern()}}
-    $|.page-break{stroke:\{defaults.page_break};stroke-width:\{@svg.standard_border_stroke_width()};stroke-dasharray:\{@svg.page_break_dash_pattern()}}
+    $|.page-break{stroke:\{defaults.page_break};stroke-width:\{border_width};stroke-dasharray:\{@svg.page_break_dash_pattern()}}
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{fill:none;stroke:#A80036;stroke-width:2}
     $|</style>

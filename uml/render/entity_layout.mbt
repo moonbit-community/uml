@@ -315,32 +315,31 @@ fn @entity.EntityDiagram::graphviz_layout(
     match group_point_names.get(code) {
       Some(name) => Some(name)
       None =>
-        match package_content_graphs.get(code) {
-          Some(cluster) => {
-            // PlantUML `ClusterDotString` emits the cluster title as a node
-            // (`za<uid>`) that receives the edges targeting the group and
-            // reserves the title width inside the cluster.
-            let name = "group_point_" + code
-            let node = cluster.node(name)
-            let title_width = match self.find_package(code) {
-              Some(group) =>
-                // PlantUML `USymbolNode.suppWidthBecauseOfShape` pads the
-                // node-symbol title block by 60px.
-                text_metrics.regular.measure(group.display).width.to_double() +
-                (if group.symbol is Some("node") { 60.0 } else { 0.0 })
-              None => 0.72
-            }
-            @graphviz.set_fixed_node_size(
-              node,
-              title_width,
-              GROUP_POINT_TITLE_HEIGHT,
-              shape="rect",
-            )
-            group_point_names[code] = name
-            Some(name)
+        package_content_graphs
+        .get(code)
+        .map(cluster => {
+          // PlantUML `ClusterDotString` emits the cluster title as a node
+          // (`za<uid>`) that receives the edges targeting the group and
+          // reserves the title width inside the cluster.
+          let name = "group_point_" + code
+          let node = cluster.node(name)
+          let title_width = match self.find_package(code) {
+            Some(group) =>
+              // PlantUML `USymbolNode.suppWidthBecauseOfShape` pads the
+              // node-symbol title block by 60px.
+              text_metrics.regular.measure(group.display).width.to_double() +
+              (if group.symbol is Some("node") { 60.0 } else { 0.0 })
+            None => 0.72
           }
-          None => None
-        }
+          @graphviz.set_fixed_node_size(
+            node,
+            title_width,
+            GROUP_POINT_TITLE_HEIGHT,
+            shape="rect",
+          )
+          group_point_names[code] = name
+          name
+        })
     }
   }
   for relation_index, relation in self.relations {
@@ -479,10 +478,9 @@ fn @entity.EntityDiagram::graphviz_layout(
       @entity.NoteTargetKind::EntityNote | @entity.NoteTargetKind::MemberTip =>
         Some(note.target)
       @entity.NoteTargetKind::LinkNote =>
-        match note.relation_index {
-          Some(relation_index) => Some(self.relations[relation_index].left)
-          None => None
-        }
+        note.relation_index.map(relation_index => {
+          self.relations[relation_index].left
+        })
       FloatingNote => None
     }
     if target is Some(target) {

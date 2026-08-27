@@ -324,6 +324,7 @@ fn @flow.ActivityDiagram::render_svg(
     ("aria-label", "Activity diagram"),
   ])
   output.open("style")
+  let emphasized_width = @svg.emphasized_stroke_width()
   output.raw(
     "svg{font-family:" +
     self.style.font_family() +
@@ -334,7 +335,7 @@ fn @flow.ActivityDiagram::render_svg(
     "}.activity-edge{fill:none;stroke:" +
     line +
     ";stroke-width:" +
-    @svg.emphasized_stroke_width() +
+    emphasized_width +
     "}.activity-label{fill:" +
     text +
     "}.activity-partition,.activity-swimlane{fill:" +
@@ -342,7 +343,7 @@ fn @flow.ActivityDiagram::render_svg(
     ";stroke:" +
     line +
     ";stroke-width:" +
-    @svg.emphasized_stroke_width() +
+    emphasized_width +
     "}.activity-swimlane{stroke-dasharray:" +
     @svg.separator_dash_pattern() +
     "}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
@@ -352,13 +353,13 @@ fn @flow.ActivityDiagram::render_svg(
     ";stroke:" +
     line +
     ";stroke-width:" +
-    @svg.emphasized_stroke_width() +
+    emphasized_width +
     "}.activity-note{fill:" +
     defaults.note +
     ";stroke:" +
     line +
     ";stroke-width:" +
-    @svg.emphasized_stroke_width() +
+    emphasized_width +
     "}",
   )
   output.close()
