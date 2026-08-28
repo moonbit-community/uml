@@ -82,6 +82,37 @@ pub fn plantuml_measure(
 }
 
 ///|
+/// Measure a tree label with the PlantUML width compensation, after stripping
+/// creole markers.
+pub fn tree_label_metrics(
+  metrics : @metrics.FontMetrics,
+  label : String,
+) -> @metrics.TextMetrics {
+  plantuml_measure(metrics, tree_visible_text(label))
+}
+
+///|
+/// Width of a tree label. PlantUML's multi-line labels carry a leading space
+/// on their first line (visible in the reference SVGs); it widens the box
+/// and offsets the first line of text.
+pub fn tree_label_width(
+  metrics : @metrics.FontMetrics,
+  font_size : Int,
+  label : String,
+) -> Int {
+  let visible = tree_visible_text(label)
+  let lines = visible.split("\n").to_array()
+  if lines.length() > 1 {
+    let space = plantuml_space_advance(font_size)
+    let first = plantuml_measure(metrics, lines[0].to_owned()).width + space
+    let rest = plantuml_measure(metrics, lines[1:].join("\n")).width
+    first.max(rest)
+  } else {
+    plantuml_measure(metrics, visible).width
+  }
+}
+
+///|
 fn split_whitespace(value : String) -> (String, String, String) {
   let length = value.length()
   let mut start = 0
