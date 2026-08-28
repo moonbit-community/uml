@@ -330,7 +330,7 @@ fn right_relation_syntax(
       return None
     }
     cursor.skip_inline_spaces()
-    Some(cursor.take_while(_ => true).trim().to_owned())
+    Some(cursor.take_rest_trimmed())
   } else {
     ignore(cursor.restore(label_start))
     None

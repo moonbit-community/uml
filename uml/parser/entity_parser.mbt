@@ -58,10 +58,10 @@ fn parse_with_family(
     allow_mixing=family.allow_mixing(),
     family~,
   )
-  while parser.index < parser.lines.length() {
-    let line = parser.lines[parser.index]
+  while !parser.buffer.at_end() {
+    let line = parser.buffer.current()
     parser.parse_line(line)
-    parser.index += 1
+    parser.buffer.advance()
   }
   guard parser.current_entity is None else {
     raise SyntaxError(parser.line_number(), family.unclosed_body_message())
@@ -96,8 +96,7 @@ pub fn parse_entity(
 
 ///|
 priv struct EntityParser {
-  lines : Array[String]
-  mut index : Int
+  buffer : LineBuffer
   package_stack : Array[String]
   entities : Array[@entity.Entity]
   entity_indices : Map[String, Int]
@@ -127,11 +126,7 @@ fn EntityParser::new(
   family? : @entity.EntityFamily = ClassDiagram,
 ) -> EntityParser {
   {
-    lines: @tokenizer.preprocess(input)
-    .split("\n")
-    .map(StringView::to_owned)
-    .to_array(),
-    index: 0,
+    buffer: LineBuffer::new(input),
     package_stack: [],
     entities: [],
     entity_indices: Map([]),
@@ -162,7 +157,7 @@ fn EntityParser::current_package(self : EntityParser) -> String {
 
 ///|
 fn EntityParser::line_number(self : EntityParser) -> Int {
-  @tokenizer.line_span(self.index + 1).line
+  @tokenizer.line_span(self.buffer.line_number()).line
 }
 
 ///|

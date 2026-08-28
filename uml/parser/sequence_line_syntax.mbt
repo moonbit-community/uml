@@ -72,7 +72,7 @@ fn take_signed_integer(cursor : @tokenizer.Cursor) -> Int? {
 ///|
 fn title_line_syntax(cursor : @tokenizer.Cursor) -> SequenceTextSyntax? {
   guard take_keyword(cursor, "title") else { return None }
-  let rest = cursor.take_while(_ => true)
+  let rest = cursor.take_rest()
   @tokenizer.normalize_label(rest).map_or(Some(Multiline), text => {
     Some(Inline(text))
   })

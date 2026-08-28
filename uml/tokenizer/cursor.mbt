@@ -106,6 +106,24 @@ pub fn Cursor::remaining(self : Cursor) -> String {
 }
 
 ///|
+/// Consumes the remaining input and returns it as a string.
+///
+/// Line parsers share this "rest of line" capture; prefer it over
+/// re-implementing the same scan with `take_while(_ => true)`. Use
+/// `take_rest_trimmed` when the captured label should be trimmed.
+pub fn Cursor::take_rest(self : Cursor) -> String {
+  let text = self.slice(self.offset, self.chars.length())
+  self.offset = self.chars.length()
+  text
+}
+
+///|
+/// Consumes the remaining input, trimming surrounding whitespace.
+pub fn Cursor::take_rest_trimmed(self : Cursor) -> String {
+  self.take_rest().trim().to_owned()
+}
+
+///|
 /// Returns a character slice using absolute character offsets.
 pub fn Cursor::slice(self : Cursor, start : Int, end : Int) -> String {
   let first = start.max(0).min(self.chars.length())

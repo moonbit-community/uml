@@ -115,7 +115,7 @@ fn participant_list(cursor : @tokenizer.Cursor) -> Array[String]? {
 ///|
 fn sequence_text(cursor : @tokenizer.Cursor) -> SequenceTextSyntax {
   if cursor.consume(':') {
-    Inline(cursor.take_while(_ => true).trim().to_owned())
+    Inline(cursor.take_rest_trimmed())
   } else {
     Multiline
   }

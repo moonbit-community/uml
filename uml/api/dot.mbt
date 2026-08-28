@@ -13,26 +13,9 @@ pub extend DotDiagram with Debug::{to_repr}
 
 ///|
 fn dot_source_between_markers(input : String) -> String {
-  let output = StringBuilder()
-  let mut inside_markers = false
-  let mut has_markers = false
-  for line in input.split("\n") {
-    let marker = line.trim().to_lower()
-    guard marker != "@startdot" else {
-      has_markers = true
-      inside_markers = true
-      continue
-    }
-    guard !((marker == "@enduml" || marker == "@enddot") && inside_markers) else {
-      inside_markers = false
-      continue
-    }
-    guard !has_markers || inside_markers else { continue }
-    output.write_string(line.to_owned())
-    output.write_char('\n')
-  }
-  guard has_markers else { input }
-  output.to_string()
+  @tokenizer.splice_source_between_markers(input, "@startdot", marker => {
+    marker == "@enddot" || marker == "@enduml"
+  })
 }
 
 ///|

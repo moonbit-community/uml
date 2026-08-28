@@ -395,7 +395,7 @@ fn grouping_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
       let back_color_header = optional_color(cursor)
       let back_color_body = optional_color(cursor)
       cursor.skip_inline_spaces()
-      let header = cursor.take_while(_ => true).trim().to_owned()
+      let header = cursor.take_rest_trimmed()
       Some(
         @seq.GroupingStart({
           keyword,
@@ -411,7 +411,7 @@ fn grouping_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
       if take_keyword(cursor, "else") || take_keyword(cursor, "also") {
         let back_color = optional_color(cursor)
         cursor.skip_inline_spaces()
-        let label = cursor.take_while(_ => true)
+        let label = cursor.take_rest()
         Some(
           @seq.GroupingLeaf({
             is_end: false,
@@ -422,7 +422,7 @@ fn grouping_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
       } else {
         ignore(cursor.restore(start))
         if take_keyword(cursor, "end") {
-          ignore(cursor.take_while(_ => true))
+          ignore(cursor.take_rest())
           Some(
             @seq.GroupingLeaf({ is_end: true, label: None, back_color: None, }),
           )
@@ -772,7 +772,7 @@ fn miscellaneous_event_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   ignore(cursor.consume('&'))
   cursor.skip_inline_spaces()
   if take_keyword(cursor, "return") {
-    let value = cursor.take_while(_ => true)
+    let value = cursor.take_rest()
     return Some(@seq.Return({ value: @tokenizer.normalize_label(value), }))
   }
   ignore(cursor.restore(start))
@@ -784,7 +784,7 @@ fn miscellaneous_event_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
         if anchor(cursor) is Some(_) {
           cursor.skip_inline_spaces()
           if cursor.consume(':') {
-            ignore(cursor.take_while(_ => true))
+            ignore(cursor.take_rest())
           }
           cursor.skip_inline_spaces()
           if cursor.is_eof() {
@@ -815,7 +815,7 @@ fn newpage_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  let title = cursor.take_while(_ => true)
+  let title = cursor.take_rest()
   Some(@seq.Newpage({ title: @tokenizer.normalize_label(title), }))
 }
 

@@ -53,14 +53,16 @@ fn command_text(line : String, prefix : String) -> String {
 
 ///|
 fn parse_note(
-  lines : Array[String],
+  buffer : LineBuffer,
   start : Int,
 ) -> (String, Int) raise @tokenizer.ParseError {
   let mut index = start + 1
   guard @tokenizer.collect_lines_until(
       () => {
-        guard index < lines.length() else { return None }
-        let line = @tokenizer.strip_line_comment(lines[index]).trim().to_owned()
+        guard index < buffer.lines.length() else { return None }
+        let line = @tokenizer.strip_line_comment(buffer.lines[index])
+          .trim()
+          .to_owned()
         index += 1
         Some(line)
       },
@@ -85,17 +87,13 @@ fn is_activity_arrow(line : String) -> Bool {
 pub fn parse_activity(
   input : String,
 ) -> @flow.ActivityDiagram raise @tokenizer.ParseError {
-  let lines = @tokenizer.preprocess(input)
-    .split("\n")
-    .map(StringView::to_owned)
-    .to_array()
+  let buffer = LineBuffer::new(input)
   let nodes = []
   let stack = []
   let style = @style.DocumentStyle::empty()
-  let mut index = 0
-  while index < lines.length() {
-    let line_number = index + 1
-    let line = @tokenizer.strip_line_comment(lines[index]).trim().to_owned()
+  while !buffer.at_end() {
+    let line_number = buffer.line_number()
+    let line = buffer.current_clean()
     let lower = line.to_lower()
     if line.length() == 0 ||
       lower == "@startuml" ||
@@ -103,37 +101,31 @@ pub fn parse_activity(
       lower == "@startactivity" ||
       lower == "@endactivity" ||
       @style.is_preprocessor_directive(line) {
-      index += 1
+      buffer.advance()
       continue
     }
     if lower == "skinparam {" {
-      let closed = @style.consume_skinparam_body(
-        () => {
-          guard index < lines.length() else { return None }
-          let line = lines[index]
-          index += 1
-          Some(@tokenizer.strip_line_comment(line).trim().to_owned())
-        },
-        directive => style.apply(directive),
-      )
+      let closed = @style.consume_skinparam_body(() => buffer.take_next(), directive => {
+        style.apply(directive)
+      })
       guard closed else {
-        raise SyntaxError(lines.length(), "unclosed skinparam")
+        raise SyntaxError(buffer.length(), "unclosed skinparam")
       }
       continue
     }
     if @style.parse_style_directive(line) is Some(directive) {
       style.apply(directive)
-      index += 1
+      buffer.advance()
       continue
     }
     if lower.has_prefix("skinparam ") {
-      index += 1
+      buffer.advance()
       continue
     }
     if lower.has_prefix("note ") && !line.contains(":") {
-      let (text, end) = parse_note(lines, index)
+      let (text, end) = parse_note(buffer, buffer.index)
       nodes.push(@flow.ActivityNode::Note(text))
-      index = end + 1
+      buffer.index = end + 1
       continue
     }
     if lower == "start" {
@@ -207,11 +199,11 @@ pub fn parse_activity(
     } else {
       raise SyntaxError(line_number, "unsupported activity command")
     }
-    index += 1
+    buffer.advance()
   }
   guard stack.is_empty() else {
     raise SyntaxError(
-      lines.length(),
+      buffer.length(),
       "unclosed \{block_name(stack.last().unwrap())}",
     )
   }

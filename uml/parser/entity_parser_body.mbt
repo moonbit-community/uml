@@ -22,7 +22,7 @@ fn map_value_entry(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
     ignore(cursor.restore(start))
     return None
   }
-  let value = cursor.take_while(_ => true).trim().to_owned()
+  let value = cursor.take_rest_trimmed()
   let key = key.trim().to_owned()
   Some(ParsedMapValue(key~, value~))
 }
@@ -74,9 +74,7 @@ fn map_link_entry(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
     ignore(cursor.restore(start))
     return None
   }
-  let target = @tokenizer.unquote_identifier(
-    cursor.take_while(_ => true).trim().to_owned(),
-  )
+  let target = @tokenizer.unquote_identifier(cursor.take_rest_trimmed())
   if target.length() > 0 {
     Some(ParsedMapLink(key~, arrow~, target~))
   } else {
@@ -130,9 +128,9 @@ fn EntityParser::consume_multiline_element(
   if header.first_line.length() > 0 {
     display.write_string(header.first_line)
   }
-  self.index += 1
-  while self.index < self.lines.length() {
-    let line = @tokenizer.strip_line_comment(self.lines[self.index])
+  self.buffer.advance()
+  while !self.buffer.at_end() {
+    let line = @tokenizer.strip_line_comment(self.buffer.current())
     let cursor = @tokenizer.Cursor::new(line)
     match @tokenizer.find_literal(line, header.terminator.to_string()) {
       Some(index) => {
@@ -154,7 +152,7 @@ fn EntityParser::consume_multiline_element(
         display.write_string(line)
       }
     }
-    self.index += 1
+    self.buffer.advance()
   }
   self.raise_parse_error("unclosed multiline element description")
 }

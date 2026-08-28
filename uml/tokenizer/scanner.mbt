@@ -27,6 +27,22 @@ pub fn Cursor::skip_inline_space1(self : Cursor) -> Bool {
 }
 
 ///|
+/// Consumes exactly one inline whitespace character.
+///
+/// Distinct from `skip_inline_space1`, which consumes one or more: parsers
+/// that need PlantUML's exact `\s` semantics (one whitespace character, for
+/// example around multicast ` & name` separators) must call this helper
+/// rather than the skip variant, and should not re-implement it locally.
+pub fn Cursor::consume_inline_space1(self : Cursor) -> Bool {
+  if self.peek() is Some(char) && (char == ' ' || char == '\t' || char == '\r') {
+    ignore(self.advance())
+    true
+  } else {
+    false
+  }
+}
+
+///|
 /// Consumes a double-quoted syntax fragment, preserving its quotes and escape
 /// sequences. An unclosed quote consumes the remaining input.
 pub fn Cursor::take_quoted_text(self : Cursor) -> String? {

@@ -6,7 +6,7 @@ priv struct StateScope {
 
 ///|
 priv struct Parser {
-  lines : Array[String]
+  buffer : LineBuffer
   states : Array[@flow.StateNode]
   transitions : Array[@flow.StateTransition]
   notes : Array[@flow.StateNote]
@@ -14,16 +14,12 @@ priv struct Parser {
   concurrent_regions : Array[String]
   regions : Array[@flow.StateRegion]
   style : @style.DocumentStyle
-  mut index : Int
 }
 
 ///|
 fn Parser::new(input : String) -> Parser {
   {
-    lines: @tokenizer.preprocess(input)
-    .split("\n")
-    .map(StringView::to_owned)
-    .to_array(),
+    buffer: LineBuffer::new(input),
     states: [],
     transitions: [],
     notes: [],
@@ -31,13 +27,12 @@ fn Parser::new(input : String) -> Parser {
     concurrent_regions: [],
     regions: [],
     style: @style.DocumentStyle::empty(),
-    index: 0,
   }
 }
 
 ///|
 fn Parser::line_number(self : Parser) -> Int {
-  self.index + 1
+  self.buffer.line_number()
 }
 
 ///|
@@ -150,11 +145,11 @@ fn Parser::consume_entity_note(
   guard target.length() > 0 else {
     raise SyntaxError(self.line_number(), "state note needs a target")
   }
-  let mut index = self.index + 1
+  let mut index = self.buffer.index + 1
   guard @tokenizer.collect_lines_until(
       () => {
-        guard index < self.lines.length() else { return None }
-        let line = @tokenizer.strip_line_comment(self.lines[index])
+        guard index < self.buffer.lines.length() else { return None }
+        let line = @tokenizer.strip_line_comment(self.buffer.lines[index])
           .trim()
           .to_owned()
         index += 1
@@ -165,7 +160,7 @@ fn Parser::consume_entity_note(
     is Some(text) else {
     raise SyntaxError(self.line_number(), "unclosed note")
   }
-  self.index = index - 1
+  self.buffer.index = index - 1
   self.notes.push({
     target: @flow.StateNote(target),
     text: text.join("\n"),
@@ -311,31 +306,24 @@ pub fn parse_state(
   input : String,
 ) -> @flow.StateDiagram raise @tokenizer.ParseError {
   let parser = Parser::new(input)
-  while parser.index < parser.lines.length() {
-    let line = @tokenizer.strip_line_comment(parser.lines[parser.index])
-      .trim()
-      .to_owned()
+  while !parser.buffer.at_end() {
+    let line = parser.buffer.current_clean()
     if line.to_lower() == "skinparam {" {
-      parser.index += 1
+      parser.buffer.advance()
       let closed = @style.consume_skinparam_body(
-        () => {
-          guard parser.index < parser.lines.length() else { return None }
-          let line = @tokenizer.strip_line_comment(parser.lines[parser.index])
-          parser.index += 1
-          Some(line)
-        },
+        () => parser.buffer.take_next(),
         directive => parser.style.apply(directive),
       )
       guard closed else {
-        raise SyntaxError(parser.lines.length(), "unclosed skinparam")
+        raise SyntaxError(parser.buffer.length(), "unclosed skinparam")
       }
       continue
     }
     parser.parse_line(line)
-    parser.index += 1
+    parser.buffer.advance()
   }
   guard parser.stack.is_empty() else {
-    raise SyntaxError(parser.lines.length(), "unclosed composite state")
+    raise SyntaxError(parser.buffer.length(), "unclosed composite state")
   }
   {
     states: parser.states,

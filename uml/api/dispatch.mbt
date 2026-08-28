@@ -315,27 +315,37 @@ fn entity_family_from_lines(lines : Array[String]) -> @entity.EntityFamily? {
 }
 
 ///|
+/// Returns whether the source starts with a `@startX` diagram marker.
+///
+/// Shared by the structured and dot dispatch predicates below; use this
+/// helper (or the `is_*_source` wrappers) instead of re-checking the marker
+/// prefix locally.
+fn has_start_marker(input : String, marker : String) -> Bool {
+  input.trim().to_lower().has_prefix(marker)
+}
+
+///|
 /// Returns whether the source uses PlantUML's JSON diagram delimiters.
 pub fn is_json_source(input : String) -> Bool {
-  input.trim().to_lower().has_prefix("@startjson")
+  has_start_marker(input, "@startjson")
 }
 
 ///|
 /// Returns whether the source uses PlantUML's YAML diagram delimiters.
 pub fn is_yaml_source(input : String) -> Bool {
-  input.trim().to_lower().has_prefix("@startyaml")
+  has_start_marker(input, "@startyaml")
 }
 
 ///|
 /// Returns whether the source uses this project's TOML diagram delimiters.
 pub fn is_toml_source(input : String) -> Bool {
-  input.trim().to_lower().has_prefix("@starttoml")
+  has_start_marker(input, "@starttoml")
 }
 
 ///|
 /// Returns whether the source uses PlantUML's DOT diagram delimiters.
 pub fn is_dot_source(input : String) -> Bool {
-  input.trim().to_lower().has_prefix("@startdot")
+  has_start_marker(input, "@startdot")
 }
 
 ///|

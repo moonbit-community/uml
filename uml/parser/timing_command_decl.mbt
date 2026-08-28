@@ -323,7 +323,7 @@ fn parse_change_state_tail(cursor : @tokenizer.Cursor) -> (String?, String?)? {
   skip_spaces(cursor)
   let comment = if cursor.consume(':') {
     skip_spaces(cursor)
-    Some(take_rest(cursor))
+    Some(cursor.take_rest())
   } else {
     None
   }

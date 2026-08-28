@@ -22,7 +22,7 @@ fn[T] validated_whole_line(
   classify : (String) -> T?,
 ) -> T? {
   let start = cursor.offset()
-  let line = cursor.take_while(_ => true)
+  let line = cursor.take_rest()
   ignore(cursor.restore(start))
   if line.length() == 0 {
     None
@@ -259,23 +259,20 @@ fn EntityParser::consume_text_block(
   self : EntityParser,
   keyword : String,
 ) -> Unit raise @tokenizer.ParseError {
-  self.index += 1
+  self.buffer.advance()
   let text = StringBuilder()
   let mut first = true
-  while self.index < self.lines.length() {
-    if text_block_end(
-        @tokenizer.strip_line_comment(self.lines[self.index]),
-        keyword,
-      ) {
+  while !self.buffer.at_end() {
+    if text_block_end(self.buffer.current_stripped(), keyword) {
       self.style.apply(TextBlock(keyword, text.to_string()))
       return
     }
     if !first {
       text.write_char('\n')
     }
-    text.write_string(self.lines[self.index])
+    text.write_string(self.buffer.current())
     first = false
-    self.index += 1
+    self.buffer.advance()
   }
   self.raise_parse_error("unclosed \{keyword}")
 }
@@ -286,10 +283,10 @@ fn EntityParser::consume_braced_block(
   kind : String,
 ) -> Unit raise @tokenizer.ParseError {
   let package_depth = self.package_stack.length()
-  self.index += 1
+  self.buffer.advance()
   let members : Array[String] = []
-  while self.index < self.lines.length() {
-    let line = @tokenizer.strip_line_comment(self.lines[self.index])
+  while !self.buffer.at_end() {
+    let line = self.buffer.current_stripped()
     if line == "}" && self.package_stack.length() == package_depth {
       if kind == "together" {
         self.together_groups.push(members)
@@ -300,7 +297,7 @@ fn EntityParser::consume_braced_block(
     let existing_reference = @tokenizer.syntax_words(line).length() == 1 &&
       (self.has_entity(self.resolve(reference)) || self.has_entity(reference))
     if !existing_reference {
-      self.parse_line(self.lines[self.index])
+      self.parse_line(self.buffer.current())
       if self.last_entity is Some(code) {
         if !members.contains(code) {
           members.push(code)
@@ -312,7 +309,7 @@ fn EntityParser::consume_braced_block(
         members.push(resolved)
       }
     }
-    self.index += 1
+    self.buffer.advance()
   }
   self.raise_parse_error("unclosed \{kind}")
 }
@@ -321,13 +318,13 @@ fn EntityParser::consume_braced_block(
 fn EntityParser::consume_skinparam_block(
   self : EntityParser,
 ) -> Unit raise @tokenizer.ParseError {
-  self.index += 1
+  self.buffer.advance()
   let closed = @style.consume_skinparam_body(
     () => {
-      guard self.index < self.lines.length() else { return None }
-      let line = @tokenizer.strip_line_comment(self.lines[self.index])
+      guard !self.buffer.at_end() else { return None }
+      let line = self.buffer.current_stripped()
       if line.trim() != "}" {
-        self.index += 1
+        self.buffer.advance()
       }
       Some(line)
     },
@@ -341,13 +338,12 @@ fn EntityParser::consume_common_block(
   self : EntityParser,
   terminator : String,
 ) -> Unit raise @tokenizer.ParseError {
-  self.index += 1
-  while self.index < self.lines.length() {
-    if @tokenizer.strip_line_comment(self.lines[self.index]).to_lower() ==
-      terminator {
+  self.buffer.advance()
+  while !self.buffer.at_end() {
+    if self.buffer.current_stripped().to_lower() == terminator {
       return
     }
-    self.index += 1
+    self.buffer.advance()
   }
   self.raise_parse_error("unclosed common definition block")
 }

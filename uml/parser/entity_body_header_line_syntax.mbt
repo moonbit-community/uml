@@ -18,7 +18,7 @@ fn json_single_declaration(
     ignore(cursor.restore(start))
     return None
   }
-  let data = cursor.take_while(_ => true).trim().to_owned()
+  let data = cursor.take_rest_trimmed()
   guard data.length() > 0 && valid_json(data) else {
     ignore(cursor.restore(start))
     return None
@@ -111,7 +111,7 @@ fn external_member_line(
   let target = @tokenizer.unquote_identifier(
     target.to_string().trim().to_owned(),
   )
-  let body = cursor.take_while(_ => true).trim().to_owned()
+  let body = cursor.take_rest_trimmed()
   let invalid_target = target.length() == 0 ||
     body.length() == 0 ||
     target.to_lower().has_prefix("mix_") ||

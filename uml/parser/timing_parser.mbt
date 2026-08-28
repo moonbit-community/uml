@@ -2,8 +2,7 @@
 /// The parsing context mirroring `@flow.TimingDiagram` as mutated by the commands.
 priv struct TimingParser {
   diagram : @flow.TimingDiagram
-  lines : Array[String]
-  mut index : Int
+  buffer : LineBuffer
 }
 
 ///|
@@ -24,17 +23,13 @@ fn TimingParser::new(input : String) -> TimingParser {
       scale: None,
       style: @style.DocumentStyle::empty(),
     },
-    lines: @tokenizer.preprocess(input)
-    .split("\n")
-    .map(StringView::to_owned)
-    .to_array(),
-    index: 0,
+    buffer: LineBuffer::new(input),
   }
 }
 
 ///|
 fn TimingParser::line_number(self : TimingParser) -> Int {
-  self.index + 1
+  self.buffer.line_number()
 }
 
 ///|
@@ -51,15 +46,6 @@ fn TimingParser::player(
   code : String,
 ) -> @flow.TimingPlayer? {
   self.diagram.player(code)
-}
-
-///|
-/// Captures the remaining text and consumes it, like the trailing `.*`
-/// groups of the compiled regexes.
-fn take_rest(cursor : @tokenizer.Cursor) -> String {
-  let text = cursor.remaining()
-  ignore(cursor.restore(cursor.length()))
-  text
 }
 
 ///|
@@ -371,20 +357,17 @@ fn TimingParser::consume_common_directive(
 ) -> Bool raise @tokenizer.ParseError {
   let lower = line.to_lower()
   if lower == "skinparam {" {
-    self.index += 1
-    let closed = @style.consume_skinparam_body(
-      () => {
-        guard self.index < self.lines.length() else { return None }
-        let line = @tokenizer.strip_line_comment(self.lines[self.index])
-        self.index += 1
-        Some(line)
-      },
-      directive => self.diagram.style.apply(directive),
-    )
+    self.buffer.advance()
+    let closed = @style.consume_skinparam_body(() => self.buffer.take_next(), directive => {
+      self.diagram.style.apply(directive)
+    })
     guard closed else {
-      raise @tokenizer.SyntaxError(self.line_number(), "unclosed skinparam")
+      raise @tokenizer.SyntaxError(
+        self.buffer.line_number(),
+        "unclosed skinparam",
+      )
     }
-    self.index -= 1
+    self.buffer.index -= 1
     return true
   }
   if lower == "title" ||
@@ -466,12 +449,12 @@ fn TimingParser::consume_text_block(
   self : TimingParser,
   kind : String,
 ) -> Unit raise @tokenizer.ParseError {
-  let start = self.index
+  let start = self.buffer.index
   let values = []
-  self.index += 1
-  while self.index < self.lines.length() {
+  self.buffer.advance()
+  while !self.buffer.at_end() {
     let line = @tokenizer.strip_line_comment_preserving_indent(
-        self.lines[self.index],
+        self.buffer.current(),
       )
       .trim()
       .to_owned()
@@ -481,7 +464,7 @@ fn TimingParser::consume_text_block(
       return
     }
     values.push(line)
-    self.index += 1
+    self.buffer.advance()
   }
   raise @tokenizer.SyntaxError(start + 1, "unclosed \{kind}")
 }
@@ -490,7 +473,7 @@ fn TimingParser::consume_text_block(
 fn TimingParser::parse_line(
   self : TimingParser,
 ) -> Unit raise @tokenizer.ParseError {
-  let trimmed = self.lines[self.index].trim().to_owned()
+  let trimmed = self.buffer.current().trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
     trimmed.has_prefix("'") ||
@@ -539,9 +522,9 @@ pub fn parse_timing(
   input : String,
 ) -> @flow.TimingDiagram raise @tokenizer.ParseError {
   let parser = TimingParser::new(input)
-  while parser.index < parser.lines.length() {
+  while !parser.buffer.at_end() {
     parser.parse_line()
-    parser.index += 1
+    parser.buffer.advance()
   }
   parser.diagram
 }

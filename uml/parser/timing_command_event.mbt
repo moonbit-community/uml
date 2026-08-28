@@ -137,7 +137,7 @@ fn parse_time_message(
   skip_spaces(cursor)
   let label = if cursor.consume(':') {
     skip_spaces(cursor)
-    Some(take_rest(cursor))
+    Some(cursor.take_rest())
   } else {
     None
   }
@@ -188,7 +188,7 @@ fn timing_parse_note(
       skip_spaces(cursor)
       guard cursor.consume(':') else { return None }
       skip_spaces(cursor)
-      let text = take_rest(cursor)
+      let text = cursor.take_rest()
       guard text.length() > 0 else { return None }
       skip_spaces(cursor)
       guard cursor.is_eof() else { return None }
@@ -237,10 +237,10 @@ fn timing_parse_note_long(
   skip_spaces(cursor)
   guard cursor.is_eof() else { return false }
   let lines = []
-  let mut index = parser.index + 1
-  while index < parser.lines.length() {
+  let mut index = parser.buffer.index + 1
+  while index < parser.buffer.lines.length() {
     let raw = @tokenizer.strip_line_comment_preserving_indent(
-      parser.lines[index],
+      parser.buffer.lines[index],
     )
     if raw.trim().length() == 0 {
       index += 1
@@ -248,7 +248,7 @@ fn timing_parse_note_long(
     }
     if raw.equal_ignore_ascii_case("end note") ||
       raw.equal_ignore_ascii_case("endnote") {
-      parser.index = index
+      parser.buffer.index = index
       guard parser.player(code) is Some(player) else {
         raise parser.error("Unknown \"" + code + "\"")
       }
@@ -327,7 +327,7 @@ fn parse_constraint(
         skip_spaces(cursor)
         let message = if cursor.consume(':') {
           skip_spaces(cursor)
-          Some(take_rest(cursor))
+          Some(cursor.take_rest())
         } else {
           None
         }
@@ -459,7 +459,7 @@ fn parse_highlight(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
         skip_spaces(cursor)
         let caption = if cursor.consume(':') {
           skip_spaces(cursor)
-          Some(take_rest(cursor))
+          Some(cursor.take_rest())
         } else {
           None
         }

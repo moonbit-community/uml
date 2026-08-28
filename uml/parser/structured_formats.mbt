@@ -34,7 +34,9 @@ fn yaml_root(documents : Array[@yaml.Yaml]) -> @structured.StructuredNode {
 pub fn parse_structured_yaml(
   input : String,
 ) -> @structured.StructuredDiagram raise @yaml.YamlError {
-  let source = source_between_markers(input, "@startyaml", "@endyaml")
+  let source = @tokenizer.splice_source_between_markers(input, "@startyaml", marker => {
+    marker == "@endyaml"
+  })
   {
     format: @structured.Yaml,
     root: yaml_root(@yaml.Yaml::load_from_string(source)),
@@ -73,7 +75,9 @@ fn toml_value_view(
 pub fn parse_structured_toml(
   input : String,
 ) -> @structured.StructuredDiagram raise {
-  let source = source_between_markers(input, "@starttoml", "@endtoml")
+  let source = @tokenizer.splice_source_between_markers(input, "@starttoml", marker => {
+    marker == "@endtoml"
+  })
   {
     format: @structured.Toml,
     root: structured_node_from_value(@toml.parse(source), toml_value_view),

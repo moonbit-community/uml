@@ -182,7 +182,7 @@ fn state_declaration(
   }
   let description = if cursor.consume(':') {
     ignore(cursor.skip_inline_whitespace())
-    Some(cursor.take_while(_ => true).trim().to_owned())
+    Some(cursor.take_rest_trimmed())
   } else {
     None
   }
@@ -439,7 +439,7 @@ fn state_transition(cursor : @tokenizer.Cursor) -> StateTransitionSyntax? {
   }
   let label = if cursor.consume(':') {
     ignore(cursor.skip_inline_whitespace())
-    Some(cursor.take_while(_ => true).trim().to_owned())
+    Some(cursor.take_rest_trimmed())
   } else {
     None
   }
@@ -520,7 +520,7 @@ fn entity_note(cursor : @tokenizer.Cursor) -> StateEntityNoteSyntax? {
       return None
     }
   }
-  ignore(cursor.take_while(_ => true))
+  ignore(cursor.take_rest())
   Some({ position, target, color, })
 }
 
@@ -551,7 +551,7 @@ fn link_note(cursor : @tokenizer.Cursor) -> StateLinkNoteSyntax? {
     return None
   }
   ignore(cursor.skip_inline_whitespace())
-  let text = cursor.take_while(_ => true).trim().to_owned()
+  let text = cursor.take_rest_trimmed()
   Some({ text, color, })
 }
 

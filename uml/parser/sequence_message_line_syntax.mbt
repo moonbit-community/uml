@@ -99,14 +99,14 @@ fn take_multicast(cursor : @tokenizer.Cursor) -> Array[String] {
   let result = Array::new()
   while true {
     let saved = cursor.offset()
-    if !consume_inline_space1(cursor) {
+    if !cursor.consume_inline_space1() {
       break
     }
     if !cursor.consume('&') {
       ignore(cursor.restore(saved))
       break
     }
-    if !consume_inline_space1(cursor) {
+    if !cursor.consume_inline_space1() {
       ignore(cursor.restore(saved))
       break
     }
@@ -119,17 +119,6 @@ fn take_multicast(cursor : @tokenizer.Cursor) -> Array[String] {
     }
   }
   result
-}
-
-///|
-/// Consumes exactly one inline whitespace character.
-fn consume_inline_space1(cursor : @tokenizer.Cursor) -> Bool {
-  if cursor.peek() is Some(char) && is_inline_whitespace(char) {
-    ignore(cursor.advance())
-    true
-  } else {
-    false
-  }
 }
 
 ///|
@@ -596,7 +585,7 @@ fn take_message_tail(
   let url = take_optional_url(cursor)
   cursor.skip_inline_spaces()
   let label = if cursor.consume(':') {
-    @tokenizer.normalize_label(cursor.take_while(_ => true))
+    @tokenizer.normalize_label(cursor.take_rest())
   } else {
     None
   }
@@ -620,7 +609,7 @@ fn take_exo_tail(
   let url = take_optional_url(cursor)
   cursor.skip_inline_spaces()
   let label = if cursor.consume(':') {
-    @tokenizer.normalize_label(cursor.take_while(_ => true))
+    @tokenizer.normalize_label(cursor.take_rest())
   } else {
     None
   }

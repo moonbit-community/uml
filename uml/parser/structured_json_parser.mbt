@@ -30,6 +30,8 @@ fn json_root(value : Json) -> @structured.StructuredNode {
 pub fn parse_structured_json(
   input : String,
 ) -> @structured.StructuredDiagram raise @json.ParseError {
-  let source = source_between_markers(input, "@startjson", "@endjson")
+  let source = @tokenizer.splice_source_between_markers(input, "@startjson", marker => {
+    marker == "@endjson"
+  })
   { format: @structured.Json, root: json_root(@json.parse(source)), }
 }

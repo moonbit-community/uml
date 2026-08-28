@@ -163,7 +163,7 @@ fn note_content(cursor : @tokenizer.Cursor) -> NoteContentSyntax {
   cursor.skip_inline_spaces()
   if cursor.consume(':') && cursor.peek() != Some(':') {
     cursor.skip_inline_spaces()
-    NoteInline(cursor.take_while(_ => true).trim().to_owned())
+    NoteInline(cursor.take_rest_trimmed())
   } else {
     ignore(cursor.restore(start))
     NoteBlock
@@ -369,7 +369,7 @@ fn link_constraint_line(
     return None
   }
   cursor.skip_inline_spaces()
-  let text = cursor.take_while(_ => true).trim().to_owned()
+  let text = cursor.take_rest_trimmed()
   Some(ParsedLinkConstraint({ text, color, }))
 }
 
@@ -483,11 +483,11 @@ fn EntityParser::consume_note_syntax(
   match syntax.content {
     NoteInline(text) => self.push_note_syntax(syntax, text)
     NoteBlock => {
-      let mut index = self.index + 1
+      let mut index = self.buffer.index + 1
       guard @tokenizer.collect_lines_until(
           () => {
-            guard index < self.lines.length() else { return None }
-            let line = self.lines[index]
+            guard index < self.buffer.lines.length() else { return None }
+            let line = self.buffer.lines[index]
             index += 1
             Some(line)
           },
@@ -502,7 +502,7 @@ fn EntityParser::consume_note_syntax(
         self.raise_parse_error("unclosed note")
       }
       guard !lines.is_empty() else { self.raise_parse_error("no note defined") }
-      self.index = index - 1
+      self.buffer.index = index - 1
       self.push_note_syntax(
         syntax,
         lines.map(line => line.trim().to_owned()).join("\n"),

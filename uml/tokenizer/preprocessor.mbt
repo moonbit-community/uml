@@ -54,3 +54,36 @@ pub fn preprocess(input : String) -> String {
   }
   output.to_string()
 }
+
+///|
+/// Splice the source between PlantUML `@startX` and its closing marker lines.
+///
+/// When the start marker is absent the input is returned verbatim; otherwise
+/// the marker lines and any content before the start or after the end marker
+/// are dropped. `is_end` decides whether a marker line closes the block, so
+/// callers can accept several end spellings (`@enduml` plus a format-specific
+/// `@endX`). Shared by the structured (json/yaml/toml) and dot source
+/// extractors; do not re-implement the marker scan locally.
+pub fn splice_source_between_markers(
+  input : String,
+  start_marker : String,
+  is_end : (String) -> Bool,
+) -> String {
+  let output = StringBuilder()
+  let mut inside_markers = false
+  let mut has_markers = false
+  for line in input.split("\n") {
+    let marker = line.trim().to_lower().to_owned()
+    if marker == start_marker {
+      has_markers = true
+      inside_markers = true
+    } else if is_end(marker) && inside_markers {
+      inside_markers = false
+    } else if !has_markers || inside_markers {
+      output.write_string(line.to_owned())
+      output.write_char('\n')
+    }
+  }
+  guard has_markers else { input }
+  output.to_string()
+}
