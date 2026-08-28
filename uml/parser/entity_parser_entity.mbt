@@ -295,7 +295,7 @@ fn EntityParser::set_entity_url(
 ) -> Bool {
   let qualified_code = self.resolve(code)
   guard self.entity_index(qualified_code) is Some(index) else { return false }
-  self.entities[index] = { ..self.entities[index], url: Some(url) }
+  self.entities[index] = { ..self.entities[index], url: Some(url), }
   true
 }
 

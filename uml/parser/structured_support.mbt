@@ -26,7 +26,7 @@ fn source_between_markers(
 fn blank_node() -> @structured.StructuredNode {
   {
     kind: @structured.Array,
-    rows: [{ key: None, value: @structured.Text(""), child: None }],
+    rows: [{ key: None, value: @structured.Text(""), child: None, }],
   }
 }
 
@@ -45,7 +45,7 @@ fn[T] structured_row_from_view(
   inspect : (T) -> StructuredValueView[T],
 ) -> @structured.StructuredRow {
   match view {
-    ScalarView(value) => { key, value, child: None }
+    ScalarView(value) => { key, value, child: None, }
     ObjectView(_) | ArrayView(_) | EmptyView =>
       {
         key,
@@ -63,7 +63,7 @@ fn[T] structured_node_from_view(
   match view {
     EmptyView => blank_node()
     ScalarView(value) =>
-      { kind: @structured.Array, rows: [{ key: None, value, child: None }] }
+      { kind: @structured.Array, rows: [{ key: None, value, child: None, }], }
     ObjectView(entries) =>
       {
         kind: @structured.Object,

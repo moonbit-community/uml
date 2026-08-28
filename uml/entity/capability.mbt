@@ -374,7 +374,7 @@ pub fn EntityKind::render_capability(
         renders_stereotype: false,
       }
     _ if self.is_description_symbol_kind() => description_leaf_capability()
-    Hexagon => { ..description_leaf_capability(), shape: Hexagon }
+    Hexagon => { ..description_leaf_capability(), shape: Hexagon, }
     _ =>
       {
         renderer: ClassRenderer,

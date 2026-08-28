@@ -83,7 +83,7 @@ pub fn graphviz_point_to_svg(
   point : @geom.Point,
   bbox : @geom.Rect,
 ) -> GraphvizPoint {
-  { x: point.x - bbox.llx, y: bbox.ury - point.y }
+  { x: point.x - bbox.llx, y: bbox.ury - point.y, }
 }
 
 ///|
@@ -197,7 +197,7 @@ pub fn graphviz_edges(
     let tail_label = edge_layout.tail_label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
     })
-    Some({ index, splines, label, head_label, tail_label })
+    Some({ index, splines, label, head_label, tail_label, })
   })
 }
 

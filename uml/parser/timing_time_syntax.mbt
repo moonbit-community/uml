@@ -212,5 +212,5 @@ fn resolve_time_expr(
 
 ///|
 fn tick(time : @flow.Decimal, format : @flow.TimingFormat) -> @flow.TimeTick {
-  { time, format }
+  { time, format, }
 }

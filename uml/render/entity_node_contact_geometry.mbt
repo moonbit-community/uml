@@ -25,7 +25,7 @@ priv struct NodeContact {
 
 ///|
 fn point(x : Double, y : Double) -> Point {
-  { x, y }
+  { x, y, }
 }
 
 ///|
@@ -40,7 +40,7 @@ fn Point::pair(self : Point) -> (Double, Double) {
 
 ///|
 fn rect(center : Point, width : Double, height : Double) -> Rect {
-  { center, width, height }
+  { center, width, height, }
 }
 
 ///|
@@ -85,7 +85,7 @@ fn GraphvizNodeLayout::contact(
   self : GraphvizNodeLayout,
   point : Point,
 ) -> NodeContact {
-  { point, side: self.relation_contact_side(point) }
+  { point, side: self.relation_contact_side(point), }
 }
 
 ///|

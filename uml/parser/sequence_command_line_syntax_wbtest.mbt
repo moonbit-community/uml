@@ -189,7 +189,7 @@ test "life event with color parses and carries the color" {
   let diagram = parse_sequence(src)
   let has_colored_activation = diagram.events.exists(event => {
     match event {
-      @seq.LifeEvent({ participant_code, event_type: @seq.Activate, color }) =>
+      @seq.LifeEvent({ participant_code, event_type: @seq.Activate, color, }) =>
         participant_code == "Bob" && color == Some("FF0000")
       _ => false
     }

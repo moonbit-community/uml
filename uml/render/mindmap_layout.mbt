@@ -350,7 +350,7 @@ fn add_frontier_segment(
       result.push(stripe)
     } else {
       if stripe.start < start {
-        result.push({ start: stripe.start, end: start, value: stripe.value })
+        result.push({ start: stripe.start, end: start, value: stripe.value, })
       }
       result.push({
         start: stripe.start.max(start),
@@ -358,7 +358,7 @@ fn add_frontier_segment(
         value: stripe.value.max(value),
       })
       if stripe.end > end {
-        result.push({ start: end, end: stripe.end, value: stripe.value })
+        result.push({ start: end, end: stripe.end, value: stripe.value, })
       }
     }
   }
@@ -381,7 +381,7 @@ fn append_tee(
       half2
     first.max(second)
   }
-  let positioned = { tee, y }
+  let positioned = { tee, y, }
   let mut next = add_frontier_segment(frontier, 0, tee.elongation1, y + half1)
   next = add_frontier_segment(
     next,
@@ -394,8 +394,8 @@ fn append_tee(
 
 ///|
 fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
-  guard !tees.is_empty() else { { positions: [], width: 0, height: 0 } }
-  let mut frontier = [{ start: 0, end: 1_000_000_000, value: -1_000_000_000 }]
+  guard !tees.is_empty() else { { positions: [], width: 0, height: 0, } }
+  let mut frontier = [{ start: 0, end: 1_000_000_000, value: -1_000_000_000, }]
   let positions = []
   for tee in tees {
     let (next_frontier, positioned) = append_tee(
@@ -562,7 +562,7 @@ fn MindmapLayout::translated(
 ) -> MindmapLayout {
   {
     ..self,
-    nodes: self.nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy }),
+    nodes: self.nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy, }),
     edges: self.edges.map(edge => {
       ..edge,
       x1: edge.x1 + dx,
@@ -607,12 +607,12 @@ pub fn layout_tree(
         finger_tee(items, root_index, @tree.MindmapDirection::Left)
       }
     } else {
-      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
+      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0, }
     }
     let right = if has_right_children || !has_left_children {
       finger_tee(items, root_index, @tree.MindmapDirection::Right)
     } else {
-      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0 }
+      { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0, }
     }
     let root_height = left.full_thickness().max(right.full_thickness())
     // PlantUML places the root at the vertical center of its content, which

@@ -740,7 +740,7 @@ fn @flow.StateDiagram::render_svg(
   self : @flow.StateDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = @graphviz.layout_or_fallback(() => self.layout(), None)
   let width = layout.width.ceil().to_int().max(1)
   let height = layout.height.ceil().to_int().max(1)

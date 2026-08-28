@@ -237,7 +237,7 @@ test "generic layout_tree keeps one edge per non-root node" {
       right_children: [],
     })
   }
-  items[1] = { ..items[1], right_children: [16] }
+  items[1] = { ..items[1], right_children: [16], }
   let layout = @render.layout_tree(items, [0])
   @test.assert_eq(layout.edges.length(), items.length() - 1)
   // every non-root node appears as a child exactly once

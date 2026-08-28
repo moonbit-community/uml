@@ -146,7 +146,7 @@ fn note_metadata_from(
       NoteTag(value) => tags.push(value)
     }
   }
-  { color, url, stereotype, tags, braced }
+  { color, url, stereotype, tags, braced, }
 }
 
 ///|
@@ -314,7 +314,7 @@ fn entity_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
   let target = entity_note_target(cursor)
   let metadata = note_metadata(cursor)
   let content = note_content(cursor)
-  Some({ target: NoteEntityTarget(target), position, content, metadata })
+  Some({ target: NoteEntityTarget(target), position, content, metadata, })
 }
 
 ///|
@@ -370,7 +370,7 @@ fn link_constraint_line(
   }
   cursor.skip_inline_spaces()
   let text = cursor.take_while(_ => true).trim().to_owned()
-  Some(ParsedLinkConstraint({ text, color }))
+  Some(ParsedLinkConstraint({ text, color, }))
 }
 
 ///|

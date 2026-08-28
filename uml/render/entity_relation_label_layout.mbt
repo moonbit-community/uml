@@ -212,9 +212,9 @@ fn nearest_relation_path_distance(
     let distance = (dx * dx + dy * dy).sqrt()
     let tangent = (end.0 - start.0, end.1 - start.1)
     match result {
-      None => result = Some({ point, tangent, distance })
+      None => result = Some({ point, tangent, distance, })
       Some(previous) if distance < previous.distance =>
-        result = Some({ point, tangent, distance })
+        result = Some({ point, tangent, distance, })
       Some(_) => ()
     }
   }

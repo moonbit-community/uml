@@ -122,14 +122,14 @@ fn relation_endpoint_states(
       let projected = closest_point_on_rect(point_from_pair(endpoint), bounds)
       let closed_side = rect_contact_side(projected, bounds)
       [
-        { endpoint, side },
+        { endpoint, side, },
         {
           endpoint: rect_edge_midpoint(bounds, closed_side).pair(),
           side: Some(closed_side),
         },
       ]
     }
-    None => [{ endpoint, side }]
+    None => [{ endpoint, side, }]
   }
 }
 

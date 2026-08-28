@@ -97,7 +97,7 @@ fn ClassLayout::content_bounds(
 ) -> ContentBounds {
   let mut bounds : ContentBounds? = None
   let include_point = (bounds : ContentBounds?, x : Double, y : Double) => {
-    bounds.map_or(Some({ min_x: x, min_y: y, max_x: x, max_y: y }), current => {
+    bounds.map_or(Some({ min_x: x, min_y: y, max_x: x, max_y: y, }), current => {
       Some(current.point(x, y))
     })
   }
@@ -195,7 +195,7 @@ fn ClassLayout::content_bounds(
           }
       }
   }
-  bounds.unwrap_or({ min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0 })
+  bounds.unwrap_or({ min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0, })
 }
 
 ///|

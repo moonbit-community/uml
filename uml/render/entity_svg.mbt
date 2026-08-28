@@ -133,7 +133,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   append_symbol_packages(output, self, text_metrics, layout)
   match family_capability.paint_order {
     EntitiesBeforeRelations => {
-      let ctx = { output, diagram: self, text_metrics }
+      let ctx = { output, diagram: self, text_metrics, }
       for index, entity in self.entities {
         ctx.append_entity_image(entity, index, layout, collapsible)
       }
@@ -144,7 +144,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
       }
     }
     RelationsBeforeEntities => {
-      let ctx = { output, diagram: self, text_metrics }
+      let ctx = { output, diagram: self, text_metrics, }
       append_mindmap_structure_edges(
         output, self, text_metrics, layout, collapsible,
       )
@@ -192,7 +192,7 @@ fn @entity.EntityDiagram::render_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(class_member_collapsible)
 }
 
@@ -203,7 +203,7 @@ fn @entity.EntityDiagram::render_mbti_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(class_member_collapsible)
 }
 

@@ -137,7 +137,7 @@ fn TextSize::of_with(
   font_metrics : @metrics.FontMetrics,
 ) -> TextSize {
   let metrics = font_metrics.measure(text)
-  { width: metrics.width, height: metrics.height }
+  { width: metrics.width, height: metrics.height, }
 }
 
 ///|

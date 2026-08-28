@@ -221,7 +221,7 @@ fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
   let width = (max_x + shift + horizontal_margin).max(
     self.minimum_text_width(text_metrics),
   )
-  { ..layout, participants, width }
+  { ..layout, participants, width, }
 }
 
 ///|

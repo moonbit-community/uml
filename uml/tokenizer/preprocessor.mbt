@@ -6,7 +6,7 @@ pub struct Preprocessor {
 
 ///|
 pub fn Preprocessor::new() -> Preprocessor {
-  { definitions: Map([]) }
+  { definitions: Map([]), }
 }
 
 ///|

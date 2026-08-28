@@ -369,5 +369,5 @@ pub fn parse_mindmap(
     })
     index = last + 1
   }
-  { ideas, style, mindmap_style }
+  { ideas, style, mindmap_style, }
 }

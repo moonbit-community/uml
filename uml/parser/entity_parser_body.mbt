@@ -102,12 +102,12 @@ fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
   match map_entry_line(cursor) {
     Some(ParsedMapValue(key~, value~)) =>
       Some({
-        entry: { key, value: Some(value), link_target: None, raw: line },
+        entry: { key, value: Some(value), link_target: None, raw: line, },
         arrow: None,
       })
     Some(ParsedMapLink(key~, arrow~, target~)) =>
       Some({
-        entry: { key, value: None, link_target: Some(target), raw: line },
+        entry: { key, value: None, link_target: Some(target), raw: line, },
         arrow: Some(arrow),
       })
     None => None
@@ -142,7 +142,7 @@ fn EntityParser::consume_multiline_element(
         }
         display.write_string(tail)
         self.add_entity(
-          { ..header.declaration, display: display.to_string() },
+          { ..header.declaration, display: display.to_string(), },
           false,
         )
         return

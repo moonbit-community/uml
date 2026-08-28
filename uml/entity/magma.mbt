@@ -120,7 +120,7 @@ pub fn EntityDiagram::magma_grid_edges(
       left,
       right,
     ) => edges.push((left, right, 0)))
-    Some({ standalones, container })
+    Some({ standalones, container, })
   })
   for group in self.packages {
     let package_magmas = magmas.filter(magma => {

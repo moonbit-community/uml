@@ -494,7 +494,7 @@ fn reference_line_syntax(cursor : @tokenizer.Cursor) -> ReferenceLineSyntax? {
         ignore(cursor.restore(start))
         return None
       }
-      Some({ participant_codes, text })
+      Some({ participant_codes, text, })
     }
   }
 }

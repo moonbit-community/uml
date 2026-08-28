@@ -202,11 +202,11 @@ fn parse_prefix(
   if attributes_first {
     let (background_color, code, _) = parse_attributes(cursor)
     let (shape, direction, end) = parse_modifiers(cursor)
-    { code, direction, shape, background_color, end }
+    { code, direction, shape, background_color, end, }
   } else {
     let (shape, direction, _) = parse_modifiers(cursor)
     let (background_color, code, end) = parse_attributes(cursor)
-    { code, direction, shape, background_color, end }
+    { code, direction, shape, background_color, end, }
   }
 }
 
@@ -582,7 +582,7 @@ fn WbsParser::parse_link(
   guard self.codes.get(target_code) is Some(target) else {
     raise SyntaxError(self.index + 1, "No such node \{target_code}")
   }
-  self.links.push({ source, target, color, stereotype, label })
+  self.links.push({ source, target, color, stereotype, label, })
   true
 }
 

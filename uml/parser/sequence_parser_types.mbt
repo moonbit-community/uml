@@ -137,10 +137,10 @@ fn ParseCtx::register_event(self : ParseCtx, event : @seq.Event) -> Unit {
     @seq.Url(code, url) => {
       self.ensure_participant(code, code, @seq.Participant)
       let participant = self.participants[code]
-      self.participants[code] = { ..participant, url: Some(url) }
+      self.participants[code] = { ..participant, url: Some(url), }
     }
     @seq.BoxStart(box) =>
-      self.box_stack.push({ label: box.label, color: box.color })
+      self.box_stack.push({ label: box.label, color: box.color, })
     @seq.BoxEnd => {
       let _ = self.box_stack.pop()
       ()

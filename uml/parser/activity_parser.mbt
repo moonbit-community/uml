@@ -215,5 +215,5 @@ pub fn parse_activity(
       "unclosed \{block_name(stack.last().unwrap())}",
     )
   }
-  { nodes, instructions: @flow.reduce(nodes), style }
+  { nodes, instructions: @flow.reduce(nodes), style, }
 }

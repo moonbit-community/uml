@@ -79,7 +79,7 @@ fn take_alias_code(cursor : @tokenizer.Cursor) -> String? {
 
 ///|
 fn alias_ref(cursor : @tokenizer.Cursor, name : String) -> PartRef? {
-  take_alias_code(cursor).map(code => { code, display: name })
+  take_alias_code(cursor).map(code => { code, display: name, })
 }
 
 ///|
@@ -89,8 +89,8 @@ fn participant_decl_ref(cursor : @tokenizer.Cursor) -> PartRef? {
     match cursor.take_quoted_value() {
       Some(display) =>
         match take_alias_code(cursor) {
-          Some(code) => Some({ code, display })
-          None => Some({ code: display, display })
+          Some(code) => Some({ code, display, })
+          None => Some({ code: display, display, })
         }
       None => {
         ignore(cursor.restore(start))
@@ -109,7 +109,7 @@ fn participant_decl_ref(cursor : @tokenizer.Cursor) -> PartRef? {
       cursor.skip_inline_spaces()
       if cursor.peek() == Some('"') {
         match cursor.take_quoted_value() {
-          Some(display) => Some({ code: name, display })
+          Some(display) => Some({ code: name, display, })
           None => {
             ignore(cursor.restore(saved))
             alias_ref(cursor, name)
@@ -123,7 +123,7 @@ fn participant_decl_ref(cursor : @tokenizer.Cursor) -> PartRef? {
       ignore(cursor.restore(saved))
       alias_ref(cursor, name)
     }
-    Some(reference.unwrap_or({ code: name, display: name }))
+    Some(reference.unwrap_or({ code: name, display: name, }))
   }
 }
 
@@ -216,7 +216,7 @@ fn participant_declaration_tail(
     ignore(cursor.restore(start))
     return None
   }
-  Some({ typ, reference, created, color, url, order })
+  Some({ typ, reference, created, color, url, order, })
 }
 
 ///|
@@ -341,7 +341,7 @@ fn life_event_line_syntax(
         ignore(cursor.restore(start))
         return None
       }
-      Some(@seq.LifeEvent({ participant_code, event_type, color }))
+      Some(@seq.LifeEvent({ participant_code, event_type, color, }))
     }
   }
 }
@@ -382,7 +382,7 @@ fn box_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(@seq.BoxStart({ label: @tokenizer.normalize_label(label), color }))
+  Some(@seq.BoxStart({ label: @tokenizer.normalize_label(label), color, }))
 }
 
 ///|
@@ -424,7 +424,7 @@ fn grouping_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
         if take_keyword(cursor, "end") {
           ignore(cursor.take_while(_ => true))
           Some(
-            @seq.GroupingLeaf({ is_end: true, label: None, back_color: None }),
+            @seq.GroupingLeaf({ is_end: true, label: None, back_color: None, }),
           )
         } else {
           ignore(cursor.restore(start))
@@ -458,7 +458,7 @@ fn divider_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(@seq.Divider({ title: title.to_string().trim().to_owned() }))
+  Some(@seq.Divider({ title: title.to_string().trim().to_owned(), }))
 }
 
 ///|
@@ -476,7 +476,7 @@ fn delay_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
       ignore(cursor.consume_literal(value))
       cursor.skip_inline_spaces()
       if cursor.is_eof() {
-        return Some(@seq.Delay({ label: None }))
+        return Some(@seq.Delay({ label: None, }))
       }
     }
     None => ()
@@ -499,7 +499,7 @@ fn delay_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(@seq.Delay({ label: @tokenizer.normalize_label(label.to_string()) }))
+  Some(@seq.Delay({ label: @tokenizer.normalize_label(label.to_string()), }))
 }
 
 ///|
@@ -519,7 +519,7 @@ fn hspace_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     ignore(cursor.restore(start))
     return None
   }
-  Some(@seq.HSpace({ pixels: optional_digits(raw_pixels) }))
+  Some(@seq.HSpace({ pixels: optional_digits(raw_pixels), }))
 }
 
 ///|
@@ -551,7 +551,7 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
         let format = optional_quoted(cursor)
         cursor.skip_inline_spaces()
         if cursor.is_eof() {
-          return Some(@seq.AutonumberResume({ increment, format }))
+          return Some(@seq.AutonumberResume({ increment, format, }))
         }
         ignore(cursor.restore(start))
         return None
@@ -580,7 +580,7 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     let format = optional_quoted(cursor)
     cursor.skip_inline_spaces()
     if cursor.is_eof() {
-      return Some(@seq.Autonumber({ start: start_value, increment, format }))
+      return Some(@seq.Autonumber({ start: start_value, increment, format, }))
     }
     ignore(cursor.restore(start))
     return None
@@ -773,7 +773,7 @@ fn miscellaneous_event_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   cursor.skip_inline_spaces()
   if take_keyword(cursor, "return") {
     let value = cursor.take_while(_ => true)
-    return Some(@seq.Return({ value: @tokenizer.normalize_label(value) }))
+    return Some(@seq.Return({ value: @tokenizer.normalize_label(value), }))
   }
   ignore(cursor.restore(start))
   match anchor(cursor) {
@@ -816,7 +816,7 @@ fn newpage_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     return None
   }
   let title = cursor.take_while(_ => true)
-  Some(@seq.Newpage({ title: @tokenizer.normalize_label(title) }))
+  Some(@seq.Newpage({ title: @tokenizer.normalize_label(title), }))
 }
 
 ///|

@@ -180,7 +180,7 @@ fn decimal(
   let scale = if trailing_dot { 1 } else { fraction.length() }
   let tail = if trailing_dot { "0" } else { "" }
   let coeff = normalize_digits(whole + fraction + tail)
-  { sign, coeff: if coeff == "0" { "0" } else { coeff }, scale }
+  { sign, coeff: if coeff == "0" { "0" } else { coeff }, scale, }
 }
 
 ///|
@@ -209,14 +209,14 @@ fn @flow.Decimal::add(
   } else {
     (other.sign, sub_digits(b, a))
   }
-  { sign, coeff: normalize_digits(coeff), scale }
+  { sign, coeff: normalize_digits(coeff), scale, }
 }
 
 ///|
 /// Exact multiplication by a positive integer, mirroring
 /// `BigDecimal.multiply(BigDecimal.valueOf(nb))`.
 fn @flow.Decimal::mul_int(self : @flow.Decimal, factor : Int) -> @flow.Decimal {
-  { ..self, coeff: mul_digits_int(self.coeff, factor) }
+  { ..self, coeff: mul_digits_int(self.coeff, factor), }
 }
 
 ///|
