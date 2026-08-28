@@ -170,7 +170,7 @@ $ cat > json-rows.puml <<'EOF'
 > }
 > @enduml
 > EOF
-> uml_cli.exe render json-rows.puml | grep -o 'class="json-row-separator"' | wc -l
+> uml_cli.exe render json-rows.puml | grep -o '<line class="json-row-separator"' | wc -l
        2
 ```
 
