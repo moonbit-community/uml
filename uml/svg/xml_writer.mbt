@@ -71,6 +71,33 @@ pub fn XmlWriter::raw(self : XmlWriter, markup : String) -> Unit {
 }
 
 ///|
+/// Emit a multiline `<text>` block, the `XmlWriter` counterpart of
+/// `@svg.append_text_markup`. Unlike the StringBuilder form it adds no
+/// trailing newline, matching the writer's compact serialization.
+pub fn XmlWriter::append_text_markup(
+  self : XmlWriter,
+  x : Double,
+  y : Double,
+  text : String,
+  attributes : Array[(String, String)],
+  line_height~ : Double,
+  anchor~ : MultilineTextAnchor,
+  text_metrics~ : @metrics.FontMetrics?,
+) -> Unit {
+  self.output.write_string(
+    multiline_text_markup(
+      x,
+      y,
+      text,
+      attributes,
+      line_height~,
+      anchor~,
+      text_metrics~,
+    ),
+  )
+}
+
+///|
 pub fn XmlWriter::close(self : XmlWriter) -> Unit {
   guard self.open_tags.pop() is Some(name) else { return }
   self.output <+ "</\{name}>"

@@ -55,18 +55,16 @@ fn append_text(
       line_height~,
     ),
   )
-  output.write_string(
-    @svg.multiline_text_markup(
-      x.to_double(),
-      y.to_double(),
-      text,
-      [("text-anchor", anchor), ("fill", defaults.text), ("class", class_name)],
-      line_height=line_height.to_double(),
-      anchor=Baseline,
-      text_metrics=Some(text_metrics),
-    ),
+  @svg.append_text_markup(
+    output,
+    x.to_double(),
+    y.to_double(),
+    text,
+    [("text-anchor", anchor), ("fill", defaults.text), ("class", class_name)],
+    line_height=line_height.to_double(),
+    anchor=Baseline,
+    text_metrics=Some(text_metrics),
   )
-  output.write_string("\n")
 }
 
 ///|

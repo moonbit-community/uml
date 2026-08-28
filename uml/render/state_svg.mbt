@@ -309,15 +309,14 @@ fn append_state_label(
   class_name : String,
   text_metrics : @metrics.FontMetrics,
 ) -> Unit {
-  output.raw(
-    @svg.multiline_text_markup(
-      x,
-      y,
-      text,
-      [("text-anchor", "middle"), ("class", class_name)],
-      line_height=text_metrics.line_height.to_double(),
-      text_metrics=Some(text_metrics),
-    ),
+  output.append_text_markup(
+    x,
+    y,
+    text,
+    [("text-anchor", "middle"), ("class", class_name)],
+    line_height=text_metrics.line_height.to_double(),
+    anchor=Center,
+    text_metrics=Some(text_metrics),
   )
 }
 

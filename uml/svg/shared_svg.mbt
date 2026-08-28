@@ -251,6 +251,37 @@ pub fn multiline_text_markup(
 }
 
 ///|
+/// Emit a multiline `<text>` block, appending a trailing newline.
+///
+/// The renderers that hand-build markup (sequence, structured) share this
+/// emit convention; XmlWriter-based renderers instead pass the string from
+/// `multiline_text_markup` to `XmlWriter::raw`. Do not re-implement the
+/// textLength pinning or the trailing `\n` locally.
+pub fn append_text_markup(
+  output : StringBuilder,
+  x : Double,
+  y : Double,
+  text : String,
+  attributes : Array[(String, String)],
+  line_height~ : Double,
+  anchor~ : MultilineTextAnchor,
+  text_metrics~ : @metrics.FontMetrics?,
+) -> Unit {
+  output.write_string(
+    multiline_text_markup(
+      x,
+      y,
+      text,
+      attributes,
+      line_height~,
+      anchor~,
+      text_metrics~,
+    ),
+  )
+  output.write_string("\n")
+}
+
+///|
 /// Serialize one SVG text node using the same advance used by layout.
 pub fn text_markup(
   x : Double,

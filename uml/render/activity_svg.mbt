@@ -17,20 +17,18 @@ fn append_label(
   anchor? : String = "middle",
   multiline_center? : Bool = true,
 ) -> Unit {
-  output.raw(
-    @svg.multiline_text_markup(
-      x.to_double(),
-      y.to_double(),
-      label,
-      [
-        ("text-anchor", anchor),
-        ("class", "activity-label"),
-        ("font-size", font_metrics.font_size.to_string()),
-      ],
-      line_height=font_metrics.line_height.to_double(),
-      anchor=if multiline_center { Center } else { Baseline },
-      text_metrics=Some(font_metrics),
-    ),
+  output.append_text_markup(
+    x.to_double(),
+    y.to_double(),
+    label,
+    [
+      ("text-anchor", anchor),
+      ("class", "activity-label"),
+      ("font-size", font_metrics.font_size.to_string()),
+    ],
+    line_height=font_metrics.line_height.to_double(),
+    anchor=if multiline_center { Center } else { Baseline },
+    text_metrics=Some(font_metrics),
   )
 }
 

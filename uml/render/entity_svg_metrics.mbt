@@ -197,6 +197,21 @@ fn body_section_height(
 }
 
 ///|
+/// Measure a single header label (a stereotype or annotation) and return it
+/// with its padded width and height.
+///
+/// Shared by the class and object header layouts; do not re-implement the
+/// `(Some(display), width + padding, height)` triple locally.
+fn measure_header_label(
+  display : String,
+  metrics : @metrics.FontMetrics,
+  horizontal_padding : Int,
+) -> (String?, Int, Int) {
+  let measured = metrics.measure(display)
+  (Some(display), measured.width + horizontal_padding, measured.height)
+}
+
+///|
 fn @entity.Entity::header_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
@@ -227,27 +242,22 @@ fn @entity.Entity::header_layout(
   }
   let (stereotype, stereotype_width, stereotype_height) = match
     self.stereotype {
-    Some(value) if !self.stereotype_hidden => {
-      let display = @tokenizer.display_stereotype(value)
-      let metrics = text_metrics.class_stereotype.measure(display)
-      (
-        Some(display),
-        metrics.width + 2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
-        metrics.height,
+    Some(value) if !self.stereotype_hidden =>
+      measure_header_label(
+        @tokenizer.display_stereotype(value),
+        text_metrics.class_stereotype,
+        2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
       )
-    }
     _ => (None, 0, 0)
   }
   let (annotation, annotation_width, annotation_height) = match
     self.annotation {
-    Some(value) => {
-      let metrics = text_metrics.class_stereotype.measure(value)
-      (
-        Some(value),
-        metrics.width + 2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
-        metrics.height,
+    Some(value) =>
+      measure_header_label(
+        value,
+        text_metrics.class_stereotype,
+        2 * CLASS_STEREOTYPE_HORIZONTAL_MARGIN,
       )
-    }
     None => (None, 0, 0)
   }
   {
@@ -282,15 +292,12 @@ fn @entity.Entity::object_header_layout(
   let title_width = title.width + OBJECT_TEXT_HORIZONTAL_PADDING * 2
   let (stereotype, stereotype_width, stereotype_height) = match
     self.stereotype {
-    Some(value) if !self.stereotype_hidden => {
-      let display = @tokenizer.display_stereotype(value)
-      let metrics = text_metrics.class_stereotype.measure(display)
-      (
-        Some(display),
-        metrics.width + OBJECT_TEXT_HORIZONTAL_PADDING * 2,
-        metrics.height,
+    Some(value) if !self.stereotype_hidden =>
+      measure_header_label(
+        @tokenizer.display_stereotype(value),
+        text_metrics.class_stereotype,
+        2 * OBJECT_TEXT_HORIZONTAL_PADDING,
       )
-    }
     _ => (None, 0, 0)
   }
   {
@@ -864,26 +871,6 @@ fn @entity.Entity::body_layout(
 }
 
 ///|
-fn @entity.Entity::height(
-  self : @entity.Entity,
-  text_metrics : ClassTextMetrics,
-  family : @entity.EntityFamily,
-) -> Int {
-  let header = self.header_layout(text_metrics, family)
-  let body = self.body_layout(text_metrics, family)
-  header.height + body.fields_height + body.methods_height
-}
-
-///|
-fn @entity.Entity::object_height(
-  self : @entity.Entity,
-  text_metrics : ClassTextMetrics,
-) -> Int {
-  self.object_header_layout(text_metrics).height +
-  self.object_body_layout(text_metrics).height
-}
-
-///|
 fn @entity.Entity::entry_visible(
   self : @entity.Entity,
   entry : @entity.Member,
@@ -1189,27 +1176,25 @@ fn actor_figure_geometry(
 }
 
 ///|
-fn @entity.Entity::width(
+fn @entity.Entity::class_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
   family : @entity.EntityFamily,
-) -> Int {
-  let mut width = self.header_layout(text_metrics, family).width
+) -> (Int, Int) {
+  let header = self.header_layout(text_metrics, family)
   let body = self.body_layout(text_metrics, family)
-  for entry in body.fields {
+  let mut width = header.width
+  for entry in body.fields + body.methods {
     width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
   }
-  for entry in body.methods {
-    width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
-  }
-  width
+  (width, header.height + body.fields_height + body.methods_height)
 }
 
 ///|
-fn @entity.Entity::object_width(
+fn @entity.Entity::object_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> Int {
+) -> (Int, Int) {
   let header = self.object_header_layout(text_metrics)
   let body = self.object_body_layout(text_metrics)
   let text_x = if body.has_visibility { 20 } else { 5 }
@@ -1221,45 +1206,27 @@ fn @entity.Entity::object_width(
       ).width
     width = width.max(text_width + text_x + OBJECT_TEXT_HORIZONTAL_PADDING)
   }
-  width
+  (width, header.height + body.height)
 }
 
 ///|
-fn @entity.Entity::map_width(
+fn @entity.Entity::map_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> Int {
-  self.object_header_layout(text_metrics).width.max(
-    self.map_body_layout(text_metrics).width,
-  )
+) -> (Int, Int) {
+  let header = self.object_header_layout(text_metrics)
+  let body = self.map_body_layout(text_metrics)
+  (header.width.max(body.width), header.height + body.height)
 }
 
 ///|
-fn @entity.Entity::map_height(
+fn @entity.Entity::json_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> Int {
-  self.object_header_layout(text_metrics).height +
-  self.map_body_layout(text_metrics).height
-}
-
-///|
-fn @entity.Entity::json_width(
-  self : @entity.Entity,
-  text_metrics : ClassTextMetrics,
-) -> Int {
-  self.json_header_layout(text_metrics).width.max(
-    self.json_body_layout(text_metrics).width,
-  )
-}
-
-///|
-fn @entity.Entity::json_height(
-  self : @entity.Entity,
-  text_metrics : ClassTextMetrics,
-) -> Int {
-  self.json_header_layout(text_metrics).height +
-  self.json_body_layout(text_metrics).height
+) -> (Int, Int) {
+  let header = self.json_header_layout(text_metrics)
+  let body = self.json_body_layout(text_metrics)
+  (header.width.max(body.width), header.height + body.height)
 }
 
 ///|
@@ -1438,24 +1405,18 @@ fn @entity.Entity::node_geometry(
 ) -> NodeGeometry {
   let capability = self.render_capability(family)
   match (capability.header, capability.body, capability.renderer) {
-    (ObjectHeader, OrderedMembers, ObjectRenderer) =>
-      {
-        width: self.object_width(text_metrics),
-        height: self.object_height(text_metrics),
-        shape: capability.shape,
-      }
-    (ObjectHeader, JsonData, JsonRenderer) =>
-      {
-        width: self.json_width(text_metrics),
-        height: self.json_height(text_metrics),
-        shape: capability.shape,
-      }
-    (ObjectHeader, MapEntries, MapRenderer) =>
-      {
-        width: self.map_width(text_metrics),
-        height: self.map_height(text_metrics),
-        shape: capability.shape,
-      }
+    (ObjectHeader, OrderedMembers, ObjectRenderer) => {
+      let (width, height) = self.object_node_size(text_metrics)
+      { width, height, shape: capability.shape, }
+    }
+    (ObjectHeader, JsonData, JsonRenderer) => {
+      let (width, height) = self.json_node_size(text_metrics)
+      { width, height, shape: capability.shape, }
+    }
+    (ObjectHeader, MapEntries, MapRenderer) => {
+      let (width, height) = self.map_node_size(text_metrics)
+      { width, height, shape: capability.shape, }
+    }
     (DescriptionHeader, NoBody, UsecaseRenderer) => {
       let (content_width, content_height, _) = self.usecase_content_layout(
         text_metrics,
@@ -1493,12 +1454,10 @@ fn @entity.Entity::node_geometry(
         height: ASSOCIATION_POINT_SIZE,
         shape: Circle,
       }
-    (ClassHeader, ClassCompartments, ClassRenderer) =>
-      {
-        width: self.width(text_metrics, family),
-        height: self.height(text_metrics, family),
-        shape: capability.shape,
-      }
+    (ClassHeader, ClassCompartments, ClassRenderer) => {
+      let (width, height) = self.class_node_size(text_metrics, family)
+      { width, height, shape: capability.shape, }
+    }
     _ => panic()
   }
 }

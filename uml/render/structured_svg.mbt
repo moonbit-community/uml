@@ -77,18 +77,16 @@ fn append_multiline_text(
     line_height=STRUCTURED_LINE_HEIGHT,
   )
   let attributes = class.map_or([], class => [("class", class)])
-  output.write_string(
-    @svg.multiline_text_markup(
-      x.to_double(),
-      y.to_double(),
-      text,
-      attributes,
-      line_height=STRUCTURED_LINE_HEIGHT.to_double(),
-      anchor=Baseline,
-      text_metrics=Some(text_metrics),
-    ),
+  @svg.append_text_markup(
+    output,
+    x.to_double(),
+    y.to_double(),
+    text,
+    attributes,
+    line_height=STRUCTURED_LINE_HEIGHT.to_double(),
+    anchor=Baseline,
+    text_metrics=Some(text_metrics),
   )
-  output.write_string("\n")
 }
 
 ///|
