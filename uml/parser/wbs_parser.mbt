@@ -156,7 +156,7 @@ fn parse_color(cursor : @tokenizer.Cursor) -> String? {
 
 ///|
 fn valid_code(code : String) -> Bool {
-  code.length() > 0 && code.to_array().all(@unicode.is_identifier_char)
+  code.length() > 0 && code.to_array().all(@identifier.is_identifier_char)
 }
 
 ///|
@@ -544,7 +544,7 @@ fn WbsParser::parse_link(
   guard valid_code(source_code) else { return false }
   ignore(cursor.restore(arrow_end + 1))
   ignore(cursor.skip_while(char => char.is_whitespace()))
-  let target_code = cursor.take_while(@unicode.is_identifier_char)
+  let target_code = cursor.take_while(@identifier.is_identifier_char)
   guard valid_code(target_code) else { return false }
   ignore(cursor.skip_while(char => char.is_whitespace()))
   let mut color = None

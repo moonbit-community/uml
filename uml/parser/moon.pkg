@@ -9,7 +9,7 @@ import {
   "kokic/uml/bodierjson",
   "kokic/uml/structured",
   "kokic/uml/style",
-  "kokic/unicode",
+  "kokic/identifier",
   "moonbit-community/yaml",
   "bobzhang/toml",
   "moonbitlang/core/json",

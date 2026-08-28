@@ -1,4 +1,4 @@
-name = "kokic/unicode"
+name = "kokic/identifier"
 
 version = "0.1.0"
 

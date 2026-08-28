@@ -4,19 +4,19 @@
 
 ///|
 fn is_letter(char : Char) -> Bool {
-  @unicode.is_unicode_letter(char)
+  @identifier.is_unicode_letter(char)
 }
 
 ///|
 /// `[%pLN_.@]`: letters, numbers, underscore, dot and at-sign.
 fn is_code_char(char : Char) -> Bool {
-  @unicode.is_identifier_char(char) || char == '.' || char == '@'
+  @identifier.is_identifier_char(char) || char == '.' || char == '@'
 }
 
 ///|
 /// `[%pLN_.@]`: letters, numbers, underscore and dot.
 fn is_code_dot_char(char : Char) -> Bool {
-  @unicode.is_identifier_char(char) || char == '.'
+  @identifier.is_identifier_char(char) || char == '.'
 }
 
 ///|
@@ -40,7 +40,7 @@ fn is_player_code_char(char : Char) -> Bool {
 ///|
 /// `[-%pLN_]`: the first character of `STATE_CODE`.
 fn is_state_code_start(char : Char) -> Bool {
-  char == '-' || @unicode.is_identifier_char(char)
+  char == '-' || @identifier.is_identifier_char(char)
 }
 
 ///|
