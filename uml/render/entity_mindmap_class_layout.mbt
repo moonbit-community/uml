@@ -104,7 +104,7 @@ fn @entity.EntityDiagram::mindmap_class_layout(
   let layout = layout_tree(items, roots)
   let rects : Array[(Int, Int, Int, Int)] = Array::make(count, (0, 0, 0, 0))
   for node in layout.nodes {
-    rects[node.idea_index] = (node.x, node.y, node.width, node.height)
+    rects[node.index] = (node.x, node.y, node.width, node.height)
   }
   let structure_edges : Array[MindmapClassEdge] = layout.edges.map(edge => {
     x1: edge.x1,

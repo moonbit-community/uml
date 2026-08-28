@@ -1,17 +1,4 @@
 ///|
-/// Which side of the root a mindmap idea belongs to.
-pub(all) enum MindmapDirection {
-  Left
-  Right
-} derive(Eq, Debug)
-
-///|
-pub extend MindmapDirection with Eq::{not_equal, equal}
-
-///|
-pub extend MindmapDirection with Debug::{to_repr}
-
-///|
 /// The visual form requested by a mindmap item.
 pub(all) enum IdeaShape {
   Box
@@ -30,7 +17,7 @@ pub extend IdeaShape with Debug::{to_repr}
 pub(all) struct Idea {
   label : String
   level : Int
-  direction : MindmapDirection
+  direction : TreeDirection
   shape : IdeaShape
   background_color : String?
   stereotype : String?

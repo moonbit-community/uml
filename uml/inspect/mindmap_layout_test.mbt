@@ -4,7 +4,7 @@ fn node_for(
   idea_index : Int,
 ) -> @render.NodeLayout {
   for node in layout.nodes {
-    guard node.idea_index == idea_index else { continue }
+    guard node.index == idea_index else { continue }
     return node
   }
   abort("missing mindmap node")

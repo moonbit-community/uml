@@ -54,11 +54,11 @@ test "uses marker and explicit directions independently" {
   let diagram = parse_wbs("@startwbs\n* Root\n**> Right\n--< Left\n@endwbs")
   @test.assert_eq(
     node_named(diagram, "Right").direction,
-    @tree.WbsDirection::Right,
+    @tree.TreeDirection::Right,
   )
   @test.assert_eq(
     node_named(diagram, "Left").direction,
-    @tree.WbsDirection::Left,
+    @tree.TreeDirection::Left,
   )
   @test.assert_eq(
     parent_label(diagram, node_named(diagram, "Left")),
@@ -79,7 +79,7 @@ test "parses modern and legacy node modifiers" {
   @test.assert_eq(modern.code, Some("right"))
   @test.assert_eq(modern.stereotype, Some("<<tag>>"))
   @test.assert_eq(direction_first.shape, @tree.NodeShape::Boxless)
-  @test.assert_eq(direction_first.direction, @tree.WbsDirection::Right)
+  @test.assert_eq(direction_first.direction, @tree.TreeDirection::Right)
   @test.assert_eq(legacy.shape, @tree.NodeShape::Boxless)
   @test.assert_eq(legacy.background_color, Some("#def"))
   @test.assert_eq(legacy.code, Some("left"))

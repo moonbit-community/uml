@@ -3,7 +3,7 @@ priv struct ItemLine {
   marker : String
   code : String?
   label : String?
-  direction : @tree.WbsDirection
+  direction : @tree.TreeDirection
   shape : @tree.NodeShape
   background_color : String?
   multiline : Bool
@@ -12,7 +12,7 @@ priv struct ItemLine {
 ///|
 priv struct ItemPrefix {
   code : String?
-  direction : @tree.WbsDirection?
+  direction : @tree.TreeDirection?
   shape : @tree.NodeShape
   background_color : String?
   end : Int
@@ -87,27 +87,27 @@ fn wbs_marker_end(cursor : @tokenizer.Cursor) -> Int? {
 }
 
 ///|
-fn marker_direction(marker : String) -> @tree.WbsDirection {
+fn marker_direction(marker : String) -> @tree.TreeDirection {
   if marker.contains("-") {
-    @tree.WbsDirection::Left
+    @tree.TreeDirection::Left
   } else {
-    @tree.WbsDirection::Right
+    @tree.TreeDirection::Right
   }
 }
 
 ///|
 fn parse_modifiers(
   cursor : @tokenizer.Cursor,
-) -> (@tree.NodeShape, @tree.WbsDirection?, Int) {
+) -> (@tree.NodeShape, @tree.TreeDirection?, Int) {
   let parse_direction = () => {
     match cursor.peek() {
       Some('<') => {
         ignore(cursor.advance())
-        Some(@tree.WbsDirection::Left)
+        Some(@tree.TreeDirection::Left)
       }
       Some('>') => {
         ignore(cursor.advance())
-        Some(@tree.WbsDirection::Right)
+        Some(@tree.TreeDirection::Right)
       }
       _ => None
     }

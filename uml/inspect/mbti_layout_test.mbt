@@ -67,11 +67,11 @@ test "mindmap layout connects every relation as a tree edge" {
     let mut found_parent = false
     let mut found_child = false
     for node in layout.nodes {
-      if node.idea_index == edge.parent_index {
+      if node.index == edge.parent_index {
         parent_x = node.x
         found_parent = true
       }
-      if node.idea_index == edge.child_index {
+      if node.index == edge.child_index {
         found_child = node.x >= parent_x
       }
     }
@@ -118,7 +118,7 @@ test "mindmap layout makes base entities forest roots" {
   let layout = @render.mindmap_layout_entity(diagram.graph)
   let root_count = layout.nodes
     .filter(node => {
-      layout.edges.all(edge => edge.child_index != node.idea_index)
+      layout.edges.all(edge => edge.child_index != node.index)
     })
     .length()
   // Point's relation target is Eq, so only Eq is a root.

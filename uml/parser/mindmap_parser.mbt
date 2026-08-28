@@ -2,7 +2,7 @@
 priv struct RawIdea {
   marker : String
   level : Int
-  direction : @tree.MindmapDirection?
+  direction : @tree.TreeDirection?
   shape : @tree.IdeaShape
   background_color : String?
   label : String
@@ -73,7 +73,7 @@ fn parse_raw_idea(line : String) -> RawIdea? {
     return Some({
       marker: "0",
       level: 0,
-      direction: Some(@tree.MindmapDirection::Right),
+      direction: Some(@tree.TreeDirection::Right),
       shape: @tree.IdeaShape::Box,
       background_color: None,
       label: trimmed[1:].trim_start().to_owned(),
@@ -98,9 +98,9 @@ fn parse_raw_idea(line : String) -> RawIdea? {
       level,
       direction: Some(
         if marker.contains("-") {
-          @tree.MindmapDirection::Left
+          @tree.TreeDirection::Left
         } else {
-          @tree.MindmapDirection::Right
+          @tree.TreeDirection::Right
         },
       ),
       shape,
@@ -189,7 +189,7 @@ fn complete_multiline_label(
 ///|
 fn parent_for(
   ideas : Array[@tree.Idea],
-  direction : @tree.MindmapDirection,
+  direction : @tree.TreeDirection,
   level : Int,
 ) -> Int? raise @tokenizer.ParseError {
   let mut index = ideas.length() - 1
@@ -263,11 +263,13 @@ pub fn parse_mindmap(
     .to_array()
   let ideas = []
   let style = @style.DocumentStyle::empty()
-  let mindmap_style = @tree.MindmapStyle::default()
+  let mindmap_style = @tree.TreeStyle::default(
+    @tree.TreeDiagramFamily::Mindmap,
+  )
   let mut index = 0
   let mut multiplier : Int? = None
   let mut org_first : String? = None
-  let mut default_direction : @tree.MindmapDirection = @tree.MindmapDirection::Right
+  let mut default_direction : @tree.TreeDirection = @tree.TreeDirection::Right
   while index < lines.length() {
     let line = @tokenizer.strip_line_comment(lines[index])
     let trimmed = line.trim().to_owned()
@@ -311,12 +313,12 @@ pub fn parse_mindmap(
     }
     let lower = trimmed.to_lower()
     if lower.contains("left side") || lower.contains("left direction") {
-      default_direction = @tree.MindmapDirection::Left
+      default_direction = @tree.TreeDirection::Left
       index += 1
       continue
     }
     if lower.contains("right side") || lower.contains("right direction") {
-      default_direction = @tree.MindmapDirection::Right
+      default_direction = @tree.TreeDirection::Right
       index += 1
       continue
     }

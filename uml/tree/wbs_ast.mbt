@@ -1,17 +1,4 @@
 ///|
-/// The side on which a WBS node is attached to its parent.
-pub(all) enum WbsDirection {
-  Left
-  Right
-} derive(Eq, Debug)
-
-///|
-pub extend WbsDirection with Eq::{not_equal, equal}
-
-///|
-pub extend WbsDirection with Debug::{to_repr}
-
-///|
 /// The visual form selected for a WBS node.
 pub(all) enum NodeShape {
   Box
@@ -31,7 +18,7 @@ pub(all) struct WbsNode {
   code : String?
   label : String
   level : Int
-  direction : WbsDirection
+  direction : TreeDirection
   shape : NodeShape
   background_color : String?
   stereotype : String?
