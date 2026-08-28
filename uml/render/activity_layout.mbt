@@ -222,6 +222,30 @@ const BRANCH_DIAMOND_MARGIN : Int = 10
 const WHILE_BACK_MARGIN : Int = 12
 
 ///|
+/// The vertical route line a `BackwardLeft`/`WhileExitLeft` edge loops
+/// through, left of both nodes.
+///
+/// The SVG path, the label extent, and the compression pass all derive this
+/// x; keep it here instead of re-deriving `from.x.min(to.x)` per file.
+fn backward_left_route_x(
+  from : ActivityNodeLayout,
+  to : ActivityNodeLayout,
+) -> Int {
+  from.x.min(to.x) - WHILE_BACK_MARGIN
+}
+
+///|
+/// The vertical route line a `BackwardRight` edge loops through, right of
+/// both nodes. Shared by the SVG path, the label extent, and the compression
+/// pass; do not re-derive `(from.x + from.width).max(...)` locally.
+fn backward_right_route_x(
+  from : ActivityNodeLayout,
+  to : ActivityNodeLayout,
+) -> Int {
+  (from.x + from.width).max(to.x + to.width) + WHILE_BACK_MARGIN
+}
+
+///|
 /// While body-to-exit gap: PlantUML stacks 10px to the back-edge line,
 /// 12px to the exit label line, then 20px to the exit node.
 const WHILE_EXIT_GAP : Int = 42

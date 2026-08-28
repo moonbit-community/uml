@@ -519,19 +519,17 @@ fn @entity.EntityDiagram::graphviz_layout(
   let bbox = laid_out.bbox
   let nodes : Array[GraphvizNodeLayout] = []
   for node_layout in laid_out.nodes {
-    let point = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
-    let x = point.x
-    let y = point.y
     guard graphviz_entity_index(self, node_layout.node.name())
       is Some(entity_index) else {
       continue
     }
-    let raw_width = @graphviz.inches_to_points(node_layout.width_in)
-    let raw_height = @graphviz.inches_to_points(node_layout.height_in)
+    let (raw_left, raw_top, raw_width, raw_height) = @graphviz.graphviz_node_rect(
+      node_layout, bbox,
+    )
     let width = raw_width.ceil().max(1.0)
     let height = raw_height.ceil().max(1.0)
-    let left = (x - raw_width / 2.0).floor()
-    let top = (y - raw_height / 2.0).floor()
+    let left = raw_left.floor()
+    let top = raw_top.floor()
     nodes.push({
       code: self.entities[entity_index].qualified_code,
       x: left + width / 2.0,

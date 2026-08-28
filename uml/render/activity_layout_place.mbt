@@ -908,8 +908,7 @@ fn edge_label_extent(
   }
   match (from, to) {
     (Some(from), Some(to)) => {
-      let route_x = (from.x + from.width).max(to.x + to.width) +
-        WHILE_BACK_MARGIN
+      let route_x = backward_right_route_x(from, to)
       match (edge.label, edge.route) {
         (Some(label), BackwardRight) =>
           Some(route_x + small_metrics.measure(label).width / 2)

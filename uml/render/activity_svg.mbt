@@ -70,12 +70,11 @@ fn append_edge(
         "M \{from.x + from.width} \{from.y + from.height / 2} H \{to.x}"
       Goto => "M \{from.x} \{from.y} H \{to.x} V \{to.y}"
       BackwardLeft => {
-        let route_x = from.x.min(to.x) - WHILE_BACK_MARGIN
+        let route_x = backward_left_route_x(from, to)
         "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
       }
       BackwardRight => {
-        let route_x = (from.x + from.width).max(to.x + to.width) +
-          WHILE_BACK_MARGIN
+        let route_x = backward_right_route_x(from, to)
         if from_is_decision {
           "M \{from.x + from.width} \{from_center_y} H \{route_x} V \{to.y + to.height / 2}"
         } else {
@@ -90,7 +89,7 @@ fn append_edge(
         "M \{from.x + from.width} \{from_center_y} H \{target_x} V \{y2}"
       SwitchMiddle => "M \{x} \{y1} V \{y1 + 12} H \{target_x} V \{y2}"
       WhileExitLeft => {
-        let route_x = from.x.min(to.x) - WHILE_BACK_MARGIN
+        let route_x = backward_left_route_x(from, to)
         "M \{from.x} \{from_center_y} H \{route_x} V \{to.y - VERTICAL_GAP} H \{target_x} V \{to.y}"
       }
     }

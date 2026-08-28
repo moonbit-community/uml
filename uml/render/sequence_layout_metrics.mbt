@@ -428,6 +428,45 @@ fn participant_box_horizontal_bounds(
 }
 
 ///|
+/// The maximum participant-box nesting depth across the layouts.
+///
+/// Shared by the participant-box painters and constrains; do not re-fold the
+/// depths locally.
+fn max_participant_box_depth(layouts : Array[ParticipantLayout]) -> Int {
+  layouts.fold(init=0, (depth, layout) => {
+    depth.max(layout.participant.boxes.length())
+  })
+}
+
+///|
+/// Walk one box depth, invoking `run` for each maximal run of layouts that
+/// share the same box at that depth.
+///
+/// The box painters, the content-bounds pass, and the gap constrains all
+/// need this run-length split; keep it here rather than re-implementing it.
+fn for_each_participant_box_run(
+  layouts : Array[ParticipantLayout],
+  depth : Int,
+  run : (Int, Int, @seq.ParticipantBox) -> Unit,
+) -> Unit {
+  let mut active : @seq.ParticipantBox? = None
+  let mut start = 0
+  for index, layout in layouts {
+    let current = layout.participant.boxes.get(depth)
+    if current != active {
+      if active is Some(box) {
+        run(start, index, box)
+      }
+      active = current
+      start = index
+    }
+  }
+  if active is Some(box) {
+    run(start, layouts.length(), box)
+  }
+}
+
+///|
 fn @seq.SequenceDiagram::participant_is_linked(
   self : @seq.SequenceDiagram,
   code : String,

@@ -606,13 +606,9 @@ fn @flow.StateDiagram::layout_scope(
     let node_name = node_layout.node.name()
     for index, visible in visible_nodes {
       guard state_graphviz_node_name(index) == node_name else { continue }
-      let point = @graphviz.graphviz_point_to_svg(node_layout.pos, bbox)
-      let x = point.x
-      let y = point.y
-      let width = @graphviz.inches_to_points(node_layout.width_in)
-      let height = @graphviz.inches_to_points(node_layout.height_in)
-      let node_x = x - width / 2.0
-      let node_y = y - height / 2.0
+      let (node_x, node_y, width, height) = @graphviz.graphviz_node_rect(
+        node_layout, bbox,
+      )
       output.nodes.push({
         code: visible.state.code,
         x: node_x,
@@ -679,14 +675,10 @@ fn @flow.StateDiagram::layout_scope(
       } else {
         output.width
       },
-      nodes: output.nodes.map(node => { ..node, x: node.x + dx, }),
-      edges: output.edges.map(edge => {
-        ..edge,
-        paths: edge.paths.map(path => path.map(point => (point.0 + dx, point.1))),
-        label: edge.label.map(point => (point.0 + dx, point.1)),
-      }),
-      regions: output.regions.map(region => { ..region, x: region.x + dx, }),
-      notes: output.notes.map(note => { ..note, x: note.x + dx, }),
+      nodes: output.nodes.map(node => shift_state_node(node, dx, 0.0)),
+      edges: output.edges.map(edge => shift_state_edge(edge, dx, 0.0)),
+      regions: output.regions.map(region => shift_state_region(region, dx, 0.0)),
+      notes: output.notes.map(note => shift_state_note(note, dx, 0.0)),
     }
   }
 }

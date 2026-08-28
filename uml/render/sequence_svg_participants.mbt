@@ -223,37 +223,17 @@ fn append_participant_boxes(
   output : StringBuilder,
   layout : DiagramLayout,
 ) -> Unit {
-  let max_depth = layout.participants.fold(init=0, (depth, participant) => {
-    depth.max(participant.participant.boxes.length())
-  })
+  let max_depth = max_participant_box_depth(layout.participants)
   for depth in 0..<max_depth {
-    let mut active : @seq.ParticipantBox? = None
-    let mut start = 0
-    for index, participant in layout.participants {
-      let current = participant.participant.boxes.get(depth)
-      if current != active {
-        if active is Some(box) {
-          append_participant_box(
-            output,
-            layout.participants[start:index].to_owned(),
-            box,
-            depth,
-            layout,
-          )
-        }
-        active = current
-        start = index
-      }
-    }
-    if active is Some(box) {
+    for_each_participant_box_run(layout.participants, depth, (start, end, box) => {
       append_participant_box(
         output,
-        layout.participants[start:].to_owned(),
+        layout.participants[start:end].to_owned(),
         box,
         depth,
         layout,
       )
-    }
+    })
   }
 }
 

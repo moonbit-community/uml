@@ -59,12 +59,11 @@ fn edge_x_extent(
     }
     Goto => (from.x.min(to.x), from.x.max(to.x))
     BackwardLeft => {
-      let route_x = from.x.min(to.x) - WHILE_BACK_MARGIN
+      let route_x = backward_left_route_x(from, to)
       (route_x, x.max(target_x))
     }
     BackwardRight => {
-      let route_x = (from.x + from.width).max(to.x + to.width) +
-        WHILE_BACK_MARGIN
+      let route_x = backward_right_route_x(from, to)
       (x.min(target_x), route_x)
     }
     IfDownLeft => (from.x.min(target_x), from.x.max(target_x))
@@ -72,7 +71,7 @@ fn edge_x_extent(
       ((from.x + from.width).min(target_x), (from.x + from.width).max(target_x))
     SwitchLeft | SwitchRight | SwitchMiddle => return None
     WhileExitLeft => {
-      let route_x = from.x.min(to.x) - WHILE_BACK_MARGIN
+      let route_x = backward_left_route_x(from, to)
       (route_x, from.x.max(target_x))
     }
   }

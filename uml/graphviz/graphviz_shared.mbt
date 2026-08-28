@@ -87,6 +87,22 @@ pub fn graphviz_point_to_svg(
 }
 
 ///|
+/// Convert a layout node's center (inches, y-up) into a top-left SVG rect.
+/// Returns `(x, y, width, height)` in SVG points.
+///
+/// Shared by the entity, state, and note layout passes; use it instead of
+/// re-deriving `center - width / 2` per diagram family.
+pub fn graphviz_node_rect(
+  node_layout : @dot_layout.DotLayoutNode,
+  bbox : @geom.Rect,
+) -> (Double, Double, Double, Double) {
+  let point = graphviz_point_to_svg(node_layout.pos, bbox)
+  let width = inches_to_points(node_layout.width_in)
+  let height = inches_to_points(node_layout.height_in)
+  (point.x - width / 2.0, point.y - height / 2.0, width, height)
+}
+
+///|
 /// A normalized Graphviz point in SVG coordinates.
 pub(all) struct GraphvizPoint {
   x : Double
@@ -245,21 +261,19 @@ pub fn graphviz_notes(
     guard note_names.get(node_layout.node.name()) is Some(note_index) else {
       continue
     }
-    let point = graphviz_point_to_svg(node_layout.pos, bbox)
-    let x = point.x
-    let y = point.y
+    let (x, y, width, height) = graphviz_node_rect(node_layout, bbox)
     notes.push({
       note_index,
       x: match anchor {
-        TopLeft => x - inches_to_points(node_layout.width_in) / 2.0
-        Center => x
+        TopLeft => x
+        Center => x + width / 2.0
       },
       y: match anchor {
-        TopLeft => y - inches_to_points(node_layout.height_in) / 2.0
-        Center => y
+        TopLeft => y
+        Center => y + height / 2.0
       },
-      width: inches_to_points(node_layout.width_in),
-      height: inches_to_points(node_layout.height_in),
+      width,
+      height,
     })
   }
   notes
