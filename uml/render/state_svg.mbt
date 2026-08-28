@@ -744,14 +744,15 @@ fn @flow.StateDiagram::render_svg(
   let width = layout.width.ceil().to_int().max(1)
   let height = layout.height.ceil().to_int().max(1)
   let output = @svg.XmlWriter::new()
-  output.open("svg", attributes=[
-    ("xmlns", "http://www.w3.org/2000/svg"),
-    ("width", width.to_string()),
-    ("height", height.to_string()),
-    ("viewBox", "0 0 " + width.to_string() + " " + height.to_string()),
-    ("role", "img"),
-    ("aria-label", "State diagram"),
-  ])
+  output.open(
+    "svg",
+    attributes=@svg.svg_root_attributes(
+      width,
+      height,
+      "0 0 \{width} \{height}",
+      "State diagram",
+    ),
+  )
   output.open("defs")
   output.raw(
     @svg.arrow_marker_markup(
@@ -765,56 +766,26 @@ fn @flow.StateDiagram::render_svg(
   output.close()
   output.open("style")
   output.raw(
-    ".state-transition{stroke:" +
-    self.style.diagram_line_color() +
-    ";stroke-width:" +
-    @svg.emphasized_stroke_width() +
-    "}.state-region-separator{stroke:" +
-    self.style.diagram_line_color() +
-    ";stroke-width:" +
-    @svg.standard_border_stroke_width() +
-    "}.state-label{font-family:" +
-    state_font_family(self.style) +
-    ";font-size:" +
-    state_font_size(self.style).to_string() +
-    "px;fill:" +
-    state_font_color(self.style) +
-    "}.state-description-label{font-family:" +
-    state_description_font_family(self.style) +
-    ";font-size:" +
-    state_description_font_size(self.style).to_string() +
-    "px;fill:" +
-    state_description_font_color(self.style) +
-    "}.state-pseudostate-label{font-family:" +
-    diamond_font_family(self.style) +
-    ";font-size:" +
-    diamond_font_size(self.style).to_string() +
-    "px;fill:" +
-    diamond_font_color(self.style) +
-    "}.state-transition-label{font-family:" +
-    self.style.font_family() +
-    ";font-size:" +
-    @svg.auxiliary_label_font_size() +
-    ";fill:" +
-    self.style.diagram_text_color() +
-    "}.state-note-label{font-family:" +
-    note_font_family(self.style) +
-    ";font-size:" +
-    note_font_size(self.style).to_string() +
-    "px" +
-    ";fill:" +
-    note_font_color(self.style) +
-    "}",
+    (
+      $|.state-transition{stroke:\{self.style.diagram_line_color()};stroke-width:\{@svg.emphasized_stroke_width()}}
+      $|.state-region-separator{stroke:\{self.style.diagram_line_color()};stroke-width:\{@svg.standard_border_stroke_width()}}
+      $|.state-label{font-family:\{state_font_family(self.style)};font-size:\{state_font_size(self.style)}px;fill:\{state_font_color(self.style)}}
+      $|.state-description-label{font-family:\{state_description_font_family(self.style)};font-size:\{state_description_font_size(self.style)}px;fill:\{state_description_font_color(self.style)}}
+      $|.state-pseudostate-label{font-family:\{diamond_font_family(self.style)};font-size:\{diamond_font_size(self.style)}px;fill:\{diamond_font_color(self.style)}}
+      $|.state-transition-label{font-family:\{self.style.font_family()};font-size:\{@svg.auxiliary_label_font_size()};fill:\{self.style.diagram_text_color()}}
+      $|.state-note-label{font-family:\{note_font_family(self.style)};font-size:\{note_font_size(self.style)}px;fill:\{note_font_color(self.style)}},
+    ),
   )
   output.close()
-  output.empty("rect", attributes=[
-    ("class", "state-canvas"),
-    ("x", "0"),
-    ("y", "0"),
-    ("width", width.to_string()),
-    ("height", height.to_string()),
-    ("fill", self.style.canvas_color()),
-  ])
+  output.empty(
+    "rect",
+    attributes=@svg.background_rect_attributes(
+      width,
+      height,
+      self.style.canvas_color(),
+      class_name="state-canvas",
+    ),
+  )
   for edge in layout.edges {
     append_state_edge(output, self, edge)
   }

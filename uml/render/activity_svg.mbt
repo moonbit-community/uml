@@ -312,52 +312,28 @@ fn @flow.ActivityDiagram::render_svg(
   let defaults = self.style.defaults()
   let line = self.style.diagram_line_color()
   let text = self.style.diagram_text_color()
-  output.open("svg", attributes=[
-    ("xmlns", "http://www.w3.org/2000/svg"),
-    ("width", layout.width.to_string()),
-    ("height", layout.height.to_string()),
-    ("viewBox", "0 0 \{layout.width} \{layout.height}"),
-    ("role", "img"),
-    ("aria-label", "Activity diagram"),
-  ])
+  output.open(
+    "svg",
+    attributes=@svg.svg_root_attributes(
+      layout.width,
+      layout.height,
+      "0 0 \{layout.width} \{layout.height}",
+      "Activity diagram",
+    ),
+  )
   output.open("style")
   let emphasized_width = @svg.emphasized_stroke_width()
   output.raw(
-    "svg{font-family:" +
-    self.style.font_family() +
-    ";font-size:" +
-    self.style.font_size() +
-    ";background:" +
-    self.style.canvas_color() +
-    "}.activity-edge{fill:none;stroke:" +
-    line +
-    ";stroke-width:" +
-    emphasized_width +
-    "}.activity-label{fill:" +
-    text +
-    "}.activity-partition,.activity-swimlane{fill:" +
-    defaults.partition +
-    ";stroke:" +
-    line +
-    ";stroke-width:" +
-    emphasized_width +
-    "}.activity-swimlane{stroke-dasharray:" +
-    @svg.separator_dash_pattern() +
-    "}.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:" +
-    line +
-    "}.activity-stop-outer,.activity-action,.activity-decision,.activity-exit{fill:" +
-    defaults.node +
-    ";stroke:" +
-    line +
-    ";stroke-width:" +
-    emphasized_width +
-    "}.activity-note{fill:" +
-    defaults.note +
-    ";stroke:" +
-    line +
-    ";stroke-width:" +
-    emphasized_width +
-    "}",
+    (
+      $|\{@svg.svg_style_rule(self.style.font_family(), self.style.font_size(), self.style.canvas_color())}
+      $|.activity-edge{fill:none;stroke:\{line};stroke-width:\{emphasized_width}}
+      $|.activity-label{fill:\{text}}
+      $|.activity-partition,.activity-swimlane{fill:\{defaults.partition};stroke:\{line};stroke-width:\{emphasized_width}}
+      $|.activity-swimlane{stroke-dasharray:\{@svg.separator_dash_pattern()}}
+      $|.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:\{line}}
+      $|.activity-stop-outer,.activity-action,.activity-decision,.activity-exit{fill:\{defaults.node};stroke:\{line};stroke-width:\{emphasized_width}}
+      $|.activity-note{fill:\{defaults.note};stroke:\{line};stroke-width:\{emphasized_width}},
+    ),
   )
   output.close()
   output.open("defs")
@@ -373,13 +349,14 @@ fn @flow.ActivityDiagram::render_svg(
   output.empty("path", attributes=[("d", "M 0 0 L 6 3 L 0 6 Z"), ("fill", line)])
   output.close()
   output.close()
-  output.empty("rect", attributes=[
-    ("x", "0"),
-    ("y", "0"),
-    ("width", layout.width.to_string()),
-    ("height", layout.height.to_string()),
-    ("fill", self.style.canvas_color()),
-  ])
+  output.empty(
+    "rect",
+    attributes=@svg.background_rect_attributes(
+      layout.width,
+      layout.height,
+      self.style.canvas_color(),
+    ),
+  )
   layout.regions.each(region => append_region(output, region, font_metrics))
   layout.edges.each(edge => append_edge(output, layout, edge, small_metrics))
   layout.nodes.each(node => {

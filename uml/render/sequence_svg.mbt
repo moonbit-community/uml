@@ -15,8 +15,14 @@ fn append_svg_preamble(
   let defaults = style.defaults().sequence_colors()
   let border_width = @svg.standard_border_stroke_width()
   let emphasized_width = @svg.emphasized_stroke_width()
-  output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{layout.width}" height="\{layout.height}" viewBox="0 0 \{layout.width} \{layout.height}" role="img" aria-label="Sequence diagram">
+  output.write_string(
+    @svg.svg_root_markup(
+      layout.width,
+      layout.height,
+      "0 0 \{layout.width} \{layout.height}",
+      "Sequence diagram",
+    ),
+  )
   let defs =
     $|<defs>
     $|\{@svg.arrow_marker_markup("arrow", marker_width=7.0, marker_height=7.0, path_class="arrow-fill")}
@@ -28,7 +34,7 @@ fn append_svg_preamble(
 
   let svg_style =
     $|<style>
-    $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
+    $|\{@svg.svg_style_rule(font_family, font_size, background)}
     $|.participant rect{stroke:\{line_color};stroke-width:0.5}
     $|.activation{stroke:\{line_color};stroke-width:1}
     $|.note,.divider-title{stroke:\{line_color};stroke-width:\{border_width}}
@@ -82,9 +88,13 @@ fn @seq.SequenceDiagram::render_svg(
   let layout = self.layout()
   let output = StringBuilder()
   append_svg_preamble(output, layout, self.style)
-  let background = self.style.canvas_color()
-  output <+
-    $|<rect x="0" y="0" width="\{layout.width}" height="\{layout.height}" fill="\{background}"/>
+  output.write_string(
+    @svg.background_rect_markup(
+      layout.width,
+      layout.height,
+      self.style.canvas_color(),
+    ),
+  )
   append_groups(output, layout)
   append_participant_boxes(output, layout)
   for participant in layout.participants {
@@ -164,7 +174,7 @@ fn @seq.SequenceDiagram::render_svg(
   if self.show_footbox {
     append_footboxes(output, layout)
   }
-  output.write_string("</svg>\n")
+  output.write_string(@svg.svg_close_markup())
   output.to_string()
 }
 

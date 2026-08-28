@@ -62,8 +62,14 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   let scale = diagram_scale(self.style)
   let scaled_width = (output_width.to_double() * scale).ceil().to_int()
   let scaled_height = (output_height.to_double() * scale).ceil().to_int()
-  output <+
-    $|<svg xmlns="http://www.w3.org/2000/svg" width="\{scaled_width}" height="\{scaled_height}" viewBox="\{view_box_x} \{view_box_y} \{output_width} \{output_height}" role="img" aria-label="\{family_capability.aria_label}">
+  output.write_string(
+    @svg.svg_root_markup(
+      scaled_width,
+      scaled_height,
+      "\{view_box_x} \{view_box_y} \{output_width} \{output_height}",
+      family_capability.aria_label,
+    ),
+  )
   if scale != 1.0 {
     output <+
       $|<g transform="scale(\{scale})">
@@ -77,7 +83,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   )
   let relations_style =
     $|<style>
-    $|svg{font-family:\{font_family};font-size:\{font_size};background:\{background}}
+    $|\{@svg.svg_style_rule(font_family, font_size, background)}
     $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{border_width}}
     $|.class-node foreignObject line{stroke-width:\{border_width};fill:none}
     $|.class-node foreignObject rect{stroke-width:\{border_width}}
@@ -171,7 +177,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   if scale != 1.0 {
     output.write_string("</g>\n")
   }
-  output.write_string("</svg>\n")
+  output.write_string(@svg.svg_close_markup())
   output.to_string()
 }
 

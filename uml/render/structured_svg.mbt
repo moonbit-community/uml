@@ -388,7 +388,7 @@ fn @structured.StructuredDiagram::render_svg(
   output.write_char('\n')
   append_edges(output, root)
   structured_append_node(output, root)
-  output.write_string("</svg>\n")
+  output.write_string(@svg.svg_close_markup())
   output.to_string()
 }
 
