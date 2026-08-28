@@ -19,19 +19,19 @@ pub fn parse_creole_text_line(line : String) -> Array[TreeTextSpan] {
       Some(relative_index) => {
         let index = cursor + relative_index
         if index > cursor {
-          spans.push({ text: line[cursor:index].to_owned(), strike })
+          spans.push({ text: line[cursor:index].to_owned(), strike, })
         }
         cursor = index + marker.length()
         strike = !strike
       }
       None => {
-        spans.push({ text: line[cursor:].to_owned(), strike })
+        spans.push({ text: line[cursor:].to_owned(), strike, })
         cursor = line.length()
       }
     }
   }
   if spans.is_empty() {
-    spans.push({ text: "", strike: false })
+    spans.push({ text: "", strike: false, })
   }
   spans
 }

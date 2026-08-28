@@ -117,9 +117,7 @@ test "mindmap layout makes base entities forest roots" {
   let diagram = @parser.parse_mbti(source)
   let layout = @render.mindmap_layout_entity(diagram.graph)
   let root_count = layout.nodes
-    .filter(node => {
-      layout.edges.all(edge => edge.child_index != node.index)
-    })
+    .filter(node => layout.edges.all(edge => edge.child_index != node.index))
     .length()
   // Point's relation target is Eq, so only Eq is a root.
   @test.assert_eq(root_count, 1)

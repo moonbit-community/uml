@@ -112,7 +112,7 @@ fn @tree.MindmapDiagram::render_svg(
   self : @tree.MindmapDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme) }
+  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = self.layout()
   let background = self.style.canvas_color()
   let font_family = self.style.font_family()
@@ -131,7 +131,7 @@ fn @tree.MindmapDiagram::render_svg(
     background,
     font_family,
     font_size,
-    css = ".mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}",
+    css=".mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}",
   )
   let output = document.writer()
   layout.edges.each(edge => {

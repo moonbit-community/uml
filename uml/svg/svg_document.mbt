@@ -40,7 +40,7 @@ pub fn SvgDocument::new(
     ("height", height.to_string()),
     ("fill", background),
   ])
-  { writer, width, height }
+  { writer, width, height, }
 }
 
 ///|

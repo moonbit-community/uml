@@ -533,7 +533,7 @@ pub fn translate_nodes(
   dx : Int,
   dy : Int,
 ) -> Array[NodeLayout] {
-  nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy })
+  nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy, })
 }
 
 ///|

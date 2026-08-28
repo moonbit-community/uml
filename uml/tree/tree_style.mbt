@@ -178,7 +178,7 @@ pub fn TreeNodeStyle::defaults(family : TreeDiagramFamily) -> TreeNodeStyle {
 
 ///|
 pub fn TreeArrowStyle::defaults() -> TreeArrowStyle {
-  { line_color: None, line_thickness: Some(1) }
+  { line_color: None, line_thickness: Some(1), }
 }
 
 ///|
@@ -302,9 +302,9 @@ pub fn TreeNodeStyle::with_property(
         ..self,
         font_size: Some(size.max(1)),
       })
-    "backgroundcolor" => { ..self, background_color: Some(value) }
-    "linecolor" | "bordercolor" => { ..self, line_color: Some(value) }
-    "fontcolor" => { ..self, font_color: Some(value) }
+    "backgroundcolor" => { ..self, background_color: Some(value), }
+    "linecolor" | "bordercolor" => { ..self, line_color: Some(value), }
+    "fontcolor" => { ..self, font_color: Some(value), }
     "linethickness" =>
       parse_nonnegative_int(value).map_or(self, thickness => {
         ..self,
@@ -322,14 +322,14 @@ pub fn TreeNodeStyle::with_property(
       })
     "width" =>
       match value.equal_ignore_ascii_case("auto") {
-        true => { ..self, width_auto: Some(true) }
+        true => { ..self, width_auto: Some(true), }
         false => self
       }
     "horizontalalignment" =>
       match value.to_lower() {
-        "left" => { ..self, alignment: Some(Left) }
-        "right" => { ..self, alignment: Some(Right) }
-        "center" | "centre" => { ..self, alignment: Some(Center) }
+        "left" => { ..self, alignment: Some(Left), }
+        "right" => { ..self, alignment: Some(Right), }
+        "center" | "centre" => { ..self, alignment: Some(Center), }
         _ => self
       }
     _ => self
@@ -344,7 +344,7 @@ pub fn TreeArrowStyle::with_property(
 ) -> TreeArrowStyle {
   match key.to_lower().replace(old=":", new="") {
     "linecolor" | "color" =>
-      { ..self, line_color: Some(value.trim().to_owned()) }
+      { ..self, line_color: Some(value.trim().to_owned()), }
     "linethickness" =>
       parse_nonnegative_int(value).map_or(self, thickness => {
         ..self,
@@ -403,9 +403,7 @@ pub fn TreeStyle::apply_node_property(
     self.leaf_node = self.leaf_node.with_property(key, value)
   } else if selector.has_prefix(".") {
     let name = normalized_stereotype(selector[1:].to_owned())
-    let current = self.stereotypes
-      .get(name)
-      .unwrap_or(TreeNodeStyle::empty())
+    let current = self.stereotypes.get(name).unwrap_or(TreeNodeStyle::empty())
     self.stereotypes[name] = current.with_property(key, value)
   }
 }

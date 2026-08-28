@@ -263,9 +263,7 @@ pub fn parse_mindmap(
     .to_array()
   let ideas = []
   let style = @style.DocumentStyle::empty()
-  let mindmap_style = @tree.TreeStyle::default(
-    @tree.TreeDiagramFamily::Mindmap,
-  )
+  let mindmap_style = @tree.TreeStyle::default(@tree.TreeDiagramFamily::Mindmap)
   let mut index = 0
   let mut multiplier : Int? = None
   let mut org_first : String? = None
