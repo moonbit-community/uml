@@ -1,31 +1,31 @@
 # UML CLI Cram Tests
 
-These Moon Cram tests document the native `uml_cli` executable. `moon cram`
-builds the native CLI and puts `uml_cli.exe` on `PATH`:
+These Moon Cram tests document the native `uml` executable. `moon cram`
+builds the native CLI and puts `uml` on `PATH`:
 
 ```bash
-moon cram test --release tests/cram
+moon cram test --release cram
 ```
 
 ## Help And Version
 
 ```mooncram
-$ uml_cli.exe --version
+$ uml --version
 0.1.0
 ```
 
 ```mooncram
-$ uml_cli.exe --help
-Usage: uml_cli [options] [file] [command]
+$ uml --help
+Usage: uml [options] [file] [command]
 
 Render PlantUML diagrams as SVG.
 
 Run it from mooncakes.io without installing (the binary is fetched and
-cached on first use; pin a version with moonbit-community/uml_cli@<version>):
+cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>):
 
-  moonx moonbit-community/uml_cli diagram.puml > diagram.svg
-  moonx moonbit-community/uml_cli render diagram.puml -o diagram.svg
-  moonx moonbit-community/uml_cli check diagram.puml
+  moonx moonbit-community/uml-cli/uml diagram.puml > diagram.svg
+  moonx moonbit-community/uml-cli/uml render diagram.puml -o diagram.svg
+  moonx moonbit-community/uml-cli/uml check diagram.puml
 
 Exit codes:
   0  success
@@ -62,7 +62,7 @@ $ cat > hello.puml <<'EOF'
 > Alice -> Bob : hello
 > @enduml
 > EOF
-> uml_cli.exe check hello.puml
+> uml check hello.puml
 hello.puml: OK (sequence diagram)
 ```
 
@@ -74,7 +74,7 @@ $ cat > user.puml <<'EOF'
 > }
 > @enduml
 > EOF
-> uml_cli.exe check user.puml
+> uml check user.puml
 user.puml: OK (class diagram)
 ```
 
@@ -94,7 +94,7 @@ $ cat > object.puml <<'EOF'
 > }
 > @enduml
 > EOF
-> uml_cli.exe check object.puml
+> uml check object.puml
 object.puml: OK (object diagram)
 ```
 
@@ -108,7 +108,7 @@ $ cat > broken-object.puml <<'EOF'
 > }
 > @enduml
 > EOF
-> uml_cli.exe check broken-object.puml
+> uml check broken-object.puml
 error: broken-object.puml:4: bad JSON data
 [1]
 ```
@@ -124,7 +124,7 @@ $ cat > hello.puml <<'EOF'
 > Alice -> Bob : hello
 > @enduml
 > EOF
-> uml_cli.exe render hello.puml -o hello.svg
+> uml render hello.puml -o hello.svg
 > head -c 60 hello.svg
 <svg xmlns="http://www.w3.org/2000/svg" width="117" height=" (no-eol)
 ```
@@ -140,7 +140,7 @@ $ cat > hello.puml <<'EOF'
 > Alice -> Bob : hello
 > @enduml
 > EOF
-> uml_cli.exe hello.puml | head -c 15
+> uml hello.puml | head -c 15
 <svg xmlns="htt (no-eol)
 ```
 
@@ -157,7 +157,7 @@ $ cat > object.puml <<'EOF'
 > }
 > @enduml
 > EOF
-> uml_cli.exe render object.puml | head -c 15
+> uml render object.puml | head -c 15
 <svg xmlns="htt (no-eol)
 ```
 
@@ -170,7 +170,7 @@ $ cat > json-rows.puml <<'EOF'
 > }
 > @enduml
 > EOF
-> uml_cli.exe render json-rows.puml | grep -o '<line class="json-row-separator"' | wc -l
+> uml render json-rows.puml | grep -o '<line class="json-row-separator"' | wc -l
        2
 ```
 
@@ -179,7 +179,7 @@ $ cat > json-rows.puml <<'EOF'
 Unreadable input exits 1:
 
 ```mooncram
-$ uml_cli.exe check missing.puml
+$ uml check missing.puml
 error: failed to read missing.puml: No such file or directory
 [1]
 ```
@@ -191,7 +191,7 @@ $ cat > empty.puml <<'EOF'
 > @startuml
 > @enduml
 > EOF
-> uml_cli.exe check empty.puml
+> uml check empty.puml
 error: empty.puml:1: unknown diagram
 [1]
 ```
@@ -199,10 +199,10 @@ error: empty.puml:1: unknown diagram
 Usage errors exit 2:
 
 ```mooncram
-$ uml_cli.exe render
+$ uml render
 error: 'file' requires at least 1 values but only 0 were provided
 
-Usage: uml_cli render [options] <file>
+Usage: uml render [options] <file>
 
 Render PlantUML and print SVG.
 

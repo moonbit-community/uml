@@ -34,9 +34,9 @@ jobs:
         run: |
           moon check
           moon test
-          moon -C uml_cli cram test --release tests/cram
+          moon -C uml-cli cram test --release cram
 
-      # The library must go first: uml_cli resolves kokic/uml from the
+      # The library must go first: uml-cli resolves kokic/uml from the
       # registry at publish time.
       - name: publish kokic/uml
         env:
@@ -48,12 +48,12 @@ jobs:
       - name: verify published uml dependency
         run: |
           cli_dir=$(mktemp -d "$RUNNER_TEMP/uml-cli-release.XXXXXX")
-          cp -R uml_cli/. "$cli_dir/"
+          cp -R uml-cli/. "$cli_dir/"
           moon update
           moon -C "$cli_dir" check
-          moon -C "$cli_dir" cram test --release tests/cram
+          moon -C "$cli_dir" cram test --release cram
 
-      - name: publish moonbit-community/uml_cli
+      - name: publish moonbit-community/uml-cli
         env:
           MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
-        run: moon -C uml_cli publish
+        run: moon -C uml-cli publish

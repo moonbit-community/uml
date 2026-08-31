@@ -1,9 +1,9 @@
-name = "moonbit-community/uml_cli"
+name = "moonbit-community/uml-cli"
 
-version = "0.1.0"
+version = "0.1.1"
 
 import {
-  "kokic/uml@0.1.4",
+  "kokic/uml@0.2.0",
   "moonbitlang/x@0.4.50",
 }
 

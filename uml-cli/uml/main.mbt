@@ -6,11 +6,11 @@ let about : String =
   #|Render PlantUML diagrams as SVG.
   #|
   #|Run it from mooncakes.io without installing (the binary is fetched and
-  #|cached on first use; pin a version with moonbit-community/uml_cli@<version>):
+  #|cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>):
   #|
-  #|  moonx moonbit-community/uml_cli diagram.puml > diagram.svg
-  #|  moonx moonbit-community/uml_cli render diagram.puml -o diagram.svg
-  #|  moonx moonbit-community/uml_cli check diagram.puml
+  #|  moonx moonbit-community/uml-cli/uml diagram.puml > diagram.svg
+  #|  moonx moonbit-community/uml-cli/uml render diagram.puml -o diagram.svg
+  #|  moonx moonbit-community/uml-cli/uml check diagram.puml
   #|
   #|Exit codes:
   #|  0  success
@@ -34,7 +34,7 @@ fn output_option() -> @argparse.OptionArg {
 ///|
 fn uml_command() -> @argparse.Command {
   Command(
-    "uml_cli",
+    "uml",
     about~,
     version~,
     arg_required_else_help=true,

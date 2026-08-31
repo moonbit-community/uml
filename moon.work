@@ -2,7 +2,7 @@ members = [
   "./live",
   "./metrics",
   "./uml",
-  "./uml_cli",
+  "./uml-cli",
   "./identifier",
   "./profile",
 ]
