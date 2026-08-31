@@ -1,6 +1,9 @@
 import {
   "kokic/uml/api",
   "kokic/uml/tokenizer",
+  "moonbitlang/async",
+  "moonbitlang/async/io",
+  "moonbitlang/async/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x/fs",

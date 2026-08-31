@@ -12,6 +12,9 @@ let about : String =
   #|  moonx moonbit-community/uml-cli/uml render diagram.puml -o diagram.svg
   #|  moonx moonbit-community/uml-cli/uml check diagram.puml
   #|
+  #|`mod` reads a `moon tree --package --json` dependency graph from stdin and
+  #|prints the rendered SVG to stdout.
+  #|
   #|Exit codes:
   #|  0  success
   #|  1  the file could not be read or rendered; a human-readable error is
@@ -64,12 +67,16 @@ fn uml_command() -> @argparse.Command {
           ),
         ],
       ),
+      Command(
+        "mod",
+        about="Render a package dependency graph from stdin as SVG.",
+      ),
     ],
   )
 }
 
 ///|
-fn main {
+async fn main {
   let code = run(@env.args()[1:])
   if code != 0 {
     @sys.exit(code)
@@ -77,7 +84,7 @@ fn main {
 }
 
 ///|
-fn run(args : ArrayView[String]) -> Int {
+async fn run(args : ArrayView[String]) -> Int {
   let matches = @argparse.parse(uml_command(), argv=args, env=Map([])) catch {
     err => {
       println(err)
@@ -87,6 +94,7 @@ fn run(args : ArrayView[String]) -> Int {
   match matches.subcommand {
     Some(("render", child)) => dispatch_file(child, render_file)
     Some(("check", child)) => dispatch_file(child, check_file)
+    Some(("mod", child)) => package_dep(child)
     Some((name, _)) => {
       println("error: unsupported command `\{name}`")
       2
@@ -152,6 +160,24 @@ fn check_file(path : String, _matches : @argparse.Matches) -> Int {
     }
   }
   println("\{path}: OK (\{kind_name(document.kind())} diagram)")
+  0
+}
+
+///|
+async fn package_dep(_matches : @argparse.Matches) -> Int {
+  let source = @stdio.stdin.read_all().text() catch {
+    err => {
+      println("error: failed to read stdin: \{err}")
+      return 1
+    }
+  }
+  let svg = @api.render_package_dep_svg(source) catch {
+    err => {
+      println(render_error("<stdin>", "render", err))
+      return 1
+    }
+  }
+  println(svg)
   0
 }
 

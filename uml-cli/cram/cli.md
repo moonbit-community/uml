@@ -27,6 +27,9 @@ cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>)
   moonx moonbit-community/uml-cli/uml render diagram.puml -o diagram.svg
   moonx moonbit-community/uml-cli/uml check diagram.puml
 
+`mod` reads a `moon tree --package --json` dependency graph from stdin and
+prints the rendered SVG to stdout.
+
 Exit codes:
   0  success
   1  the file could not be read or rendered; a human-readable error is
@@ -39,6 +42,7 @@ rewrites the input file.
 Commands:
   render  Render PlantUML and print SVG.
   check   Parse PlantUML and report the detected diagram kind.
+  mod     Render a package dependency graph from stdin as SVG.
   help    Print help for the subcommand(s).
 
 Arguments:
@@ -172,6 +176,25 @@ $ cat > json-rows.puml <<'EOF'
 > EOF
 > uml render json-rows.puml | grep -o '<line class="json-row-separator"' | wc -l
        2
+```
+
+## Render Package Dependency Graphs
+
+`mod` reads a `moon tree --package --json` graph from stdin and prints the
+SVG to stdout:
+
+```mooncram
+$ cat <<'EOF' | uml mod | head -c 15
+> {"nodes":[{"rel":"a"},{"rel":"b"}],"edges":[{"from":0,"to":1,"alias":"","kinds":["regular"]}]}
+> EOF
+<svg xmlns="htt (no-eol)
+```
+
+Malformed input exits 1:
+
+```mooncram
+$ printf 'not json' | uml mod >/dev/null
+[1]
 ```
 
 ## Report Errors
