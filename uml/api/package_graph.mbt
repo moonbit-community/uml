@@ -3,19 +3,32 @@
 ///
 /// The input is the JSON object emitted by the `moon tree --package --json`
 /// command:
-/// a list of `nodes` (each carrying a `rel` package path) and a list of `edges`
-/// (`from`/`to` node indices, an `alias`, and dependency `kinds`). It is not a
-/// PlantUML source, so the graph is built directly on the graphviz model and
-/// rendered with the graphviz SVG engine.
+/// a list of `nodes` (each carrying a `rel` package path and a `source.kind`)
+/// and a list of `edges` (`from`/`to` node indices, an `alias`, and dependency
+/// `kinds`). It is not a PlantUML source, so the graph is built directly on the
+/// graphviz model and rendered with the graphviz SVG engine.
+///
+/// Only nodes whose `source.kind` is `"local"` and whose `rel` is non-empty
+/// are rendered; registry packages, workspace root modules, and every edge
+/// touching a dropped node are removed.
 pub fn render_package_dep_svg(
   source : String,
 ) -> String raise @dot_layout.DotLayoutError {
-  let layout = @dot_layout.layout_dot(parse_package_dep_graph(source))
+  let layout = @dot_layout.layout_dot(
+    parse_package_dep_graph(source),
+    options=@dot_layout.DotLayoutOptions::{
+      rankdir: Some(@dot_layout.RankDir::TB),
+      nodesep: None,
+      ranksep: None,
+      splines: None,
+    },
+  )
   @svg.render_svg(layout)
 }
 
 ///|
-/// Build the graphviz model from the `moon pkg tree --json` structure.
+/// Build the graphviz model from the `moon tree --package --json` structure,
+/// keeping only nodes whose `source.kind` is `"local"` with a non-empty `rel`.
 fn parse_package_dep_graph(
   source : String,
 ) -> @cgraph.Graph raise @dot_layout.DotLayoutError {
@@ -25,8 +38,16 @@ fn parse_package_dep_graph(
   }
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="packages")
   let nodes = root.required_array("nodes")
+  let local_index : Map[Int, Int] = Map([])
+  let local_nodes : Array[Json] = []
   for index, node in nodes {
-    let gv_node = graph.node("n\{index}")
+    if node.is_local_node() && !node.required_string("rel").is_empty() {
+      local_index[index] = local_nodes.length()
+      local_nodes.push(node)
+    }
+  }
+  for new_index, node in local_nodes {
+    let gv_node = graph.node("n\{new_index}")
     gv_node.set_attr("label", node.required_string("rel"))
   }
   let edges = root.required_array("edges")
@@ -38,16 +59,46 @@ fn parse_package_dep_graph(
         message="dependency edge index out of range",
       )
     }
-    let dep_edge = graph.edge(graph.node("n\{from}"), graph.node("n\{to}"))
-    let label = edge.optional_string("alias")
-    if label.length() > 0 {
-      dep_edge.set_attr("label", label)
+    match local_index.get(from) {
+      Some(new_from) =>
+        match local_index.get(to) {
+          Some(new_to) => {
+            let dep_edge = graph.edge(
+              graph.node("n\{new_from}"),
+              graph.node("n\{new_to}"),
+            )
+            let label = edge.optional_string("alias")
+            if label.length() > 0 {
+              dep_edge.set_attr("label", label)
+            }
+            let kinds = edge.required_array("kinds")
+            let dashed = kinds.any(kind => kind is String("blackbox-test"))
+            dep_edge.set_attr("style", if dashed { "dashed" } else { "solid" })
+          }
+          None => ()
+        }
+      None => ()
     }
-    let kinds = edge.required_array("kinds")
-    let dashed = kinds.any(kind => kind is String("blackbox-test"))
-    dep_edge.set_attr("style", if dashed { "dashed" } else { "solid" })
   }
   graph
+}
+
+///|
+/// Whether the `moon tree --package --json` node describes a local workspace
+/// package. Nodes that carry no `source.kind` are treated as non-local.
+fn Json::is_local_node(self : Json) -> Bool {
+  if self is Object(obj) {
+    match obj.get("source") {
+      Some(Object(source)) =>
+        match source.get("kind") {
+          Some(String(kind)) => kind == "local"
+          _ => false
+        }
+      _ => false
+    }
+  } else {
+    false
+  }
 }
 
 ///|
