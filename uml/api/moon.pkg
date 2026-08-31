@@ -10,6 +10,7 @@ import {
   "moonbit-community/graphviz/dot" @gv_dot,
   "moonbit-community/graphviz/layout/dot" @dot_layout,
   "moonbit-community/graphviz/render/svg",
+  "moonbitlang/core/json",
   "moonbitlang/core/test",
   "kokic/uml/parser",
   "kokic/uml/tokenizer",
