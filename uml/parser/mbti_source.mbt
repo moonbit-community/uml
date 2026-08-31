@@ -43,6 +43,56 @@ fn has_mbti_marker(line : String) -> Bool {
 }
 
 ///|
+/// Parse an mbti body with the MoonBit .mbti parser and adapt the resulting
+/// interface declarations to the shared entity graph.
+///
+/// Aliases of types declared in the interface merge into the target node.
+/// Aliases of undeclared targets are dropped unless `standalone_alias` is
+/// set, which keeps a fallback node for them.
+///
+/// `options` controls which structural connections become graph relations.
+/// `line_offset` is added to every reported line so diagnostics can be mapped
+/// back to the original source; pass 0 when `body` is the whole source.
+fn parse_mbti_body_at(
+  body : String,
+  line_offset : Int,
+  standalone_alias : Bool,
+  options : @entity.MbtiOptions,
+) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
+  let (mbti, reports) = @mbti_parser.parse_string(body, name="<uml>.mbti")
+  match reports {
+    [report, ..] =>
+      raise @tokenizer.SyntaxError(
+        report.loc.start.lnum + line_offset,
+        report.msg,
+      )
+    _ => adapt(mbti, standalone_alias, options)
+  }
+}
+
+///|
+/// Parse a bare mbti interface (no `@startuml '.mbti` markers) with the
+/// MoonBit .mbti parser and adapt the resulting interface declarations to the
+/// shared entity graph.
+///
+/// This is the fast path for sources already known to be mbti: the body is
+/// parsed directly, skipping the marker extraction that `parse_mbti` performs.
+/// Diagnostics report lines relative to `body`.
+///
+/// Aliases of types declared in the interface merge into the target node.
+/// Aliases of undeclared targets are dropped unless `standalone_alias` is
+/// set, which keeps a fallback node for them.
+///
+/// `options` controls which structural connections become graph relations.
+pub fn parse_mbti_body(
+  body : String,
+  standalone_alias? : Bool = false,
+  options? : @entity.MbtiOptions = @entity.MbtiOptions::default(),
+) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
+  parse_mbti_body_at(body, 0, standalone_alias, options)
+}
+
+///|
 /// Parse a `@startuml '.mbti` source with the MoonBit .mbti parser and adapt
 /// the resulting interface declarations to the shared entity graph.
 ///
@@ -58,16 +108,7 @@ pub fn parse_mbti(
 ) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
   match mbti_body(input) {
     None => raise @tokenizer.SyntaxError(1, "expected @startuml '.mbti")
-    Some((body, body_line)) => {
-      let (mbti, reports) = @mbti_parser.parse_string(body, name="<uml>.mbti")
-      match reports {
-        [report, ..] =>
-          raise @tokenizer.SyntaxError(
-            report.loc.start.lnum + body_line - 1,
-            report.msg,
-          )
-        _ => adapt(mbti, standalone_alias, options)
-      }
-    }
+    Some((body, body_line)) =>
+      parse_mbti_body_at(body, body_line - 1, standalone_alias, options)
   }
 }
