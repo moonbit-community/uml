@@ -13,7 +13,9 @@ let about : String =
   #|  moonx moonbit-community/uml-cli/uml check diagram.puml
   #|
   #|`mod` reads a `moon tree --package --json` dependency graph from stdin and
-  #|prints it as SVG (default) or D2 (`--format d2`) to stdout.
+  #|prints it as SVG (default) or D2 (`--format d2`) to stdout. It keeps only
+  #|packages that depend on more than one package or are depended on by more
+  #|than one (`in > 1 or out > 1`).
   #|
   #|Exit codes:
   #|  0  success

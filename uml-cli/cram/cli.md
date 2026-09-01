@@ -28,7 +28,9 @@ cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>)
   moonx moonbit-community/uml-cli/uml check diagram.puml
 
 `mod` reads a `moon tree --package --json` dependency graph from stdin and
-prints it as SVG (default) or D2 (`--format d2`) to stdout.
+prints it as SVG (default) or D2 (`--format d2`) to stdout. It keeps only
+packages that depend on more than one package or are depended on by more
+than one (`in > 1 or out > 1`).
 
 Exit codes:
   0  success
@@ -180,33 +182,34 @@ $ cat > json-rows.puml <<'EOF'
 
 ## Render Package Dependency Graphs
 
-`mod` reads a `moon tree --package --json` graph from stdin and prints the
-SVG to stdout:
+`mod` reads a `moon tree --package --json` graph from stdin, keeps only
+packages with `in > 1 or out > 1`, and prints the SVG to stdout:
 
 ```mooncram
 $ cat <<'EOF' | uml mod | head -c 15
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"x"},{"module":"m/a","source":{"kind":"local"},"rel":"y"}],"edges":[{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
 > EOF
 <svg xmlns="htt (no-eol)
 ```
 
-`--format d2` prints the same filtered graph as D2 source:
+The default filter drops packages with at most one incoming or outgoing
+edge, keeping only the hubs and their connection:
 
 ```mooncram
 $ cat <<'EOF' | uml mod --format d2
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"x"},{"module":"m/a","source":{"kind":"local"},"rel":"y"}],"edges":[{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
 > EOF
 direction: down
 
-`m/a/x`: {
-  label: "x\nm/a"
+`m/a/a`: {
+  label: "a\nm/a"
 }
 
-`m/a/y`: {
-  label: "y\nm/a"
+`m/a/f`: {
+  label: "f\nm/a"
 }
 
-`m/a/x` -> `m/a/y`
+`m/a/a` -> `m/a/f`
 ```
 
 Malformed input exits 1:
