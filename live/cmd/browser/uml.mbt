@@ -36,7 +36,6 @@ fn theme_color_scheme() -> @style.ColorScheme {
   @style.ColorScheme::ColorScheme(
     "var(--uml-text)",
     "var(--uml-line)",
-    canvas="var(--uml-canvas)",
     node="var(--uml-node)",
     note="var(--uml-note)",
     partition="var(--uml-partition)",

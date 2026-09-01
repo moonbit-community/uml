@@ -169,7 +169,13 @@ pub fn ColorScheme::ColorScheme(
 ///|
 /// The scheme that reproduces the built-in light-theme defaults verbatim.
 pub fn ColorScheme::default() -> ColorScheme {
-  ColorScheme::ColorScheme("#000000", "#181818")
+  ColorScheme::ColorScheme("#000000", "#181818", canvas="transparent")
+}
+
+///|
+/// Return a copy of this scheme with a different canvas colour.
+pub fn ColorScheme::with_canvas(self : ColorScheme, canvas : String) -> ColorScheme {
+  { ..self, canvas, }
 }
 
 ///|

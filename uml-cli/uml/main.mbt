@@ -119,6 +119,13 @@ fn uml_command() -> @argparse.Command {
 }
 
 ///|
+/// The default scheme over a white canvas, so standalone CLI output stays
+/// readable on a bare page (the library default canvas is transparent).
+fn cli_scheme() -> @style.ColorScheme {
+  @style.ColorScheme::default().with_canvas("white")
+}
+
+///|
 async fn main {
   let code = run(@env.args()[1:])
   if code != 0 {
@@ -165,7 +172,7 @@ fn render_file(path : String, matches : @argparse.Matches) -> Int {
       return 1
     }
   }
-  let svg = @api.render_svg(source) catch {
+  let svg = @api.render_svg(source, color_scheme=cli_scheme()) catch {
     err => {
       println(render_error(path, "render", err))
       return 1
@@ -256,8 +263,18 @@ async fn package_dep(matches : @argparse.Matches) -> Int {
     _ =>
       match keep_node {
         Some(keep_node) =>
-          @api.render_package_dep_svg(src, keep_node~, related_edges~)
-        None => @api.render_package_dep_svg(src, related_edges~)
+          @api.render_package_dep_svg(
+            src,
+            color_scheme=cli_scheme(),
+            keep_node~,
+            related_edges~,
+          )
+        None =>
+          @api.render_package_dep_svg(
+            src,
+            color_scheme=cli_scheme(),
+            related_edges~,
+          )
       }
   }
   let output = render(source) catch {

@@ -29,16 +29,15 @@ pub fn parse_dot_source(input : String) -> DotDiagram {
 ///|
 /// Apply the color scheme to the graphviz defaults: the canvas, the default
 /// node fill, and the default ink. Attributes written by the DOT source
-/// always win over the scheme; a transparent canvas keeps the graphviz
-/// default so the diagram still renders on a bare page.
+/// always win over the scheme; a `none` or `transparent` canvas leaves the
+/// background transparent.
 fn @cgraph.Graph::apply_theme_defaults(
   graph : @cgraph.Graph,
   scheme : @style.ColorScheme,
 ) -> Unit {
-  let canvas = scheme.canvas.to_lower()
-  let paints_canvas = canvas != "none" && canvas != "transparent"
-  if graph.get_attr("bgcolor") is None && paints_canvas {
-    graph.set_attr("bgcolor", scheme.canvas)
+  if graph.get_attr("bgcolor") is None {
+    let canvas = scheme.canvas.to_lower()
+    graph.set_attr("bgcolor", if canvas == "transparent" { "none" } else { scheme.canvas })
   }
   for node in graph.nodes() {
     let explicit_color = node.get_attr("color")
