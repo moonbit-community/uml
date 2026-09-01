@@ -173,6 +173,42 @@ pub fn ColorScheme::default() -> ColorScheme {
 }
 
 ///|
+/// The scheme that reproduces the built-in dark-theme defaults (matching the
+/// `[data-theme="dark"]` variables in `live/public/styles.css`).
+pub fn ColorScheme::dark() -> ColorScheme {
+  ColorScheme::ColorScheme(
+    "#e2e8f0",
+    "#94a3b8",
+    canvas="transparent",
+    node="#1e293b",
+    note="#3b341a",
+    partition="transparent",
+    participant="#334155",
+    activation="#1e293b",
+    lifeline="#64748b",
+    divider="#94a3b8",
+    divider_title="#1e293b",
+    delay="#94a3b8",
+    reference_tab="#334155",
+    page_break="#64748b",
+    transparent="none",
+    spot_abstract="#155e75",
+    spot_interface="#4338ca",
+    spot_enum="#9a3412",
+    spot_annotation="#9f1239",
+    spot_class="#166534",
+    visibility_public_stroke="#4ade80",
+    visibility_public_fill="#14532d",
+    visibility_private_stroke="#f87171",
+    visibility_private_fill="#7f1d1d",
+    visibility_protected_stroke="#facc15",
+    visibility_protected_fill="#713f12",
+    visibility_package_stroke="#60a5fa",
+    visibility_package_fill="#1e3a8a",
+  )
+}
+
+///|
 /// Returns the roles owned by the sequence painter.
 pub fn ColorScheme::sequence_colors(self : ColorScheme) -> SequenceColors {
   {

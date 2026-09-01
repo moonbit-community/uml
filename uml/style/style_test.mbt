@@ -115,6 +115,20 @@ test "theme projections keep family roles outside document style" {
 }
 
 ///|
+test "dark scheme inverts ink roles and keeps family projections" {
+  let light = ColorScheme::default()
+  let dark = ColorScheme::dark()
+  @test.assert_eq(light.text, "#000000")
+  @test.assert_eq(light.line, "#181818")
+  @test.assert_eq(dark.text == light.text, false)
+  @test.assert_eq(dark.line == light.line, false)
+  @test.assert_eq(dark.node, dark.activation)
+  @test.assert_eq(dark.sequence_colors().text, dark.text)
+  @test.assert_eq(dark.entity_colors().line, dark.line)
+  @test.assert_eq(dark.entity_colors().node, dark.node)
+}
+
+///|
 test "distinguishes legend alignment headers from single-line legends" {
   @test.assert_eq(parse_style_directive("legend top left"), None)
   @test.assert_eq(
