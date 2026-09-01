@@ -10,7 +10,9 @@
 ///
 /// Only nodes whose `source.kind` is `"local"` and whose `rel` is non-empty
 /// are rendered; registry packages, workspace root modules, and every edge
-/// touching a dropped node are removed.
+/// touching a dropped node are removed. Only edges whose `kinds` include
+/// `"source"` are kept. Each node is labelled with its `rel` over the module
+/// name.
 pub fn render_package_dep_svg(
   source : String,
 ) -> String raise @dot_layout.DotLayoutError {
@@ -48,7 +50,10 @@ fn parse_package_dep_graph(
   }
   for new_index, node in local_nodes {
     let gv_node = graph.node("n\{new_index}")
-    gv_node.set_attr("label", node.required_string("rel"))
+    gv_node.set_attr(
+      "label",
+      "\{node.required_string("rel")}\n\{node.required_string("module")}",
+    )
   }
   let edges = root.required_array("edges")
   for edge in edges {
@@ -63,17 +68,14 @@ fn parse_package_dep_graph(
       Some(new_from) =>
         match local_index.get(to) {
           Some(new_to) => {
-            let dep_edge = graph.edge(
-              graph.node("n\{new_from}"),
-              graph.node("n\{new_to}"),
-            )
-            let label = edge.optional_string("alias")
-            if label.length() > 0 {
-              dep_edge.set_attr("label", label)
-            }
             let kinds = edge.required_array("kinds")
-            let dashed = kinds.any(kind => kind is String("blackbox-test"))
-            dep_edge.set_attr("style", if dashed { "dashed" } else { "solid" })
+            if kinds.any(kind => kind is String("source")) {
+              let dep_edge = graph.edge(
+                graph.node("n\{new_from}"),
+                graph.node("n\{new_to}"),
+              )
+              dep_edge.set_attr("style", "solid")
+            }
           }
           None => ()
         }
@@ -133,18 +135,6 @@ fn Json::required_array(
     )
   }
   items
-}
-
-///|
-/// Fetch the string member under `key`, defaulting to `""` when absent.
-fn Json::optional_string(self : Json, key : String) -> String {
-  if self is Object(obj) {
-    obj
-    .get(key)
-    .map_or("", value => if value is String(text) { text } else { "" })
-  } else {
-    ""
-  }
 }
 
 ///|
