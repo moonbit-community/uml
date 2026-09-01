@@ -28,9 +28,9 @@ cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>)
   moonx moonbit-community/uml-cli/uml check diagram.puml
 
 `mod` reads a `moon tree --package --json` dependency graph from stdin and
-prints it as SVG (default) or D2 (`--format d2`) to stdout. It keeps only
-packages that depend on more than one package or are depended on by more
-than one (`in > 1 or out > 1`).
+prints it as SVG (default) or D2 (`--format d2`) to stdout. By default it
+keeps only packages with `in > 1 or out > 1`; `--keep` replaces that with
+a custom rule (`>1`, `==max`, `in>1 && out>1`, ...), repeatable as a union.
 
 Exit codes:
   0  success
@@ -189,7 +189,7 @@ packages with `in > 1 or out > 1`, and prints the SVG to stdout:
 $ cat <<'EOF' | uml mod | head -c 15
 > {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
 > EOF
-<svg xmlns="htt (no-eol)
+<?xml version=" (no-eol)
 ```
 
 The default filter drops packages with at most one incoming or outgoing
@@ -212,10 +212,87 @@ direction: down
 `m/a/a` -> `m/a/f`
 ```
 
+`--keep` replaces the default rule: `==1` keeps only packages with exactly
+one incoming or outgoing edge, dropping the hubs:
+
+```mooncram
+$ cat <<'EOF' | uml mod --format d2 --keep '==1'
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> EOF
+direction: down
+
+`m/a/b`: {
+  label: "b\nm/a"
+}
+
+`m/a/c`: {
+  label: "c\nm/a"
+}
+
+`m/a/d`: {
+  label: "d\nm/a"
+}
+
+`m/a/e`: {
+  label: "e\nm/a"
+}
+```
+
+`--related-edges neighborhood` widens the kept set to the direct neighbours
+of the selected hubs, restoring the full graph:
+
+```mooncram
+$ cat <<'EOF' | uml mod --format d2 --related-edges neighborhood
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> EOF
+direction: down
+
+`m/a/a`: {
+  label: "a\nm/a"
+}
+
+`m/a/f`: {
+  label: "f\nm/a"
+}
+
+`m/a/b`: {
+  label: "b\nm/a"
+}
+
+`m/a/c`: {
+  label: "c\nm/a"
+}
+
+`m/a/d`: {
+  label: "d\nm/a"
+}
+
+`m/a/e`: {
+  label: "e\nm/a"
+}
+
+`m/a/a` -> `m/a/b`
+
+`m/a/a` -> `m/a/c`
+
+`m/a/d` -> `m/a/f`
+
+`m/a/e` -> `m/a/f`
+
+`m/a/a` -> `m/a/f`
+```
+
 Malformed input exits 1:
 
 ```mooncram
 $ printf 'not json' | uml mod >/dev/null
+[1]
+```
+
+An invalid `--keep` rule exits 1:
+
+```mooncram
+$ printf 'not json' | uml mod --keep 'bogus' >/dev/null
 [1]
 ```
 

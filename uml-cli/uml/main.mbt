@@ -13,9 +13,9 @@ let about : String =
   #|  moonx moonbit-community/uml-cli/uml check diagram.puml
   #|
   #|`mod` reads a `moon tree --package --json` dependency graph from stdin and
-  #|prints it as SVG (default) or D2 (`--format d2`) to stdout. It keeps only
-  #|packages that depend on more than one package or are depended on by more
-  #|than one (`in > 1 or out > 1`).
+  #|prints it as SVG (default) or D2 (`--format d2`) to stdout. By default it
+  #|keeps only packages with `in > 1 or out > 1`; `--keep` replaces that with
+  #|a custom rule (`>1`, `==max`, `in>1 && out>1`, ...), repeatable as a union.
   #|
   #|Exit codes:
   #|  0  success
@@ -42,6 +42,25 @@ fn format_option() -> @argparse.OptionArg {
     "format",
     long="format",
     about="Output format for `mod`: svg (default) or d2.",
+  )
+}
+
+///|
+fn keep_option() -> @argparse.OptionArg {
+  @argparse.OptionArg::OptionArg(
+    "keep",
+    long="keep",
+    action=@argparse.OptionAction::Append,
+    about="Keep only packages matching this in/out rule (repeatable; union).",
+  )
+}
+
+///|
+fn related_edges_option() -> @argparse.OptionArg {
+  @argparse.OptionArg::OptionArg(
+    "related_edges",
+    long="related-edges",
+    about="Which edges to draw: induced (default) or neighborhood.",
   )
 }
 
@@ -81,7 +100,7 @@ fn uml_command() -> @argparse.Command {
       Command(
         "mod",
         about="Render a package dependency graph from stdin as SVG or D2.",
-        options=[format_option()],
+        options=[format_option(), keep_option(), related_edges_option()],
       ),
     ],
   )
@@ -187,9 +206,36 @@ async fn package_dep(matches : @argparse.Matches) -> Int {
     Some([value]) => value
     _ => "svg"
   }
+  let related_edges = match matches.values.get("related_edges") {
+    Some(["neighborhood"]) => @api.RelatedEdges::Neighborhood
+    _ => @api.RelatedEdges::Induced
+  }
+  let keep_node = match matches.values.get("keep") {
+    Some(rules) => {
+      let predicates = rules.map(parse_keep_rule) catch {
+        KeepRuleError::Invalid(message~) => {
+          println("error: invalid keep rule: \{message}")
+          return 1
+        }
+      }
+      Some((degrees : @api.InOutDegrees) =>
+        predicates.any(predicate => predicate(degrees)))
+    }
+    None => None
+  }
   let render = (src : String) => match format {
-    "d2" => @api.render_package_dep_d2(src)
-    _ => @api.render_package_dep_svg(src)
+    "d2" =>
+      match keep_node {
+        Some(keep_node) =>
+          @api.render_package_dep_d2(src, keep_node~, related_edges~)
+        None => @api.render_package_dep_d2(src, related_edges~)
+      }
+    _ =>
+      match keep_node {
+        Some(keep_node) =>
+          @api.render_package_dep_svg(src, keep_node~, related_edges~)
+        None => @api.render_package_dep_svg(src, related_edges~)
+      }
   }
   let output = render(source) catch {
     err => {

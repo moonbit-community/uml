@@ -35,11 +35,13 @@ pub fn render_package_dep_svg(
 }
 
 ///|
-/// The in/out degree of a node and the graph-wide maxima, as seen by
-/// `keep_node`.
+/// The in/out degree of a node and the graph-wide minima and maxima, as seen
+/// by `keep_node`.
 pub struct InOutDegrees {
   in_degree : Int
   out_degree : Int
+  min_in : Int
+  min_out : Int
   max_in : Int
   max_out : Int
 }
@@ -53,8 +55,7 @@ fn default_keep_node(degrees : InOutDegrees) -> Bool {
 
 ///|
 /// How the edges of a selected node set are derived.
-#warnings("-unused_constructor")
-pub enum RelatedEdges {
+pub(all) enum RelatedEdges {
   /// Keep only the edges between selected nodes.
   Induced
   /// Keep selected nodes plus their direct neighbours, and the edges within
@@ -157,12 +158,24 @@ fn select_nodes(
   }
   let max_in = in_degree.fold(init=0, (acc, value) => acc.max(value))
   let max_out = out_degree.fold(init=0, (acc, value) => acc.max(value))
+  let min_in = if node_count == 0 {
+    0
+  } else {
+    in_degree.fold(init=in_degree[0], (acc, value) => acc.min(value))
+  }
+  let min_out = if node_count == 0 {
+    0
+  } else {
+    out_degree.fold(init=out_degree[0], (acc, value) => acc.min(value))
+  }
   let kept : Array[Bool] = Array::make(node_count, false)
   for index in 0..<node_count {
     kept[index] = keep_node(
       {
         in_degree: in_degree[index],
         out_degree: out_degree[index],
+        min_in,
+        min_out,
         max_in,
         max_out,
       },
