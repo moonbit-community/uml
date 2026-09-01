@@ -1,7 +1,6 @@
 :root {
   --uml-text: #000000;
   --uml-line: #181818;
-  --uml-canvas: transparent;
   --uml-node: #f1f1f1;
   --uml-note: #feffdd;
   --uml-partition: transparent;
@@ -44,7 +43,6 @@
 [data-theme="dark"] {
   --uml-text: #e2e8f0;
   --uml-line: #94a3b8;
-  --uml-canvas: transparent;
   --uml-node: #1e293b;
   --uml-note: #3b341a;
   --uml-partition: transparent;
