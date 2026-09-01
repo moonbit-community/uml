@@ -31,7 +31,7 @@ pub fn parse_dot_source(input : String) -> DotDiagram {
 /// node fill, and the default ink. Attributes written by the DOT source
 /// always win over the scheme; a transparent canvas keeps the graphviz
 /// default so the diagram still renders on a bare page.
-fn apply_theme_defaults(
+fn @cgraph.Graph::apply_theme_defaults(
   graph : @cgraph.Graph,
   scheme : @style.ColorScheme,
 ) -> Unit {
@@ -89,7 +89,7 @@ pub fn DotDiagram::render_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise {
   let graph = @gv_dot.parse_dot(self.source)
-  apply_theme_defaults(graph, color_scheme)
+  graph.apply_theme_defaults(color_scheme)
   let layout = @dot_layout.layout_dot(graph)
   @svg.render_svg(layout)
 }

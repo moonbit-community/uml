@@ -20,13 +20,20 @@
 /// > 1`). By default each surviving node is drawn together with every edge
 /// incident to it and the node at the other end; `related_edges` can narrow
 /// this to the edges between surviving nodes.
+///
+/// `color_scheme` paints the graph: the node fill and ink, the edge and text
+/// colours, and the canvas. Like other diagram families, it is applied as a
+/// default and overridden by any explicit attribute.
 pub fn render_package_dep_svg(
   source : String,
+  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   keep_node? : (InOutDegrees) -> Bool = default_keep_node,
   related_edges? : RelatedEdges = Neighborhood,
 ) -> String raise @dot_layout.DotLayoutError {
+  let graph = parse_package_dep_graph(source, keep_node~, related_edges~)
+  graph.apply_theme_defaults(color_scheme)
   let layout = @dot_layout.layout_dot(
-    parse_package_dep_graph(source, keep_node~, related_edges~),
+    graph,
     options=@dot_layout.DotLayoutOptions::{
       rankdir: Some(@dot_layout.RankDir::TB),
       nodesep: None,
@@ -79,6 +86,7 @@ fn parse_package_dep_graph(
   for index, rel in filtered.rels {
     let gv_node = graph.node("n\{index}")
     gv_node.set_attr("label", "\{rel}\n\{filtered.modules[index]}")
+    gv_node.set_attr("style", "filled")
   }
   for edge in filtered.edges {
     let (from, to) = edge
