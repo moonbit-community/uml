@@ -14,8 +14,10 @@ let about : String =
   #|
   #|`mod` reads a `moon tree --package --json` dependency graph from stdin and
   #|prints it as SVG (default) or D2 (`--format d2`) to stdout. By default it
-  #|keeps only packages with `in > 1 or out > 1`; `--keep` replaces that with
-  #|a custom rule (`>1`, `==max`, `in>1 && out>1`, ...), repeatable as a union.
+  #|keeps packages with `in > 1 or out > 1` together with the edges touching
+  #|them; `--keep` replaces the selection rule (`>1`, `==max`, `in>1 && out>1`,
+  #|...), repeatable as a union. `--stats` prints the in/out degree minima and
+  #|maxima instead of rendering.
   #|
   #|Exit codes:
   #|  0  success
@@ -60,7 +62,16 @@ fn related_edges_option() -> @argparse.OptionArg {
   @argparse.OptionArg::OptionArg(
     "related_edges",
     long="related-edges",
-    about="Which edges to draw: induced (default) or neighborhood.",
+    about="Which edges to draw: neighborhood (default) or induced.",
+  )
+}
+
+///|
+fn stats_flag() -> @argparse.FlagArg {
+  @argparse.FlagArg::FlagArg(
+    "stats",
+    long="stats",
+    about="Print the in/out degree minima and maxima instead of rendering.",
   )
 }
 
@@ -101,6 +112,7 @@ fn uml_command() -> @argparse.Command {
         "mod",
         about="Render a package dependency graph from stdin as SVG or D2.",
         options=[format_option(), keep_option(), related_edges_option()],
+        flags=[stats_flag()],
       ),
     ],
   )
@@ -202,13 +214,24 @@ async fn package_dep(matches : @argparse.Matches) -> Int {
       return 1
     }
   }
+  if matches.flags.get("stats").unwrap_or(false) {
+    let stats = @api.package_dep_stats(source) catch {
+      err => {
+        println(render_error("<stdin>", "stats", err))
+        return 1
+      }
+    }
+    println("in: min \{stats.min_in}, max \{stats.max_in}")
+    println("out: min \{stats.min_out}, max \{stats.max_out}")
+    return 0
+  }
   let format = match matches.values.get("format") {
     Some([value]) => value
     _ => "svg"
   }
   let related_edges = match matches.values.get("related_edges") {
-    Some(["neighborhood"]) => @api.RelatedEdges::Neighborhood
-    _ => @api.RelatedEdges::Induced
+    Some(["induced"]) => @api.RelatedEdges::Induced
+    _ => @api.RelatedEdges::Neighborhood
   }
   let keep_node = match matches.values.get("keep") {
     Some(rules) => {

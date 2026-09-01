@@ -15,12 +15,15 @@
 /// name.
 ///
 /// `keep_node` decides which nodes survive from their in/out degree and the
-/// graph-wide maxima. The default keeps packages that depend on more than one
-/// package or are depended on by more than one (`in > 1 or out > 1`).
+/// graph-wide minima and maxima. The default keeps packages that depend on
+/// more than one package or are depended on by more than one (`in > 1 or out
+/// > 1`). By default each surviving node is drawn together with every edge
+/// incident to it and the node at the other end; `related_edges` can narrow
+/// this to the edges between surviving nodes.
 pub fn render_package_dep_svg(
   source : String,
   keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Induced,
+  related_edges? : RelatedEdges = Neighborhood,
 ) -> String raise @dot_layout.DotLayoutError {
   let layout = @dot_layout.layout_dot(
     parse_package_dep_graph(source, keep_node~, related_edges~),
@@ -56,11 +59,11 @@ fn default_keep_node(degrees : InOutDegrees) -> Bool {
 ///|
 /// How the edges of a selected node set are derived.
 pub(all) enum RelatedEdges {
-  /// Keep only the edges between selected nodes.
-  Induced
-  /// Keep selected nodes plus their direct neighbours, and the edges within
-  /// that closure.
+  /// Draw every edge incident to a selected node, together with the node at
+  /// the other end.
   Neighborhood
+  /// Draw only the edges between selected nodes.
+  Induced
 }
 
 ///|
@@ -69,7 +72,7 @@ pub(all) enum RelatedEdges {
 fn parse_package_dep_graph(
   source : String,
   keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Induced,
+  related_edges? : RelatedEdges = Neighborhood,
 ) -> @cgraph.Graph raise @dot_layout.DotLayoutError {
   let filtered = filter_package_dep_graph(source, keep_node~, related_edges~)
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="packages")
@@ -102,7 +105,22 @@ priv struct FilteredPackageDepGraph {
 fn filter_package_dep_graph(
   source : String,
   keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Induced,
+  related_edges? : RelatedEdges = Neighborhood,
+) -> FilteredPackageDepGraph raise @dot_layout.DotLayoutError {
+  let collected = collect_package_dep_graph(source)
+  select_nodes(
+    collected.rels,
+    collected.modules,
+    collected.edges,
+    keep_node,
+    related_edges,
+  )
+}
+
+///|
+/// Collect the local packages and their source edges, before node selection.
+fn collect_package_dep_graph(
+  source : String,
 ) -> FilteredPackageDepGraph raise @dot_layout.DotLayoutError {
   let root = @json.parse(source) catch {
     error =>
@@ -135,20 +153,23 @@ fn filter_package_dep_graph(
     guard local_index.get(to) is Some(new_to) else { continue }
     edges.push((new_from, new_to))
   }
-  select_nodes(rels, modules, edges, keep_node, related_edges)
+  { rels, modules, edges, }
 }
 
 ///|
-/// Apply `keep_node` to every node and derive the surviving nodes and edges
-/// according to `related_edges`, renumbering them to a dense index space.
-fn select_nodes(
-  rels : Array[String],
-  modules : Array[String],
-  edges : Array[(Int, Int)],
-  keep_node : (InOutDegrees) -> Bool,
-  related_edges : RelatedEdges,
-) -> FilteredPackageDepGraph {
-  let node_count = rels.length()
+/// The in/out degrees of every node and the graph-wide minima and maxima.
+priv struct NodeDegrees {
+  in_degree : Array[Int]
+  out_degree : Array[Int]
+  min_in : Int
+  min_out : Int
+  max_in : Int
+  max_out : Int
+}
+
+///|
+/// Compute every node's in/out degree and the graph-wide minima and maxima.
+fn node_degrees(edges : Array[(Int, Int)], node_count : Int) -> NodeDegrees {
   let in_degree : Array[Int] = Array::make(node_count, 0)
   let out_degree : Array[Int] = Array::make(node_count, 0)
   for edge in edges {
@@ -168,23 +189,71 @@ fn select_nodes(
   } else {
     out_degree.fold(init=out_degree[0], (acc, value) => acc.min(value))
   }
-  let kept : Array[Bool] = Array::make(node_count, false)
+  {
+    in_degree,
+    out_degree,
+    min_in,
+    min_out,
+    max_in,
+    max_out,
+  }
+}
+
+///|
+/// The in/out degree minima and maxima of the collected dependency graph.
+pub struct PackageDepStats {
+  min_in : Int
+  min_out : Int
+  max_in : Int
+  max_out : Int
+}
+
+///|
+/// The in/out degree minima and maxima of the collected dependency graph,
+/// without applying any node selection.
+pub fn package_dep_stats(
+  source : String,
+) -> PackageDepStats raise @dot_layout.DotLayoutError {
+  let collected = collect_package_dep_graph(source)
+  let degrees = node_degrees(collected.edges, collected.rels.length())
+  {
+    min_in: degrees.min_in,
+    min_out: degrees.min_out,
+    max_in: degrees.max_in,
+    max_out: degrees.max_out,
+  }
+}
+
+///|
+/// Apply `keep_node` to every node and derive the surviving nodes and edges
+/// according to `related_edges`, renumbering them to a dense index space.
+fn select_nodes(
+  rels : Array[String],
+  modules : Array[String],
+  edges : Array[(Int, Int)],
+  keep_node : (InOutDegrees) -> Bool,
+  related_edges : RelatedEdges,
+) -> FilteredPackageDepGraph {
+  let node_count = rels.length()
+  let degrees = node_degrees(edges, node_count)
+  let selected : Array[Bool] = Array::make(node_count, false)
   for index in 0..<node_count {
-    kept[index] = keep_node(
+    selected[index] = keep_node(
       {
-        in_degree: in_degree[index],
-        out_degree: out_degree[index],
-        min_in,
-        min_out,
-        max_in,
-        max_out,
+        in_degree: degrees.in_degree[index],
+        out_degree: degrees.out_degree[index],
+        min_in: degrees.min_in,
+        min_out: degrees.min_out,
+        max_in: degrees.max_in,
+        max_out: degrees.max_out,
       },
     )
   }
+  let kept = selected.copy()
   if related_edges is Neighborhood {
     for edge in edges {
       let (from, to) = edge
-      if kept[from] || kept[to] {
+      if selected[from] || selected[to] {
         kept[from] = true
         kept[to] = true
       }
@@ -202,6 +271,11 @@ fn select_nodes(
   let kept_edges : Array[(Int, Int)] = []
   for edge in edges {
     let (from, to) = edge
+    let draw = match related_edges {
+      Neighborhood => selected[from] || selected[to]
+      Induced => selected[from] && selected[to]
+    }
+    guard draw else { continue }
     guard kept_index.get(from) is Some(new_from) else { continue }
     guard kept_index.get(to) is Some(new_to) else { continue }
     kept_edges.push((new_from, new_to))
@@ -217,7 +291,7 @@ fn select_nodes(
 pub fn render_package_dep_d2(
   source : String,
   keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Induced,
+  related_edges? : RelatedEdges = Neighborhood,
 ) -> String raise @dot_layout.DotLayoutError {
   let filtered = filter_package_dep_graph(source, keep_node~, related_edges~)
   let sb = StringBuilder()

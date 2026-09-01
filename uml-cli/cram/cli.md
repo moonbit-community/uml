@@ -29,8 +29,10 @@ cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>)
 
 `mod` reads a `moon tree --package --json` dependency graph from stdin and
 prints it as SVG (default) or D2 (`--format d2`) to stdout. By default it
-keeps only packages with `in > 1 or out > 1`; `--keep` replaces that with
-a custom rule (`>1`, `==max`, `in>1 && out>1`, ...), repeatable as a union.
+keeps packages with `in > 1 or out > 1` together with the edges touching
+them; `--keep` replaces the selection rule (`>1`, `==max`, `in>1 && out>1`,
+...), repeatable as a union. `--stats` prints the in/out degree minima and
+maxima instead of rendering.
 
 Exit codes:
   0  success
@@ -192,57 +194,12 @@ $ cat <<'EOF' | uml mod | head -c 15
 <?xml version=" (no-eol)
 ```
 
-The default filter drops packages with at most one incoming or outgoing
-edge, keeping only the hubs and their connection:
+The default selection keeps packages with `in > 1 or out > 1` (the two hubs)
+and draws every edge touching them, together with the packages at the other
+end:
 
 ```mooncram
 $ cat <<'EOF' | uml mod --format d2
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
-direction: down
-
-`m/a/a`: {
-  label: "a\nm/a"
-}
-
-`m/a/f`: {
-  label: "f\nm/a"
-}
-
-`m/a/a` -> `m/a/f`
-```
-
-`--keep` replaces the default rule: `==1` keeps only packages with exactly
-one incoming or outgoing edge, dropping the hubs:
-
-```mooncram
-$ cat <<'EOF' | uml mod --format d2 --keep '==1'
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
-direction: down
-
-`m/a/b`: {
-  label: "b\nm/a"
-}
-
-`m/a/c`: {
-  label: "c\nm/a"
-}
-
-`m/a/d`: {
-  label: "d\nm/a"
-}
-
-`m/a/e`: {
-  label: "e\nm/a"
-}
-```
-
-`--related-edges neighborhood` widens the kept set to the direct neighbours
-of the selected hubs, restoring the full graph:
-
-```mooncram
-$ cat <<'EOF' | uml mod --format d2 --related-edges neighborhood
 > {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
 > EOF
 direction: down
@@ -280,6 +237,79 @@ direction: down
 `m/a/e` -> `m/a/f`
 
 `m/a/a` -> `m/a/f`
+```
+
+`--keep` replaces the selection rule: `==1` selects the packages with exactly
+one incoming or outgoing edge and draws their connections, which omits the
+edge between the two hubs:
+
+```mooncram
+$ cat <<'EOF' | uml mod --format d2 --keep '==1'
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> EOF
+direction: down
+
+`m/a/a`: {
+  label: "a\nm/a"
+}
+
+`m/a/f`: {
+  label: "f\nm/a"
+}
+
+`m/a/b`: {
+  label: "b\nm/a"
+}
+
+`m/a/c`: {
+  label: "c\nm/a"
+}
+
+`m/a/d`: {
+  label: "d\nm/a"
+}
+
+`m/a/e`: {
+  label: "e\nm/a"
+}
+
+`m/a/a` -> `m/a/b`
+
+`m/a/a` -> `m/a/c`
+
+`m/a/d` -> `m/a/f`
+
+`m/a/e` -> `m/a/f`
+```
+
+`--related-edges induced` narrows the graph to exactly the selected nodes and
+the edges between them:
+
+```mooncram
+$ cat <<'EOF' | uml mod --format d2 --related-edges induced
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> EOF
+direction: down
+
+`m/a/a`: {
+  label: "a\nm/a"
+}
+
+`m/a/f`: {
+  label: "f\nm/a"
+}
+
+`m/a/a` -> `m/a/f`
+```
+
+`--stats` reports the in/out degree minima and maxima of the graph:
+
+```mooncram
+$ cat <<'EOF' | uml mod --stats
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> EOF
+in: min 0, max 3
+out: min 0, max 3
 ```
 
 Malformed input exits 1:
