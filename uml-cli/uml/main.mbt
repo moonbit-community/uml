@@ -13,7 +13,7 @@ let about : String =
   #|  moonx moonbit-community/uml-cli/uml check diagram.puml
   #|
   #|`mod` reads a `moon tree --package --json` dependency graph from stdin and
-  #|prints the rendered SVG to stdout.
+  #|prints it as SVG (default) or D2 (`--format d2`) to stdout.
   #|
   #|Exit codes:
   #|  0  success
@@ -31,6 +31,15 @@ fn output_option() -> @argparse.OptionArg {
     short='o',
     long="output",
     about="Write the SVG to this path instead of stdout.",
+  )
+}
+
+///|
+fn format_option() -> @argparse.OptionArg {
+  @argparse.OptionArg::OptionArg(
+    "format",
+    long="format",
+    about="Output format for `mod`: svg (default) or d2.",
   )
 }
 
@@ -69,7 +78,8 @@ fn uml_command() -> @argparse.Command {
       ),
       Command(
         "mod",
-        about="Render a package dependency graph from stdin as SVG.",
+        about="Render a package dependency graph from stdin as SVG or D2.",
+        options=[format_option()],
       ),
     ],
   )
@@ -164,20 +174,28 @@ fn check_file(path : String, _matches : @argparse.Matches) -> Int {
 }
 
 ///|
-async fn package_dep(_matches : @argparse.Matches) -> Int {
+async fn package_dep(matches : @argparse.Matches) -> Int {
   let source = @stdio.stdin.read_all().text() catch {
     err => {
       println("error: failed to read stdin: \{err}")
       return 1
     }
   }
-  let svg = @api.render_package_dep_svg(source) catch {
+  let format = match matches.values.get("format") {
+    Some([value]) => value
+    _ => "svg"
+  }
+  let render = (src : String) => match format {
+    "d2" => @api.render_package_dep_d2(src)
+    _ => @api.render_package_dep_svg(src)
+  }
+  let output = render(source) catch {
     err => {
       println(render_error("<stdin>", "render", err))
       return 1
     }
   }
-  println(svg)
+  println(output)
   0
 }
 

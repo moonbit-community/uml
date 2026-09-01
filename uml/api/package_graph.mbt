@@ -34,29 +34,54 @@ pub fn render_package_dep_svg(
 fn parse_package_dep_graph(
   source : String,
 ) -> @cgraph.Graph raise @dot_layout.DotLayoutError {
+  let filtered = filter_package_dep_graph(source)
+  let graph = @cgraph.Graph::new(@cgraph.Directed, name="packages")
+  for index, rel in filtered.rels {
+    let gv_node = graph.node("n\{index}")
+    gv_node.set_attr("label", "\{rel}\n\{filtered.modules[index]}")
+  }
+  for edge in filtered.edges {
+    let (from, to) = edge
+    let dep_edge = graph.edge(graph.node("n\{from}"), graph.node("n\{to}"))
+    dep_edge.set_attr("style", "solid")
+  }
+  graph
+}
+
+///|
+/// The package nodes and edges kept after filtering a `moon tree --package
+/// --json` source.
+priv struct FilteredPackageDepGraph {
+  rels : Array[String]
+  modules : Array[String]
+  edges : Array[(Int, Int)]
+}
+
+///|
+/// Parse `moon tree --package --json` and keep only local packages with a
+/// non-empty `rel`, and only edges whose `kinds` include `"source"`. Edge
+/// indices are renumbered to the kept node set.
+fn filter_package_dep_graph(
+  source : String,
+) -> FilteredPackageDepGraph raise @dot_layout.DotLayoutError {
   let root = @json.parse(source) catch {
     error =>
       raise @dot_layout.DotLayoutError::InvalidGraph(message=error.to_string())
   }
-  let graph = @cgraph.Graph::new(@cgraph.Directed, name="packages")
   let nodes = root.required_array("nodes")
   let local_index : Map[Int, Int] = Map([])
-  let local_nodes : Array[Json] = []
+  let rels : Array[String] = []
+  let modules : Array[String] = []
   for index, node in nodes {
     if node.is_local_node() && !node.required_string("rel").is_empty() {
-      local_index[index] = local_nodes.length()
-      local_nodes.push(node)
+      local_index[index] = rels.length()
+      rels.push(node.required_string("rel"))
+      modules.push(node.required_string("module"))
     }
   }
-  for new_index, node in local_nodes {
-    let gv_node = graph.node("n\{new_index}")
-    gv_node.set_attr(
-      "label",
-      "\{node.required_string("rel")}\n\{node.required_string("module")}",
-    )
-  }
-  let edges = root.required_array("edges")
-  for edge in edges {
+  let edges : Array[(Int, Int)] = []
+  let all_edges = root.required_array("edges")
+  for edge in all_edges {
     let from = edge.required_int("from")
     let to = edge.required_int("to")
     guard from >= 0 && from < nodes.length() && to >= 0 && to < nodes.length() else {
@@ -64,25 +89,43 @@ fn parse_package_dep_graph(
         message="dependency edge index out of range",
       )
     }
-    match local_index.get(from) {
-      Some(new_from) =>
-        match local_index.get(to) {
-          Some(new_to) => {
-            let kinds = edge.required_array("kinds")
-            if kinds.any(kind => kind is String("source")) {
-              let dep_edge = graph.edge(
-                graph.node("n\{new_from}"),
-                graph.node("n\{new_to}"),
-              )
-              dep_edge.set_attr("style", "solid")
-            }
+    let kinds = edge.required_array("kinds")
+    if kinds.any(kind => kind is String("source")) {
+      match local_index.get(from) {
+        Some(new_from) =>
+          match local_index.get(to) {
+            Some(new_to) => edges.push((new_from, new_to))
+            None => ()
           }
-          None => ()
-        }
-      None => ()
+        None => ()
+      }
     }
   }
-  graph
+  { rels, modules, edges, }
+}
+
+///|
+/// Render the filtered package dependency graph as a D2 source string. Each
+/// node uses `module/rel` as its id and displays `rel` over the module name;
+/// edges carry no labels and the diagram flows top-to-bottom.
+pub fn render_package_dep_d2(
+  source : String,
+) -> String raise @dot_layout.DotLayoutError {
+  let filtered = filter_package_dep_graph(source)
+  let sb = StringBuilder()
+  sb.write_string("direction: down\n")
+  for index, rel in filtered.rels {
+    sb.write_string("\n`\{filtered.modules[index]}/\{rel}`: {\n")
+    sb.write_string("  label: \"\{rel}\\n\{filtered.modules[index]}\"\n")
+    sb.write_string("}\n")
+  }
+  for edge in filtered.edges {
+    let (from, to) = edge
+    sb.write_string(
+      "\n`\{filtered.modules[from]}/\{filtered.rels[from]}` -> `\{filtered.modules[to]}/\{filtered.rels[to]}`\n",
+    )
+  }
+  sb.to_string()
 }
 
 ///|

@@ -28,7 +28,7 @@ cached on first use; pin a version with moonbit-community/uml-cli/uml@<version>)
   moonx moonbit-community/uml-cli/uml check diagram.puml
 
 `mod` reads a `moon tree --package --json` dependency graph from stdin and
-prints the rendered SVG to stdout.
+prints it as SVG (default) or D2 (`--format d2`) to stdout.
 
 Exit codes:
   0  success
@@ -42,7 +42,7 @@ rewrites the input file.
 Commands:
   render  Render PlantUML and print SVG.
   check   Parse PlantUML and report the detected diagram kind.
-  mod     Render a package dependency graph from stdin as SVG.
+  mod     Render a package dependency graph from stdin as SVG or D2.
   help    Print help for the subcommand(s).
 
 Arguments:
@@ -185,9 +185,28 @@ SVG to stdout:
 
 ```mooncram
 $ cat <<'EOF' | uml mod | head -c 15
-> {"nodes":[{"rel":"a"},{"rel":"b"}],"edges":[{"from":0,"to":1,"alias":"","kinds":["regular"]}]}
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"x"},{"module":"m/a","source":{"kind":"local"},"rel":"y"}],"edges":[{"from":0,"to":1,"alias":"","kinds":["source"]}]}
 > EOF
 <svg xmlns="htt (no-eol)
+```
+
+`--format d2` prints the same filtered graph as D2 source:
+
+```mooncram
+$ cat <<'EOF' | uml mod --format d2
+> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"x"},{"module":"m/a","source":{"kind":"local"},"rel":"y"}],"edges":[{"from":0,"to":1,"alias":"","kinds":["source"]}]}
+> EOF
+direction: down
+
+`m/a/x`: {
+  label: "x\nm/a"
+}
+
+`m/a/y`: {
+  label: "y\nm/a"
+}
+
+`m/a/x` -> `m/a/y`
 ```
 
 Malformed input exits 1:
