@@ -7,7 +7,7 @@ import {
   "kokic/metrics@0.1.0",
   "kokic/identifier@0.1.0",
   "moonbit-community/yaml@0.0.6",
-  "moonbit-community/graphviz@0.1.5",
+  "moonbit-community/graphviz@0.1.6",
   "moonbitlang/lexer@0.3.15",
   "moonbitlang/parser@0.3.18",
 }
