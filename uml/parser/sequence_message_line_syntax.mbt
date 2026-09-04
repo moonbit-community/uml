@@ -96,7 +96,7 @@ fn is_anchor_char(char : Char) -> Bool {
 /// `(?:\s&\s[%pLN_.@]+)*`. An element needs a space before `&`, a space
 /// after it and a name; a partial element discards only that element.
 fn take_multicast(cursor : @tokenizer.Cursor) -> Array[String] {
-  let result = Array::new()
+  let result = Array()
   while true {
     let saved = cursor.offset()
     if !cursor.consume_inline_space1() {

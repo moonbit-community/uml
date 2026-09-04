@@ -347,8 +347,8 @@ fn collapsible_relation_style(
           text_metrics,
           class_member_collapsible,
           -1 - structure_index,
-          Some(edge.left_entity),
-          Some(edge.right_entity),
+          Some(edge.parent_entity),
+          Some(edge.child_entity),
           false,
         ),
       )

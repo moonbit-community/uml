@@ -15,8 +15,9 @@ priv struct MindmapClassLayout {
 }
 
 ///|
-/// One relation or structure edge drawn as a mindmap-style bezier, with the
-/// entity indices of its endpoints so collapsible nodes can retract it.
+/// One selected relation drawn as a mindmap-style bezier. The tree path runs
+/// from the relation target (parent) to its source (child), so its endpoint
+/// decorations are stored in that visual order.
 priv struct MindmapClassEdge {
   x1 : Int
   y1 : Int
@@ -26,8 +27,10 @@ priv struct MindmapClassEdge {
   control2_y : Int
   x2 : Int
   y2 : Int
-  left_entity : Int
-  right_entity : Int
+  parent_entity : Int
+  child_entity : Int
+  parent_end : @entity.RelationEnd
+  child_end : @entity.RelationEnd
 }
 
 ///|
@@ -63,13 +66,15 @@ fn @entity.EntityDiagram::mindmap_class_layout(
 ) -> MindmapClassLayout {
   let count = self.entities.length()
   let parent : Array[Int?] = Array::make(count, None)
-  for relation in self.relations {
+  let parent_relation_indices : Array[Int?] = Array::make(count, None)
+  for relation_index, relation in self.relations {
     let source = entity_index(self, relation.left)
     let target = entity_index(self, relation.right)
     match (source, target) {
       (Some(source), Some(target)) if source != target =>
         if parent[source] is None && !creates_cycle(parent, source, target) {
           parent[source] = Some(target)
+          parent_relation_indices[source] = Some(relation_index)
         }
       _ => ()
     }
@@ -107,16 +112,21 @@ fn @entity.EntityDiagram::mindmap_class_layout(
     rects[node.index] = (node.x, node.y, node.width, node.height)
   }
   let structure_edges : Array[MindmapClassEdge] = layout.edges.map(edge => {
-    x1: edge.x1,
-    y1: edge.y1,
-    control1_x: edge.control1_x,
-    control1_y: edge.control1_y,
-    control2_x: edge.control2_x,
-    control2_y: edge.control2_y,
-    x2: edge.x2,
-    y2: edge.y2,
-    left_entity: edge.parent_index,
-    right_entity: edge.child_index,
+    let relation = self.relations[parent_relation_indices[edge.child_index].unwrap()]
+    {
+      x1: edge.x1,
+      y1: edge.y1,
+      control1_x: edge.control1_x,
+      control1_y: edge.control1_y,
+      control2_x: edge.control2_x,
+      control2_y: edge.control2_y,
+      x2: edge.x2,
+      y2: edge.y2,
+      parent_entity: edge.parent_index,
+      child_entity: edge.child_index,
+      parent_end: relation.right_end,
+      child_end: relation.left_end,
+    }
   })
   { layout, rects, structure_edges, }
 }
@@ -134,6 +144,7 @@ fn append_mindmap_structure_edges(
   match layout.mindmap {
     Some(mindmap) => {
       let color = diagram.style.diagram_line_color()
+      let background = diagram.style.canvas_color()
       for structure_index, edge in mindmap.structure_edges {
         append_mindmap_edge_states(
           output,
@@ -143,6 +154,7 @@ fn append_mindmap_structure_edges(
           edge,
           -1 - structure_index,
           color,
+          background,
           "",
           "",
           class_member_collapsible,
@@ -165,6 +177,7 @@ fn append_mindmap_edge_states(
   edge : MindmapClassEdge,
   relation_index : Int,
   relation_color : String,
+  background_color : String,
   line_attributes : String,
   dash : String,
   class_member_collapsible : Bool,
@@ -172,14 +185,14 @@ fn append_mindmap_edge_states(
   let left_header = relation_endpoint_header(
     layout,
     diagram,
-    edge.left_entity,
+    edge.parent_entity,
     text_metrics,
     class_member_collapsible,
   )
   let right_header = relation_endpoint_header(
     layout,
     diagram,
-    edge.right_entity,
+    edge.child_entity,
     text_metrics,
     class_member_collapsible,
   )
@@ -205,7 +218,14 @@ fn append_mindmap_edge_states(
           $|<g class="edge-state edge-state-\{left_bit}\{right_bit}">
       }
       append_mindmap_edge_state(
-        output, edge, left_state, right_state, relation_color, line_attributes, dash,
+        output,
+        edge,
+        left_state,
+        right_state,
+        relation_color,
+        background_color,
+        line_attributes,
+        dash,
       )
       if wrapped {
         output.write_string("</g>\n")
@@ -226,6 +246,7 @@ fn append_mindmap_edge_state(
   left : RelationEndpointState,
   right : RelationEndpointState,
   relation_color : String,
+  background_color : String,
   line_attributes : String,
   dash : String,
 ) -> Unit {
@@ -240,12 +261,33 @@ fn append_mindmap_edge_state(
     false,
     right.endpoint,
   )
-  let visible_path = shorten_relation_path(relation_path(adjusted), 0.0, 0.0).pairs()
+  let visible_path = shorten_relation_path(
+    relation_path(adjusted),
+    edge.parent_end.decoration_length(),
+    edge.child_end.decoration_length(),
+  ).pairs()
   output <+
     $|<path d="
   output.write_string(@svg.spline_path_data(visible_path))
   output <+
     $|" class="relation" style="stroke:\{relation_color};\{line_attributes}"\{dash}/>
+  append_relation_decoration(
+    output,
+    edge.parent_end,
+    left.endpoint,
+    adjusted[1],
+    relation_color,
+    background_color,
+  )
+  let last_point = adjusted.length() - 1
+  append_relation_decoration(
+    output,
+    edge.child_end,
+    right.endpoint,
+    adjusted[last_point - 1],
+    relation_color,
+    background_color,
+  )
 }
 
 ///|
