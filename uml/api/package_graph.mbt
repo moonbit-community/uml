@@ -32,15 +32,12 @@ pub fn render_package_dep_svg(
 ) -> String raise @dot_layout.DotLayoutError {
   let graph = parse_package_dep_graph(source, keep_node~, related_edges~)
   graph.apply_theme_defaults(color_scheme)
-  let layout = @dot_layout.layout_dot(
-    graph,
-    options=@dot_layout.DotLayoutOptions::{
-      rankdir: Some(@dot_layout.RankDir::TB),
-      nodesep: None,
-      ranksep: None,
-      splines: None,
-    },
-  )
+  let layout = @dot_layout.layout_dot(graph, options=@dot_layout.DotLayoutOptions::{
+    rankdir: Some(@dot_layout.RankDir::TB),
+    nodesep: None,
+    ranksep: None,
+    splines: None,
+  })
   @svg.render_svg(layout)
 }
 
@@ -197,14 +194,7 @@ fn node_degrees(edges : Array[(Int, Int)], node_count : Int) -> NodeDegrees {
   } else {
     out_degree.fold(init=out_degree[0], (acc, value) => acc.min(value))
   }
-  {
-    in_degree,
-    out_degree,
-    min_in,
-    min_out,
-    max_in,
-    max_out,
-  }
+  { in_degree, out_degree, min_in, min_out, max_in, max_out, }
 }
 
 ///|
@@ -246,16 +236,14 @@ fn select_nodes(
   let degrees = node_degrees(edges, node_count)
   let selected : Array[Bool] = Array::make(node_count, false)
   for index in 0..<node_count {
-    selected[index] = keep_node(
-      {
-        in_degree: degrees.in_degree[index],
-        out_degree: degrees.out_degree[index],
-        min_in: degrees.min_in,
-        min_out: degrees.min_out,
-        max_in: degrees.max_in,
-        max_out: degrees.max_out,
-      },
-    )
+    selected[index] = keep_node({
+      in_degree: degrees.in_degree[index],
+      out_degree: degrees.out_degree[index],
+      min_in: degrees.min_in,
+      min_out: degrees.min_out,
+      max_in: degrees.max_in,
+      max_out: degrees.max_out,
+    })
   }
   let kept = selected.copy()
   if related_edges is Neighborhood {

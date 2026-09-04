@@ -2,11 +2,13 @@
 fn @entity.EntityDiagram::render_svg_with_mode(
   self : @entity.EntityDiagram,
   class_member_collapsible : Bool,
+  mbti_render_options : @entity.MbtiRenderOptions,
 ) -> String raise @dot_layout.DotLayoutError {
   let family_capability = self.family.capability()
   let usecase = family_capability.usecase_relation_style
-  let collapsible = family_capability.class_members_collapsible &&
-    class_member_collapsible
+  let member_collapse = self.class_member_collapse(
+    class_member_collapsible, mbti_render_options,
+  )
   let background = self.style.canvas_color()
   let font_family = self.style.font_family()
   let font_size = self.style.font_size()
@@ -99,14 +101,12 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
     $|</style>
   output.write_string(relations_style)
-  let collapse_style = collapsible_relation_style(
-      self, layout, text_metrics, collapsible,
-    ) +
-    collapsible_note_style(self, layout, text_metrics, collapsible)
+  let collapse_style = collapsible_member_style(member_collapse) +
+    collapsible_relation_style(self, layout, text_metrics, member_collapse) +
+    collapsible_note_style(self, layout, text_metrics, member_collapse)
   if collapse_style != "" {
     output <+
       $|<style>
-      $|.class-node:has(details:not([open])) foreignObject{height:var(--uml-header-height)}
       $|\{collapse_style}</style>\n
   }
   let has_object_image = self.entities.any(entity => {
@@ -139,33 +139,33 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   append_symbol_packages(output, self, text_metrics, layout)
   match family_capability.paint_order {
     EntitiesBeforeRelations => {
-      let ctx = { output, diagram: self, text_metrics, }
+      let ctx = { output, diagram: self, text_metrics, member_collapse, }
       for index, entity in self.entities {
-        ctx.append_entity_image(entity, index, layout, collapsible)
+        ctx.append_entity_image(entity, index, layout)
       }
       for relation_index, relation in self.relations {
         append_relation(
-          output, self, relation_index, relation, text_metrics, layout, collapsible,
+          output, self, relation_index, relation, text_metrics, layout, member_collapse,
         )
       }
     }
     RelationsBeforeEntities => {
-      let ctx = { output, diagram: self, text_metrics, }
+      let ctx = { output, diagram: self, text_metrics, member_collapse, }
       append_mindmap_structure_edges(
-        output, self, text_metrics, layout, collapsible,
+        output, self, text_metrics, layout, member_collapse,
       )
       for relation_index, relation in self.relations {
         append_relation(
-          output, self, relation_index, relation, text_metrics, layout, collapsible,
+          output, self, relation_index, relation, text_metrics, layout, member_collapse,
         )
       }
       for index, entity in self.entities {
-        ctx.append_entity_image(entity, index, layout, collapsible)
+        ctx.append_entity_image(entity, index, layout)
       }
     }
   }
   if family_capability.renders_notes {
-    append_notes(output, self, text_metrics, layout, collapsible)
+    append_notes(output, self, text_metrics, layout, member_collapse)
   }
   append_chrome_stack(
     output,
@@ -199,7 +199,10 @@ fn @entity.EntityDiagram::render_svg(
   class_member_collapsible? : Bool = false,
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
-  self.render_svg_with_mode(class_member_collapsible)
+  self.render_svg_with_mode(
+    class_member_collapsible,
+    @entity.MbtiRenderOptions::default(),
+  )
 }
 
 ///|
@@ -208,9 +211,10 @@ fn @entity.EntityDiagram::render_mbti_svg(
   self : @entity.EntityDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
-  self.render_svg_with_mode(class_member_collapsible)
+  self.render_svg_with_mode(class_member_collapsible, render_options)
 }
 
 ///|
@@ -229,6 +233,56 @@ pub fn render_mbti_svg(
   diagram : @entity.MbtiDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise @dot_layout.DotLayoutError {
-  diagram.graph.render_mbti_svg(color_scheme~, class_member_collapsible~)
+  diagram.graph.render_mbti_svg(
+    color_scheme~,
+    class_member_collapsible~,
+    render_options~,
+  )
+}
+
+///|
+fn @entity.EntityDiagram::class_member_collapse(
+  self : @entity.EntityDiagram,
+  class_member_collapsible : Bool,
+  mbti_render_options : @entity.MbtiRenderOptions,
+) -> ClassMemberCollapse {
+  let enabled = self.family.capability().class_members_collapsible &&
+    class_member_collapsible
+  if self.family is Mbti {
+    {
+      enabled,
+      section: mbti_render_options.collapsible_section,
+      initially_open: mbti_render_options.initial_state is Expanded,
+    }
+  } else {
+    { enabled, section: AllMembers, initially_open: false, }
+  }
+}
+
+///|
+/// CSS keeps the outer class frame and the foreign-object hit area aligned
+/// with the selected member portion. The selected SVG lives inside details,
+/// so the browser hides it when closed; the other portion stays in place and
+/// moves below it only while the disclosure is open.
+fn collapsible_member_style(member_collapse : ClassMemberCollapse) -> String {
+  guard member_collapse.enabled else { return "" }
+  let output = StringBuilder()
+  output.write_string(
+    ".class-node:has(details[open]) > rect{height:calc(var(--uml-closed-height) + var(--uml-selected-height))}\n",
+  )
+  output.write_string(
+    ".class-node:has(details:not([open])) foreignObject{height:var(--uml-closed-height)}\n",
+  )
+  output.write_string(
+    ".class-node foreignObject details:not([open]){height:var(--uml-header-height)}\n",
+  )
+  output.write_string(
+    ".class-node foreignObject details[open]{height:var(--uml-selected-height)}\n",
+  )
+  output.write_string(
+    ".class-node[data-member-section=\"fields\"]:has(details[open]) .always-visible-members{top:calc(var(--uml-header-height) + var(--uml-selected-height))!important}\n",
+  )
+  output.to_string()
 }

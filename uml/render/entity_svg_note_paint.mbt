@@ -243,7 +243,7 @@ fn append_notes(
   diagram : @entity.EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
-  collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> Unit {
   let note_layouts = layout.graphviz.map_or(
     fallback_note_layouts(diagram, text_metrics, layout),
@@ -284,20 +284,20 @@ fn append_notes(
                       match entity_index(diagram, note.target) {
                         Some(target_index) =>
                           match
-                            relation_endpoint_header(
-                              layout, diagram, target_index, text_metrics, collapsible,
+                            relation_endpoint_closed_bounds(
+                              layout, diagram, target_index, text_metrics, member_collapse,
                             ) {
-                            Some(header) =>
+                            Some(closed_bounds) =>
                               match
                                 note_opale_attachment(
                                   note_layout,
                                   edge,
                                   {
                                     code: target.code,
-                                    x: header.center.x,
-                                    y: header.center.y,
-                                    width: header.width,
-                                    height: header.height,
+                                    x: closed_bounds.center.x,
+                                    y: closed_bounds.center.y,
+                                    width: closed_bounds.width,
+                                    height: closed_bounds.height,
                                   },
                                   Box,
                                 ) {
@@ -355,14 +355,14 @@ fn append_notes(
 /// CSS that switches each note to its closed variant when its attached class
 /// node collapses its members, mirroring `collapsible_relation_style`. The
 /// open state targets the full node boundary while the closed state
-/// re-anchors the pointer onto the header strip.
+/// re-anchors the pointer onto the visible closed-state bounds.
 fn collapsible_note_style(
   diagram : @entity.EntityDiagram,
   layout : ClassLayout,
   text_metrics : ClassTextMetrics,
-  collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> String {
-  guard collapsible else { return "" }
+  guard member_collapse.enabled else { return "" }
   let output = StringBuilder()
   output.write_string("g[data-note-index] > .note-state{display:none}\n")
   for note_index, note in diagram.notes {
@@ -371,8 +371,8 @@ fn collapsible_note_style(
       continue
     }
     if entity_index(diagram, note.target) is Some(target_index) {
-      if relation_endpoint_header(
-          layout, diagram, target_index, text_metrics, collapsible,
+      if relation_endpoint_closed_bounds(
+          layout, diagram, target_index, text_metrics, member_collapse,
         )
         is Some(_) {
         for bit in 0..<2 {

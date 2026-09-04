@@ -139,7 +139,7 @@ fn append_mindmap_structure_edges(
   diagram : @entity.EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
-  class_member_collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> Unit {
   match layout.mindmap {
     Some(mindmap) => {
@@ -157,7 +157,7 @@ fn append_mindmap_structure_edges(
           background,
           "",
           "",
-          class_member_collapsible,
+          member_collapse,
         )
       }
     }
@@ -168,7 +168,7 @@ fn append_mindmap_structure_edges(
 ///|
 /// Emit the open/closed edge-state groups of one mindmap bezier, mirroring the
 /// graphviz relation path: when a class node collapses, its endpoint moves
-/// from the full box boundary to the header strip.
+/// from the full box boundary to the visible closed-state bounds.
 fn append_mindmap_edge_states(
   output : StringBuilder,
   diagram : @entity.EntityDiagram,
@@ -180,31 +180,31 @@ fn append_mindmap_edge_states(
   background_color : String,
   line_attributes : String,
   dash : String,
-  class_member_collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> Unit {
-  let left_header = relation_endpoint_header(
+  let left_closed_bounds = relation_endpoint_closed_bounds(
     layout,
     diagram,
     edge.parent_entity,
     text_metrics,
-    class_member_collapsible,
+    member_collapse,
   )
-  let right_header = relation_endpoint_header(
+  let right_closed_bounds = relation_endpoint_closed_bounds(
     layout,
     diagram,
     edge.child_entity,
     text_metrics,
-    class_member_collapsible,
+    member_collapse,
   )
   let left_states = relation_endpoint_states(
     (edge.x1.to_double(), edge.y1.to_double()),
     None,
-    left_header,
+    left_closed_bounds,
   )
   let right_states = relation_endpoint_states(
     (edge.x2.to_double(), edge.y2.to_double()),
     None,
-    right_header,
+    right_closed_bounds,
   )
   let wrapped = left_states.length() > 1 || right_states.length() > 1
   if wrapped {
@@ -218,14 +218,8 @@ fn append_mindmap_edge_states(
           $|<g class="edge-state edge-state-\{left_bit}\{right_bit}">
       }
       append_mindmap_edge_state(
-        output,
-        edge,
-        left_state,
-        right_state,
-        relation_color,
-        background_color,
-        line_attributes,
-        dash,
+        output, edge, left_state, right_state, relation_color, background_color,
+        line_attributes, dash,
       )
       if wrapped {
         output.write_string("</g>\n")

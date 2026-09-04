@@ -5,13 +5,27 @@ suberror KeepRuleError {
 }
 
 ///|
-enum Axis { In; Out }
+enum Axis {
+  In
+  Out
+}
 
 ///|
-enum Cmp { Lt; Le; Eq; Ne; Ge; Gt }
+enum Cmp {
+  Lt
+  Le
+  Eq
+  Ne
+  Ge
+  Gt
+}
 
 ///|
-enum Value { IntV(Int); MaxV; MinV }
+enum Value {
+  IntV(Int)
+  MaxV
+  MinV
+}
 
 ///|
 enum Expr {
@@ -43,16 +57,14 @@ type KeepPredicate = (@api.InOutDegrees) -> Bool
 ///
 /// An atom without an axis compares both axes and keeps the node when either
 /// side matches: `>1` is `in > 1 or out > 1`.
-pub fn parse_keep_rule(
-  source : String,
-) -> KeepPredicate raise KeepRuleError {
-  let pos : Ref[Int] = { val: 0 }
+pub fn parse_keep_rule(source : String) -> KeepPredicate raise KeepRuleError {
+  let pos : Ref[Int] = { val: 0, }
   let expr = parse_or(source, pos)
   skip_ws(source, pos)
   if pos.val < source.length() {
     raise KeepRuleError::Invalid(message="unexpected trailing input")
   }
-  (degrees) => expr.eval(degrees)
+  degrees => expr.eval(degrees)
 }
 
 ///|
@@ -125,7 +137,7 @@ fn parse_atom(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
 
 ///|
 /// Whether `in` or `out` prefixes the comparison at the cursor.
-fn try_parse_axis(source : String, pos : Ref[Int]) -> Option[Axis] {
+fn try_parse_axis(source : String, pos : Ref[Int]) -> Axis? {
   skip_ws(source, pos)
   let remaining = source.length() - pos.val
   if remaining >= 2 {
@@ -152,8 +164,10 @@ fn try_parse_axis(source : String, pos : Ref[Int]) -> Option[Axis] {
 
 ///|
 fn is_cmp(code : Int) -> Bool {
-  code == '<'.to_int() || code == '>'.to_int() ||
-  code == '='.to_int() || code == '!'.to_int()
+  code == '<'.to_int() ||
+  code == '>'.to_int() ||
+  code == '='.to_int() ||
+  code == '!'.to_int()
 }
 
 ///|
@@ -250,7 +264,7 @@ fn skip_ws(source : String, pos : Ref[Int]) -> Unit {
 fn consume(source : String, pos : Ref[Int], literal : String) -> Bool {
   if pos.val + literal.length() <= source.length() &&
     source.unsafe_substring(start=pos.val, end=pos.val + literal.length()) ==
-      literal {
+    literal {
     pos.val = pos.val + literal.length()
     true
   } else {

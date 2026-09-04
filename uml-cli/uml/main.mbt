@@ -216,11 +216,11 @@ fn check_file(path : String, _matches : @argparse.Matches) -> Int {
 ///|
 async fn package_dep(matches : @argparse.Matches) -> Int {
   let source = @stdio.stdin.read_all().text() catch {
-    err => {
-      println("error: failed to read stdin: \{err}")
-      return 1
+      err => {
+        println("error: failed to read stdin: \{err}")
+        return 1
+      }
     }
-  }
   if matches.flags.get("stats").unwrap_or(false) {
     let stats = @api.package_dep_stats(source) catch {
       err => {
@@ -248,34 +248,37 @@ async fn package_dep(matches : @argparse.Matches) -> Int {
           return 1
         }
       }
-      Some((degrees : @api.InOutDegrees) =>
-        predicates.any(predicate => predicate(degrees)))
+      Some((degrees : @api.InOutDegrees) => {
+        predicates.any(predicate => predicate(degrees))
+      })
     }
     None => None
   }
-  let render = (src : String) => match format {
-    "d2" =>
-      match keep_node {
-        Some(keep_node) =>
-          @api.render_package_dep_d2(src, keep_node~, related_edges~)
-        None => @api.render_package_dep_d2(src, related_edges~)
-      }
-    _ =>
-      match keep_node {
-        Some(keep_node) =>
-          @api.render_package_dep_svg(
-            src,
-            color_scheme=cli_scheme(),
-            keep_node~,
-            related_edges~,
-          )
-        None =>
-          @api.render_package_dep_svg(
-            src,
-            color_scheme=cli_scheme(),
-            related_edges~,
-          )
-      }
+  let render = (src : String) => {
+    match format {
+      "d2" =>
+        match keep_node {
+          Some(keep_node) =>
+            @api.render_package_dep_d2(src, keep_node~, related_edges~)
+          None => @api.render_package_dep_d2(src, related_edges~)
+        }
+      _ =>
+        match keep_node {
+          Some(keep_node) =>
+            @api.render_package_dep_svg(
+              src,
+              color_scheme=cli_scheme(),
+              keep_node~,
+              related_edges~,
+            )
+          None =>
+            @api.render_package_dep_svg(
+              src,
+              color_scheme=cli_scheme(),
+              related_edges~,
+            )
+        }
+    }
   }
   let output = render(source) catch {
     err => {

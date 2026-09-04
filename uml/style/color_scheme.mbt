@@ -174,7 +174,10 @@ pub fn ColorScheme::default() -> ColorScheme {
 
 ///|
 /// Return a copy of this scheme with a different canvas colour.
-pub fn ColorScheme::with_canvas(self : ColorScheme, canvas : String) -> ColorScheme {
+pub fn ColorScheme::with_canvas(
+  self : ColorScheme,
+  canvas : String,
+) -> ColorScheme {
   { ..self, canvas, }
 }
 

@@ -37,7 +37,14 @@ fn @cgraph.Graph::apply_theme_defaults(
 ) -> Unit {
   if graph.get_attr("bgcolor") is None {
     let canvas = scheme.canvas.to_lower()
-    graph.set_attr("bgcolor", if canvas == "transparent" { "none" } else { scheme.canvas })
+    graph.set_attr(
+      "bgcolor",
+      if canvas == "transparent" {
+        "none"
+      } else {
+        scheme.canvas
+      },
+    )
   }
   for node in graph.nodes() {
     let explicit_color = node.get_attr("color")

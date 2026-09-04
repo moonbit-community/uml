@@ -139,6 +139,70 @@ priv struct ClassBodyLayout {
 }
 
 ///|
+/// Rendering state shared by class-node paint, relation endpoints, and note
+/// attachments. MBTI selects one member portion; other class families retain
+/// the existing all-members disclosure.
+priv struct ClassMemberCollapse {
+  enabled : Bool
+  section : @entity.MbtiCollapsibleSection
+  initially_open : Bool
+}
+
+///|
+fn ClassMemberCollapse::section_height(
+  self : ClassMemberCollapse,
+  body : ClassBodyLayout,
+) -> Int {
+  match self.section {
+    AllMembers => body.fields_height + body.methods_height
+    Fields => body.fields_height
+    Methods => body.methods_height
+  }
+}
+
+///|
+fn ClassMemberCollapse::is_collapsible(
+  self : ClassMemberCollapse,
+  body : ClassBodyLayout,
+) -> Bool {
+  self.enabled && self.section_height(body) > 0
+}
+
+///|
+fn ClassMemberCollapse::closed_height(
+  self : ClassMemberCollapse,
+  header : ClassHeaderLayout,
+  body : ClassBodyLayout,
+) -> Int {
+  let always_visible_height = match self.section {
+    AllMembers => 0
+    Fields => body.methods_height
+    Methods => body.fields_height
+  }
+  header.height + always_visible_height
+}
+
+///|
+fn ClassMemberCollapse::details_open_attribute(
+  self : ClassMemberCollapse,
+) -> String {
+  if self.initially_open {
+    " open"
+  } else {
+    ""
+  }
+}
+
+///|
+fn ClassMemberCollapse::section_attribute(self : ClassMemberCollapse) -> String {
+  match self.section {
+    AllMembers => "all"
+    Fields => "fields"
+    Methods => "methods"
+  }
+}
+
+///|
 /// Object headers have no class spot and keep the stereotype/name as one
 /// centered stack.  Keeping this layout separate prevents class-only header
 /// geometry from leaking into object diagrams.

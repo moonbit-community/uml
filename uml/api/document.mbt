@@ -43,8 +43,13 @@ pub fn Document::render_svg(
   self : Document,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
-  self.diagram.render_svg(color_scheme~, class_member_collapsible~)
+  self.diagram.render_svg(
+    color_scheme~,
+    class_member_collapsible~,
+    mbti_render_options~,
+  )
 }
 
 ///|
@@ -63,8 +68,13 @@ pub fn render_svg(
   source : String,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
-  parse(source).render_svg(color_scheme~, class_member_collapsible~)
+  parse(source).render_svg(
+    color_scheme~,
+    class_member_collapsible~,
+    mbti_render_options~,
+  )
 }
 
 ///|
@@ -77,6 +87,7 @@ pub fn Diagram::render_svg(
   self : Diagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   match self {
     Sequence(diagram) => @render.render_sequence_svg(diagram, color_scheme~)
@@ -90,7 +101,12 @@ pub fn Diagram::render_svg(
     State(diagram) => @render.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @render.render_mindmap_svg(diagram, color_scheme~)
     Mbti(diagram) =>
-      @render.render_mbti_svg(diagram, color_scheme~, class_member_collapsible~)
+      @render.render_mbti_svg(
+        diagram,
+        color_scheme~,
+        class_member_collapsible~,
+        render_options=mbti_render_options,
+      )
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
       @render.render_structured_svg(diagram, color_scheme~)
     Dot(diagram) => diagram.render_svg(color_scheme~)

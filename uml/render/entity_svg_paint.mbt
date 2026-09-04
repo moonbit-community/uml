@@ -5,6 +5,7 @@ priv struct EntityPaintContext {
   output : StringBuilder
   diagram : @entity.EntityDiagram
   text_metrics : ClassTextMetrics
+  member_collapse : ClassMemberCollapse
 }
 
 ///|
@@ -127,17 +128,15 @@ fn EntityPaintContext::append_entity_image(
   entity : @entity.Entity,
   index : Int,
   layout : ClassLayout,
-  class_member_collapsible : Bool,
 ) -> Unit {
   match entity.render_capability(self.diagram.family).renderer {
-    ClassRenderer =>
-      self.append_entity(entity, index, layout, class_member_collapsible)
+    ClassRenderer => self.append_entity(entity, index, layout)
     ObjectRenderer | MapRenderer | JsonRenderer =>
       self.append_object_like(entity, index, layout)
     LollipopRenderer => self.append_lollipop(entity, index, layout)
     PointRenderer => self.append_point(entity, index, layout)
     UsecaseRenderer | ActorRenderer | ComponentRenderer =>
-      self.append_usecase(entity, index, layout, class_member_collapsible)
+      self.append_usecase(entity, index, layout)
     DescriptionRenderer => self.append_description(entity, index, layout)
     PortRenderer => self.append_port(entity, index, layout)
   }
@@ -573,7 +572,6 @@ fn EntityPaintContext::append_entity(
   entity : @entity.Entity,
   index : Int,
   layout : ClassLayout,
-  class_member_collapsible : Bool,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
   let (x, y, width, height) = layout.entity_rect(
@@ -597,13 +595,16 @@ fn EntityPaintContext::append_entity(
   let entity_colors = self.diagram.style.defaults().entity_colors()
   let (spot_text, spot_fill) = entity.spot(self.diagram.family, entity_colors)
   let placement = header.placement(width)
-  let rect_height = if class_member_collapsible {
-    header.height
+  let collapsible = self.member_collapse.is_collapsible(body)
+  let rect_height = if collapsible {
+    self.member_collapse.closed_height(header, body)
   } else {
     height
   }
-  let node_index_attribute = if class_member_collapsible {
-    " data-node-index=\"\{index}\" style=\"--uml-header-height:\{header.height}px\""
+  let node_index_attribute = if collapsible {
+    (
+      $| data-node-index="\{index}" data-member-section="\{self.member_collapse.section_attribute()}" style="--uml-header-height:\{header.height}px;--uml-selected-height:\{self.member_collapse.section_height(body)}px;--uml-closed-height:\{self.member_collapse.closed_height(header, body)}px"
+    )
   } else {
     ""
   }
@@ -612,7 +613,7 @@ fn EntityPaintContext::append_entity(
   self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
   self.append_class_header(entity, x, y, placement, header)
   self.append_class_members(
-    x, y, width, height, header, body, fill, line_attributes, entity_colors, class_member_collapsible,
+    x, y, width, height, header, body, line_attributes, entity_colors,
   )
   self.output.write_string("</g>\n")
 }
@@ -727,50 +728,195 @@ fn EntityPaintContext::append_class_members(
   height : Int,
   header : ClassHeaderLayout,
   body : ClassBodyLayout,
-  fill : String,
   line_attributes : String,
   entity_colors : @style.EntityColors,
-  class_member_collapsible : Bool,
 ) -> Unit {
   let output = self.output
   let row_height = self.text_metrics.row_height()
   let member_top = y + header.height
-  let body_height = body.fields_height + body.methods_height
-  // The mbti family opens its member disclosure by default; class diagrams
-  // stay collapsed until the user expands them.
-  let details_open = if self.diagram.family is Mbti { " open" } else { "" }
-  if class_member_collapsible {
-    output <+
-      $|<foreignObject x="\{x}" y="\{y}" width="\{width}" height="\{height}" pointer-events="all"><details xmlns="http://www.w3.org/1999/xhtml"\{details_open} style="position:relative"><summary style="position:absolute;top:0;left:0;right:0;height:\{header.height}px;list-style:none"></summary><svg xmlns="http://www.w3.org/2000/svg" viewBox="\{x} \{y} \{width} \{height}" width="\{width}" height="\{height}"><rect x="\{x}" y="\{member_top}" width="\{width}" height="\{body_height}" fill="\{fill}"\{line_attributes}/>
+  let collapse = self.member_collapse
+  guard collapse.is_collapsible(body) else {
+    append_member_section(
+      output,
+      x,
+      member_top,
+      width,
+      body.fields,
+      body.fields_height,
+      row_height,
+      entity_colors,
+      line_attributes,
+      self.text_metrics,
+    )
+    append_member_section(
+      output,
+      x,
+      member_top + body.fields_height,
+      width,
+      body.methods,
+      body.methods_height,
+      row_height,
+      entity_colors,
+      line_attributes,
+      self.text_metrics,
+    )
+    return
   }
-  let mut section_y = y + header.height
-  for section_index, section in [body.fields, body.methods] {
-    let section_height = if section_index == 0 {
-      body.fields_height
-    } else {
-      body.methods_height
-    }
-    // The mbti family collapses empty portions: no separator, no strip.
-    guard section_height > 0 else { continue }
-    output <+
-      $|<line x1="\{x}" y1="\{section_y}" x2="\{x + width}" y2="\{section_y}"\{line_attributes}/>
-    for member_index, entry in section {
-      let member_y = section_y + (member_index + 1) * row_height + 1
-      output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g>
-      append_paint_text(
+  let selected_height = collapse.section_height(body)
+  let selected_top = match collapse.section {
+    AllMembers | Fields => header.height
+    Methods => header.height + body.fields_height
+  }
+  let details_open = collapse.details_open_attribute()
+  output <+
+    $|<foreignObject x="\{x}" y="\{y}" width="\{width}" height="\{height}" pointer-events="all"><details xmlns="http://www.w3.org/1999/xhtml"\{details_open} style="position:absolute;inset:0;overflow:visible"><summary style="position:absolute;top:0;left:0;right:0;height:\{header.height}px;list-style:none"></summary><svg class="collapsible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{selected_height}" width="\{width}" height="\{selected_height}" style="position:absolute;left:0;top:\{selected_top}px">
+  match collapse.section {
+    AllMembers => {
+      append_member_section_local(
         output,
-        x + entry.member_text_x(),
-        member_y,
-        entry.display_without_visibility(),
-        "member",
-        self.text_metrics.regular,
+        width,
+        0,
+        body.fields,
+        body.fields_height,
+        row_height,
+        entity_colors,
+        line_attributes,
+        self.text_metrics,
+      )
+      append_member_section_local(
+        output,
+        width,
+        body.fields_height,
+        body.methods,
+        body.methods_height,
+        row_height,
+        entity_colors,
+        line_attributes,
+        self.text_metrics,
       )
     }
-    section_y += section_height
+    Fields =>
+      append_member_section_local(
+        output,
+        width,
+        0,
+        body.fields,
+        body.fields_height,
+        row_height,
+        entity_colors,
+        line_attributes,
+        self.text_metrics,
+      )
+    Methods =>
+      append_member_section_local(
+        output,
+        width,
+        0,
+        body.methods,
+        body.methods_height,
+        row_height,
+        entity_colors,
+        line_attributes,
+        self.text_metrics,
+      )
   }
-  if class_member_collapsible {
-    output.write_string("</svg></details></foreignObject>\n")
+  output.write_string("</svg></details>")
+  match collapse.section {
+    AllMembers => ()
+    Fields => {
+      output <+
+        $|<svg class="always-visible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{body.methods_height}" width="\{width}" height="\{body.methods_height}" style="position:absolute;left:0;top:\{header.height}px">
+      append_member_section_local(
+        output,
+        width,
+        0,
+        body.methods,
+        body.methods_height,
+        row_height,
+        entity_colors,
+        line_attributes,
+        self.text_metrics,
+      )
+      output.write_string("</svg>")
+    }
+    Methods => {
+      output <+
+        $|<svg class="always-visible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{body.fields_height}" width="\{width}" height="\{body.fields_height}" style="position:absolute;left:0;top:\{header.height}px">
+      append_member_section_local(
+        output,
+        width,
+        0,
+        body.fields,
+        body.fields_height,
+        row_height,
+        entity_colors,
+        line_attributes,
+        self.text_metrics,
+      )
+      output.write_string("</svg>")
+    }
+  }
+  output.write_string("</foreignObject>\n")
+}
+
+///|
+fn append_member_section_local(
+  output : StringBuilder,
+  width : Int,
+  top : Int,
+  entries : Array[@entity.Member],
+  section_height : Int,
+  row_height : Int,
+  entity_colors : @style.EntityColors,
+  line_attributes : String,
+  text_metrics : ClassTextMetrics,
+) -> Unit {
+  guard section_height > 0 else { return }
+  output <+
+    $|<line x1="0" y1="\{top}" x2="\{width}" y2="\{top}"\{line_attributes}/>
+  for member_index, entry in entries {
+    let member_y = top + (member_index + 1) * row_height + 1
+    output <+
+      $|<g class="member-icon">\{entry.visibility_icon(5, member_y, entity_colors)}</g>
+    append_paint_text(
+      output,
+      entry.member_text_x(),
+      member_y,
+      entry.display_without_visibility(),
+      "member",
+      text_metrics.regular,
+    )
+  }
+}
+
+///|
+fn append_member_section(
+  output : StringBuilder,
+  x : Int,
+  y : Int,
+  width : Int,
+  entries : Array[@entity.Member],
+  section_height : Int,
+  row_height : Int,
+  entity_colors : @style.EntityColors,
+  line_attributes : String,
+  text_metrics : ClassTextMetrics,
+) -> Unit {
+  guard section_height > 0 else { return }
+  output <+
+    $|<line x1="\{x}" y1="\{y}" x2="\{x + width}" y2="\{y}"\{line_attributes}/>
+  for member_index, entry in entries {
+    let member_y = y + (member_index + 1) * row_height + 1
+    output <+
+      $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g>
+    append_paint_text(
+      output,
+      x + entry.member_text_x(),
+      member_y,
+      entry.display_without_visibility(),
+      "member",
+      text_metrics.regular,
+    )
   }
 }
 
@@ -780,7 +926,6 @@ fn EntityPaintContext::append_usecase(
   entity : @entity.Entity,
   index : Int,
   layout : ClassLayout,
-  class_member_collapsible : Bool,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
   let capability = entity.render_capability(self.diagram.family)
@@ -802,7 +947,7 @@ fn EntityPaintContext::append_usecase(
   match capability.renderer {
     UsecaseRenderer | ActorRenderer | ComponentRenderer => ()
     _ => {
-      self.append_entity(entity, index, layout, class_member_collapsible)
+      self.append_entity(entity, index, layout)
       return
     }
   }

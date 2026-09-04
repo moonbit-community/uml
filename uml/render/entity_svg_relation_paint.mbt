@@ -68,56 +68,60 @@ fn append_relation_decoration(
 
 ///|
 /// One possible anchor for a relation endpoint: the open state sits on the
-/// full node boundary, while the closed state re-anchors onto the header strip
-/// of a collapsed class node.
+/// full node boundary, while the closed state re-anchors onto the visible
+/// bounds of a collapsed class node.
 priv struct RelationEndpointState {
   endpoint : (Double, Double)
   side : RelationContactSide?
 }
 
 ///|
-/// Header-strip rectangle of a collapsible class node, or `None` when the
-/// entity cannot collapse (not a class image, hidden, or without a body).
-fn relation_endpoint_header(
+/// Closed-state rectangle of a collapsible class node, or None when the
+/// entity cannot collapse (not a class image, hidden, or without the selected
+/// member portion).
+fn relation_endpoint_closed_bounds(
   layout : ClassLayout,
   diagram : @entity.EntityDiagram,
   index : Int,
   text_metrics : ClassTextMetrics,
-  class_member_collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> Rect? {
-  guard class_member_collapsible else { return None }
   let entity = diagram.entities[index]
   guard entity.render_capability(diagram.family).renderer is ClassRenderer else {
     return None
   }
   guard !entity.is_hidden && !entity.is_removed else { return None }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
+  let body = entity.body_layout(text_metrics, diagram.family)
   let header_height = entity.header_layout(text_metrics, diagram.family).height
-  guard header_height > 0 && header_height < height else { return None }
+  guard member_collapse.is_collapsible(body) else { return None }
+  let closed_height = member_collapse.closed_height(
+    entity.header_layout(text_metrics, diagram.family),
+    body,
+  )
+  guard header_height > 0 && closed_height < height else { return None }
+  let closed_center_y = y.to_double() + closed_height.to_double() / 2.0
   Some(
     rect(
-      point(
-        x.to_double() + width.to_double() / 2.0,
-        y.to_double() + header_height.to_double() / 2.0,
-      ),
+      point(x.to_double() + width.to_double() / 2.0, closed_center_y),
       width.to_double(),
-      header_height.to_double(),
+      closed_height.to_double(),
     ),
   )
 }
 
 ///|
 /// @entity.Relation endpoint alternatives for one side: always the open boundary
-/// contact, plus the closed header-strip contact when the attached node is
-/// collapsible. The closed endpoint lands on the midpoint of the strip edge
+/// contact, plus the closed visible-bounds contact when the attached node is
+/// collapsible. The closed endpoint lands on the midpoint of the boundary edge
 /// the relation approaches, so a collapsed edge joins the node's side rather
 /// than its corner.
 fn relation_endpoint_states(
   endpoint : (Double, Double),
   side : RelationContactSide?,
-  header : Rect?,
+  closed_bounds : Rect?,
 ) -> Array[RelationEndpointState] {
-  match header {
+  match closed_bounds {
     Some(bounds) => {
       let projected = closest_point_on_rect(point_from_pair(endpoint), bounds)
       let closed_side = rect_contact_side(projected, bounds)
@@ -319,9 +323,9 @@ fn collapsible_relation_style(
   diagram : @entity.EntityDiagram,
   layout : ClassLayout,
   text_metrics : ClassTextMetrics,
-  class_member_collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> String {
-  guard class_member_collapsible else { return "" }
+  guard member_collapse.enabled else { return "" }
   let output = StringBuilder()
   output.write_string("g[data-edge-index] > .edge-state{display:none}\n")
   for relation_index, relation in diagram.relations {
@@ -330,7 +334,7 @@ fn collapsible_relation_style(
         diagram,
         layout,
         text_metrics,
-        class_member_collapsible,
+        member_collapse,
         relation_index,
         entity_index(diagram, relation.left),
         entity_index(diagram, relation.right),
@@ -345,7 +349,7 @@ fn collapsible_relation_style(
           diagram,
           layout,
           text_metrics,
-          class_member_collapsible,
+          member_collapse,
           -1 - structure_index,
           Some(edge.parent_entity),
           Some(edge.child_entity),
@@ -365,21 +369,21 @@ fn collapsible_edge_css(
   diagram : @entity.EntityDiagram,
   layout : ClassLayout,
   text_metrics : ClassTextMetrics,
-  class_member_collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
   edge_index : Int,
   left_entity : Int?,
   right_entity : Int?,
   has_url : Bool,
 ) -> String {
   let left_collapsible = left_entity.map_or(false, index => {
-    relation_endpoint_header(
-      layout, diagram, index, text_metrics, class_member_collapsible,
+    relation_endpoint_closed_bounds(
+      layout, diagram, index, text_metrics, member_collapse,
     )
     is Some(_)
   })
   let right_collapsible = right_entity.map_or(false, index => {
-    relation_endpoint_header(
-      layout, diagram, index, text_metrics, class_member_collapsible,
+    relation_endpoint_closed_bounds(
+      layout, diagram, index, text_metrics, member_collapse,
     )
     is Some(_)
   })
@@ -504,7 +508,7 @@ fn append_relation(
   relation : @entity.Relation,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
-  class_member_collapsible : Bool,
+  member_collapse : ClassMemberCollapse,
 ) -> Unit {
   // The mindmap tree edges are painted as structure edges; every other
   // relation is dropped so non-root nodes keep exactly one edge.
@@ -591,13 +595,13 @@ fn append_relation(
                 },
               )
               let left_header = left_index.bind(index => {
-                relation_endpoint_header(
-                  layout, diagram, index, text_metrics, class_member_collapsible,
+                relation_endpoint_closed_bounds(
+                  layout, diagram, index, text_metrics, member_collapse,
                 )
               })
               let right_header = right_index.bind(index => {
-                relation_endpoint_header(
-                  layout, diagram, index, text_metrics, class_member_collapsible,
+                relation_endpoint_closed_bounds(
+                  layout, diagram, index, text_metrics, member_collapse,
                 )
               })
               let left_contact = graphviz
@@ -644,13 +648,13 @@ fn append_relation(
   }
   if !drew_spline {
     let left_header = left_index.bind(index => {
-      relation_endpoint_header(
-        layout, diagram, index, text_metrics, class_member_collapsible,
+      relation_endpoint_closed_bounds(
+        layout, diagram, index, text_metrics, member_collapse,
       )
     })
     let right_header = right_index.bind(index => {
-      relation_endpoint_header(
-        layout, diagram, index, text_metrics, class_member_collapsible,
+      relation_endpoint_closed_bounds(
+        layout, diagram, index, text_metrics, member_collapse,
       )
     })
     let left_states = relation_endpoint_states((x1, y1), None, left_header)
