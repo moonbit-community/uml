@@ -19,7 +19,7 @@ pub fn MbtiOptions::default() -> MbtiOptions {
     trait_inheritance_edges: true,
     impl_edges: true,
     member_type_edges: true,
-    show_methods: false,
+    show_methods: true,
   }
 }
 
@@ -69,5 +69,5 @@ pub extend MbtiRenderOptions with Debug::{to_repr}
 
 ///|
 pub fn MbtiRenderOptions::default() -> MbtiRenderOptions {
-  { collapsible_section: AllMembers, initial_state: Expanded, }
+  { collapsible_section: Fields, initial_state: Collapsed, }
 }
