@@ -17,5 +17,3 @@ license = "Apache-2.0"
 keywords = [ "uml", "plantuml", "svg", "cli" ]
 
 description = "Command-line tool to render PlantUML diagrams as SVG"
-
-preferred_target = "native"

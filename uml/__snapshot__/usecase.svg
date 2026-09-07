@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="519" height="193" viewBox="-6 -6 519 193" role="img" aria-label="Use case diagram"><style>
-svg{font-family:Arial, sans-serif;font-size:13px;background:none}
+svg{font-family:Arial, sans-serif;font-size:13px;background:transparent}
 .class-node > rect,.class-node > line{stroke:#181818;stroke-width:1.2}
 .class-node foreignObject line{stroke-width:1.2;fill:none}
 .class-node foreignObject rect{stroke-width:1.2}

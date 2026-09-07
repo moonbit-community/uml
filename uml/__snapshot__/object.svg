@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="552" height="271" viewBox="-6 -29 552 271" role="img" aria-label="Object diagram"><g class="title"><text x="228.5" y="-15" class="chrome-text" fill="#000000" font-weight="700" textLength="95" lengthAdjust="spacing">Order snapshot</text>
 </g>
 <style>
-svg{font-family:Arial, sans-serif;font-size:13px;background:none}
+svg{font-family:Arial, sans-serif;font-size:13px;background:transparent}
 .class-node > rect,.class-node > line{stroke:#181818;stroke-width:1.2}
 .class-node foreignObject line{stroke-width:1.2;fill:none}
 .class-node foreignObject rect{stroke-width:1.2}

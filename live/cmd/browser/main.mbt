@@ -58,9 +58,9 @@ pub extend AppState with Eq::{not_equal, equal}
 
 ///|
 fn update(
-  emit : @rabbita.Emit[Msg],
-  msg : Msg,
   state : AppState,
+  msg : Msg,
+  emit : @rabbita.Emit[Msg],
 ) -> (AppState, @cmd.Cmd) {
   match msg {
     EditorChanged(value) => ({ ..state, source: value, }, @cmd.none)
