@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="339" height="366" viewBox="-6 -6 339 366" role="img" aria-label="Class diagram"><style>
 svg{font-family:Arial, sans-serif;font-size:13px;background:transparent}
 .class-node > rect,.class-node > line{stroke:#181818;stroke-width:1.2}
-.class-node foreignObject line{stroke-width:1.2;fill:none}
-.class-node foreignObject rect{stroke-width:1.2}
 .relation{stroke:#181818;stroke-width:1.2}
 .relation-decoration{stroke-width:1;stroke-linejoin:miter}
 .class-node > line,.relation{fill:none}
