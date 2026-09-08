@@ -622,7 +622,7 @@ fn EntityPaintContext::append_entity(
       )
       let closed_height = header.height + fields_closed + methods_closed
       (
-        $| data-node-index="\{index}" data-member-collapse="true" style="--uml-header-height:\{header.height}px;--uml-fields-open-height:\{fields_open}px;--uml-methods-open-height:\{methods_open}px;--uml-fields-closed-height:\{fields_closed}px;--uml-methods-closed-height:\{methods_closed}px;--uml-closed-height:\{closed_height}px;--uml-fields-open-methods-closed-height:\{header.height + fields_open + methods_closed}px;--uml-fields-closed-methods-open-height:\{header.height + fields_closed + methods_open}px;--uml-open-height:\{height}px"
+        $| data-node-index="\{index}" style="--uml-header-height:\{header.height}px;--uml-fields-open-height:\{fields_open}px;--uml-methods-open-height:\{methods_open}px;--uml-fields-closed-height:\{fields_closed}px;--uml-methods-closed-height:\{methods_closed}px;--uml-closed-height:\{closed_height}px;--uml-fields-open-methods-closed-height:\{header.height + fields_open + methods_closed}px;--uml-fields-closed-methods-open-height:\{header.height + fields_closed + methods_open}px;--uml-open-height:\{height}px"
       )
     } else {
       (
@@ -633,7 +633,7 @@ fn EntityPaintContext::append_entity(
     ""
   }
   self.output <+
-    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"\{node_index_attribute}><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
+    $|<g class="class-node\{if collapsible && self.member_collapse.independent { " member-collapse" } else { "" }}" data-code="\{@svg.xml_escape(entity.qualified_code)}"\{node_index_attribute}><rect x="\{x}" y="\{y}" width="\{width}" height="\{rect_height}" fill="\{fill}"\{line_attributes}/>
   self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
   self.append_class_header(entity, x, y, placement, header)
   self.append_class_members(
@@ -822,7 +822,6 @@ fn EntityPaintContext::append_class_members(
       output,
       "fields",
       width,
-      header.height,
       body.fields,
       body.fields_height,
       row_height,
@@ -837,7 +836,6 @@ fn EntityPaintContext::append_class_members(
       output,
       "methods",
       width,
-      header.height,
       body.methods,
       body.methods_height,
       row_height,
@@ -858,7 +856,6 @@ fn append_collapsible_member_section(
   output : StringBuilder,
   section_name : String,
   width : Int,
-  top : Int,
   entries : Array[@entity.Member],
   section_height : Int,
   row_height : Int,
@@ -868,7 +865,7 @@ fn append_collapsible_member_section(
   details_open : String,
 ) -> Unit {
   output <+
-    $|<details class="member-disclosure \{section_name}" xmlns="http://www.w3.org/1999/xhtml"\{details_open} style="position:absolute;inset:0;overflow:visible"><summary style="position:absolute;left:0;right:0;top:\{top}px;height:\{7 + row_height}px;z-index:2;pointer-events:all;list-style:none"><svg class="member-placeholder" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{7 + row_height}" width="\{width}" height="\{7 + row_height}">
+    $|<details class="member-disclosure \{section_name}" xmlns="http://www.w3.org/1999/xhtml"\{details_open} style="position:absolute;left:0;right:0;overflow:visible"><summary style="position:absolute;left:0;right:0;z-index:2;pointer-events:all;list-style:none"><svg class="member-placeholder" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{7 + row_height}" width="\{width}" height="\{7 + row_height}">
   output <+
     $|<line x1="0" y1="0" x2="\{width}" y2="0"\{line_attributes}/>
   append_paint_text(
@@ -880,7 +877,7 @@ fn append_collapsible_member_section(
     text_metrics.regular,
   )
   output <+
-    $|</svg></summary><svg class="collapsible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{section_height}" width="\{width}" height="\{section_height}" style="position:absolute;left:0;top:\{top}px">
+    $|</svg></summary><svg class="collapsible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{section_height}" width="\{width}" height="\{section_height}" style="position:absolute;left:0;top:0">
   append_member_section_local(
     output, width, 0, entries, section_height, row_height, entity_colors, line_attributes,
     text_metrics,

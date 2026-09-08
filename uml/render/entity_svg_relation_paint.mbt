@@ -126,11 +126,11 @@ fn relation_endpoint_closed_bounds(
 ///|
 /// @entity.Relation endpoint alternatives for one side: always the open boundary
 /// contact, plus the closed visible-bounds contact when the attached node is
-/// collapsible. The closed endpoint lands on the midpoint of the boundary edge
-/// the relation approaches, so a collapsed edge joins the node's side rather
-/// than its corner.
+/// collapsible. The closed endpoint is clipped along the original route ray,
+/// preserving the edge's approach direction.
 fn relation_endpoint_states(
   endpoint : (Double, Double),
+  adjacent : (Double, Double),
   side : RelationContactSide?,
   closed_bounds : Array[Rect?],
 ) -> Array[RelationEndpointState] {
@@ -141,10 +141,16 @@ fn relation_endpoint_states(
   for _state_id, bounds in closed_bounds {
     match bounds {
       Some(bounds) => {
-        let projected = closest_point_on_rect(point_from_pair(endpoint), bounds)
-        let closed_side = rect_contact_side(projected, bounds)
+        // Preserve the routed tangent when moving the endpoint to the closed
+        // node boundary instead of snapping it to an edge midpoint.
+        let closed_endpoint = clip_toward_rect(
+          point_from_pair(endpoint),
+          point_from_pair(adjacent),
+          bounds,
+        )
+        let closed_side = rect_contact_side(closed_endpoint, bounds)
         states.push({
-          endpoint: rect_edge_midpoint(bounds, closed_side).pair(),
+          endpoint: closed_endpoint.pair(),
           side: Some(closed_side),
         })
       }
@@ -703,6 +709,11 @@ fn append_relation(
                 })
               let left_states = relation_endpoint_states(
                 left_contact.map_or(first_path[0], value => value.point.pair()),
+                if first_path.length() > 1 {
+                  first_path[1]
+                } else {
+                  last_path[last_path.length() - 1]
+                },
                 left_contact.map(value => value.side),
                 left_header,
               )
@@ -710,6 +721,11 @@ fn append_relation(
                 right_contact.map_or(last_path[last_path.length() - 1], value => {
                   value.point.pair()
                 }),
+                if last_path.length() > 1 {
+                  last_path[last_path.length() - 2]
+                } else {
+                  first_path[0]
+                },
                 right_contact.map(value => value.side),
                 right_header,
               )
@@ -744,8 +760,18 @@ fn append_relation(
         layout, diagram, index, text_metrics, member_collapse,
       )
     })
-    let left_states = relation_endpoint_states((x1, y1), None, left_header)
-    let right_states = relation_endpoint_states((x2, y2), None, right_header)
+    let left_states = relation_endpoint_states(
+      (x1, y1),
+      (x2, y2),
+      None,
+      left_header,
+    )
+    let right_states = relation_endpoint_states(
+      (x2, y2),
+      (x1, y1),
+      None,
+      right_header,
+    )
     append_relation_state_groups(
       output,
       relation_index,

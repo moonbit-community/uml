@@ -198,11 +198,13 @@ fn append_mindmap_edge_states(
   )
   let left_states = relation_endpoint_states(
     (edge.x1.to_double(), edge.y1.to_double()),
+    (edge.control1_x.to_double(), edge.control1_y.to_double()),
     None,
     left_closed_bounds,
   )
   let right_states = relation_endpoint_states(
     (edge.x2.to_double(), edge.y2.to_double()),
+    (edge.control2_x.to_double(), edge.control2_y.to_double()),
     None,
     right_closed_bounds,
   )

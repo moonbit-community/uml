@@ -245,8 +245,14 @@ test "mbti fields and methods disclose independently" {
   @test.assert_eq(svg.contains("class=\"member-disclosure fields\""), true)
   @test.assert_eq(svg.contains("class=\"member-disclosure methods\""), true)
   @test.assert_eq(svg.contains("member-placeholder"), true)
-  @test.assert_eq(svg.contains("data-member-collapse=\"true\""), true)
+  @test.assert_eq(svg.contains("class=\"class-node member-collapse\""), true)
+  @test.assert_eq(svg.contains("data-member-collapse"), false)
   @test.assert_eq(svg.contains("z-index:2;pointer-events:all"), true)
+  @test.assert_eq(svg.contains("inset:0;overflow:visible"), false)
+  @test.assert_eq(
+    svg.contains("details > summary{top:0;height:100%;cursor:pointer}"),
+    true,
+  )
   @test.assert_eq(svg.contains("data-member-section"), false)
   @test.assert_eq(svg.contains("top:0;left:0;right:0;height:"), false)
 }

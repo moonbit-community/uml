@@ -173,6 +173,24 @@ fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point 
 }
 
 ///|
+/// Clip the routed endpoint toward its adjacent control point. Unlike
+/// `clip_ray_to_rect`, this deliberately does not reverse the direction when
+/// the endpoint is outside the bounds: closed-state bounds are nested inside
+/// the original node, so the original endpoint is expected to be outside.
+fn clip_toward_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point {
+  let dx = adjacent.x - endpoint.x
+  let dy = adjacent.y - endpoint.y
+  clip_ray_to_rect_dir(endpoint, dx, dy, bounds).unwrap_or(
+    clip_ray_to_rect_dir(
+      endpoint,
+      bounds.center.x - endpoint.x,
+      bounds.center.y - endpoint.y,
+      bounds,
+    ).unwrap_or(closest_point_on_rect(endpoint, bounds)),
+  )
+}
+
+///|
 fn clip_ray_to_ellipse(
   endpoint : Point,
   adjacent : Point,
@@ -284,21 +302,4 @@ fn rect_contact_side(point : Point, bounds : Rect) -> RelationContactSide {
     }
   }
   closest.1
-}
-
-///|
-/// The midpoint of the rectangle edge for a contact side. A collapsed class
-/// node re-anchors its relations here: the edge lands on the middle of the
-/// header-strip side it approaches instead of drifting to a corner.
-fn rect_edge_midpoint(bounds : Rect, side : RelationContactSide) -> Point {
-  let left = bounds.center.x - bounds.width / 2.0
-  let right = bounds.center.x + bounds.width / 2.0
-  let top = bounds.center.y - bounds.height / 2.0
-  let bottom = bounds.center.y + bounds.height / 2.0
-  match side {
-    ContactWest => point(left, bounds.center.y)
-    ContactEast => point(right, bounds.center.y)
-    ContactNorth => point(bounds.center.x, top)
-    ContactSouth => point(bounds.center.x, bottom)
-  }
 }
