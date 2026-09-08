@@ -320,20 +320,20 @@ fn Adapter::push_association(
 /// functions share the synthetic Free node; extension methods on undeclared
 /// types are dropped.
 fn Adapter::apply_func(
-  self : Adapter,
+  adapter : Adapter,
   sig : @mbti_ast.FuncSig,
-  free_display? : String = "Free",
+  free_display? : String = "", // Text [Free] 
 ) -> Unit {
-  guard self.options.show_methods else { return }
+  guard adapter.options.show_methods else { return }
   let index = if sig.type_name is Some(type_name) {
-    guard self.entity_index(type_name.name) is Some(index) else { return }
+    guard adapter.entity_index(type_name.name) is Some(index) else { return }
     index
   } else {
-    let index = self.ensure_entity(FREE_FUNCTIONS_CODE, @entity.FreeFunctions)
-    self.entities[index] = { ..self.entities[index], display: free_display, }
+    let index = adapter.ensure_entity(FREE_FUNCTIONS_CODE, @entity.FreeFunctions)
+    adapter.entities[index] = { ..adapter.entities[index], display: free_display, }
     index
   }
-  self.entities[index].members.push(
+  adapter.entities[index].members.push(
     entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
   )
 }
