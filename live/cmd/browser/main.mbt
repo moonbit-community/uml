@@ -40,6 +40,7 @@ enum Msg {
   ManifestLoaded(Result[Map[String, Array[String]], String])
   SourceLoaded(String, Result[String, String])
   ThemeToggled
+  MemberToggled(String, String, Bool)
 }
 
 ///|
@@ -51,6 +52,8 @@ struct AppState {
   sources : Map[String, String]
   load_error : String?
   theme : Theme
+  member_states : Map[String, @entity.ClassMemberState]
+  member_revision : Int
 } derive(Eq)
 
 ///|
@@ -63,7 +66,8 @@ fn update(
   emit : @rabbita.Emit[Msg],
 ) -> (AppState, @cmd.Cmd) {
   match msg {
-    EditorChanged(value) => ({ ..state, source: value, }, @cmd.none)
+    EditorChanged(value) =>
+      ({ ..state, source: value, member_states: {}, }, @cmd.none)
     FileSelected(file) => (select_source(state, file), @cmd.none)
     SizesChanged(sizes) => ({ ..state, sizes, }, @cmd.none)
     ManifestLoaded(Ok(categories)) =>
@@ -74,6 +78,11 @@ fn update(
       (apply_source(state, path, source), @cmd.none)
     SourceLoaded(path, Err(_)) => (apply_source(state, path, ""), @cmd.none)
     ThemeToggled => (toggle_theme(state), apply_theme(state.theme.toggle()))
+    MemberToggled(code, section, expanded) =>
+      (
+        toggle_member(state, code, section, expanded),
+        focus_member(code, section),
+      )
   }
 }
 
@@ -93,7 +102,12 @@ fn apply_theme(theme : Theme) -> @cmd.Cmd {
 
 ///|
 fn select_source(state : AppState, path : String) -> AppState {
-  { ..state, active_file: path, source: state.sources.get(path).unwrap_or(""), }
+  {
+    ..state,
+    active_file: path,
+    source: state.sources.get(path).unwrap_or(""),
+    member_states: {},
+  }
 }
 
 ///|
@@ -161,12 +175,14 @@ fn initial_state() -> AppState {
     sources: Map([]),
     load_error: None,
     theme: Light,
+    member_states: {},
+    member_revision: 0,
   }
 }
 
 ///|
 fn app_state_tag(state : AppState) -> String {
-  "\{state.active_file}|\{state.source}|\{state.categories.length()}|\{state.load_error.unwrap_or("")}|\{state.theme.css_name()}"
+  "\{state.active_file}|\{state.source}|\{state.categories.length()}|\{state.load_error.unwrap_or("")}|\{state.theme.css_name()}|\{state.member_revision}"
 }
 
 ///|
@@ -241,22 +257,36 @@ fn theme_toggle(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
 
 ///|
 #warnings("-alert_xss_vulnerable")
-fn preview_content(state : AppState) -> Array[Html] {
+fn preview_content(state : AppState, emit : @rabbita.Emit[Msg]) -> Array[Html] {
   if state.load_error is Some(error) {
     [div(class="preview-message", error)]
   } else if state.source == "" {
     [div(class="preview-message", "加载中…")]
   } else {
-    let svg : String = render_source_svg(state.source)
-    [div(attrs=@html.Attrs::build().inner_html(svg), "")]
+    let svg = render_source_svg(state.source, state.member_states)
+    [
+      div(
+        attrs=@html.Attrs::build()
+          .inner_html(svg)
+          .on_click(event => activate_member(event.as_event(), emit))
+          .on_keydown(event => {
+            if event.key() == "Enter" || event.key() == " " {
+              activate_member(event.as_event(), emit)
+            } else {
+              @cmd.none
+            }
+          }),
+        "",
+      ),
+    ]
   }
 }
 
 ///|
-fn preview_panel(state : AppState) -> Html {
+fn preview_panel(state : AppState, emit : @rabbita.Emit[Msg]) -> Html {
   div(class="preview-panel") <| [
     h1(class="panel-title", "Preview"),
-    div(class="preview") <| preview_content(state),
+    div(class="preview") <| preview_content(state, emit),
   ]
 }
 
@@ -300,7 +330,7 @@ fn workspace(state : AppState, emit : @rabbita.Emit[Msg]) -> Val[Html] {
           scope~,
           index=2,
           style=["height:100%"],
-          preview_panel(state),
+          preview_panel(state, emit),
         ),
       ])
     },

@@ -345,9 +345,11 @@ test "documents expose their detected diagram kind" {
 
 ## Collapsible class members
 
-With `class_member_collapsible=true`, class members render inside a
-`<details>` disclosure (via `<foreignObject>`) so they can be folded in the
-browser:
+With `class_member_collapsible=true`, SVG member controls expose
+`data-member-node`, `data-member-section`, and `aria-expanded`. The host
+handles click or keyboard activation, updates `member_states` by qualified
+node code, and calls the renderer again. Each call recomputes the full layout.
+A standalone SVG shows its current state; interaction requires a host.
 
 ```mbt check
 ///|
@@ -359,7 +361,7 @@ test "collapsible class members" {
     #|}
     #|@enduml
   let svg = @api.render_svg(source, class_member_collapsible=true)
-  assert_true(svg.contains("<details"))
+  assert_true(svg.contains("data-member-node"))
 }
 ```
 

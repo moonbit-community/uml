@@ -43,11 +43,13 @@ pub fn Document::render_svg(
   self : Document,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  member_states? : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   self.diagram.render_svg(
     color_scheme~,
     class_member_collapsible~,
+    member_states~,
     mbti_render_options~,
   )
 }
@@ -61,19 +63,22 @@ pub fn Document::render_svg(
 /// other role may be a CSS variable or a literal color. Diagram renderers own
 /// skinparam precedence and the mapping from their role group to SVG elements.
 ///
-/// When `class_member_collapsible` is set, class-diagram members (fields and
-/// methods) are wrapped in a `<foreignObject>`/`<details>` disclosure so they
-/// can be collapsed in the browser. MBTI fields and methods use independent
-/// disclosures whose initial states come from `mbti_render_options`.
+/// With `class_member_collapsible`, node controls expose `data-member-node`,
+/// `data-member-section`, and `aria-expanded` for the host. On activation,
+/// update `member_states` (keyed by qualified node code) and render again.
+/// Every call lays out nodes, edges, notes, and canvas for the current state.
+/// MBTI defaults come from its render options; class members default closed.
 pub fn render_svg(
   source : String,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  member_states? : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   parse(source).render_svg(
     color_scheme~,
     class_member_collapsible~,
+    member_states~,
     mbti_render_options~,
   )
 }
@@ -88,6 +93,7 @@ pub fn Diagram::render_svg(
   self : Diagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
+  member_states? : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   match self {
@@ -98,6 +104,7 @@ pub fn Diagram::render_svg(
         diagram,
         color_scheme~,
         class_member_collapsible~,
+        member_states~,
       )
     State(diagram) => @render.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @render.render_mindmap_svg(diagram, color_scheme~)
@@ -106,6 +113,7 @@ pub fn Diagram::render_svg(
         diagram,
         color_scheme~,
         class_member_collapsible~,
+        member_states~,
         render_options=mbti_render_options,
       )
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>

@@ -13,7 +13,7 @@ import {
   "moonbit-community/yaml",
   "bobzhang/toml",
   "moonbitlang/core/json",
-  "moonbitlang/lexer/basic",
+  // "moonbitlang/lexer/basic",
   "moonbitlang/parser/mbti_ast",
   "moonbitlang/parser/mbti_parser",
 }

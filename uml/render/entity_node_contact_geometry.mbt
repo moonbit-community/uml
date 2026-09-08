@@ -173,24 +173,6 @@ fn clip_ray_to_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point 
 }
 
 ///|
-/// Clip the routed endpoint toward its adjacent control point. Unlike
-/// `clip_ray_to_rect`, this deliberately does not reverse the direction when
-/// the endpoint is outside the bounds: closed-state bounds are nested inside
-/// the original node, so the original endpoint is expected to be outside.
-fn clip_toward_rect(endpoint : Point, adjacent : Point, bounds : Rect) -> Point {
-  let dx = adjacent.x - endpoint.x
-  let dy = adjacent.y - endpoint.y
-  clip_ray_to_rect_dir(endpoint, dx, dy, bounds).unwrap_or(
-    clip_ray_to_rect_dir(
-      endpoint,
-      bounds.center.x - endpoint.x,
-      bounds.center.y - endpoint.y,
-      bounds,
-    ).unwrap_or(closest_point_on_rect(endpoint, bounds)),
-  )
-}
-
-///|
 fn clip_ray_to_ellipse(
   endpoint : Point,
   adjacent : Point,
@@ -279,27 +261,4 @@ fn closest_point_on_rect(target : Point, bounds : Rect) -> Point {
   let top = bounds.center.y - bounds.height / 2.0
   let bottom = bounds.center.y + bounds.height / 2.0
   point(target.x.min(right).max(left), target.y.min(bottom).max(top))
-}
-
-///|
-/// Which edge of an axis-aligned rectangle a boundary point lies on, choosing
-/// the nearest side when the point sits on a corner.
-fn rect_contact_side(point : Point, bounds : Rect) -> RelationContactSide {
-  let left = bounds.center.x - bounds.width / 2.0
-  let right = bounds.center.x + bounds.width / 2.0
-  let top = bounds.center.y - bounds.height / 2.0
-  let bottom = bounds.center.y + bounds.height / 2.0
-  let candidates = [
-    ((point.x - left).abs(), ContactWest),
-    ((point.x - right).abs(), ContactEast),
-    ((point.y - top).abs(), ContactNorth),
-    ((point.y - bottom).abs(), ContactSouth),
-  ]
-  let mut closest = candidates[0]
-  for candidate in candidates[1:] {
-    if candidate.0 < closest.0 {
-      closest = candidate
-    }
-  }
-  closest.1
 }

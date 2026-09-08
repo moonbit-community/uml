@@ -8,8 +8,8 @@ pub(all) struct MbtiOptions {
   /// A struct field or enum payload whose type is declared in the interface
   /// draws an association edge labeled with the member name.
   member_type_edges : Bool
-  /// Trait methods and extension methods (`fn T::method`) are listed in
-  /// their node. Off by default: interfaces render as type skeletons.
+  /// List trait and extension methods in their types and top-level functions
+  /// in a separate Free node. When disabled, render only type skeletons.
   show_methods : Bool
 }
 
@@ -37,7 +37,7 @@ pub extend MbtiCollapsibleSection with Eq::{not_equal, equal}
 pub extend MbtiCollapsibleSection with Debug::{to_repr}
 
 ///|
-/// The initial disclosure state of the selected mbti member portion.
+/// The rendering state of the selected mbti member portion.
 pub(all) enum MbtiCollapseState {
   Expanded
   Collapsed
@@ -50,11 +50,11 @@ pub extend MbtiCollapseState with Eq::{not_equal, equal}
 pub extend MbtiCollapseState with Debug::{to_repr}
 
 ///|
-/// Rendering-only controls for mbti member disclosures.
+/// Default rendering states for mbti members without a per-node override.
 ///
 /// This is deliberately separate from `MbtiOptions`: parsing decides which
 /// members exist, while these settings only decide whether each existing
-/// portion starts expanded or collapsed.
+/// portion is expanded or collapsed.
 pub(all) struct MbtiRenderOptions {
   fields_state : MbtiCollapseState
   methods_state : MbtiCollapseState
@@ -73,5 +73,16 @@ pub fn MbtiRenderOptions::default() -> MbtiRenderOptions {
     // methods remain visible.
     fields_state: Collapsed,
     methods_state: Expanded,
+  }
+}
+
+///|
+/// Resolve the default states used by the renderer and interactive hosts.
+pub fn MbtiRenderOptions::member_state(
+  self : MbtiRenderOptions,
+) -> ClassMemberState {
+  {
+    fields_expanded: self.fields_state is Expanded,
+    methods_expanded: self.methods_state is Expanded,
   }
 }

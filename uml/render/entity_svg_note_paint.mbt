@@ -243,7 +243,6 @@ fn append_notes(
   diagram : @entity.EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
-  member_collapse : ClassMemberCollapse,
 ) -> Unit {
   let note_layouts = layout.graphviz.map_or(
     fallback_note_layouts(diagram, text_metrics, layout),
@@ -261,7 +260,6 @@ fn append_notes(
     let mut path = normal_note_path(note_layout)
     let corner_path = note_corner_path(note_layout)
     let mut path_class = ""
-    let mut closed_path : String? = None
     if note.target_kind is @entity.NoteTargetKind::EntityNote ||
       note.target_kind is MemberTip {
       match layout.graphviz {
@@ -281,49 +279,6 @@ fn append_notes(
                     Some(attachment) => {
                       path = opale_note_path(note_layout, attachment)
                       path_class = " class=\"note-opale-link\""
-                      match entity_index(diagram, note.target) {
-                        Some(target_index) => {
-                          let closed_bounds = {
-                            let mut result : Rect? = None
-                            for
-                              bounds in relation_endpoint_closed_bounds(
-                                layout, diagram, target_index, text_metrics, member_collapse,
-                              ) {
-                              match bounds {
-                                Some(value) => result = Some(value)
-                                None => ()
-                              }
-                            }
-                            result
-                          }
-                          match closed_bounds {
-                            Some(closed_bounds) =>
-                              match
-                                note_opale_attachment(
-                                  note_layout,
-                                  edge,
-                                  {
-                                    code: target.code,
-                                    x: closed_bounds.center.x,
-                                    y: closed_bounds.center.y,
-                                    width: closed_bounds.width,
-                                    height: closed_bounds.height,
-                                  },
-                                  Box,
-                                ) {
-                                Some(closed_attachment) =>
-                                  closed_path = Some(
-                                    opale_note_path(
-                                      note_layout, closed_attachment,
-                                    ),
-                                  )
-                                None => ()
-                              }
-                            None => ()
-                          }
-                        }
-                        None => ()
-                      }
                     }
                     None => ()
                   }
@@ -335,14 +290,8 @@ fn append_notes(
         None => ()
       }
     }
-    match closed_path {
-      Some(closed) =>
-        output <+
-          $|<g class="class-note" data-note-index="\{note_layout.note_index}" style="stroke:\{@entity.note_border_color(diagram.style)}"><g class="note-state note-state-0"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g><g class="note-state note-state-1"><path d="\{closed}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g></g>
-      None =>
-        output <+
-          $|<g class="class-note" style="stroke:\{@entity.note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
-    }
+    output <+
+      $|<g class="class-note" style="stroke:\{@entity.note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
     for line_index, line in note.text.split("\n") {
       let line_text = line.to_owned()
       output.write_string(
@@ -360,69 +309,4 @@ fn append_notes(
       output.write_char('\n')
     }
   }
-}
-
-///|
-/// CSS that switches each note to its closed variant when its attached class
-/// node collapses its members, mirroring `collapsible_relation_style`. The
-/// open state targets the full node boundary while the closed state
-/// re-anchors the pointer onto the visible closed-state bounds.
-fn collapsible_note_style(
-  diagram : @entity.EntityDiagram,
-  layout : ClassLayout,
-  text_metrics : ClassTextMetrics,
-  member_collapse : ClassMemberCollapse,
-) -> String {
-  guard member_collapse.enabled else { return "" }
-  let output = StringBuilder()
-  output.write_string("g[data-note-index] > .note-state{display:none}\n")
-  for note_index, note in diagram.notes {
-    guard note.target_kind is @entity.NoteTargetKind::EntityNote ||
-      note.target_kind is MemberTip else {
-      continue
-    }
-    if entity_index(diagram, note.target) is Some(target_index) {
-      if relation_endpoint_closed_bounds(
-          layout, diagram, target_index, text_metrics, member_collapse,
-        ).length() >
-        1 {
-        let body = diagram.entities[target_index].body_layout(
-          text_metrics,
-          diagram.family,
-        )
-        let fields_open = ":has(.class-node[data-node-index=\"\{target_index}\"] details.fields[open])"
-        let methods_open = ":has(.class-node[data-node-index=\"\{target_index}\"] details.methods[open])"
-        let open_condition = if member_collapse.independent {
-          let fields = member_collapse.section_is_collapsible(body, Fields)
-          let methods = member_collapse.section_is_collapsible(body, Methods)
-          if fields && methods {
-            fields_open + methods_open
-          } else if fields {
-            fields_open
-          } else {
-            methods_open
-          }
-        } else {
-          ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
-        }
-        for bit in 0..<2 {
-          let condition = if bit == 1 {
-            if member_collapse.independent {
-              ":not(\{open_condition})"
-            } else {
-              ":has(.class-node[data-node-index=\"\{target_index}\"] details:not([open]))"
-            }
-          } else if member_collapse.independent {
-            open_condition
-          } else {
-            ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
-          }
-          output.write_string(
-            "svg\{condition} > g[data-note-index=\"\{note_index}\"] > .note-state-\{bit}{display:block}\n",
-          )
-        }
-      }
-    }
-  }
-  output.to_string()
 }

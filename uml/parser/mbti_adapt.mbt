@@ -6,9 +6,8 @@
 /// traits (and abstract, error and newtype declarations). Types and traits
 /// referenced but not declared here (imports) get no node, and impls, trait
 /// inheritance and extension methods only connect declared entities. Top-level
-/// functions, constants and values are not owned by any type and are not
-/// rendered. Trait and extension methods are only listed when the
-/// `show_methods` option is set.
+/// functions share a separate Free node; constants and values are not rendered.
+/// Functions and methods are only listed when `show_methods` is set.
 fn adapt(
   mbti : @mbti_ast.Mbti,
   standalone_alias : Bool,
@@ -51,6 +50,10 @@ fn adapt(
     },
   }
 }
+
+///|
+/// Outside the identifier grammar, so a declared Free type remains distinct.
+const FREE_FUNCTIONS_CODE : String = "<free>"
 
 ///|
 priv struct Adapter {
@@ -314,17 +317,25 @@ fn Adapter::push_association(
 ///|
 /// `fn T::method(...)` attaches a method member to the entity for `T` when
 /// `T` is declared in this interface and `show_methods` is set. Top-level
-/// functions have no owning type and are ignored; extension methods on
-/// undeclared types are dropped.
-fn Adapter::apply_func(self : Adapter, sig : @mbti_ast.FuncSig) -> Unit {
+/// functions share the synthetic Free node; extension methods on undeclared
+/// types are dropped.
+fn Adapter::apply_func(
+  self : Adapter,
+  sig : @mbti_ast.FuncSig,
+  free_display? : String = "Free",
+) -> Unit {
   guard self.options.show_methods else { return }
-  if sig.type_name is Some(type_name) {
-    if self.entity_index(type_name.name) is Some(index) {
-      self.entities[index].members.push(
-        entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
-      )
-    }
+  let index = if sig.type_name is Some(type_name) {
+    guard self.entity_index(type_name.name) is Some(index) else { return }
+    index
+  } else {
+    let index = self.ensure_entity(FREE_FUNCTIONS_CODE, @entity.FreeFunctions)
+    self.entities[index] = { ..self.entities[index], display: free_display, }
+    index
   }
+  self.entities[index].members.push(
+    entity_member("+" + func_sig_to_string(sig), @entity.Public, true),
+  )
 }
 
 ///|
@@ -444,8 +455,27 @@ fn constructor_param_to_string(param : @mbti_ast.ConstrParam) -> String {
 ///|
 fn func_sig_to_string(sig : @mbti_ast.FuncSig) -> String {
   let prefix = if sig.is_async is Some(_) { "async " } else { "" }
+  let type_params = if sig.type_params.is_empty() {
+    ""
+  } else {
+    "[" +
+    sig.type_params
+    .map(param => {
+      let constraints = if param.constraints.is_empty() {
+        ""
+      } else {
+        ": " +
+        param.constraints.map(qualified_name_to_string).to_array().join(" + ")
+      }
+      param.name.name + constraints
+    })
+    .to_array()
+    .join(", ") +
+    "]"
+  }
   prefix +
   sig.name.name +
+  type_params +
   "(" +
   sig.params.map(parameter_to_string).to_array().join(", ") +
   ") -> " +

@@ -3,5 +3,8 @@ import {
   "kokic/uml/tokenizer",
   "kokic/metrics",
   "moonbitlang/core/string",
-  "moonbitlang/core/test",
 }
+
+import {
+  "moonbitlang/core/test",
+} for "test"

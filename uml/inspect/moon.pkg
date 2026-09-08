@@ -1,9 +1,6 @@
 import {
   "moonbitlang/core/string",
   "moonbitlang/core/test",
-}
-
-import {
   "kokic/uml/parser",
   "kokic/uml/render",
   "kokic/uml/style",
@@ -11,6 +8,8 @@ import {
 } for "wbtest"
 
 import {
+  "moonbitlang/core/string",
+  "moonbitlang/core/test",
   "kokic/uml/entity",
   "kokic/uml/flow",
   "kokic/uml/tokenizer",

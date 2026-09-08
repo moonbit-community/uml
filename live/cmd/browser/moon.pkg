@@ -7,8 +7,12 @@ import {
   "Yoorkin/rui",
   "kokic/uml/api",
   "kokic/uml/style",
-  "moonbitlang/core/test",
+  "kokic/uml/entity",
 }
+
+import {
+  "moonbitlang/core/test",
+} for "wbtest"
 
 supported_targets = "js"
 

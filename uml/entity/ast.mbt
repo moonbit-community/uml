@@ -9,6 +9,8 @@ pub(all) enum EntityKind {
   Entity
   Protocol
   Struct
+  /// Synthetic MBTI node containing top-level functions.
+  FreeFunctions
   Circle
   Usecase
   BusinessUsecase

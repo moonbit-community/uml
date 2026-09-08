@@ -4,6 +4,7 @@
 fn mbti_spot_word(kind : @entity.EntityKind) -> String {
   match kind {
     @entity.EntityKind::Struct => "struct"
+    @entity.EntityKind::FreeFunctions => "free"
     @entity.EntityKind::Interface => "trait"
     @entity.EntityKind::Enum => "enum"
     @entity.EntityKind::AbstractClass => "abstract"
@@ -136,163 +137,8 @@ priv struct ClassBodyLayout {
   methods : Array[@entity.Member]
   fields_height : Int
   methods_height : Int
-}
-
-///|
-/// Rendering state shared by class-node paint, relation endpoints, and note
-/// attachments. MBTI keeps independent disclosure state for fields and
-/// methods; other class families retain the existing all-members disclosure.
-priv struct ClassMemberCollapse {
-  enabled : Bool
-  independent : Bool
-  fields_initially_open : Bool
-  methods_initially_open : Bool
-}
-
-///|
-fn ClassMemberCollapse::section_height(
-  _self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-  section : @entity.MbtiCollapsibleSection,
-) -> Int {
-  match section {
-    Fields => body.fields_height
-    Methods => body.methods_height
-  }
-}
-
-///|
-fn ClassMemberCollapse::section_is_collapsible(
-  self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-  section : @entity.MbtiCollapsibleSection,
-) -> Bool {
-  self.enabled && self.section_height(body, section) > 0
-}
-
-///|
-fn ClassMemberCollapse::section_open_height(
-  self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-  section : @entity.MbtiCollapsibleSection,
-) -> Int {
-  self.section_height(body, section)
-}
-
-///|
-fn ClassMemberCollapse::section_closed_height(
-  self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-  section : @entity.MbtiCollapsibleSection,
-  row_height : Int,
-) -> Int {
-  if self.section_is_collapsible(body, section) {
-    7 + row_height
-  } else {
-    self.section_open_height(body, section)
-  }
-}
-
-///|
-fn ClassMemberCollapse::section_initially_open(
-  self : ClassMemberCollapse,
-  section : @entity.MbtiCollapsibleSection,
-) -> Bool {
-  if section is Fields {
-    self.fields_initially_open
-  } else {
-    self.methods_initially_open
-  }
-}
-
-///|
-fn ClassMemberCollapse::section_details_open_attribute(
-  self : ClassMemberCollapse,
-  section : @entity.MbtiCollapsibleSection,
-) -> String {
-  if self.section_initially_open(section) {
-    " open=\"open\""
-  } else {
-    ""
-  }
-}
-
-///|
-fn ClassMemberCollapse::section_masks(
-  self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-) -> Array[Int] {
-  if !self.independent {
-    return [0, 1]
-  }
-  let fields = self.section_is_collapsible(body, Fields)
-  let methods = self.section_is_collapsible(body, Methods)
-  let masks = [0]
-  if fields {
-    masks.push(1)
-  }
-  if methods {
-    masks.push(2)
-  }
-  if fields && methods {
-    masks.push(3)
-  }
-  masks
-}
-
-///|
-fn ClassMemberCollapse::visible_body_height(
-  self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-  row_height : Int,
-  mask : Int,
-) -> Int {
-  let fields_height = if mask % 2 == 1 {
-    self.section_closed_height(body, Fields, row_height)
-  } else {
-    body.fields_height
-  }
-  let methods_height = if mask / 2 % 2 == 1 {
-    self.section_closed_height(body, Methods, row_height)
-  } else {
-    body.methods_height
-  }
-  if self.independent {
-    fields_height + methods_height
-  } else if mask == 1 {
-    0
-  } else {
-    body.fields_height + body.methods_height
-  }
-}
-
-///|
-fn ClassMemberCollapse::is_collapsible(
-  self : ClassMemberCollapse,
-  body : ClassBodyLayout,
-) -> Bool {
-  if self.independent {
-    self.section_is_collapsible(body, Fields) ||
-    self.section_is_collapsible(body, Methods)
-  } else {
-    self.enabled && body.fields_height + body.methods_height > 0
-  }
-}
-
-///|
-fn ClassMemberCollapse::closed_height(
-  self : ClassMemberCollapse,
-  header : ClassHeaderLayout,
-  body : ClassBodyLayout,
-  row_height : Int,
-) -> Int {
-  if self.independent {
-    header.height +
-    self.section_closed_height(body, Fields, row_height) +
-    self.section_closed_height(body, Methods, row_height)
-  } else {
-    header.height
-  }
+  fields_collapsed : Bool
+  methods_collapsed : Bool
 }
 
 ///|
@@ -349,8 +195,13 @@ fn body_section_height(
   if entries.is_empty() {
     8
   } else {
-    7 + entries.length() * text_metrics.row_height()
+    member_rows_height(entries.length(), text_metrics)
   }
+}
+
+///|
+fn member_rows_height(count : Int, text_metrics : ClassTextMetrics) -> Int {
+  7 + count * text_metrics.row_height()
 }
 
 ///|
@@ -1011,19 +862,34 @@ fn @entity.Entity::body_layout(
   let fields = visible.filter(entry => !entry.is_method)
   let methods = visible.filter(entry => entry.is_method)
   let skeleton = family is Mbti
+  let state = text_metrics.member_states
+    .get(self.qualified_code)
+    .unwrap_or(text_metrics.member_defaults)
+  let interactive = text_metrics.member_interaction &&
+    family.capability().class_members_collapsible
+  let fields_collapsed = interactive && !state.fields_expanded
+  let methods_collapsed = interactive &&
+    !(if skeleton { state.methods_expanded } else { state.fields_expanded })
+  let section_height = (entries : Array[@entity.Member], collapsed : Bool) => {
+    if skeleton && entries.is_empty() {
+      0
+    } else if collapsed {
+      if skeleton {
+        member_rows_height(1, text_metrics)
+      } else {
+        0
+      }
+    } else {
+      body_section_height(entries, text_metrics)
+    }
+  }
   {
     fields,
     methods,
-    fields_height: if skeleton && fields.is_empty() {
-      0
-    } else {
-      body_section_height(fields, text_metrics)
-    },
-    methods_height: if skeleton && methods.is_empty() {
-      0
-    } else {
-      body_section_height(methods, text_metrics)
-    },
+    fields_collapsed,
+    methods_collapsed,
+    fields_height: section_height(fields, fields_collapsed),
+    methods_height: section_height(methods, methods_collapsed),
   }
 }
 
@@ -1058,6 +924,9 @@ priv struct ClassTextMetrics {
   arrow_regular : @metrics.FontMetrics
   note : @metrics.FontMetrics
   actor_style : String
+  member_interaction : Bool
+  member_defaults : @entity.ClassMemberState
+  member_states : Map[String, @entity.ClassMemberState]
 }
 
 ///|
@@ -1305,6 +1174,9 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
     ),
     note: style.font_metrics(font_size=NOTE_FONT_SIZE),
     actor_style: @entity.actor_style(style),
+    member_interaction: false,
+    member_defaults: { fields_expanded: true, methods_expanded: true, },
+    member_states: {},
   }
 }
 
@@ -1341,7 +1213,9 @@ fn @entity.Entity::class_node_size(
   let header = self.header_layout(text_metrics, family)
   let body = self.body_layout(text_metrics, family)
   let mut width = header.width
-  for entry in body.fields + body.methods {
+  let visible = (if body.fields_collapsed { [] } else { body.fields }) +
+    (if body.methods_collapsed { [] } else { body.methods })
+  for entry in visible {
     width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
   }
   (width, header.height + body.fields_height + body.methods_height)

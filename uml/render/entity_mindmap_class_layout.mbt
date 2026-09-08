@@ -27,8 +27,6 @@ priv struct MindmapClassEdge {
   control2_y : Int
   x2 : Int
   y2 : Int
-  parent_entity : Int
-  child_entity : Int
   parent_end : @entity.RelationEnd
   child_end : @entity.RelationEnd
 }
@@ -122,8 +120,6 @@ fn @entity.EntityDiagram::mindmap_class_layout(
       control2_y: edge.control2_y,
       x2: edge.x2,
       y2: edge.y2,
-      parent_entity: edge.parent_index,
-      child_entity: edge.child_index,
       parent_end: relation.right_end,
       child_end: relation.left_end,
     }
@@ -132,33 +128,18 @@ fn @entity.EntityDiagram::mindmap_class_layout(
 }
 
 ///|
-/// Paint one mbti structure edge (a packed parent-child curve) with open and
-/// closed endpoint states so it retracts when a class node collapses.
+/// Paint the packed parent-child curves from the current layout.
 fn append_mindmap_structure_edges(
   output : StringBuilder,
   diagram : @entity.EntityDiagram,
-  text_metrics : ClassTextMetrics,
   layout : ClassLayout,
-  member_collapse : ClassMemberCollapse,
 ) -> Unit {
   match layout.mindmap {
     Some(mindmap) => {
       let color = diagram.style.diagram_line_color()
       let background = diagram.style.canvas_color()
-      for structure_index, edge in mindmap.structure_edges {
-        append_mindmap_edge_states(
-          output,
-          diagram,
-          text_metrics,
-          layout,
-          edge,
-          -1 - structure_index,
-          color,
-          background,
-          "",
-          "",
-          member_collapse,
-        )
+      for edge in mindmap.structure_edges {
+        append_mindmap_class_edge(output, edge, color, background, "", "")
       }
     }
     None => ()
@@ -166,81 +147,9 @@ fn append_mindmap_structure_edges(
 }
 
 ///|
-/// Emit the open/closed edge-state groups of one mindmap bezier, mirroring the
-/// graphviz relation path: when a class node collapses, its endpoint moves
-/// from the full box boundary to the visible closed-state bounds.
-fn append_mindmap_edge_states(
-  output : StringBuilder,
-  diagram : @entity.EntityDiagram,
-  text_metrics : ClassTextMetrics,
-  layout : ClassLayout,
-  edge : MindmapClassEdge,
-  relation_index : Int,
-  relation_color : String,
-  background_color : String,
-  line_attributes : String,
-  dash : String,
-  member_collapse : ClassMemberCollapse,
-) -> Unit {
-  let left_closed_bounds = relation_endpoint_closed_bounds(
-    layout,
-    diagram,
-    edge.parent_entity,
-    text_metrics,
-    member_collapse,
-  )
-  let right_closed_bounds = relation_endpoint_closed_bounds(
-    layout,
-    diagram,
-    edge.child_entity,
-    text_metrics,
-    member_collapse,
-  )
-  let left_states = relation_endpoint_states(
-    (edge.x1.to_double(), edge.y1.to_double()),
-    (edge.control1_x.to_double(), edge.control1_y.to_double()),
-    None,
-    left_closed_bounds,
-  )
-  let right_states = relation_endpoint_states(
-    (edge.x2.to_double(), edge.y2.to_double()),
-    (edge.control2_x.to_double(), edge.control2_y.to_double()),
-    None,
-    right_closed_bounds,
-  )
-  let wrapped = left_states.length() > 1 || right_states.length() > 1
-  if wrapped {
-    output <+
-      $|<g class="edge" data-edge-index="\{relation_index}">
-  }
-  for left_bit, left_state in left_states {
-    for right_bit, right_state in right_states {
-      if wrapped {
-        output <+
-          $|<g class="edge-state edge-state-\{left_bit}\{right_bit}">
-      }
-      append_mindmap_edge_state(
-        output, edge, left_state, right_state, relation_color, background_color,
-        line_attributes, dash,
-      )
-      if wrapped {
-        output.write_string("</g>\n")
-      }
-    }
-  }
-  if wrapped {
-    output.write_string("</g>\n")
-  }
-}
-
-///|
-/// Paint one mindmap bezier for a concrete open/closed endpoint state, moving
-/// the endpoint (and its adjacent control point) so the tangent is preserved.
-fn append_mindmap_edge_state(
+fn append_mindmap_class_edge(
   output : StringBuilder,
   edge : MindmapClassEdge,
-  left : RelationEndpointState,
-  right : RelationEndpointState,
   relation_color : String,
   background_color : String,
   line_attributes : String,
@@ -252,13 +161,8 @@ fn append_mindmap_edge_state(
     (edge.control2_x.to_double(), edge.control2_y.to_double()),
     (edge.x2.to_double(), edge.y2.to_double()),
   ]
-  let adjusted = move_relation_spline_endpoint(
-    move_relation_spline_endpoint(path, true, left.endpoint),
-    false,
-    right.endpoint,
-  )
   let visible_path = shorten_relation_path(
-    relation_path(adjusted),
+    relation_path(path),
     edge.parent_end.decoration_length(),
     edge.child_end.decoration_length(),
   ).pairs()
@@ -270,17 +174,17 @@ fn append_mindmap_edge_state(
   append_relation_decoration(
     output,
     edge.parent_end,
-    left.endpoint,
-    adjusted[1],
+    path[0],
+    path[1],
     relation_color,
     background_color,
   )
-  let last_point = adjusted.length() - 1
+  let last_point = path.length() - 1
   append_relation_decoration(
     output,
     edge.child_end,
-    right.endpoint,
-    adjusted[last_point - 1],
+    path[last_point],
+    path[last_point - 1],
     relation_color,
     background_color,
   )

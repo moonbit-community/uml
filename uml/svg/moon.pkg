@@ -1,5 +1,5 @@
 import {
   "kokic/metrics",
-  "moonbitlang/core/string",
+  // "moonbitlang/core/string",
   "moonbitlang/core/test",
 }

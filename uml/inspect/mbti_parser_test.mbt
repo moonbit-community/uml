@@ -118,7 +118,7 @@ test "hides trait and extension methods when disabled" {
 }
 
 ///|
-test "ignores top-level functions, constants, and values" {
+test "groups top-level functions and ignores constants and values" {
   let source =
     #|@startuml '.mbti
     #|package "demo";
@@ -130,10 +130,68 @@ test "ignores top-level functions, constants, and values" {
     #|let counter : Int
     #|@enduml
   let graph = @parser.parse_mbti(source).graph
-  @test.assert_eq(graph.entities.length(), 1)
+  let free_nodes = graph.entities.filter(entity => entity.kind is FreeFunctions)
+  @test.assert_eq(free_nodes.is_empty(), false)
+  @test.assert_eq(
+    free_nodes,
+    graph.entities.filter(entity => entity.display == "Free"),
+  )
+  @test.assert_eq(free_nodes[0].members.is_empty(), false)
+  @test.assert_eq(free_nodes[0].members.all(entry => entry.is_method), true)
+  @test.assert_eq(graph.relations.is_empty(), true)
   @test.assert_eq(graph.has_entity("top_level"), false)
   @test.assert_eq(graph.has_entity("MAX"), false)
   @test.assert_eq(graph.has_entity("counter"), false)
+}
+
+///|
+test "free functions preserve order and remain distinct from a declared Free type" {
+  let source =
+    #|@startuml '.mbti
+    #|package "demo";
+    #|struct Free {
+    #|  value : Int
+    #|}
+    #|fn first(Free) -> Int
+    #|async fn second(String) -> Free raise
+    #|fn[T : Eq] third(T) -> T
+    #|fn Free::first(Free) -> Int
+    #|async fn Free::second(String) -> Free raise
+    #|fn[T : Eq] Free::third(T) -> T
+    #|fn External::ignored() -> Unit
+    #|@enduml
+  let graph = @parser.parse_mbti(source).graph
+  let declared = graph.entity("Free").unwrap()
+  let free = graph.entities.filter(entity => entity.kind is FreeFunctions)[0]
+  @test.assert_eq(declared.kind, @entity.Struct)
+  @test.assert_eq(free.display, declared.display)
+  @test.assert_eq(free.qualified_code == declared.qualified_code, false)
+  @test.assert_eq(
+    free.members,
+    declared.members.filter(entry => entry.is_method),
+  )
+  @test.assert_eq(graph.has_entity("External"), false)
+  @test.assert_eq(graph.relations.is_empty(), true)
+  let skeleton = @parser.parse_mbti(source, options={
+      ..@entity.MbtiOptions::default(),
+      show_methods: false,
+    }).graph
+  @test.assert_eq(
+    skeleton.entities.any(entity => entity.kind is FreeFunctions),
+    false,
+  )
+  @test.assert_eq(skeleton.has_entity("Free"), true)
+}
+
+///|
+test "interfaces without free functions have no synthetic node" {
+  let graph = @parser.parse_mbti(
+      "@startuml '.mbti\npackage \"demo\";\nstruct Free {}\nfn Free::run(Self) -> Unit\n@enduml",
+    ).graph
+  @test.assert_eq(
+    graph.entities.any(entity => entity.kind is FreeFunctions),
+    false,
+  )
 }
 
 ///|
