@@ -76,38 +76,51 @@ priv struct RelationEndpointState {
 }
 
 ///|
-/// Closed-state rectangle of a collapsible class node, or None when the
-/// entity cannot collapse (not a class image, hidden, or without the selected
-/// member portion).
+/// Visible rectangles for every disclosure combination of a collapsible class
+/// node. The first state is always the open/full boundary; subsequent states
+/// replace each closed section with its retained `...` row.
 fn relation_endpoint_closed_bounds(
   layout : ClassLayout,
   diagram : @entity.EntityDiagram,
   index : Int,
   text_metrics : ClassTextMetrics,
   member_collapse : ClassMemberCollapse,
-) -> Rect? {
+) -> Array[Rect?] {
   let entity = diagram.entities[index]
   guard entity.render_capability(diagram.family).renderer is ClassRenderer else {
-    return None
+    return []
   }
-  guard !entity.is_hidden && !entity.is_removed else { return None }
+  guard !entity.is_hidden && !entity.is_removed else { return [] }
   let (x, y, width, height) = layout.entity_rect(diagram, index, text_metrics)
   let body = entity.body_layout(text_metrics, diagram.family)
-  let header_height = entity.header_layout(text_metrics, diagram.family).height
-  guard member_collapse.is_collapsible(body) else { return None }
-  let closed_height = member_collapse.closed_height(
-    entity.header_layout(text_metrics, diagram.family),
-    body,
-  )
-  guard header_height > 0 && closed_height < height else { return None }
-  let closed_center_y = y.to_double() + closed_height.to_double() / 2.0
-  Some(
-    rect(
-      point(x.to_double() + width.to_double() / 2.0, closed_center_y),
-      width.to_double(),
-      closed_height.to_double(),
-    ),
-  )
+  let header = entity.header_layout(text_metrics, diagram.family)
+  guard member_collapse.is_collapsible(body) else { return [] }
+  let masks = member_collapse.section_masks(body)
+  let row_height = text_metrics.row_height()
+  let bounds : Array[Rect?] = []
+  for mask in masks {
+    if mask == 0 {
+      bounds.push(None)
+    } else {
+      let visible_height = header.height +
+        member_collapse.visible_body_height(body, row_height, mask)
+      if header.height > 0 && visible_height < height {
+        let center_y = y.to_double() + visible_height.to_double() / 2.0
+        bounds.push(
+          Some(
+            rect(
+              point(x.to_double() + width.to_double() / 2.0, center_y),
+              width.to_double(),
+              visible_height.to_double(),
+            ),
+          ),
+        )
+      } else {
+        bounds.push(None)
+      }
+    }
+  }
+  bounds
 }
 
 ///|
@@ -119,22 +132,26 @@ fn relation_endpoint_closed_bounds(
 fn relation_endpoint_states(
   endpoint : (Double, Double),
   side : RelationContactSide?,
-  closed_bounds : Rect?,
+  closed_bounds : Array[Rect?],
 ) -> Array[RelationEndpointState] {
-  match closed_bounds {
-    Some(bounds) => {
-      let projected = closest_point_on_rect(point_from_pair(endpoint), bounds)
-      let closed_side = rect_contact_side(projected, bounds)
-      [
-        { endpoint, side, },
-        {
+  if closed_bounds.is_empty() {
+    return [{ endpoint, side, }]
+  }
+  let states : Array[RelationEndpointState] = []
+  for _state_id, bounds in closed_bounds {
+    match bounds {
+      Some(bounds) => {
+        let projected = closest_point_on_rect(point_from_pair(endpoint), bounds)
+        let closed_side = rect_contact_side(projected, bounds)
+        states.push({
           endpoint: rect_edge_midpoint(bounds, closed_side).pair(),
           side: Some(closed_side),
-        },
-      ]
+        })
+      }
+      None => states.push({ endpoint, side, })
     }
-    None => [{ endpoint, side, }]
   }
+  states
 }
 
 ///|
@@ -375,29 +392,72 @@ fn collapsible_edge_css(
   right_entity : Int?,
   has_url : Bool,
 ) -> String {
-  let left_collapsible = left_entity.map_or(false, index => {
+  let left_masks = left_entity.map_or([], index => {
     relation_endpoint_closed_bounds(
       layout, diagram, index, text_metrics, member_collapse,
     )
-    is Some(_)
   })
-  let right_collapsible = right_entity.map_or(false, index => {
+  let right_masks = right_entity.map_or([], index => {
     relation_endpoint_closed_bounds(
       layout, diagram, index, text_metrics, member_collapse,
     )
-    is Some(_)
+  })
+  let left_collapsible = left_masks.length() > 1
+  let right_collapsible = right_masks.length() > 1
+  let left_state_masks = left_entity.map_or([], index => {
+    member_collapse.section_masks(
+      diagram.entities[index].body_layout(text_metrics, diagram.family),
+    )
+  })
+  let right_state_masks = right_entity.map_or([], index => {
+    member_collapse.section_masks(
+      diagram.entities[index].body_layout(text_metrics, diagram.family),
+    )
+  })
+  let left_sections = left_entity.map_or((false, false), index => {
+    let body = diagram.entities[index].body_layout(text_metrics, diagram.family)
+    (
+      member_collapse.section_is_collapsible(body, Fields),
+      member_collapse.section_is_collapsible(body, Methods),
+    )
+  })
+  let right_sections = right_entity.map_or((false, false), index => {
+    let body = diagram.entities[index].body_layout(text_metrics, diagram.family)
+    (
+      member_collapse.section_is_collapsible(body, Fields),
+      member_collapse.section_is_collapsible(body, Methods),
+    )
   })
   let left_index = left_entity.unwrap_or(-1)
   let right_index = right_entity.unwrap_or(-1)
-  let left_limit = if left_collapsible { 2 } else { 1 }
-  let right_limit = if right_collapsible { 2 } else { 1 }
+  let left_limit = if left_collapsible { left_masks.length() } else { 1 }
+  let right_limit = if right_collapsible { right_masks.length() } else { 1 }
   let out = StringBuilder()
   for left_bit in 0..<left_limit {
     for right_bit in 0..<right_limit {
       out.write_string(
         relation_state_css(
-          left_index, right_index, edge_index, left_bit, right_bit, left_collapsible,
-          right_collapsible, has_url,
+          left_index,
+          right_index,
+          edge_index,
+          if left_collapsible {
+            left_state_masks[left_bit]
+          } else {
+            0
+          },
+          if right_collapsible {
+            right_state_masks[right_bit]
+          } else {
+            0
+          },
+          left_bit,
+          right_bit,
+          left_collapsible,
+          right_collapsible,
+          member_collapse.independent,
+          left_sections,
+          right_sections,
+          has_url,
         ),
       )
     }
@@ -410,22 +470,49 @@ fn relation_state_css(
   left_index : Int,
   right_index : Int,
   relation_index : Int,
-  left_bit : Int,
-  right_bit : Int,
+  left_mask : Int,
+  right_mask : Int,
+  left_state_id : Int,
+  right_state_id : Int,
   left_collapsible : Bool,
   right_collapsible : Bool,
+  independent : Bool,
+  left_sections : (Bool, Bool),
+  right_sections : (Bool, Bool),
   has_url : Bool,
 ) -> String {
-  let condition = (index : Int, bit : Int, collapsible : Bool) => {
+  let condition = (
+    index : Int,
+    mask : Int,
+    collapsible : Bool,
+    sections : (Bool, Bool),
+  ) => {
     guard collapsible else { return "" }
-    if bit == 1 {
-      ":has(.class-node[data-node-index=\"\{index}\"] details:not([open]))"
-    } else {
-      ":has(.class-node[data-node-index=\"\{index}\"] details[open])"
+    if !independent {
+      if mask == 1 {
+        return ":has(.class-node[data-node-index=\"\{index}\"] details:not([open]))"
+      } else {
+        return ":has(.class-node[data-node-index=\"\{index}\"] details[open])"
+      }
     }
+    let fields = if sections.0 && mask % 2 == 1 {
+      ":has(.class-node[data-node-index=\"\{index}\"] details.fields:not([open]))"
+    } else if sections.0 {
+      ":has(.class-node[data-node-index=\"\{index}\"] details.fields[open])"
+    } else {
+      ""
+    }
+    let methods = if sections.1 && mask / 2 % 2 == 1 {
+      ":has(.class-node[data-node-index=\"\{index}\"] details.methods:not([open]))"
+    } else if sections.1 {
+      ":has(.class-node[data-node-index=\"\{index}\"] details.methods[open])"
+    } else {
+      ""
+    }
+    fields + methods
   }
   let edge_prefix = if has_url { "a > " } else { "" }
-  "svg\{condition(left_index, left_bit, left_collapsible)}\{condition(right_index, right_bit, right_collapsible)} > \{edge_prefix}g[data-edge-index=\"\{relation_index}\"] > .edge-state-\{left_bit}\{right_bit}{display:block}\n"
+  "svg\{condition(left_index, left_mask, left_collapsible, left_sections)}\{condition(right_index, right_mask, right_collapsible, right_sections)} > \{edge_prefix}g[data-edge-index=\"\{relation_index}\"] > .edge-state-\{left_state_id}\{right_state_id}{display:block}\n"
 }
 
 ///|
@@ -594,12 +681,12 @@ fn append_relation(
                   point.pair()
                 },
               )
-              let left_header = left_index.bind(index => {
+              let left_header = left_index.map_or([], index => {
                 relation_endpoint_closed_bounds(
                   layout, diagram, index, text_metrics, member_collapse,
                 )
               })
-              let right_header = right_index.bind(index => {
+              let right_header = right_index.map_or([], index => {
                 relation_endpoint_closed_bounds(
                   layout, diagram, index, text_metrics, member_collapse,
                 )
@@ -647,12 +734,12 @@ fn append_relation(
     _ => ()
   }
   if !drew_spline {
-    let left_header = left_index.bind(index => {
+    let left_header = left_index.map_or([], index => {
       relation_endpoint_closed_bounds(
         layout, diagram, index, text_metrics, member_collapse,
       )
     })
-    let right_header = right_index.bind(index => {
+    let right_header = right_index.map_or([], index => {
       relation_endpoint_closed_bounds(
         layout, diagram, index, text_metrics, member_collapse,
       )

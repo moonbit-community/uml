@@ -63,7 +63,8 @@ pub fn Document::render_svg(
 ///
 /// When `class_member_collapsible` is set, class-diagram members (fields and
 /// methods) are wrapped in a `<foreignObject>`/`<details>` disclosure so they
-/// can be collapsed in the browser.
+/// can be collapsed in the browser. MBTI fields and methods use independent
+/// disclosures whose initial states come from `mbti_render_options`.
 pub fn render_svg(
   source : String,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),

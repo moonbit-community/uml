@@ -253,22 +253,78 @@ fn @entity.EntityDiagram::class_member_collapse(
   if self.family is Mbti {
     {
       enabled,
-      section: mbti_render_options.collapsible_section,
-      initially_open: mbti_render_options.initial_state is Expanded,
+      independent: true,
+      fields_initially_open: mbti_render_options.fields_state is Expanded,
+      methods_initially_open: mbti_render_options.methods_state is Expanded,
     }
   } else {
-    { enabled, section: AllMembers, initially_open: false, }
+    {
+      enabled,
+      independent: false,
+      fields_initially_open: false,
+      methods_initially_open: false,
+    }
   }
 }
 
 ///|
 /// CSS keeps the outer class frame and the foreign-object hit area aligned
-/// with the selected member portion. The selected SVG lives inside details,
-/// so the browser hides it when closed; the other portion stays in place and
-/// moves below it only while the disclosure is open.
+/// with each independent mbti disclosure. A closed section keeps one member
+/// row for its `...` summary, while an open section exposes its full body.
 fn collapsible_member_style(member_collapse : ClassMemberCollapse) -> String {
   guard member_collapse.enabled else { return "" }
   let output = StringBuilder()
+  if member_collapse.independent {
+    output.write_string(
+      ".class-node[data-member-collapse] > rect,.class-node[data-member-collapse] foreignObject{height:var(--uml-closed-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:has(details.fields[open]):has(details.methods[open]) > rect,.class-node[data-member-collapse]:has(details.fields[open]):has(details.methods[open]) foreignObject{height:var(--uml-open-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:has(details.fields[open]):not(:has(details.methods)) > rect,.class-node[data-member-collapse]:has(details.fields[open]):not(:has(details.methods)) foreignObject{height:calc(var(--uml-header-height) + var(--uml-fields-open-height))}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:has(details.fields[open]):has(details.methods:not([open])) > rect,.class-node[data-member-collapse]:has(details.fields[open]):has(details.methods:not([open])) foreignObject{height:var(--uml-fields-open-methods-closed-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:has(details.fields:not([open])):has(details.methods[open]) > rect,.class-node[data-member-collapse]:has(details.fields:not([open])):has(details.methods[open]) foreignObject{height:var(--uml-fields-closed-methods-open-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:not(:has(details.fields)):has(details.methods[open]) > rect,.class-node[data-member-collapse]:not(:has(details.fields)):has(details.methods[open]) foreignObject{height:calc(var(--uml-header-height) + var(--uml-methods-open-height))}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.fields > summary{top:var(--uml-header-height);height:var(--uml-fields-closed-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details > summary{cursor:pointer}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.fields[open] > summary{height:var(--uml-fields-open-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.methods > summary{top:calc(var(--uml-header-height) + var(--uml-fields-closed-height));height:var(--uml-methods-closed-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:has(details.fields[open]) details.methods > summary{top:calc(var(--uml-header-height) + var(--uml-fields-open-height))}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.methods[open] > summary{height:var(--uml-methods-open-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.fields[open] .member-placeholder,.class-node[data-member-collapse] details.methods[open] .member-placeholder{opacity:0}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.fields > .collapsible-members{top:var(--uml-header-height)}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse] details.methods > .collapsible-members{top:calc(var(--uml-header-height) + var(--uml-fields-closed-height))}\n",
+    )
+    output.write_string(
+      ".class-node[data-member-collapse]:has(details.fields[open]) details.methods > .collapsible-members{top:calc(var(--uml-header-height) + var(--uml-fields-open-height))}\n",
+    )
+    return output.to_string()
+  }
   output.write_string(
     ".class-node:has(details[open]) > rect{height:calc(var(--uml-closed-height) + var(--uml-selected-height))}\n",
   )
@@ -280,6 +336,9 @@ fn collapsible_member_style(member_collapse : ClassMemberCollapse) -> String {
   )
   output.write_string(
     ".class-node foreignObject details[open]{height:var(--uml-selected-height)}\n",
+  )
+  output.write_string(
+    ".class-node foreignObject details > summary{cursor:pointer}\n",
   )
   output.write_string(
     ".class-node[data-member-section=\"fields\"]:has(details[open]) .always-visible-members{top:calc(var(--uml-header-height) + var(--uml-selected-height))!important}\n",

@@ -597,14 +597,38 @@ fn EntityPaintContext::append_entity(
   let placement = header.placement(width)
   let collapsible = self.member_collapse.is_collapsible(body)
   let rect_height = if collapsible {
-    self.member_collapse.closed_height(header, body)
+    self.member_collapse.closed_height(
+      header,
+      body,
+      self.text_metrics.row_height(),
+    )
   } else {
     height
   }
   let node_index_attribute = if collapsible {
-    (
-      $| data-node-index="\{index}" data-member-section="\{self.member_collapse.section_attribute()}" style="--uml-header-height:\{header.height}px;--uml-selected-height:\{self.member_collapse.section_height(body)}px;--uml-closed-height:\{self.member_collapse.closed_height(header, body)}px"
-    )
+    if self.member_collapse.independent {
+      let row_height = self.text_metrics.row_height()
+      let fields_open = self.member_collapse.section_open_height(body, Fields)
+      let methods_open = self.member_collapse.section_open_height(body, Methods)
+      let fields_closed = self.member_collapse.section_closed_height(
+        body,
+        Fields,
+        row_height,
+      )
+      let methods_closed = self.member_collapse.section_closed_height(
+        body,
+        Methods,
+        row_height,
+      )
+      let closed_height = header.height + fields_closed + methods_closed
+      (
+        $| data-node-index="\{index}" data-member-collapse="true" style="--uml-header-height:\{header.height}px;--uml-fields-open-height:\{fields_open}px;--uml-methods-open-height:\{methods_open}px;--uml-fields-closed-height:\{fields_closed}px;--uml-methods-closed-height:\{methods_closed}px;--uml-closed-height:\{closed_height}px;--uml-fields-open-methods-closed-height:\{header.height + fields_open + methods_closed}px;--uml-fields-closed-methods-open-height:\{header.height + fields_closed + methods_open}px;--uml-open-height:\{height}px"
+      )
+    } else {
+      (
+        $| data-node-index="\{index}" data-member-section="all" style="--uml-header-height:\{header.height}px;--uml-selected-height:\{body.fields_height + body.methods_height}px;--uml-closed-height:\{self.member_collapse.closed_height(header, body, self.text_metrics.row_height())}px"
+      )
+    }
   } else {
     ""
   }
@@ -762,101 +786,106 @@ fn EntityPaintContext::append_class_members(
     )
     return
   }
-  let selected_height = collapse.section_height(body)
-  let selected_top = match collapse.section {
-    AllMembers | Fields => header.height
-    Methods => header.height + body.fields_height
+  if !collapse.independent {
+    let selected_height = body.fields_height + body.methods_height
+    output <+
+      $|<foreignObject x="\{x}" y="\{y}" width="\{width}" height="\{height}" pointer-events="all"><details xmlns="http://www.w3.org/1999/xhtml" style="position:absolute;inset:0;overflow:visible"><summary style="position:absolute;top:0;left:0;right:0;height:\{header.height}px;list-style:none"></summary><svg class="collapsible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{selected_height}" width="\{width}" height="\{selected_height}" style="position:absolute;left:0;top:\{header.height}px">
+    append_member_section_local(
+      output,
+      width,
+      0,
+      body.fields,
+      body.fields_height,
+      row_height,
+      entity_colors,
+      line_attributes,
+      self.text_metrics,
+    )
+    append_member_section_local(
+      output,
+      width,
+      body.fields_height,
+      body.methods,
+      body.methods_height,
+      row_height,
+      entity_colors,
+      line_attributes,
+      self.text_metrics,
+    )
+    output.write_string("</svg></details></foreignObject>\n")
+    return
   }
-  let details_open = collapse.details_open_attribute()
   output <+
-    $|<foreignObject x="\{x}" y="\{y}" width="\{width}" height="\{height}" pointer-events="all"><details xmlns="http://www.w3.org/1999/xhtml"\{details_open} style="position:absolute;inset:0;overflow:visible"><summary style="position:absolute;top:0;left:0;right:0;height:\{header.height}px;list-style:none"></summary><svg class="collapsible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{selected_height}" width="\{width}" height="\{selected_height}" style="position:absolute;left:0;top:\{selected_top}px">
-  match collapse.section {
-    AllMembers => {
-      append_member_section_local(
-        output,
-        width,
-        0,
-        body.fields,
-        body.fields_height,
-        row_height,
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
-      append_member_section_local(
-        output,
-        width,
-        body.fields_height,
-        body.methods,
-        body.methods_height,
-        row_height,
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
-    }
-    Fields =>
-      append_member_section_local(
-        output,
-        width,
-        0,
-        body.fields,
-        body.fields_height,
-        row_height,
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
-    Methods =>
-      append_member_section_local(
-        output,
-        width,
-        0,
-        body.methods,
-        body.methods_height,
-        row_height,
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
+    $|<foreignObject x="\{x}" y="\{y}" width="\{width}" height="\{height}" pointer-events="all">
+  if collapse.section_is_collapsible(body, Fields) {
+    append_collapsible_member_section(
+      output,
+      "fields",
+      width,
+      header.height,
+      body.fields,
+      body.fields_height,
+      row_height,
+      entity_colors,
+      line_attributes,
+      self.text_metrics,
+      collapse.section_details_open_attribute(Fields),
+    )
   }
-  output.write_string("</svg></details>")
-  match collapse.section {
-    AllMembers => ()
-    Fields => {
-      output <+
-        $|<svg class="always-visible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{body.methods_height}" width="\{width}" height="\{body.methods_height}" style="position:absolute;left:0;top:\{header.height}px">
-      append_member_section_local(
-        output,
-        width,
-        0,
-        body.methods,
-        body.methods_height,
-        row_height,
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
-      output.write_string("</svg>")
-    }
-    Methods => {
-      output <+
-        $|<svg class="always-visible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{body.fields_height}" width="\{width}" height="\{body.fields_height}" style="position:absolute;left:0;top:\{header.height}px">
-      append_member_section_local(
-        output,
-        width,
-        0,
-        body.fields,
-        body.fields_height,
-        row_height,
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
-      output.write_string("</svg>")
-    }
+  if collapse.section_is_collapsible(body, Methods) {
+    append_collapsible_member_section(
+      output,
+      "methods",
+      width,
+      header.height,
+      body.methods,
+      body.methods_height,
+      row_height,
+      entity_colors,
+      line_attributes,
+      self.text_metrics,
+      collapse.section_details_open_attribute(Methods),
+    )
   }
   output.write_string("</foreignObject>\n")
+}
+
+///|
+/// Emit one independent mbti disclosure. The summary contains the retained
+/// one-row placeholder; when open it remains as an invisible hit area over
+/// the full section so clicking that section collapses it back to `...`.
+fn append_collapsible_member_section(
+  output : StringBuilder,
+  section_name : String,
+  width : Int,
+  top : Int,
+  entries : Array[@entity.Member],
+  section_height : Int,
+  row_height : Int,
+  entity_colors : @style.EntityColors,
+  line_attributes : String,
+  text_metrics : ClassTextMetrics,
+  details_open : String,
+) -> Unit {
+  output <+
+    $|<details class="member-disclosure \{section_name}" xmlns="http://www.w3.org/1999/xhtml"\{details_open} style="position:absolute;inset:0;overflow:visible"><summary style="position:absolute;left:0;right:0;top:\{top}px;height:\{7 + row_height}px;z-index:2;pointer-events:all;list-style:none"><svg class="member-placeholder" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{7 + row_height}" width="\{width}" height="\{7 + row_height}">
+  output <+
+    $|<line x1="0" y1="0" x2="\{width}" y2="0"\{line_attributes}/>
+  append_paint_text(
+    output,
+    5,
+    row_height + 1,
+    "...",
+    "member",
+    text_metrics.regular,
+  )
+  output <+
+    $|</svg></summary><svg class="collapsible-members" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \{width} \{section_height}" width="\{width}" height="\{section_height}" style="position:absolute;left:0;top:\{top}px">
+  append_member_section_local(
+    output, width, 0, entries, section_height, row_height, entity_colors, line_attributes,
+    text_metrics,
+  )
+  output.write_string("</svg></details>\n")
 }
 
 ///|

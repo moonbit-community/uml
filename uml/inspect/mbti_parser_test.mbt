@@ -93,9 +93,9 @@ test "attaches fields, constructors, and methods as members" {
 }
 
 ///|
-/// Methods are hidden by default: only fields and constructors remain, so
+/// Methods can be hidden explicitly: only fields and constructors remain, so
 /// the nodes render as type skeletons.
-test "hides trait and extension methods by default" {
+test "hides trait and extension methods when disabled" {
   let source =
     #|@startuml '.mbti
     #|package "demo";
@@ -107,7 +107,10 @@ test "hides trait and extension methods by default" {
     #|}
     #|fn Point::dist(Self, Point) -> Double
     #|@enduml
-  let graph = @parser.parse_mbti(source).graph
+  let graph = @parser.parse_mbti(source, options={
+      ..@entity.MbtiOptions::default(),
+      show_methods: false,
+    }).graph
   @test.assert_eq(graph.entity("Show").unwrap().members.length(), 0)
   let point = graph.entity("Point").unwrap()
   @test.assert_eq(point.members.length(), 1)

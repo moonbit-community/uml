@@ -282,11 +282,21 @@ fn append_notes(
                       path = opale_note_path(note_layout, attachment)
                       path_class = " class=\"note-opale-link\""
                       match entity_index(diagram, note.target) {
-                        Some(target_index) =>
-                          match
-                            relation_endpoint_closed_bounds(
-                              layout, diagram, target_index, text_metrics, member_collapse,
-                            ) {
+                        Some(target_index) => {
+                          let closed_bounds = {
+                            let mut result : Rect? = None
+                            for
+                              bounds in relation_endpoint_closed_bounds(
+                                layout, diagram, target_index, text_metrics, member_collapse,
+                              ) {
+                              match bounds {
+                                Some(value) => result = Some(value)
+                                None => ()
+                              }
+                            }
+                            result
+                          }
+                          match closed_bounds {
                             Some(closed_bounds) =>
                               match
                                 note_opale_attachment(
@@ -311,6 +321,7 @@ fn append_notes(
                               }
                             None => ()
                           }
+                        }
                         None => ()
                       }
                     }
@@ -373,11 +384,36 @@ fn collapsible_note_style(
     if entity_index(diagram, note.target) is Some(target_index) {
       if relation_endpoint_closed_bounds(
           layout, diagram, target_index, text_metrics, member_collapse,
+        ).length() >
+        1 {
+        let body = diagram.entities[target_index].body_layout(
+          text_metrics,
+          diagram.family,
         )
-        is Some(_) {
+        let fields_open = ":has(.class-node[data-node-index=\"\{target_index}\"] details.fields[open])"
+        let methods_open = ":has(.class-node[data-node-index=\"\{target_index}\"] details.methods[open])"
+        let open_condition = if member_collapse.independent {
+          let fields = member_collapse.section_is_collapsible(body, Fields)
+          let methods = member_collapse.section_is_collapsible(body, Methods)
+          if fields && methods {
+            fields_open + methods_open
+          } else if fields {
+            fields_open
+          } else {
+            methods_open
+          }
+        } else {
+          ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
+        }
         for bit in 0..<2 {
           let condition = if bit == 1 {
-            ":has(.class-node[data-node-index=\"\{target_index}\"] details:not([open]))"
+            if member_collapse.independent {
+              ":not(\{open_condition})"
+            } else {
+              ":has(.class-node[data-node-index=\"\{target_index}\"] details:not([open]))"
+            }
+          } else if member_collapse.independent {
+            open_condition
           } else {
             ":has(.class-node[data-node-index=\"\{target_index}\"] details[open])"
           }

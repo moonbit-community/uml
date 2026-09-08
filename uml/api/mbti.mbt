@@ -9,8 +9,8 @@
 /// `color_scheme` is the cross-diagram theme boundary. When
 /// `class_member_collapsible` is set, class-diagram members (fields and
 /// methods) are wrapped in a `<foreignObject>`/`<details>` disclosure so they
-/// can be collapsed in the browser. `render_options` controls the selected
-/// mbti portion and its initial state when that disclosure is enabled.
+/// can be collapsed independently in the browser. `render_options` controls
+/// the initial state of the fields and methods disclosures.
 pub fn render_mbti_svg(
   source : String,
   standalone_alias? : Bool = false,

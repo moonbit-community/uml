@@ -24,9 +24,8 @@ pub fn MbtiOptions::default() -> MbtiOptions {
 }
 
 ///|
-/// The member portion that an mbti node exposes through its disclosure control.
+/// The two member portions of an mbti node.
 pub(all) enum MbtiCollapsibleSection {
-  AllMembers
   Fields
   Methods
 } derive(Eq, Debug)
@@ -54,11 +53,11 @@ pub extend MbtiCollapseState with Debug::{to_repr}
 /// Rendering-only controls for mbti member disclosures.
 ///
 /// This is deliberately separate from `MbtiOptions`: parsing decides which
-/// members exist, while these settings only decide which existing portion is
-/// interactive and whether it initially appears.
+/// members exist, while these settings only decide whether each existing
+/// portion starts expanded or collapsed.
 pub(all) struct MbtiRenderOptions {
-  collapsible_section : MbtiCollapsibleSection
-  initial_state : MbtiCollapseState
+  fields_state : MbtiCollapseState
+  methods_state : MbtiCollapseState
 } derive(Eq, Debug)
 
 ///|
@@ -69,5 +68,10 @@ pub extend MbtiRenderOptions with Debug::{to_repr}
 
 ///|
 pub fn MbtiRenderOptions::default() -> MbtiRenderOptions {
-  { collapsible_section: Fields, initial_state: Collapsed, }
+  {
+    // Preserve the previous mbti default: fields start collapsed while
+    // methods remain visible.
+    fields_state: Collapsed,
+    methods_state: Expanded,
+  }
 }
