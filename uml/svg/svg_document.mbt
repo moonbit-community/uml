@@ -7,6 +7,7 @@ pub struct SvgDocument {
   writer : XmlWriter
   width : Int
   height : Int
+  marker_ids : Array[String]
 }
 
 ///|
@@ -126,7 +127,34 @@ pub fn SvgDocument::new(
     "rect",
     attributes=background_rect_attributes(width, height, background),
   )
-  { writer, width, height, }
+  { writer, width, height, marker_ids: [], }
+}
+
+///|
+/// Open a document whose resources, styles and background are supplied by
+/// the renderer through the typed drawing and document APIs.
+pub fn SvgDocument::empty(
+  width : Int,
+  height : Int,
+  aria_label : String,
+) -> SvgDocument {
+  let writer = XmlWriter::new()
+  writer.open(
+    "svg",
+    attributes=svg_root_attributes(
+      width,
+      height,
+      "0 0 \{width} \{height}",
+      aria_label,
+    ),
+  )
+  { writer, width, height, marker_ids: [], }
+}
+
+///|
+/// Add document presentation rules with XML text escaping handled here.
+pub fn SvgDocument::stylesheet(self : SvgDocument, css : String) -> Unit {
+  self.writer.text("style", css)
 }
 
 ///|

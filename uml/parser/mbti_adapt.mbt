@@ -329,8 +329,14 @@ fn Adapter::apply_func(
     guard adapter.entity_index(type_name.name) is Some(index) else { return }
     index
   } else {
-    let index = adapter.ensure_entity(FREE_FUNCTIONS_CODE, @entity.FreeFunctions)
-    adapter.entities[index] = { ..adapter.entities[index], display: free_display, }
+    let index = adapter.ensure_entity(
+      FREE_FUNCTIONS_CODE,
+      @entity.FreeFunctions,
+    )
+    adapter.entities[index] = {
+      ..adapter.entities[index],
+      display: free_display,
+    }
     index
   }
   adapter.entities[index].members.push(

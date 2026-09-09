@@ -148,6 +148,48 @@ pub fn append_tree_text(
   text_metrics : @metrics.FontMetrics,
   class_name : String,
 ) -> Unit {
+  for run in layout_tree_text(x, y, label, line_height, font_size, text_metrics) {
+    output.text(
+      "text",
+      run.text,
+      attributes=[
+        ("x", run.position.x.to_string()),
+        ("y", run.position.y.to_string()),
+        ("text-anchor", anchor),
+        ("fill", fill),
+        ("font-size", font_size.to_string() + "px"),
+        ("class", class_name),
+        ..run.advance.map_or([], advance => {
+          [("textLength", advance.to_string()), ("lengthAdjust", "spacing")]
+        }),
+        ..if run.strike {
+          [("text-decoration", "line-through")]
+        },
+      ],
+    )
+  }
+}
+
+///|
+priv struct TreeLabelRun {
+  text : String
+  position : @graphics.Point
+  advance : Double?
+  strike : Bool
+}
+
+///|
+/// Position creole runs using exactly the metrics and whitespace rules used
+/// for tree layout. Both drawing interfaces consume this one layout result.
+fn layout_tree_text(
+  x : Int,
+  y : Int,
+  label : String,
+  line_height : Int,
+  font_size : Int,
+  text_metrics : @metrics.FontMetrics,
+) -> Array[TreeLabelRun] {
+  let runs = []
   let lines = label.split("\n").to_array()
   let space = plantuml_space_advance(font_size)
   let first_line_extra = if lines.length() > 1 { space } else { 0 }
@@ -163,27 +205,59 @@ pub fn append_tree_text(
       }
       if !text.is_empty() {
         let measured = plantuml_measure(text_metrics, text)
-        let attributes = [
-          ("x", cursor_x.to_string()),
-          ("y", (y + line_index * line_height).to_string()),
-          ("text-anchor", anchor),
-          ("fill", fill),
-          ("font-size", font_size.to_string() + "px"),
-          ("class", class_name),
-          ..if measured.advance_width > 0 {
-            [
-              ("textLength", measured.advance_width.to_string()),
-              ("lengthAdjust", "spacing"),
-            ]
+        runs.push({
+          text,
+          position: {
+            x: cursor_x.to_double(),
+            y: (y + line_index * line_height).to_double(),
           },
-          ..if span.strike {
-            [("text-decoration", "line-through")]
+          advance: if measured.advance_width > 0 {
+            Some(measured.advance_width.to_double())
+          } else {
+            None
           },
-        ]
-        output.text("text", text, attributes~)
+          strike: span.strike,
+        })
         cursor_x += measured.advance_width
       }
       pending_ws = plantuml_measure(text_metrics, trailing).advance_width
     }
   })
+  runs
+}
+
+///|
+fn draw_tree_text(
+  output : @graphics.Graphic,
+  x : Int,
+  y : Int,
+  label : String,
+  line_height : Int,
+  anchor : @graphics.TextAnchor,
+  fill : String,
+  font_size : Int,
+  text_metrics : @metrics.FontMetrics,
+  class_name : String,
+) -> Unit {
+  let output = output.with_style({
+    ..@graphics.DrawingStyle::default(),
+    fill: Color(fill),
+  })
+  for run in layout_tree_text(x, y, label, line_height, font_size, text_metrics) {
+    output.draw(
+      Text({
+        text: run.text,
+        position: run.position,
+        advance: run.advance,
+        anchor,
+        font_size: font_size.to_double(),
+        font_family: None,
+        strike: run.strike,
+      }),
+      metadata={
+        ..@graphics.Metadata::default(),
+        class_name: Some(class_name),
+      },
+    )
+  }
 }

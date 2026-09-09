@@ -1,4 +1,5 @@
 import {
+  "kokic/uml/graphics",
   "moonbitlang/core/math",
   "moonbitlang/core/string",
   "kokic/uml/entity",

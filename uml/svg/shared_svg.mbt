@@ -2,37 +2,7 @@
 /// Serialize graphviz spline points as an SVG path `d` string, using the
 /// 3n+1 cubic Bezier form emitted by dot.
 pub fn spline_path_data(points : Array[(Double, Double)]) -> String {
-  guard points.length() > 0 else { return "" }
-  let output = StringBuilder()
-  output.write_string("M ")
-  output.write_string(points[0].0.to_string())
-  output.write_string(" ")
-  output.write_string(points[0].1.to_string())
-  if (points.length() - 1) % 3 == 0 {
-    let mut index = 1
-    while index < points.length() {
-      output.write_string(" C ")
-      for offset in 0..<3 {
-        let point = points[index + offset]
-        output.write_string(point.0.to_string())
-        output.write_string(" ")
-        output.write_string(point.1.to_string())
-        if offset < 2 {
-          output.write_string(" ")
-        }
-      }
-      index += 3
-    }
-  } else {
-    for index in 1..<points.length() {
-      let point = points[index]
-      output.write_string(" L ")
-      output.write_string(point.0.to_string())
-      output.write_string(" ")
-      output.write_string(point.1.to_string())
-    }
-  }
-  output.to_string()
+  path_data(@graphics.spline_segments(points))
 }
 
 ///|
@@ -47,11 +17,11 @@ pub fn standard_border_stroke_width() -> String {
 
 ///|
 /// The emphasized outline width shared by primary edges and arrows.
-const EMPHASIZED_STROKE_WIDTH : String = "1.5"
+pub const EMPHASIZED_STROKE_WIDTH : Double = 1.5
 
 ///|
 pub fn emphasized_stroke_width() -> String {
-  EMPHASIZED_STROKE_WIDTH
+  EMPHASIZED_STROKE_WIDTH.to_string()
 }
 
 ///|
@@ -84,19 +54,25 @@ pub fn separator_dash_pattern() -> String {
 }
 
 ///|
-const DASHED_LINE_PATTERN : String = "6 4"
+const DASHED_LINE_LENGTH : Double = 6.0
+
+///|
+const DASHED_LINE_GAP : Double = 4.0
 
 ///|
 pub fn dashed_line_pattern() -> String {
-  DASHED_LINE_PATTERN
+  "\{DASHED_LINE_LENGTH} \{DASHED_LINE_GAP}"
 }
 
 ///|
-const DOTTED_LINE_PATTERN : String = "2 3"
+const DOTTED_LINE_LENGTH : Double = 2.0
+
+///|
+const DOTTED_LINE_GAP : Double = 3.0
 
 ///|
 pub fn dotted_line_pattern() -> String {
-  DOTTED_LINE_PATTERN
+  "\{DOTTED_LINE_LENGTH} \{DOTTED_LINE_GAP}"
 }
 
 ///|
@@ -147,12 +123,7 @@ pub fn page_break_dash_pattern() -> String {
 ///|
 /// Map a PlantUML line style token to SVG presentation attributes.
 pub fn line_style_attributes(line_style : String?) -> Array[(String, String)] {
-  match line_style {
-    Some("dashed") => [("stroke-dasharray", DASHED_LINE_PATTERN)]
-    Some("dotted") => [("stroke-dasharray", DOTTED_LINE_PATTERN)]
-    Some("bold") => [("stroke-width", "2.5")]
-    _ => []
-  }
+  drawing_style_attributes(line_drawing_style(line_style))
 }
 
 ///|
@@ -196,7 +167,7 @@ pub fn arrow_marker_markup(
     ..path_fill.map_or([], fill => [" fill=\"\{xml_escape(fill)}\""]),
     ..path_class.map_or([], class => [" class=\"\{xml_escape(class)}\""]),
   ].join("")
-  "<marker id=\"\{id}\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"\{marker_width}\" markerHeight=\"\{marker_height}\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L 10 5 L 0 10 z\"\{extra}/></marker>"
+  "<marker id=\"\{id}\" viewBox=\"0 0 \{ARROW_MARKER_EXTENT} \{ARROW_MARKER_EXTENT}\" refX=\"\{ARROW_MARKER_REFERENCE_X}\" refY=\"\{ARROW_MARKER_MIDDLE}\" markerWidth=\"\{marker_width}\" markerHeight=\"\{marker_height}\" orient=\"auto-start-reverse\"><path d=\"M 0 0 L \{ARROW_MARKER_EXTENT} \{ARROW_MARKER_MIDDLE} L 0 \{ARROW_MARKER_EXTENT} z\"\{extra}/></marker>"
 }
 
 ///|
@@ -219,32 +190,26 @@ pub fn multiline_text_markup(
   anchor? : MultilineTextAnchor = Center,
   text_metrics? : @metrics.FontMetrics? = None,
 ) -> String {
-  let lines = text.split("\n").map(StringView::to_owned).to_array()
-  let baseline = match anchor {
-    Center => y - (lines.length() - 1).to_double() * line_height / 2.0
-    Baseline => y
-  }
+  let block = layout_multiline_text(
+    x,
+    y,
+    text,
+    line_height~,
+    anchor~,
+    text_metrics~,
+  )
   let output = StringBuilder()
-  output.write_string("<text x=\"\{x}\" y=\"\{baseline}\"")
+  output.write_string("<text x=\"\{x}\" y=\"\{block.position.y}\"")
   for attribute in attributes {
     output.write_string(" \{attribute.0}=\"\{xml_escape(attribute.1)}\"")
   }
   output.write_string(">")
-  for index, line in lines {
-    let dy = if index == 0 { 0.0 } else { line_height }
-    let width_attributes = match text_metrics {
-      Some(metrics) => {
-        let measured = metrics.measure(line)
-        if line.length() > 1 && measured.advance_width > 0 {
-          " textLength=\"\{measured.advance_width}\" lengthAdjust=\"spacing\""
-        } else {
-          ""
-        }
-      }
-      None => ""
-    }
+  for line in block.lines {
+    let width_attributes = line.advance.map_or("", advance => {
+      " textLength=\"\{advance}\" lengthAdjust=\"spacing\""
+    })
     output <+
-      "<tspan x=\"\{x}\" dy=\"\{dy}\"\{width_attributes}>\{xml_escape(line)}</tspan>"
+      "<tspan x=\"\{x}\" dy=\"\{line.dy}\"\{width_attributes}>\{xml_escape(line.text)}</tspan>"
   }
   output.write_string("</text>")
   output.to_string()
@@ -303,4 +268,53 @@ pub fn text_markup(
   }
   output <+ ">\{xml_escape(text)}</text>"
   output.to_string()
+}
+
+///|
+/// Resolve line-style tokens to numeric drawing state. Legacy SVG attribute
+/// helpers delegate here so both backends use the same stroke constants.
+pub fn line_drawing_style(line_style : String?) -> @graphics.DrawingStyle {
+  let style = @graphics.DrawingStyle::default()
+  match line_style {
+    Some("dashed") =>
+      { ..style, dash: Some([DASHED_LINE_LENGTH, DASHED_LINE_GAP]), }
+    Some("dotted") =>
+      { ..style, dash: Some([DOTTED_LINE_LENGTH, DOTTED_LINE_GAP]), }
+    Some("bold") => { ..style, stroke_width: Some(2.5), }
+    _ => style
+  }
+}
+
+///|
+/// Lay out multiline SVG text once for both typed drawing and legacy markup.
+/// Keep the centered first baseline and per-line advance pinning consistent.
+pub fn layout_multiline_text(
+  x : Double,
+  y : Double,
+  text : String,
+  line_height~ : Double,
+  anchor? : MultilineTextAnchor = Center,
+  text_anchor? : @graphics.TextAnchor = Start,
+  text_metrics? : @metrics.FontMetrics? = None,
+) -> @graphics.MultilineText {
+  let lines = text.split("\n").map(StringView::to_owned).to_array()
+  let baseline = match anchor {
+    Center => y - (lines.length() - 1).to_double() * line_height / 2.0
+    Baseline => y
+  }
+  {
+    position: { x, y: baseline, },
+    anchor: text_anchor,
+    lines: lines.mapi((index, text) => {
+      let advance = text_metrics.map_or(None, metrics => {
+        let measured = metrics.measure(text)
+        if text.length() > 1 && measured.advance_width > 0 {
+          Some(measured.advance_width.to_double())
+        } else {
+          None
+        }
+      })
+      { text, dy: if index == 0 { 0.0 } else { line_height }, advance, }
+    }),
+  }
 }

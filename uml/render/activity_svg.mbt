@@ -9,35 +9,41 @@ fn layout_for(layout : ActivityLayout, node_index : Int) -> ActivityNodeLayout? 
 
 ///|
 fn append_label(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   x : Int,
   y : Int,
   label : String,
   font_metrics : @metrics.FontMetrics,
-  anchor? : String = "middle",
-  multiline_center? : Bool = true,
+  anchor? : @graphics.TextAnchor = Middle,
+  multiline_anchor? : @svg.MultilineTextAnchor = Center,
 ) -> Unit {
-  output.append_text_markup(
-    x.to_double(),
-    y.to_double(),
-    label,
-    [
-      ("text-anchor", anchor),
-      ("class", "activity-label"),
-      ("font-size", font_metrics.font_size.to_string()),
-    ],
-    line_height=font_metrics.line_height.to_double(),
-    anchor=if multiline_center { Center } else { Baseline },
-    text_metrics=Some(font_metrics),
+  output.draw(
+    StyledTextBlock(
+      @svg.layout_multiline_text(
+        x.to_double(),
+        y.to_double(),
+        label,
+        line_height=font_metrics.line_height.to_double(),
+        anchor=multiline_anchor,
+        text_anchor=anchor,
+        text_metrics=Some(font_metrics),
+      ),
+      {
+        ..@graphics.TextStyle::default(),
+        font_size: Some(font_metrics.font_size.to_double()),
+      },
+    ),
+    metadata=activity_class("activity-label"),
   )
 }
 
 ///|
 fn append_edge(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   layout : ActivityLayout,
   edge : ActivityEdgeLayout,
   small_metrics : @metrics.FontMetrics,
+  arrow : @graphics.MarkerRef,
 ) -> Unit {
   guard layout_for(layout, edge.from_node_index) is Some(from) else { return }
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return }
@@ -49,127 +55,195 @@ fn append_edge(
   let from_is_decision = layout.source_nodes[edge.from_node_index].is_decision()
   let from_is_fork = layout.source_nodes[edge.from_node_index].is_fork()
   let to_is_fork = layout.source_nodes[edge.to_node_index].is_fork()
-  let path = if from_is_fork || to_is_fork {
+  let path : Array[@graphics.PathSegment] = if from_is_fork || to_is_fork {
     let drop_x = if from_is_fork { target_x } else { x }
-    "M \{drop_x} \{y1} V \{y2}"
+    [MoveTo(activity_point(drop_x, y1)), LineTo(activity_point(drop_x, y2))]
   } else {
     match edge.route {
       Forward =>
         if from_is_decision && target_x != x {
           let start_x = if target_x < x { from.x } else { from.x + from.width }
-          "M \{start_x} \{from_center_y} H \{target_x} V \{y2}"
+          [
+            MoveTo(activity_point(start_x, from_center_y)),
+            LineTo(activity_point(target_x, from_center_y)),
+            LineTo(activity_point(target_x, y2)),
+          ]
         } else if from_is_decision {
-          "M \{x} \{y1} V \{y1 + 12} H \{target_x} V \{y2}"
+          [
+            MoveTo(activity_point(x, y1)),
+            LineTo(activity_point(x, y1 + 12)),
+            LineTo(activity_point(target_x, y1 + 12)),
+            LineTo(activity_point(target_x, y2)),
+          ]
         } else {
           let middle_y = (y1 + y2) / 2
-          "M \{x} \{y1} V \{middle_y} H \{target_x} V \{y2}"
+          [
+            MoveTo(activity_point(x, y1)),
+            LineTo(activity_point(x, middle_y)),
+            LineTo(activity_point(target_x, middle_y)),
+            LineTo(activity_point(target_x, y2)),
+          ]
         }
       Horizontal =>
-        "M \{from.x + from.width} \{from.y + from.height / 2} H \{to.x}"
-      Goto => "M \{from.x} \{from.y} H \{to.x} V \{to.y}"
+        [
+          MoveTo(activity_point(from.x + from.width, from.y + from.height / 2)),
+          LineTo(activity_point(to.x, from.y + from.height / 2)),
+        ]
+      Goto =>
+        [
+          MoveTo(activity_point(from.x, from.y)),
+          LineTo(activity_point(to.x, from.y)),
+          LineTo(activity_point(to.x, to.y)),
+        ]
       BackwardLeft => {
         let route_x = backward_left_route_x(from, to)
-        "M \{x} \{y1} H \{route_x} V \{y2 - 8} H \{target_x} V \{y2}"
+        [
+          MoveTo(activity_point(x, y1)),
+          LineTo(activity_point(route_x, y1)),
+          LineTo(activity_point(route_x, y2 - 8)),
+          LineTo(activity_point(target_x, y2 - 8)),
+          LineTo(activity_point(target_x, y2)),
+        ]
       }
       BackwardRight => {
         let route_x = backward_right_route_x(from, to)
         if from_is_decision {
-          "M \{from.x + from.width} \{from_center_y} H \{route_x} V \{to.y + to.height / 2}"
+          [
+            MoveTo(activity_point(from.x + from.width, from_center_y)),
+            LineTo(activity_point(route_x, from_center_y)),
+            LineTo(activity_point(route_x, to.y + to.height / 2)),
+          ]
         } else {
-          "M \{x} \{y1} V \{y1 + 10} H \{route_x} V \{from_center_y} H \{from.x + from.width}"
+          [
+            MoveTo(activity_point(x, y1)),
+            LineTo(activity_point(x, y1 + 10)),
+            LineTo(activity_point(route_x, y1 + 10)),
+            LineTo(activity_point(route_x, from_center_y)),
+            LineTo(activity_point(from.x + from.width, from_center_y)),
+          ]
         }
       }
-      IfDownLeft => "M \{from.x} \{from_center_y} H \{target_x} V \{y2}"
+      IfDownLeft =>
+        [
+          MoveTo(activity_point(from.x, from_center_y)),
+          LineTo(activity_point(target_x, from_center_y)),
+          LineTo(activity_point(target_x, y2)),
+        ]
       IfDownRight =>
-        "M \{from.x + from.width} \{from_center_y} H \{target_x} V \{y2}"
-      SwitchLeft => "M \{from.x} \{from_center_y} H \{target_x} V \{y2}"
+        [
+          MoveTo(activity_point(from.x + from.width, from_center_y)),
+          LineTo(activity_point(target_x, from_center_y)),
+          LineTo(activity_point(target_x, y2)),
+        ]
+      SwitchLeft =>
+        [
+          MoveTo(activity_point(from.x, from_center_y)),
+          LineTo(activity_point(target_x, from_center_y)),
+          LineTo(activity_point(target_x, y2)),
+        ]
       SwitchRight =>
-        "M \{from.x + from.width} \{from_center_y} H \{target_x} V \{y2}"
-      SwitchMiddle => "M \{x} \{y1} V \{y1 + 12} H \{target_x} V \{y2}"
+        [
+          MoveTo(activity_point(from.x + from.width, from_center_y)),
+          LineTo(activity_point(target_x, from_center_y)),
+          LineTo(activity_point(target_x, y2)),
+        ]
+      SwitchMiddle =>
+        [
+          MoveTo(activity_point(x, y1)),
+          LineTo(activity_point(x, y1 + 12)),
+          LineTo(activity_point(target_x, y1 + 12)),
+          LineTo(activity_point(target_x, y2)),
+        ]
       WhileExitLeft => {
         let route_x = backward_left_route_x(from, to)
-        "M \{from.x} \{from_center_y} H \{route_x} V \{to.y - VERTICAL_GAP} H \{target_x} V \{to.y}"
+        [
+          MoveTo(activity_point(from.x, from_center_y)),
+          LineTo(activity_point(route_x, from_center_y)),
+          LineTo(activity_point(route_x, to.y - VERTICAL_GAP)),
+          LineTo(activity_point(target_x, to.y - VERTICAL_GAP)),
+          LineTo(activity_point(target_x, to.y)),
+        ]
       }
     }
   }
-  output.empty("path", attributes=[
-    ("d", path),
-    ("class", "activity-edge"),
-    (
-      "data-route",
-      match edge.route {
-        Forward => "forward"
-        Horizontal => "horizontal"
-        Goto => "goto"
-        BackwardLeft => "backward-left"
-        BackwardRight => "backward-right"
-        IfDownLeft => "if-down-left"
-        IfDownRight => "if-down-right"
-        SwitchLeft => "switch-left"
-        SwitchRight => "switch-right"
-        SwitchMiddle => "switch-middle"
-        WhileExitLeft => "while-exit-left"
-      },
-    ),
-    ("marker-end", "url(#activity-arrow)"),
-  ])
-  match edge.label {
-    Some(label) => {
-      let (label_x, label_y, anchor) = match edge.route {
-        Forward =>
-          if from_is_decision && target_x != x {
-            (target_x + 4, y1 + 11, "start")
-          } else if from_is_decision {
-            (target_x + 4, y1 + 11, "start")
-          } else {
-            (x + 4, y1 + 21, "start")
-          }
-        Horizontal =>
-          (
-            (from.x + from.width + to.x) / 2,
-            from.y + from.height / 2 - 4,
-            "middle",
-          )
-        Goto => ((from.x + to.x) / 2, (from.y + to.y) / 2, "middle")
-        BackwardLeft =>
-          (from.x.min(to.x) - WHILE_BACK_MARGIN, (y1 + y2) / 2, "middle")
-        BackwardRight => {
-          let route_x = (from.x + from.width).max(to.x + to.width) +
-            WHILE_BACK_MARGIN
-          (route_x, (y1 + y2) / 2, "middle")
-        }
-        IfDownLeft => {
-          let width = small_metrics.measure(label).width
-          (from.x - width, from_center_y - 2, "end")
-        }
-        IfDownRight => (from.x + from.width, from_center_y - 2, "start")
-        SwitchLeft | SwitchRight | SwitchMiddle => (target_x, y2 - 20, "start")
-        WhileExitLeft => {
-          let width = small_metrics.measure(label).width
-          (from.x - width, from_center_y - 2, "end")
-        }
-      }
-      append_label(
-        output,
-        label_x,
-        label_y,
-        label,
-        small_metrics,
-        anchor=match anchor {
-          "start" => "start"
-          "end" => "end"
-          _ => "middle"
+  output.draw(MarkedPath(path, { start: None, end: Some(arrow), }), metadata={
+    ..activity_class("activity-edge"),
+    data: [
+      (
+        "route",
+        match edge.route {
+          Forward => "forward"
+          Horizontal => "horizontal"
+          Goto => "goto"
+          BackwardLeft => "backward-left"
+          BackwardRight => "backward-right"
+          IfDownLeft => "if-down-left"
+          IfDownRight => "if-down-right"
+          SwitchLeft => "switch-left"
+          SwitchRight => "switch-right"
+          SwitchMiddle => "switch-middle"
+          WhileExitLeft => "while-exit-left"
         },
-        multiline_center=false,
-      )
+      ),
+    ],
+  })
+  if edge.label is Some(label) {
+    let (label_x, label_y, anchor) = match edge.route {
+      Forward =>
+        if from_is_decision && target_x != x {
+          (target_x + 4, y1 + 11, @graphics.TextAnchor::Start)
+        } else if from_is_decision {
+          (target_x + 4, y1 + 11, @graphics.TextAnchor::Start)
+        } else {
+          (x + 4, y1 + 21, @graphics.TextAnchor::Start)
+        }
+      Horizontal =>
+        (
+          (from.x + from.width + to.x) / 2,
+          from.y + from.height / 2 - 4,
+          @graphics.TextAnchor::Middle,
+        )
+      Goto =>
+        ((from.x + to.x) / 2, (from.y + to.y) / 2, @graphics.TextAnchor::Middle)
+      BackwardLeft =>
+        (
+          from.x.min(to.x) - WHILE_BACK_MARGIN,
+          (y1 + y2) / 2,
+          @graphics.TextAnchor::Middle,
+        )
+      BackwardRight => {
+        let route_x = (from.x + from.width).max(to.x + to.width) +
+          WHILE_BACK_MARGIN
+        (route_x, (y1 + y2) / 2, @graphics.TextAnchor::Middle)
+      }
+      IfDownLeft => {
+        let width = small_metrics.measure(label).width
+        (from.x - width, from_center_y - 2, @graphics.TextAnchor::End)
+      }
+      IfDownRight =>
+        (from.x + from.width, from_center_y - 2, @graphics.TextAnchor::Start)
+      SwitchLeft | SwitchRight | SwitchMiddle =>
+        (target_x, y2 - 20, @graphics.TextAnchor::Start)
+      WhileExitLeft => {
+        let width = small_metrics.measure(label).width
+        (from.x - width, from_center_y - 2, @graphics.TextAnchor::End)
+      }
     }
-    None => ()
+    append_label(
+      output,
+      label_x,
+      label_y,
+      label,
+      small_metrics,
+      anchor~,
+      multiline_anchor=Baseline,
+    )
   }
 }
 
 ///|
 fn append_region(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   region : ActivityRegionLayout,
   font_metrics : @metrics.FontMetrics,
 ) -> Unit {
@@ -177,13 +251,16 @@ fn append_region(
     ActivityRegionKind::Partition => "activity-partition"
     ActivityRegionKind::Swimlane => "activity-swimlane"
   }
-  output.empty("rect", attributes=[
-    ("x", region.x.to_string()),
-    ("y", region.y.to_string()),
-    ("width", region.width.to_string()),
-    ("height", region.height.to_string()),
-    ("class", class),
-  ])
+  output.draw(
+    Rectangle(
+      origin=activity_point(region.x, region.y),
+      width=region.width.to_double(),
+      height=region.height.to_double(),
+      rx=None,
+      ry=None,
+    ),
+    metadata=activity_class(class),
+  )
   append_label(
     output,
     region.x + region.width / 2,
@@ -194,8 +271,18 @@ fn append_region(
 }
 
 ///|
+fn activity_point(x : Int, y : Int) -> @graphics.Point {
+  { x: x.to_double(), y: y.to_double(), }
+}
+
+///|
+fn activity_class(name : String) -> @graphics.Metadata {
+  { ..@graphics.Metadata::default(), class_name: Some(name), }
+}
+
+///|
 fn activity_append_node(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   layout : ActivityLayout,
   node_layout : ActivityNodeLayout,
   font_metrics : @metrics.FontMetrics,
@@ -208,93 +295,143 @@ fn activity_append_node(
   let height = node_layout.height
   let center_x = x + width / 2
   let center_y = y + height / 2
-  output.open("g", attributes=[
-    ("class", "activity-node"),
-    ("data-node-index", node_layout.node_index.to_string()),
-  ])
-  match node {
-    Start =>
-      output.empty("circle", attributes=[
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", (height / 2).to_string()),
-        ("class", "activity-start"),
-      ])
-    Stop | End | Kill => {
-      output.empty("circle", attributes=[
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", (height / 2).to_string()),
-        ("class", "activity-stop-outer"),
-      ])
-      output.empty("circle", attributes=[
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", STOP_INNER.to_string()),
-        ("class", "activity-stop-inner"),
-      ])
-    }
-    _ if node.is_fork() =>
-      output.empty("rect", attributes=[
-        ("x", x.to_string()),
-        ("y", y.to_string()),
-        ("width", width.to_string()),
-        ("height", height.to_string()),
-        ("rx", "2"),
-        ("class", "activity-fork"),
-      ])
-    _ if node.is_exit() =>
-      output.empty("path", attributes=[
-        (
-          "d",
-          "M \{center_x} \{y} L \{x + width} \{center_y} L \{center_x} \{y + height} L \{x} \{center_y} Z",
-        ),
-        ("class", "activity-exit"),
-      ])
-    _ if node.is_decision() => {
-      output.empty("path", attributes=[
-        (
-          "d",
-          "M \{center_x} \{y} L \{x + width} \{center_y} L \{center_x} \{y + height} L \{x} \{center_y} Z",
-        ),
-        ("class", "activity-decision"),
-      ])
-      if node.label() is Some(label) {
-        append_label(output, center_x, center_y + 4, label, small_metrics)
+  let center = activity_point(center_x, center_y)
+  output.group(
+    {
+      ..activity_class("activity-node"),
+      data: [("node-index", node_layout.node_index.to_string())],
+    },
+    output => {
+      match node {
+        Start =>
+          output.draw(
+            Circle(center~, radius=(height / 2).to_double()),
+            metadata=activity_class("activity-start"),
+          )
+        Stop | End | Kill => {
+          output.draw(
+            Circle(center~, radius=(height / 2).to_double()),
+            metadata=activity_class("activity-stop-outer"),
+          )
+          output.draw(
+            Circle(center~, radius=STOP_INNER.to_double()),
+            metadata=activity_class("activity-stop-inner"),
+          )
+        }
+        _ if node.is_fork() =>
+          output.draw(
+            Rectangle(
+              origin=activity_point(x, y),
+              width=width.to_double(),
+              height=height.to_double(),
+              rx=Some(2.0),
+              ry=None,
+            ),
+            metadata=activity_class("activity-fork"),
+          )
+        _ if node.is_exit() || node.is_decision() => {
+          output.draw(
+            Path([
+              MoveTo(activity_point(center_x, y)),
+              LineTo(activity_point(x + width, center_y)),
+              LineTo(activity_point(center_x, y + height)),
+              LineTo(activity_point(x, center_y)),
+              Close,
+            ]),
+            metadata=activity_class(
+              if node.is_exit() {
+                "activity-exit"
+              } else {
+                "activity-decision"
+              },
+            ),
+          )
+          if !node.is_exit() && node.label() is Some(label) {
+            append_label(output, center_x, center_y + 4, label, small_metrics)
+          }
+        }
+        Note(label) => {
+          output.draw(
+            Path([
+              MoveTo(activity_point(x, y)),
+              LineTo(activity_point(x + width - 12, y)),
+              LineTo(activity_point(x + width, y + 12)),
+              LineTo(activity_point(x + width, y + height)),
+              LineTo(activity_point(x, y + height)),
+              Close,
+            ]),
+            metadata=activity_class("activity-note"),
+          )
+          append_label(output, center_x, center_y + 4, label, font_metrics)
+        }
+        Action(label) => {
+          output.draw(
+            Rectangle(
+              origin=activity_point(x, y),
+              width=width.to_double(),
+              height=height.to_double(),
+              rx=Some(BOX_ROUND.to_double()),
+              ry=None,
+            ),
+            metadata=activity_class("activity-action"),
+          )
+          append_label(output, center_x, center_y + 4, label, font_metrics)
+        }
+        Arrow(_)
+        | Label(_)
+        | Goto(_)
+        | Swimlane(_)
+        | Partition(_)
+        | EndPartition => ()
+        _ =>
+          output.draw(
+            Circle(center~, radius=4.0),
+            metadata=activity_class("activity-merge"),
+          )
       }
-    }
-    Note(label) => {
-      output.empty("path", attributes=[
-        (
-          "d",
-          "M \{x} \{y} H \{x + width - 12} L \{x + width} \{y + 12} V \{y + height} H \{x} Z",
-        ),
-        ("class", "activity-note"),
-      ])
-      append_label(output, center_x, center_y + 4, label, font_metrics)
-    }
-    Action(label) => {
-      output.empty("rect", attributes=[
-        ("x", x.to_string()),
-        ("y", y.to_string()),
-        ("width", width.to_string()),
-        ("height", height.to_string()),
-        ("rx", BOX_ROUND.to_string()),
-        ("class", "activity-action"),
-      ])
-      append_label(output, center_x, center_y + 4, label, font_metrics)
-    }
-    Arrow(_) | Label(_) | Goto(_) | Swimlane(_) | Partition(_) | EndPartition =>
-      ()
-    _ =>
-      output.empty("circle", attributes=[
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", "4"),
-        ("class", "activity-merge"),
-      ])
-  }
-  output.close()
+    },
+  )
+}
+
+///|
+const ACTIVITY_ARROW_SIZE : Double = 8.0
+
+///|
+const ACTIVITY_ARROW_EXTENT : Double = 6.0
+
+///|
+const ACTIVITY_ARROW_MIDDLE : Double = ACTIVITY_ARROW_EXTENT / 2.0
+
+///|
+/// Preserve the activity marker's original viewport and reference point.
+/// A viewBox equal to its viewport is the original identity mapping.
+fn define_activity_arrow(
+  document : @svg.SvgDocument,
+  fill : String,
+) -> @graphics.MarkerRef {
+  document.define_marker(
+    "activity-arrow",
+    {
+      origin: { x: 0.0, y: 0.0, },
+      viewport: { width: ACTIVITY_ARROW_SIZE, height: ACTIVITY_ARROW_SIZE, },
+      reference: { x: ACTIVITY_ARROW_EXTENT, y: ACTIVITY_ARROW_MIDDLE, },
+      size: { width: ACTIVITY_ARROW_SIZE, height: ACTIVITY_ARROW_SIZE, },
+      orientation: Auto,
+      units: StrokeWidth,
+    },
+    output => {
+      output
+      .with_style({ ..@graphics.DrawingStyle::default(), fill: Color(fill), })
+      .draw(
+        Path([
+          MoveTo({ x: 0.0, y: 0.0, }),
+          LineTo({ x: ACTIVITY_ARROW_EXTENT, y: ACTIVITY_ARROW_MIDDLE, }),
+          LineTo({ x: 0.0, y: ACTIVITY_ARROW_EXTENT, }),
+          Close,
+        ]),
+      )
+    },
+  )
 }
 
 ///|
@@ -305,25 +442,19 @@ fn @flow.ActivityDiagram::render_svg(
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = self.layout()
-  let output = @svg.XmlWriter::new()
+  let document = @svg.SvgDocument::empty(
+    layout.width,
+    layout.height,
+    "Activity diagram",
+  )
   let family = self.style.font_family()
   let font_metrics = self.style.font_metrics_for(family, font_size=ACTION_FONT)
   let small_metrics = self.style.font_metrics_for(family, font_size=SMALL_FONT)
   let defaults = self.style.defaults()
   let line = self.style.diagram_line_color()
   let text = self.style.diagram_text_color()
-  output.open(
-    "svg",
-    attributes=@svg.svg_root_attributes(
-      layout.width,
-      layout.height,
-      "0 0 \{layout.width} \{layout.height}",
-      "Activity diagram",
-    ),
-  )
-  output.open("style")
   let emphasized_width = @svg.emphasized_stroke_width()
-  output.raw(
+  document.stylesheet(
     (
       $|\{@svg.svg_style_rule(self.style.font_family(), self.style.font_size(), self.style.canvas_color())}
       $|.activity-edge{fill:none;stroke:\{line};stroke-width:\{emphasized_width}}
@@ -335,35 +466,30 @@ fn @flow.ActivityDiagram::render_svg(
       $|.activity-note{fill:\{defaults.note};stroke:\{line};stroke-width:\{emphasized_width}},
     ),
   )
-  output.close()
-  output.open("defs")
-  output.open("marker", attributes=[
-    ("id", "activity-arrow"),
-    ("markerWidth", "8"),
-    ("markerHeight", "8"),
-    ("refX", "6"),
-    ("refY", "3"),
-    ("orient", "auto"),
-    ("markerUnits", "strokeWidth"),
-  ])
-  output.empty("path", attributes=[("d", "M 0 0 L 6 3 L 0 6 Z"), ("fill", line)])
-  output.close()
-  output.close()
-  output.empty(
-    "rect",
-    attributes=@svg.background_rect_attributes(
-      layout.width,
-      layout.height,
-      self.style.canvas_color(),
+  let arrow = define_activity_arrow(document, line)
+  let output = document.graphic()
+  output
+  .with_style({
+    ..@graphics.DrawingStyle::default(),
+    fill: Color(self.style.canvas_color()),
+  })
+  .draw(
+    Rectangle(
+      origin=activity_point(0, 0),
+      width=layout.width.to_double(),
+      height=layout.height.to_double(),
+      rx=None,
+      ry=None,
     ),
   )
   layout.regions.each(region => append_region(output, region, font_metrics))
-  layout.edges.each(edge => append_edge(output, layout, edge, small_metrics))
+  layout.edges.each(edge => {
+    append_edge(output, layout, edge, small_metrics, arrow)
+  })
   layout.nodes.each(node => {
     activity_append_node(output, layout, node, font_metrics, small_metrics)
   })
-  output.close()
-  output.to_string()
+  document.to_string()
 }
 
 ///|

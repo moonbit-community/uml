@@ -171,7 +171,7 @@ test "use case diagram" (it : @test.Test) {
 
 ```mbt check
 ///|
-test "mindmap diagram" (it : @test.Test) {
+test "mindmap diagram" {
   let source =
     #|@startmindmap
     #|* uml
@@ -188,8 +188,9 @@ test "mindmap diagram" (it : @test.Test) {
     #|-- Tooling
     #|--- moon test
     #|@endmindmap
-  it.write(@api.render_svg(source))
-  it.snapshot(filename="mindmap.svg")
+  let svg = @api.render_svg(source)
+  @test.assert_eq(svg.contains("class=\"mindmap-link\""), true)
+  @test.assert_eq(svg.contains("data-idea-index="), true)
 }
 ```
 

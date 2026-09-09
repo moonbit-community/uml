@@ -4,10 +4,10 @@
 const STATE_CORNER_RADIUS : Double = 12.5
 
 ///|
-const STATE_THIN_STROKE_WIDTH : String = "0.5"
+const STATE_THIN_STROKE_WIDTH : Double = 0.5
 
 ///|
-const STATE_TERMINAL_STROKE_WIDTH : String = "1"
+const STATE_TERMINAL_STROKE_WIDTH : Double = 1.0
 
 ///|
 const STATE_CROSS_MARKER_DIAMETER : Double = 14.0
@@ -238,199 +238,211 @@ fn note_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
 }
 
 ///|
-fn append_state_cross_marker(
-  output : @svg.XmlWriter,
+fn state_class(name : String) -> @graphics.Metadata {
+  { ..@graphics.Metadata::default(), class_name: Some(name), }
+}
+
+///|
+fn state_paint(
+  fill : @graphics.Paint,
+  stroke : @graphics.Paint,
+  width : Double,
+) -> @graphics.DrawingStyle {
+  {
+    ..@graphics.DrawingStyle::default(),
+    fill,
+    stroke,
+    stroke_width: Some(width),
+  }
+}
+
+///|
+fn define_state_cross_marker(
+  document : @svg.SvgDocument,
   style : @style.DocumentStyle,
-) -> Unit {
+) -> @graphics.MarkerRef {
   let center = STATE_CROSS_MARKER_CENTER
   let diagonal = STATE_CROSS_MARKER_DIAGONAL
   let marker_size = STATE_CROSS_MARKER_DIAMETER +
     STATE_CROSS_MARKER_PADDING * 2.0
-  output.open("marker", attributes=[
-    ("id", "state-cross-start"),
-    (
-      "viewBox",
-      (-STATE_CROSS_MARKER_PADDING).to_string() +
-      " " +
-      (-STATE_CROSS_MARKER_PADDING).to_string() +
-      " " +
-      marker_size.to_string() +
-      " " +
-      marker_size.to_string(),
-    ),
-    ("refX", center.to_string()),
-    ("refY", center.to_string()),
-    ("markerWidth", marker_size.to_string()),
-    ("markerHeight", marker_size.to_string()),
-    ("markerUnits", "userSpaceOnUse"),
-    ("orient", "auto"),
-  ])
-  output.empty("circle", attributes=[
-    ("cx", center.to_string()),
-    ("cy", center.to_string()),
-    ("r", center.to_string()),
-    ("fill", style.canvas_color()),
-    ("stroke", style.diagram_line_color()),
-    ("stroke-width", @svg.emphasized_stroke_width()),
-  ])
-  output.empty("path", attributes=[
-    (
-      "d",
-      "M " +
-      (center - diagonal).to_string() +
-      " " +
-      (center - diagonal).to_string() +
-      " L " +
-      (center + diagonal).to_string() +
-      " " +
-      (center + diagonal).to_string() +
-      " M " +
-      (center + diagonal).to_string() +
-      " " +
-      (center - diagonal).to_string() +
-      " L " +
-      (center - diagonal).to_string() +
-      " " +
-      (center + diagonal).to_string(),
-    ),
-    ("fill", "none"),
-    ("stroke", style.diagram_line_color()),
-    ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
-  ])
-  output.close()
+  document.define_marker(
+    "state-cross-start",
+    {
+      origin: {
+        x: -STATE_CROSS_MARKER_PADDING,
+        y: -STATE_CROSS_MARKER_PADDING,
+      },
+      viewport: { width: marker_size, height: marker_size, },
+      reference: { x: center, y: center, },
+      size: { width: marker_size, height: marker_size, },
+      units: UserSpace,
+      orientation: Auto,
+    },
+    output => {
+      output
+      .with_style(
+        state_paint(
+          Color(style.canvas_color()),
+          Color(style.diagram_line_color()),
+          @svg.EMPHASIZED_STROKE_WIDTH,
+        ),
+      )
+      .draw(Circle(center={ x: center, y: center, }, radius=center))
+      output
+      .with_style(
+        state_paint(
+          None,
+          Color(style.diagram_line_color()),
+          STATE_TERMINAL_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Path([
+          MoveTo({ x: center - diagonal, y: center - diagonal, }),
+          LineTo({ x: center + diagonal, y: center + diagonal, }),
+          MoveTo({ x: center + diagonal, y: center - diagonal, }),
+          LineTo({ x: center - diagonal, y: center + diagonal, }),
+        ]),
+      )
+    },
+  )
 }
 
 ///|
 fn append_state_label(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   text : String,
   x : Double,
   y : Double,
   class_name : String,
   text_metrics : @metrics.FontMetrics,
 ) -> Unit {
-  output.append_text_markup(
-    x,
-    y,
-    text,
-    [("text-anchor", "middle"), ("class", class_name)],
-    line_height=text_metrics.line_height.to_double(),
-    anchor=Center,
-    text_metrics=Some(text_metrics),
+  output.draw(
+    TextBlock(
+      @svg.layout_multiline_text(
+        x,
+        y,
+        text,
+        line_height=text_metrics.line_height.to_double(),
+        anchor=Center,
+        text_anchor=Middle,
+        text_metrics=Some(text_metrics),
+      ),
+    ),
+    metadata=state_class(class_name),
   )
 }
 
 ///|
 fn append_state_node(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateNodeLayout,
 ) -> Unit {
   guard diagram.state(layout.code) is Some(state) else { return }
-  let x = layout.x
-  let y = layout.y
-  let width = layout.width
-  let height = layout.height
-  let center_x = x + width / 2.0
-  let center_y = y + height / 2.0
   let composite = diagram.has_children(state.code)
   let empty_description = state.kind == @flow.StateKind::Normal &&
     !state.has_description() &&
     diagram.hide_empty_description()
-  let group_attributes = [
-    (
-      "class",
+  let metadata = {
+    ..state_class(
       if composite {
         "state-node state-composite"
       } else {
         "state-node"
       },
     ),
-    ("data-code", state.code),
-    (
-      "data-shape",
-      if composite {
-        "composite"
-      } else if empty_description {
-        "empty"
-      } else if state.kind == @flow.StateKind::Normal {
-        "compartment"
-      } else {
-        "pseudo"
-      },
-    ),
-  ]
-  if state.stereotype is Some(stereotype) {
-    group_attributes.push(("data-stereotype", stereotype))
+    data: [
+      ("code", state.code),
+      (
+        "shape",
+        if composite {
+          "composite"
+        } else if empty_description {
+          "empty"
+        } else if state.kind == @flow.StateKind::Normal {
+          "compartment"
+        } else {
+          "pseudo"
+        },
+      ),
+      ..state.stereotype.map_or([], stereotype => [("stereotype", stereotype)]),
+    ],
   }
-  output.open("g", attributes=group_attributes)
-  if state.url is Some(url) {
-    output.open("a", attributes=[("href", url)])
-  }
+  output.group(metadata, output => {
+    let paint = output => {
+      append_state_node_body(
+        output,
+        diagram,
+        state,
+        layout,
+        composite~,
+        empty_description~,
+      )
+    }
+    if state.url is Some(url) {
+      output.link(url, paint)
+    } else {
+      paint(output)
+    }
+  })
+}
+
+///|
+fn append_state_node_body(
+  output : @graphics.Graphic,
+  diagram : @flow.StateDiagram,
+  state : @flow.StateNode,
+  layout : StateNodeLayout,
+  composite~ : Bool,
+  empty_description~ : Bool,
+) -> Unit {
+  let x = layout.x
+  let y = layout.y
+  let width = layout.width
+  let height = layout.height
+  let center_x = x + width / 2.0
+  let center_y = y + height / 2.0
+  let center : @graphics.Point = { x: center_x, y: center_y, }
   if composite {
     let corner = STATE_CORNER_RADIUS
     let header_bottom = y + STATE_HEADER_HEIGHT
-    output.empty("path", attributes=[
-      (
-        "d",
-        "M " +
-        (x + corner).to_string() +
-        " " +
-        y.to_string() +
-        " L " +
-        (x + width - corner).to_string() +
-        " " +
-        y.to_string() +
-        " A " +
-        corner.to_string() +
-        " " +
-        corner.to_string() +
-        " 0 0 1 " +
-        (x + width).to_string() +
-        " " +
-        (y + corner).to_string() +
-        " L " +
-        (x + width).to_string() +
-        " " +
-        header_bottom.to_string() +
-        " L " +
-        x.to_string() +
-        " " +
-        header_bottom.to_string() +
-        " L " +
-        x.to_string() +
-        " " +
-        (y + corner).to_string() +
-        " A " +
-        corner.to_string() +
-        " " +
-        corner.to_string() +
-        " 0 0 1 " +
-        (x + corner).to_string() +
-        " " +
-        y.to_string() +
-        " Z",
+    output
+    .with_style({
+      ..@graphics.DrawingStyle::default(),
+      fill: Color(composite_state_background_color(state, diagram.style)),
+    })
+    .draw(
+      Path([
+        MoveTo({ x: x + corner, y, }),
+        LineTo({ x: x + width - corner, y, }),
+        ArcTo(rx=corner, ry=corner, rotation=0.0, large_arc=false, sweep=true, end={
+          x: x + width,
+          y: y + corner,
+        }),
+        LineTo({ x: x + width, y: header_bottom, }),
+        LineTo({ x, y: header_bottom, }),
+        LineTo({ x, y: y + corner, }),
+        ArcTo(rx=corner, ry=corner, rotation=0.0, large_arc=false, sweep=true, end={
+          x: x + corner,
+          y,
+        }),
+        Close,
+      ]),
+    )
+    let border = output.with_style(
+      state_paint(
+        None,
+        Color(composite_state_border_color(state, diagram.style)),
+        STATE_THIN_STROKE_WIDTH,
       ),
-      ("fill", composite_state_background_color(state, diagram.style)),
-    ])
-    output.empty("rect", attributes=[
-      ("x", x.to_string()),
-      ("y", y.to_string()),
-      ("width", width.to_string()),
-      ("height", height.to_string()),
-      ("rx", corner.to_string()),
-      ("fill", "none"),
-      ("stroke", composite_state_border_color(state, diagram.style)),
-      ("stroke-width", STATE_THIN_STROKE_WIDTH),
-    ])
-    output.empty("line", attributes=[
-      ("x1", x.to_string()),
-      ("y1", header_bottom.to_string()),
-      ("x2", (x + width).to_string()),
-      ("y2", header_bottom.to_string()),
-      ("stroke", composite_state_border_color(state, diagram.style)),
-      ("stroke-width", STATE_THIN_STROKE_WIDTH),
-    ])
+    )
+    border.draw(
+      Rectangle(origin={ x, y, }, width~, height~, rx=Some(corner), ry=None),
+    )
+    border.draw(
+      Line({ x, y: header_bottom, }, { x: x + width, y: header_bottom, }),
+    )
     append_state_label(
       output,
       state.display,
@@ -439,61 +451,65 @@ fn append_state_node(
       "state-label",
       state_font_metrics(diagram.style),
     )
-    if state.url is Some(_) {
-      output.close()
-    }
-    output.close()
     return
   }
   match state.kind {
     @flow.StateKind::Initial =>
-      output.empty("circle", attributes=[
-        ("class", "state-initial"),
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", initial_background_color(diagram.style)),
-        ("stroke", terminal_border_color(diagram.style)),
-        ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
-      ])
+      output
+      .with_style(
+        state_paint(
+          Color(initial_background_color(diagram.style)),
+          Color(terminal_border_color(diagram.style)),
+          STATE_TERMINAL_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Circle(center~, radius=width.min(height) / 2.0),
+        metadata=state_class("state-initial"),
+      )
     @flow.StateKind::Final => {
       let radius = width.min(height) / 2.0
-      output.empty("circle", attributes=[
-        ("class", "state-final-outer"),
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", radius.to_string()),
-        ("fill", "none"),
-        ("stroke", final_border_color(diagram.style)),
-        ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
-      ])
-      output.empty("circle", attributes=[
-        ("class", "state-final-inner"),
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", (radius - 5.0).max(1.0).to_string()),
-        ("fill", terminal_border_color(diagram.style)),
-        ("stroke", final_border_color(diagram.style)),
-        ("stroke-width", STATE_TERMINAL_STROKE_WIDTH),
-      ])
+      output
+      .with_style(
+        state_paint(
+          None,
+          Color(final_border_color(diagram.style)),
+          STATE_TERMINAL_STROKE_WIDTH,
+        ),
+      )
+      .draw(Circle(center~, radius~), metadata=state_class("state-final-outer"))
+      output
+      .with_style(
+        state_paint(
+          Color(terminal_border_color(diagram.style)),
+          Color(final_border_color(diagram.style)),
+          STATE_TERMINAL_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Circle(center~, radius=(radius - 5.0).max(1.0)),
+        metadata=state_class("state-final-inner"),
+      )
     }
     @flow.StateKind::History | @flow.StateKind::DeepHistory => {
-      output.empty("circle", attributes=[
-        (
-          "class",
+      output
+      .with_style(
+        state_paint(
+          Color(diamond_background_color(diagram.style)),
+          Color(diamond_border_color(diagram.style)),
+          STATE_THIN_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Circle(center~, radius=width.min(height) / 2.0),
+        metadata=state_class(
           if state.kind == @flow.StateKind::DeepHistory {
             "state-deep-history"
           } else {
             "state-history"
           },
         ),
-        ("cx", center_x.to_string()),
-        ("cy", center_y.to_string()),
-        ("r", (width.min(height) / 2.0).to_string()),
-        ("fill", diamond_background_color(diagram.style)),
-        ("stroke", diamond_border_color(diagram.style)),
-        ("stroke-width", STATE_THIN_STROKE_WIDTH),
-      ])
+      )
       append_state_label(
         output,
         if state.kind == @flow.StateKind::DeepHistory {
@@ -508,53 +524,59 @@ fn append_state_node(
       )
     }
     @flow.StateKind::Synchronization =>
-      output.empty("rect", attributes=[
-        ("class", "state-synchronization"),
-        ("x", x.to_string()),
-        ("y", (center_y - height / 2.0).to_string()),
-        ("width", width.to_string()),
-        ("height", height.to_string()),
-        ("fill", synchronization_background_color(diagram.style)),
-        ("stroke", "none"),
-      ])
-    @flow.StateKind::Choice =>
-      output.empty("path", attributes=[
-        ("class", "state-choice"),
-        (
-          "d",
-          "M " +
-          center_x.to_string() +
-          " " +
-          y.to_string() +
-          " L " +
-          (x + width).to_string() +
-          " " +
-          center_y.to_string() +
-          " L " +
-          center_x.to_string() +
-          " " +
-          (y + height).to_string() +
-          " L " +
-          x.to_string() +
-          " " +
-          center_y.to_string() +
-          " Z",
+      output
+      .with_style({
+        ..@graphics.DrawingStyle::default(),
+        fill: Color(synchronization_background_color(diagram.style)),
+        stroke: None,
+      })
+      .draw(
+        Rectangle(
+          origin={ x, y: center_y - height / 2.0, },
+          width~,
+          height~,
+          rx=None,
+          ry=None,
         ),
-        ("fill", diamond_background_color(diagram.style)),
-        ("stroke", diamond_border_color(diagram.style)),
-        ("stroke-width", STATE_THIN_STROKE_WIDTH),
-      ])
+        metadata=state_class("state-synchronization"),
+      )
+    @flow.StateKind::Choice =>
+      output
+      .with_style(
+        state_paint(
+          Color(diamond_background_color(diagram.style)),
+          Color(diamond_border_color(diagram.style)),
+          STATE_THIN_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Path([
+          MoveTo({ x: center_x, y, }),
+          LineTo({ x: x + width, y: center_y, }),
+          LineTo({ x: center_x, y: y + height, }),
+          LineTo({ x, y: center_y, }),
+          Close,
+        ]),
+        metadata=state_class("state-choice"),
+      )
     @flow.StateKind::Normal => {
-      output.empty("rect", attributes=[
-        ("x", x.to_string()),
-        ("y", y.to_string()),
-        ("width", width.to_string()),
-        ("height", height.to_string()),
-        ("rx", STATE_CORNER_RADIUS.to_string()),
-        ("fill", state_background_color(state, diagram.style)),
-        ("stroke", state_border_color(state, diagram.style)),
-        ("stroke-width", STATE_THIN_STROKE_WIDTH),
-      ])
+      output
+      .with_style(
+        state_paint(
+          Color(state_background_color(state, diagram.style)),
+          Color(state_border_color(state, diagram.style)),
+          STATE_THIN_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Rectangle(
+          origin={ x, y, },
+          width~,
+          height~,
+          rx=Some(STATE_CORNER_RADIUS),
+          ry=None,
+        ),
+      )
       if empty_description {
         append_state_label(
           output,
@@ -565,15 +587,19 @@ fn append_state_node(
           state_font_metrics(diagram.style),
         )
       } else {
-        output.empty("line", attributes=[
-          ("x1", x.to_string()),
-          ("y1", (y + STATE_HEADER_HEIGHT).to_string()),
-          ("x2", (x + width).to_string()),
-          ("y2", (y + STATE_HEADER_HEIGHT).to_string()),
-          ("class", "state-compartment-separator"),
-          ("stroke", state_border_color(state, diagram.style)),
-          ("stroke-width", STATE_THIN_STROKE_WIDTH),
-        ])
+        output
+        .with_style({
+          ..@graphics.DrawingStyle::default(),
+          stroke: Color(state_border_color(state, diagram.style)),
+          stroke_width: Some(STATE_THIN_STROKE_WIDTH),
+        })
+        .draw(
+          Line({ x, y: y + STATE_HEADER_HEIGHT, }, {
+            x: x + width,
+            y: y + STATE_HEADER_HEIGHT,
+          }),
+          metadata=state_class("state-compartment-separator"),
+        )
         append_state_label(
           output,
           state.display,
@@ -582,52 +608,48 @@ fn append_state_node(
           "state-label",
           state_font_metrics(diagram.style),
         )
-        match state.description {
-          Some(description) if description.length() > 0 =>
-            append_state_label(
-              output,
-              description,
-              center_x,
-              y +
-              STATE_HEADER_HEIGHT +
-              (height - STATE_HEADER_HEIGHT) / 2.0 +
-              4.0,
-              "state-description-label",
-              state_description_font_metrics(diagram.style),
-            )
-          _ => ()
+        if state.description is Some(description) && description.length() > 0 {
+          append_state_label(
+            output,
+            description,
+            center_x,
+            y + STATE_HEADER_HEIGHT + (height - STATE_HEADER_HEIGHT) / 2.0 + 4.0,
+            "state-description-label",
+            state_description_font_metrics(diagram.style),
+          )
         }
       }
     }
   }
-  if state.url is Some(_) {
-    output.close()
-  }
-  output.close()
 }
 
 ///|
 fn append_state_edge(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   edge : StateEdgeLayout,
+  arrow : @graphics.MarkerRef,
+  cross : @graphics.MarkerRef,
 ) -> Unit {
   guard edge.transition_index < diagram.transitions.length() else { return }
   let transition = diagram.transitions[edge.transition_index]
   for path in edge.paths {
     guard path.length() > 0 else { continue }
-    output.empty(
-      "path",
-      attributes=[
-        ("d", @svg.spline_path_data(path)),
-        ("class", "state-transition"),
-        ("fill", "none"),
-        ..if transition.has_cross_start {
-          [("marker-start", "url(#state-cross-start)")]
+    output
+    .with_style({
+      ..@svg.line_drawing_style(transition.line_style),
+      fill: None,
+    })
+    .draw(
+      MarkedPath(@graphics.spline_segments(path), {
+        start: if transition.has_cross_start {
+          Some(cross)
+        } else {
+          None
         },
-        ("marker-end", "url(#state-arrow)"),
-        ..@svg.line_style_attributes(transition.line_style),
-      ],
+        end: Some(arrow),
+      }),
+      metadata=state_class("state-transition"),
     )
     if transition.has_circle_end {
       append_state_circle_decoration(output, diagram.style, path)
@@ -648,11 +670,9 @@ fn append_state_edge(
 }
 
 ///|
-/// Draws the circle decoration at the target end of a transition path. The
-/// circle sits on the node border, offset past the clipped path end along the
-/// end tangent, mirroring PlantUML's `ARROW_AND_CIRCLE` placement.
+/// Keep the circle offset on the terminal tangent of the clipped path.
 fn append_state_circle_decoration(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   style : @style.DocumentStyle,
   path : Array[(Double, Double)],
 ) -> Unit {
@@ -665,73 +685,85 @@ fn append_state_circle_decoration(
   guard length > 0.0 else { return }
   let center_x = end.0 + dx / length * STATE_CIRCLE_DECORATION_OFFSET
   let center_y = end.1 + dy / length * STATE_CIRCLE_DECORATION_OFFSET
-  output.empty("ellipse", attributes=[
-    ("cx", center_x.to_string()),
-    ("cy", center_y.to_string()),
-    ("rx", STATE_CIRCLE_DECORATION_RADIUS.to_string()),
-    ("ry", STATE_CIRCLE_DECORATION_RADIUS.to_string()),
-    ("fill", style.canvas_color()),
-    ("stroke", style.diagram_line_color()),
-    ("stroke-width", "1.5"),
-  ])
+  output
+  .with_style(
+    state_paint(
+      Color(style.canvas_color()),
+      Color(style.diagram_line_color()),
+      @svg.EMPHASIZED_STROKE_WIDTH,
+    ),
+  )
+  .draw(
+    Ellipse(
+      center={ x: center_x, y: center_y, },
+      rx=STATE_CIRCLE_DECORATION_RADIUS,
+      ry=STATE_CIRCLE_DECORATION_RADIUS,
+    ),
+  )
 }
 
 ///|
 fn append_state_region_separator(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   region : StateRegionLayout,
 ) -> Unit {
-  match region.separator {
-    Some(@flow.StateRegionSeparator::Horizontal) =>
-      output.empty("line", attributes=[
-        ("x1", region.x.to_string()),
-        ("y1", (region.y - STATE_REGION_GAP / 2.0).to_string()),
-        ("x2", (region.x + region.width).to_string()),
-        ("y2", (region.y - STATE_REGION_GAP / 2.0).to_string()),
-        ("class", "state-region-separator"),
-      ])
-    Some(@flow.StateRegionSeparator::Vertical) =>
-      output.empty("line", attributes=[
-        ("x1", (region.x - STATE_REGION_GAP / 2.0).to_string()),
-        ("y1", region.y.to_string()),
-        ("x2", (region.x - STATE_REGION_GAP / 2.0).to_string()),
-        ("y2", (region.y + region.height).to_string()),
-        ("class", "state-region-separator"),
-      ])
-    None => ()
+  guard region.separator is Some(separator) else { return }
+  let (start, end) : (@graphics.Point, @graphics.Point) = match separator {
+    @flow.StateRegionSeparator::Horizontal =>
+      (
+        { x: region.x, y: region.y - STATE_REGION_GAP / 2.0, },
+        { x: region.x + region.width, y: region.y - STATE_REGION_GAP / 2.0, },
+      )
+    @flow.StateRegionSeparator::Vertical =>
+      (
+        { x: region.x - STATE_REGION_GAP / 2.0, y: region.y, },
+        { x: region.x - STATE_REGION_GAP / 2.0, y: region.y + region.height, },
+      )
   }
+  output.draw(Line(start, end), metadata=state_class("state-region-separator"))
 }
 
 ///|
 fn append_state_note(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateNoteLayout,
 ) -> Unit {
   guard layout.note_index < diagram.notes.length() else { return }
   let note = diagram.notes[layout.note_index]
-  output.open("g", attributes=[
-    ("class", "state-note"),
-    ("data-note-index", layout.note_index.to_string()),
-  ])
-  output.empty("rect", attributes=[
-    ("x", layout.x.to_string()),
-    ("y", layout.y.to_string()),
-    ("width", layout.width.to_string()),
-    ("height", layout.height.to_string()),
-    ("fill", note_background_color(note, diagram.style)),
-    ("stroke", note_border_color(diagram.style)),
-    ("stroke-width", STATE_THIN_STROKE_WIDTH),
-  ])
-  append_state_label(
-    output,
-    note.text,
-    layout.x + layout.width / 2.0,
-    layout.y + layout.height / 2.0 + 5.0,
-    "state-note-label",
-    note_font_metrics(diagram.style),
+  output.group(
+    {
+      ..state_class("state-note"),
+      data: [("note-index", layout.note_index.to_string())],
+    },
+    output => {
+      output
+      .with_style(
+        state_paint(
+          Color(note_background_color(note, diagram.style)),
+          Color(note_border_color(diagram.style)),
+          STATE_THIN_STROKE_WIDTH,
+        ),
+      )
+      .draw(
+        Rectangle(
+          origin={ x: layout.x, y: layout.y, },
+          width=layout.width,
+          height=layout.height,
+          rx=None,
+          ry=None,
+        ),
+      )
+      append_state_label(
+        output,
+        note.text,
+        layout.x + layout.width / 2.0,
+        layout.y + layout.height / 2.0 + 5.0,
+        "state-note-label",
+        note_font_metrics(diagram.style),
+      )
+    },
   )
-  output.close()
 }
 
 ///|
@@ -743,29 +775,15 @@ fn @flow.StateDiagram::render_svg(
   let layout = @graphviz.layout_or_fallback(() => self.layout(), None)
   let width = layout.width.ceil().to_int().max(1)
   let height = layout.height.ceil().to_int().max(1)
-  let output = @svg.XmlWriter::new()
-  output.open(
-    "svg",
-    attributes=@svg.svg_root_attributes(
-      width,
-      height,
-      "0 0 \{width} \{height}",
-      "State diagram",
-    ),
+  let document = @svg.SvgDocument::empty(width, height, "State diagram")
+  let arrow = document.arrow_marker(
+    "state-arrow",
+    marker_width=6.0,
+    marker_height=6.0,
+    fill=self.style.diagram_line_color(),
   )
-  output.open("defs")
-  output.raw(
-    @svg.arrow_marker_markup(
-      "state-arrow",
-      marker_width=6.0,
-      marker_height=6.0,
-      path_fill=self.style.diagram_line_color(),
-    ),
-  )
-  append_state_cross_marker(output, self.style)
-  output.close()
-  output.open("style")
-  output.raw(
+  let cross = define_state_cross_marker(document, self.style)
+  document.stylesheet(
     (
       $|.state-transition{stroke:\{self.style.diagram_line_color()};stroke-width:\{@svg.emphasized_stroke_width()}}
       $|.state-region-separator{stroke:\{self.style.diagram_line_color()};stroke-width:\{@svg.standard_border_stroke_width()}}
@@ -776,18 +794,24 @@ fn @flow.StateDiagram::render_svg(
       $|.state-note-label{font-family:\{note_font_family(self.style)};font-size:\{note_font_size(self.style)}px;fill:\{note_font_color(self.style)}},
     ),
   )
-  output.close()
-  output.empty(
-    "rect",
-    attributes=@svg.background_rect_attributes(
-      width,
-      height,
-      self.style.canvas_color(),
-      class_name="state-canvas",
+  let output = document.graphic()
+  output
+  .with_style({
+    ..@graphics.DrawingStyle::default(),
+    fill: Color(self.style.canvas_color()),
+  })
+  .draw(
+    Rectangle(
+      origin={ x: 0.0, y: 0.0, },
+      width=width.to_double(),
+      height=height.to_double(),
+      rx=None,
+      ry=None,
     ),
+    metadata=state_class("state-canvas"),
   )
   for edge in layout.edges {
-    append_state_edge(output, self, edge)
+    append_state_edge(output, self, edge, arrow, cross)
   }
   for region in layout.regions {
     append_state_region_separator(output, region)
@@ -798,8 +822,7 @@ fn @flow.StateDiagram::render_svg(
   for note in layout.notes {
     append_state_note(output, self, note)
   }
-  output.close()
-  output.to_string()
+  document.to_string()
 }
 
 ///|

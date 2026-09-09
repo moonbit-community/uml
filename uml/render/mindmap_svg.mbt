@@ -1,23 +1,35 @@
 ///|
 fn append_mindmap_edge(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   edge : EdgeLayout,
   line_color : String,
   line_thickness : Int,
 ) -> Unit {
-  let path =
-    $|M\{edge.x1} \{edge.y1} C\{edge.control1_x} \{edge.control1_y} \{edge.control2_x} \{edge.control2_y} \{edge.x2} \{edge.y2}
-  output.empty("path", attributes=[
-    ("d", path),
-    ("class", "mindmap-link"),
-    ("stroke", line_color),
-    ("stroke-width", line_thickness.to_string()),
-  ])
+  output
+  .with_style({
+    ..@graphics.DrawingStyle::default(),
+    stroke: Color(line_color),
+    stroke_width: Some(line_thickness.to_double()),
+  })
+  .draw(
+    Path([
+      MoveTo({ x: edge.x1.to_double(), y: edge.y1.to_double(), }),
+      CubicTo(
+        { x: edge.control1_x.to_double(), y: edge.control1_y.to_double(), },
+        { x: edge.control2_x.to_double(), y: edge.control2_y.to_double(), },
+        { x: edge.x2.to_double(), y: edge.y2.to_double(), },
+      ),
+    ]),
+    metadata={
+      ..@graphics.Metadata::default(),
+      class_name: Some("mindmap-link"),
+    },
+  )
 }
 
 ///|
 fn append_mindmap_node(
-  output : @svg.XmlWriter,
+  output : @graphics.Graphic,
   diagram : @tree.MindmapDiagram,
   node : NodeLayout,
 ) -> Unit {
@@ -36,8 +48,9 @@ fn append_mindmap_node(
     // PlantUML draws every node label at the box's left edge plus the
     // padding; `HorizontalAlignment Right` does not move it either.
     @tree.TextAlignment::Left | @tree.TextAlignment::Right =>
-      (node.x + padding_x, "start")
-    @tree.TextAlignment::Center => (node.x + node.width / 2, "middle")
+      (node.x + padding_x, @graphics.TextAnchor::Start)
+    @tree.TextAlignment::Center =>
+      (node.x + node.width / 2, @graphics.TextAnchor::Middle)
   }
   let (text_x, anchor, first_baseline) = match idea.shape {
     @tree.IdeaShape::Box =>
@@ -51,7 +64,11 @@ fn append_mindmap_node(
         @tree.TreeDirection::Right => node.x + boxless_horizontal_margin
         @tree.TreeDirection::Left => node.x
       }
-      (text_x, "start", node.y + boxless_vertical_margin + font_size)
+      (
+        text_x,
+        @graphics.TextAnchor::Start,
+        node.y + boxless_vertical_margin + font_size,
+      )
     }
   }
   let shape_class = match idea.shape {
@@ -67,43 +84,53 @@ fn append_mindmap_node(
   )
   let line_color = @svg.svg_color(node_style.line_color, defaults.line)
   let font_color = @svg.svg_color(node_style.font_color, defaults.text)
-  let line_thickness = node_style.line_thickness.map_or("1.5", value => {
-    value.to_string()
+  let line_thickness = node_style.line_thickness.map_or(1.5, value => {
+    value.to_double()
   })
-  let round_corner = node_style.round_corner.map_or("12.5", value => {
-    value.to_string()
+  let round_corner = node_style.round_corner.map_or(12.5, value => {
+    value.to_double()
   })
-  output.open("g", attributes=[
-    ("class", "mindmap-node " + shape_class),
-    ("data-idea-index", node.index.to_string()),
-  ])
-  match idea.shape {
-    @tree.IdeaShape::Box =>
-      output.empty("rect", attributes=[
-        ("x", node.x.to_string()),
-        ("y", node.y.to_string()),
-        ("width", node.width.to_string()),
-        ("height", node.height.to_string()),
-        ("rx", round_corner),
-        ("fill", fill),
-        ("stroke", line_color),
-        ("stroke-width", line_thickness),
-      ])
-    @tree.IdeaShape::Boxless => ()
-  }
-  append_tree_text(
-    output,
-    text_x,
-    first_baseline,
-    idea.label,
-    font_metrics.line_height,
-    anchor,
-    font_color,
-    font_size,
-    font_metrics,
-    "mindmap-label",
+  output.group(
+    {
+      ..@graphics.Metadata::default(),
+      class_name: Some("mindmap-node " + shape_class),
+      data: [("idea-index", node.index.to_string())],
+    },
+    output => {
+      match idea.shape {
+        @tree.IdeaShape::Box =>
+          output
+          .with_style({
+            ..@graphics.DrawingStyle::default(),
+            fill: Color(fill),
+            stroke: Color(line_color),
+            stroke_width: Some(line_thickness),
+          })
+          .draw(
+            Rectangle(
+              origin={ x: node.x.to_double(), y: node.y.to_double(), },
+              width=node.width.to_double(),
+              height=node.height.to_double(),
+              rx=Some(round_corner),
+              ry=None,
+            ),
+          )
+        @tree.IdeaShape::Boxless => ()
+      }
+      draw_tree_text(
+        output,
+        text_x,
+        first_baseline,
+        idea.label,
+        font_metrics.line_height,
+        anchor,
+        font_color,
+        font_size,
+        font_metrics,
+        "mindmap-label",
+      )
+    },
   )
-  output.close()
 }
 
 ///|
@@ -133,7 +160,7 @@ fn @tree.MindmapDiagram::render_svg(
     font_size,
     css=".mindmap-link{fill:none}.mindmap-node.boxless .mindmap-label{font-weight:normal}",
   )
-  let output = document.writer()
+  let output = document.graphic()
   layout.edges.each(edge => {
     append_mindmap_edge(output, edge, arrow_color, arrow_thickness)
   })
