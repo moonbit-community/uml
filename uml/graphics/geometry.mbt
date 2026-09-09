@@ -82,16 +82,26 @@ pub(all) enum Shape {
   Path(Array[PathSegment])
   MarkedPath(Array[PathSegment], PathMarkers)
   Text(TextRun)
+  StyledText(TextRun, TextStyle)
+  ToggleArea(
+    origin~ : Point,
+    width~ : Double,
+    height~ : Double,
+    label~ : String,
+    expanded~ : Bool
+  )
   TextBlock(MultilineText)
   StyledTextBlock(MultilineText, TextStyle)
 } derive(Eq, Debug)
 
 ///|
-/// Explicit font presentation for a multiline block. Missing values inherit
+/// Explicit font presentation for text runs and blocks. Missing values inherit
 /// the document font; layout still owns line spacing and measured advances.
 pub(all) struct TextStyle {
   font_size : Double?
   font_family : String?
+  italic : Bool?
+  weight : Int?
 } derive(Eq, Debug, Default)
 
 ///|

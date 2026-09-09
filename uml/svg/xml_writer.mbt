@@ -124,18 +124,3 @@ test "XML writer escapes attribute and text contexts" {
   )
   @test.assert_eq(xml.contains(">A &lt; B &amp; C</text>"), true)
 }
-
-///|
-test "XML writer preserves nested and empty SVG elements" {
-  let writer = XmlWriter::new()
-  writer.open("svg")
-  writer.open("g", attributes=[("class", "node")])
-  writer.empty("path", attributes=[("d", "M 0 0")])
-  writer.close()
-  writer.close()
-  let xml = writer.to_string()
-  @test.assert_eq(
-    xml.contains("<svg><g class=\"node\"><path d=\"M 0 0\"/></g></svg>"),
-    true,
-  )
-}

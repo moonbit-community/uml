@@ -1,6 +1,6 @@
 ///|
 fn append_note(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   note : @seq.Note,
   placement : EventPlacement,
@@ -17,46 +17,79 @@ fn append_note(
     @seq.Box => "note box-note"
   }
   let fill = note_color(note.color, note.stereotype, layout.defaults)
-  match note.url {
-    Some(url) if !suppress_url =>
-      output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
-    _ => ()
-  }
-  match note.note_style {
-    @seq.NodeNormal => {
-      let fold_x = x + component.width - component.fold
-      let fold_y = y + component.fold
-      output <+
-        $|<path d="M\{x},\{y} L\{x},\{y + component.height} L\{x + component.width},\{y + component.height} L\{x + component.width},\{fold_y} L\{fold_x},\{y} Z" class="\{class_name}" fill="\{fill}" />
-      output <+
-        $|<path d="M\{fold_x},\{y} L\{fold_x},\{fold_y} L\{x + component.width},\{fold_y}" class="note-fold" fill="none" />
+  output.link(if suppress_url { None } else { note.url }, output => {
+    match note.note_style {
+      @seq.NodeNormal => {
+        let fold_x = x + component.width - component.fold
+        let fold_y = y + component.fold
+        output.draw(
+          Path([
+            MoveTo(sequence_point(x, y)),
+            LineTo(sequence_point(x, y + component.height)),
+            LineTo(sequence_point(x + component.width, y + component.height)),
+            LineTo(sequence_point(x + component.width, fold_y)),
+            LineTo(sequence_point(fold_x, y)),
+            Close,
+          ]),
+          class_name~,
+          fill=Color(fill),
+        )
+        output.draw(
+          Path([
+            MoveTo(sequence_point(fold_x, y)),
+            LineTo(sequence_point(fold_x, fold_y)),
+            LineTo(sequence_point(x + component.width, fold_y)),
+          ]),
+          class_name="note-fold",
+          fill=None,
+        )
+      }
+      @seq.Hexagonal =>
+        output.draw(
+          Polygon([
+            sequence_point(x + component.fold, y),
+            sequence_point(x + component.width - component.fold, y),
+            sequence_point(x + component.width, y + component.height / 2),
+            sequence_point(
+              x + component.width - component.fold,
+              y + component.height,
+            ),
+            sequence_point(x + component.fold, y + component.height),
+            sequence_point(x, y + component.height / 2),
+          ]),
+          class_name~,
+          fill=Color(fill),
+        )
+      @seq.Box =>
+        output.draw(
+          Rectangle(
+            origin=sequence_point(x, y),
+            width=component.width.to_double(),
+            height=component.height.to_double(),
+            rx=None,
+            ry=None,
+          ),
+          class_name~,
+          fill=Color(fill),
+        )
     }
-    @seq.Hexagonal =>
-      output <+
-        $|<polygon points="\{x + component.fold},\{y} \{x + component.width - component.fold},\{y} \{x + component.width},\{y + component.height / 2} \{x + component.width - component.fold},\{y + component.height} \{x + component.fold},\{y + component.height} \{x},\{y + component.height / 2}" class="\{class_name}" fill="\{fill}" />
-    @seq.Box =>
-      output <+
-        $|<rect x="\{x}" y="\{y}" width="\{component.width}" height="\{component.height}" class="\{class_name}" fill="\{fill}" />
-  }
-  append_text(
-    output,
-    x + component.text_x,
-    y + component.text_y,
-    note.text,
-    "note-label",
-    layout.defaults,
-    anchor="start",
-    line_height=layout.text_metrics.note.line_height,
-    font_metrics=Some(layout.text_metrics.note),
-  )
-  if note.url is Some(_) && !suppress_url {
-    output.write_string("</a>\n")
-  }
+    append_text(
+      output,
+      x + component.text_x,
+      y + component.text_y,
+      note.text,
+      "note-label",
+      layout.defaults,
+      anchor=Start,
+      line_height=layout.text_metrics.note.line_height,
+      font_metrics=Some(layout.text_metrics.note),
+    )
+  })
 }
 
 ///|
 fn append_divider(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   divider : @seq.Divider,
   placement : EventPlacement,
@@ -65,8 +98,16 @@ fn append_divider(
   append_line(output, 28, y, layout.width - 28, y, "divider")
   let width = TextSize::of_with(divider.title, layout.text_metrics.body_bold).width +
     22
-  output <+
-    $|<rect x="\{(layout.width - width) / 2}" y="\{y - 12}" width="\{width}" height="24" class="divider-title"/>
+  output.draw(
+    Rectangle(
+      origin=sequence_point((layout.width - width) / 2, y - 12),
+      width=width.to_double(),
+      height=24,
+      rx=None,
+      ry=None,
+    ),
+    class_name="divider-title",
+  )
   append_text(
     output,
     layout.width / 2,
@@ -81,7 +122,7 @@ fn append_divider(
 
 ///|
 fn append_delay(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   delay : @seq.Delay,
   placement : EventPlacement,
@@ -104,7 +145,7 @@ fn append_delay(
 
 ///|
 fn append_reference(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   reference : @seq.Reference,
   placement : EventPlacement,
@@ -118,10 +159,27 @@ fn append_reference(
   let width = (first - last).abs() + 72
   let tab_width = TextSize::of_with("ref", layout.text_metrics.body_bold).width +
     34
-  output <+
-    $|<rect x="\{x}" y="\{placement.y}" width="\{width}" height="\{placement.height}" class="reference"/>
-  output <+
-    $|<path d="M\{x},\{placement.y}h\{tab_width}v7l-10,10h\{-tab_width + 10}z" class="reference-tab"/>
+  output.draw(
+    Rectangle(
+      origin=sequence_point(x, placement.y),
+      width=width.to_double(),
+      height=placement.height.to_double(),
+      rx=None,
+      ry=None,
+    ),
+    class_name="reference",
+  )
+  output.draw(
+    Path([
+      MoveTo(sequence_point(x, placement.y)),
+      LineTo(sequence_point(x + tab_width, placement.y)),
+      LineTo(sequence_point(x + tab_width, placement.y + 7)),
+      LineTo(sequence_point(x + tab_width - 10, placement.y + 17)),
+      LineTo(sequence_point(x, placement.y + 17)),
+      Close,
+    ]),
+    class_name="reference-tab",
+  )
   append_text(
     output,
     x + 12,
@@ -129,7 +187,7 @@ fn append_reference(
     "ref",
     "reference-tab-label",
     layout.defaults,
-    anchor="start",
+    anchor=Start,
     line_height=layout.text_metrics.body_bold.line_height,
     font_metrics=Some(layout.text_metrics.body_bold),
   )
@@ -147,7 +205,7 @@ fn append_reference(
 
 ///|
 fn append_return(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   value : @seq.Return,
   placement : EventPlacement,
@@ -163,32 +221,35 @@ fn append_return(
       activation
     }
   })
-  let (from, to) = match activation {
-    Some(span) =>
-      (
-        layout.participant_at(span.participant_code).unwrap_or(last_participant),
-        span.caller_code.map_or(layout.participants[0], caller => {
-          layout.participant_at(caller).unwrap_or(layout.participants[0])
-        }),
-      )
-    None =>
-      match preceding_message {
-        Some(message) =>
-          (
-            layout.participant_at(message.to_code).unwrap_or(last_participant),
-            layout
-            .participant_at(message.from_code)
-            .unwrap_or(layout.participants[0]),
-          )
-        None => (last_participant, layout.participants[0])
-      }
+  let (from, to) = if activation is Some(span) {
+    (
+      layout.participant_at(span.participant_code).unwrap_or(last_participant),
+      span.caller_code.map_or(layout.participants[0], caller => {
+        layout.participant_at(caller).unwrap_or(layout.participants[0])
+      }),
+    )
+  } else if preceding_message is Some(message) {
+    (
+      layout.participant_at(message.to_code).unwrap_or(last_participant),
+      layout.participant_at(message.from_code).unwrap_or(layout.participants[0]),
+    )
+  } else {
+    (last_participant, layout.participants[0])
   }
   let return_value = value.value.unwrap_or("")
   let label = placement.number.map_or(return_value, number => {
     "\{number} \{return_value}"
   })
-  output <+
-    $|<line x1="\{from.center_x}" y1="\{y}" x2="\{to.center_x}" y2="\{y}" class="message dotted" marker-end="url(#arrow)"/>
+  output.draw(
+    MarkedPath(
+      [
+        MoveTo(sequence_point(from.center_x, y)),
+        LineTo(sequence_point(to.center_x, y)),
+      ],
+      { start: None, end: Some(output.arrow), },
+    ),
+    class_name="message dotted",
+  )
   append_text(
     output,
     (from.center_x + to.center_x) / 2,
@@ -203,7 +264,7 @@ fn append_return(
 
 ///|
 fn append_event(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   event : @seq.Event,
   placement : EventPlacement,
@@ -253,13 +314,11 @@ fn append_event(
     }
     @seq.LinkAnchor => ()
     @seq.AutoNewpage(size) =>
-      size.map_or_else(
-        () => output.write_string("<metadata class=\"auto-newpage\"/>\n"),
-        height => {
-          output <+
-            $|<metadata class="auto-newpage" data-height="\{height}"/>,
-        },
-      )
+      output.graphic.annotate({
+        ..Default::default(),
+        class_name: Some("auto-newpage"),
+        data: size.map_or([], height => [("height", height.to_string())]),
+      })
     @seq.GroupingStart(_)
     | @seq.GroupingLeaf(_)
     | @seq.LifeEvent(_)
@@ -281,7 +340,10 @@ fn append_event(
 }
 
 ///|
-fn append_destroy_marks(output : StringBuilder, layout : DiagramLayout) -> Unit {
+fn append_destroy_marks(
+  output : SequenceDrawing,
+  layout : DiagramLayout,
+) -> Unit {
   for mark in layout.destroys {
     guard layout.participant_at(mark.participant_code) is Some(participant) else {
       continue
@@ -306,7 +368,7 @@ fn append_destroy_marks(output : StringBuilder, layout : DiagramLayout) -> Unit 
 }
 
 ///|
-fn append_footboxes(output : StringBuilder, layout : DiagramLayout) -> Unit {
+fn append_footboxes(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
   for participant in layout.participants {
     append_participant(output, participant, layout.participant_tail_y(), true)
   }

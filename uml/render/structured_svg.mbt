@@ -65,8 +65,8 @@ fn NodeMetrics::row_offset(self : NodeMetrics, index : Int) -> Int {
 }
 
 ///|
-fn append_multiline_text(
-  output : StringBuilder,
+fn draw_structured_multiline_text(
+  graphic : @graphics.Graphic,
   x : Int,
   y : Int,
   text : String,
@@ -76,41 +76,52 @@ fn append_multiline_text(
     font_size=STRUCTURED_FONT_SIZE,
     line_height=STRUCTURED_LINE_HEIGHT,
   )
-  let attributes = class.map_or([], class => [("class", class)])
-  @svg.append_text_markup(
-    output,
-    x.to_double(),
-    y.to_double(),
-    text,
-    attributes,
-    line_height=STRUCTURED_LINE_HEIGHT.to_double(),
-    anchor=Baseline,
-    text_metrics=Some(text_metrics),
+  graphic.draw(
+    TextBlock(
+      @svg.layout_multiline_text(
+        x.to_double(),
+        y.to_double(),
+        text,
+        line_height=STRUCTURED_LINE_HEIGHT.to_double(),
+        anchor=Baseline,
+        text_metrics=Some(text_metrics),
+      ),
+    ),
+    metadata={ ..Default::default(), class_name: class, },
   )
 }
 
 ///|
-fn append_value_text(
-  output : StringBuilder,
+fn draw_structured_value_text(
+  graphic : @graphics.Graphic,
   x : Int,
   y : Int,
   value : @structured.StructuredValueDisplay,
 ) -> Unit {
   match value {
-    @structured.Text(text) => append_multiline_text(output, x, y, text)
+    @structured.Text(text) =>
+      draw_structured_multiline_text(graphic, x, y, text)
     _ => {
-      let markup = @svg.text_markup(
-        x.to_double(),
-        y.to_double(),
-        value.measurement_text(),
-        [],
-        @metrics.FontMetrics::from_defaults(
-          font_size=STRUCTURED_FONT_SIZE,
-          line_height=STRUCTURED_LINE_HEIGHT,
-        ),
+      let text = value.measurement_text()
+      let measured = @metrics.FontMetrics::from_defaults(
+        font_size=STRUCTURED_FONT_SIZE,
+        line_height=STRUCTURED_LINE_HEIGHT,
+      ).measure(text)
+      graphic.draw(
+        Text({
+          text,
+          position: { x: x.to_double(), y: y.to_double(), },
+          advance: if text.length() > 1 && measured.advance_width > 0 {
+            Some(measured.advance_width.to_double())
+          } else {
+            None
+          },
+          anchor: Start,
+          font_size: STRUCTURED_FONT_SIZE.to_double(),
+          font_family: None,
+          strike: false,
+        }),
       )
-      output.write_string(markup)
-      output.write_string("\n")
     }
   }
 }
@@ -267,7 +278,10 @@ fn align_empty_records(node : PlacedNode) -> PlacedNode {
 }
 
 ///|
-fn append_edges(output : StringBuilder, node : PlacedNode) -> Unit {
+fn draw_structured_edges(
+  graphic : @graphics.Graphic,
+  node : PlacedNode,
+) -> Unit {
   for pair in node.children {
     let (row_index, child) = pair
     let x1 = node.x + node.metrics.width - 12
@@ -277,71 +291,104 @@ fn append_edges(output : StringBuilder, node : PlacedNode) -> Unit {
     let x2 = child.x
     let y2 = child.y + child.metrics.height / 2
     let arrow_base = x2 - 8
-    let control_right = arrow_base - 13
+    let control_offset = 13
     let arrow_half_height = 3
     let arrow_notch = 2
-    output.write_string("<path class=\"structured-edge\"\n")
-    output <+
-      "  d=\"M \{x1} \{y1} C \{x1 + 13} \{y1}, \{control_right} \{y2}, \{arrow_base} \{y2}\"/>\n"
-    output.write_string("<path class=\"structured-arrow\"\n")
-    output <+
-      "  d=\"M \{arrow_base} \{y2 + arrow_half_height} L \{arrow_base + arrow_notch} \{y2} L \{arrow_base} \{y2 - arrow_half_height} L \{x2} \{y2} z\"/>\n"
-    output <+
-      "<circle class=\"structured-spot\" cx=\"\{x1}\" cy=\"\{y1}\" r=\"3\"/>\n"
-    append_edges(output, child)
+    let point = (x : Int, y : Int) => @graphics.Point::{
+      x: x.to_double(),
+      y: y.to_double(),
+    }
+    graphic.draw(
+      Path([
+        MoveTo(point(x1, y1)),
+        CubicTo(
+          point(x1 + control_offset, y1),
+          point(arrow_base - control_offset, y2),
+          point(arrow_base, y2),
+        ),
+      ]),
+      metadata={ ..Default::default(), class_name: Some("structured-edge"), },
+    )
+    graphic.draw(
+      Path([
+        MoveTo(point(arrow_base, y2 + arrow_half_height)),
+        LineTo(point(arrow_base + arrow_notch, y2)),
+        LineTo(point(arrow_base, y2 - arrow_half_height)),
+        LineTo(point(x2, y2)),
+        Close,
+      ]),
+      metadata={ ..Default::default(), class_name: Some("structured-arrow"), },
+    )
+    graphic.draw(Circle(center=point(x1, y1), radius=3), metadata={
+      ..Default::default(),
+      class_name: Some("structured-spot"),
+    })
+    draw_structured_edges(graphic, child)
   }
 }
 
 ///|
-fn structured_append_node(output : StringBuilder, node : PlacedNode) -> Unit {
-  output.write_string("<g class=\"structured-node\">\n<rect\n")
-  output <+
-    "  x=\"\{node.x}\" y=\"\{node.y}\" width=\"\{node.metrics.width}\"\n"
-  output <+ "  height=\"\{node.metrics.height}\" rx=\"5\" ry=\"5\"/>\n"
-  guard !is_blank_node(node.node) else {
-    output.write_string("</g>\n")
-    return
-  }
-  for index, row in node.node.rows {
-    let row_y = node.y + node.metrics.row_offset(index)
-    let row_height = node.metrics.row_heights[index]
-    if index > 0 {
-      output.write_string("<line\n")
-      output <+ "  x1=\"\{node.x}\" y1=\"\{row_y}\"\n"
-      output <+ "  x2=\"\{node.x + node.metrics.width}\" y2=\"\{row_y}\"/>\n"
-    }
-    match row.key {
-      Some(key) => {
-        let divider = node.x + node.metrics.key_width
-        append_multiline_text(
-          output,
-          node.x + STRUCTURED_CELL_PADDING,
-          row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
-          key,
-          class="structured-key",
-        )
-        output <+
-          "<line x1=\"\{divider}\" y1=\"\{row_y}\" x2=\"\{divider}\" y2=\"\{row_y + row_height}\"/>\n"
-        append_value_text(
-          output,
-          divider + STRUCTURED_CELL_PADDING,
-          row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
-          row.value,
-        )
+fn draw_structured_node(graphic : @graphics.Graphic, node : PlacedNode) -> Unit {
+  graphic.group(
+    { ..Default::default(), class_name: Some("structured-node"), },
+    graphic => {
+      graphic.draw(
+        Rectangle(
+          origin={ x: node.x.to_double(), y: node.y.to_double(), },
+          width=node.metrics.width.to_double(),
+          height=node.metrics.height.to_double(),
+          rx=Some(5),
+          ry=Some(5),
+        ),
+      )
+      guard !is_blank_node(node.node) else { return }
+      for index, row in node.node.rows {
+        let row_y = node.y + node.metrics.row_offset(index)
+        let row_height = node.metrics.row_heights[index]
+        if index > 0 {
+          graphic.draw(
+            Line({ x: node.x.to_double(), y: row_y.to_double(), }, {
+              x: (node.x + node.metrics.width).to_double(),
+              y: row_y.to_double(),
+            }),
+          )
+        }
+        if row.key is Some(key) {
+          let divider = node.x + node.metrics.key_width
+          draw_structured_multiline_text(
+            graphic,
+            node.x + STRUCTURED_CELL_PADDING,
+            row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
+            key,
+            class="structured-key",
+          )
+          graphic.draw(
+            Line({ x: divider.to_double(), y: row_y.to_double(), }, {
+              x: divider.to_double(),
+              y: (row_y + row_height).to_double(),
+            }),
+          )
+          draw_structured_value_text(
+            graphic,
+            divider + STRUCTURED_CELL_PADDING,
+            row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
+            row.value,
+          )
+        } else {
+          draw_structured_value_text(
+            graphic,
+            node.x + STRUCTURED_CELL_PADDING,
+            row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
+            row.value,
+          )
+        }
       }
-      None =>
-        append_value_text(
-          output,
-          node.x + STRUCTURED_CELL_PADDING,
-          row_y + STRUCTURED_TEXT_BASELINE_OFFSET,
-          row.value,
-        )
-    }
-  }
-  output.write_string("</g>\n")
+    },
+  )
+  guard !is_blank_node(node.node) else { return }
   for pair in node.children {
     let (_, child) = pair
-    structured_append_node(output, child)
+    draw_structured_node(graphic, child)
   }
 }
 
@@ -360,36 +407,31 @@ fn @structured.StructuredDiagram::render_svg(
   let root = align_empty_records(shifted_root)
   let width = root.max_right() + STRUCTURED_CANVAS_PADDING
   let height = root.max_bottom() + STRUCTURED_CANVAS_PADDING
-  let output = StringBuilder()
-  output.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\"\n")
-  output <+
-    "  width=\"\{width}\" height=\"\{height}\" viewBox=\"0 0 \{width} \{height}\"\n"
-  output <+ "  role=\"img\" aria-label=\"\{diagram.format.aria_label()}\">\n"
+  let document = @svg.SvgDocument::empty(
+    width,
+    height,
+    diagram.format.aria_label(),
+  )
   let defaults = color_scheme
-  output.write_string("<style>\n")
-  output <+
-    "svg { font-family: sans-serif; font-size: \{STRUCTURED_FONT_SIZE}px; background: \{defaults.canvas} }\n"
-  output.write_string(
+  document.stylesheet(
+    @svg.svg_style_rule(
+      "sans-serif",
+      "\{STRUCTURED_FONT_SIZE}px",
+      defaults.canvas,
+    ) +
     (
-      $|.structured-node rect { fill: \{defaults.node}; stroke: \{defaults.text}; stroke-width: 1.5 }
+      $|.structured-node rect { fill: \{defaults.node}; stroke: \{defaults.text}; stroke-width: \{@svg.EMPHASIZED_STROKE_WIDTH} }
       $|.structured-node line { stroke: \{defaults.text}; stroke-width: 1 }
       $|.structured-node text { fill: \{defaults.text} }
-    ),
-  )
-  output.write_char('\n')
-  output <+ ".structured-key { font-weight: \{STRUCTURED_KEY_FONT_WEIGHT} }\n"
-  output.write_string(
-    (
+      $|.structured-key { font-weight: \{STRUCTURED_KEY_FONT_WEIGHT} }
       $|.structured-edge { fill: none; stroke: \{defaults.text}; stroke-width: 1; stroke-dasharray: 3,3 }
       $|.structured-arrow, .structured-spot { fill: \{defaults.text}; stroke: \{defaults.text}; stroke-width: 1 }
-      $|</style>
     ),
   )
-  output.write_char('\n')
-  append_edges(output, root)
-  structured_append_node(output, root)
-  output.write_string(@svg.svg_close_markup())
-  output.to_string()
+  let graphic = document.graphic()
+  draw_structured_edges(graphic, root)
+  draw_structured_node(graphic, root)
+  document.to_string()
 }
 
 ///|

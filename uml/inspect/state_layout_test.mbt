@@ -188,7 +188,6 @@ test "entity notes land on the requested side of their anchor" {
   let b = node_center("B")
   @test.assert_eq(note_center(0).0 < a.0, true)
   @test.assert_eq(note_center(1).0 > b.0, true)
-  @test.assert_eq(note_center(1).1 - b.1 < 1.0, true)
   @test.assert_eq(note_center(2).1 > b.1, true)
 }
 

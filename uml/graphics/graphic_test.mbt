@@ -133,3 +133,18 @@ test "non cubic point lists retain their polyline geometry" {
     @test.assert_eq(restored, points)
   }
 }
+
+///|
+test "annotations retain metadata snapshots independently of later mutations" {
+  let commands = []
+  let graphic = @graphics.Graphic::new(command => commands.push(command))
+  let data = [("page", "initial")]
+  let metadata = { ..@graphics.Metadata::default(), data, }
+  let expected = { ..metadata, data: data.copy(), }
+  graphic.annotate(metadata)
+  data.push(("page", "later"))
+  guard commands is [Annotation(recorded)] else {
+    @test.fail("missing annotation")
+  }
+  @test.assert_eq(recorded, expected)
+}

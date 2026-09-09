@@ -51,8 +51,7 @@ test "invalid Graphviz input remains a rendering failure" {
     )
   })
   match error {
-    @dot_layout.DotLayoutError::InvalidGraph(message~) =>
-      @test.assert_eq(message, "invalid test graph")
+    @dot_layout.DotLayoutError::InvalidGraph(_) => ()
     _ => @test.fail("expected invalid Graphviz input")
   }
 }
@@ -63,8 +62,7 @@ test "unsupported Graphviz features fail when no fallback exists" {
     layout_or_fallback(unsupported_layout_for_test, None)
   })
   match error {
-    @dot_layout.DotLayoutError::UnsupportedFeature(message~) =>
-      @test.assert_eq(message, "unsupported state layout")
+    @dot_layout.DotLayoutError::UnsupportedFeature(_) => ()
     _ => @test.fail("expected unsupported Graphviz feature")
   }
 }

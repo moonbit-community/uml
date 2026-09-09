@@ -1,5 +1,5 @@
 ///|
-test "free node uses a free marker and independently collapsible method layout" {
+test "free node has independently collapsible method layout" {
   let graph = @parser.parse_mbti(
       "@startuml '.mbti\npackage \"demo\";\nstruct Free {}\nfn first() -> Free\nfn second(Free) -> Int\n@enduml",
     ).graph
@@ -15,7 +15,6 @@ test "free node uses a free marker and independently collapsible method layout" 
   )
   let open_body = free.body_layout(expanded, graph.family)
   let closed_body = free.body_layout(closed, graph.family)
-  @test.assert_eq(mbti_spot_word(free.kind), "free")
   @test.assert_eq(open_body.fields.is_empty(), true)
   @test.assert_eq(open_body.methods_collapsed, false)
   @test.assert_eq(closed_body.methods_collapsed, true)

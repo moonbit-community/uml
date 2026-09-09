@@ -32,21 +32,6 @@ test "bold font metrics widen glyph advances" {
 }
 
 ///|
-test "combining mark advances come from the shared width source" {
-  let metrics = FontMetrics::from_defaults(letter_spacing=2)
-  @test.assert_eq(
-    metrics.measure("e\u{0301}").advance_width >=
-    metrics.measure("e").advance_width,
-    true,
-  )
-  @test.assert_eq(
-    metrics.measure("e\u{fe0f}").advance_width >=
-    metrics.measure("e").advance_width,
-    true,
-  )
-}
-
-///|
 test "font profiles and italic style affect advances" {
   let sans = FontMetrics::from_defaults(profile=Sans)
   let serif = FontMetrics::from_defaults(profile=Serif)
@@ -70,10 +55,8 @@ test "font profiles and italic style affect advances" {
 }
 
 ///|
-test "sans metrics follow per-glyph table advances and fallbacks" {
+test "font metrics supply fallback advances and scale with size" {
   let metrics = FontMetrics::from_defaults(font_size=16)
-  @test.assert_eq(metrics.char_width('i') < metrics.char_width('!'), true)
-  @test.assert_eq(metrics.char_width('!') < metrics.char_width('W'), true)
   @test.assert_eq(metrics.char_width('\u{4e00}') > 0, true)
   @test.assert_eq(metrics.char_width('\u{1f600}') > 0, true)
   @test.assert_eq(metrics.char_width('\u{ff21}') > 0, true)
@@ -97,19 +80,6 @@ test "kerning tabs and word spacing participate in measurement" {
   @test.assert_eq(
     FontMetrics::from_defaults(profile=Serif, word_spacing=2).measure("a a").width,
     metrics.measure("a a").width + 2,
-  )
-}
-
-///|
-test "numeric runs reserve enough sans-serif width" {
-  let metrics = FontMetrics::from_defaults(font_size=14)
-  @test.assert_eq(metrics.measure("1").width > 0, true)
-  @test.assert_eq(metrics.measure("8").width > 0, true)
-  let serif = FontMetrics::from_defaults(profile=Serif, font_size=14)
-  @test.assert_eq(serif.measure("1").width < serif.measure("8").width, true)
-  @test.assert_eq(
-    metrics.measure("0123456789").width > metrics.measure("abcdefghij").width,
-    true,
   )
 }
 

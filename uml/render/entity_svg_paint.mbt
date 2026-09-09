@@ -2,7 +2,7 @@
 /// The always-repeated painter dependencies, bundled so per-entity paint
 /// helpers can take a single context instead of a long parameter list.
 priv struct EntityPaintContext {
-  output : StringBuilder
+  output : @graphics.Graphic
   diagram : @entity.EntityDiagram
   text_metrics : ClassTextMetrics
 }
@@ -14,7 +14,7 @@ const PACKAGE_TAB_HEIGHT : Double = 22.0
 /// Emit a single-line `<text>` pinned to its measured advance via
 /// `textLength`, matching how PlantUML serializes every text run.
 fn append_paint_text(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   x : Int,
   y : Int,
   text : String,
@@ -23,41 +23,23 @@ fn append_paint_text(
   fill? : String = "",
   font_family? : String = "",
   font_size? : Int = 0,
-  attributes? : Array[(String, String)] = [],
 ) -> Unit {
-  let fill_attribute = {
-    guard !fill.is_empty() else { [] }
-    [("fill", fill)]
-  }
-  let family_attribute = {
-    guard !font_family.is_empty() else { [] }
-    [("font-family", font_family)]
-  }
-  let size_attribute = {
-    guard font_size > 0 else { [] }
-    [("font-size", font_size.to_string())]
-  }
-  output.write_string(
-    @svg.text_markup(
-      x.to_double(),
-      y.to_double(),
-      text,
-      [
-        ("class", class_name),
-        ..fill_attribute,
-        ..family_attribute,
-        ..size_attribute,
-        ..attributes,
-      ],
-      metrics,
-    ),
+  draw_class_text(
+    output,
+    x,
+    y,
+    text,
+    class_name,
+    metrics,
+    fill~,
+    font_family~,
+    font_size~,
   )
-  output.write_char('\n')
 }
 
 ///|
 fn append_packages(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
@@ -81,37 +63,71 @@ fn append_packages(
       let right = x + package_layout.width
       let bottom = y + package_layout.height
       let border_color = @entity.package_border_color(diagram.style)
-      output <+
-        $|<g class="package">
-        $|<path d="M \{x + 2.5} \{y} L \{x + tab_width - 9.0} \{y} Q \{x + tab_width - 6.5} \{y} \{x + tab_width - 5.5} \{y + 2.5} L \{x + tab_width + 1.5} \{y + PACKAGE_TAB_HEIGHT} L \{right - 2.5} \{y + PACKAGE_TAB_HEIGHT} Q \{right} \{y + PACKAGE_TAB_HEIGHT} \{right} \{y + PACKAGE_TAB_HEIGHT + 2.5} L \{right} \{bottom - 2.5} Q \{right} \{bottom} \{right - 2.5} \{bottom} L \{x + 2.5} \{bottom} Q \{x} \{bottom} \{x} \{bottom - 2.5} L \{x} \{y + 2.5} Q \{x} \{y} \{x + 2.5} \{y}" fill="\{fill}" style="stroke:\{border_color}"/>
-        $|<line x1="\{x}" y1="\{y + PACKAGE_TAB_HEIGHT}" x2="\{x + tab_width + 1.5}" y2="\{y + PACKAGE_TAB_HEIGHT}" style="stroke:\{border_color}"/>
-      output.write_string(
-        @svg.text_markup(
+      output.group({ ..Default::default(), class_name: Some("package"), }, output => {
+        output
+        .with_style({
+          ..Default::default(),
+          stroke: Color(border_color),
+          inline: true,
+          fill: Color(fill),
+        })
+        .draw(
+          Path([
+            MoveTo({ x: x + 2.5, y, }),
+            LineTo({ x: x + tab_width - 9.0, y, }),
+            QuadraticTo({ x: x + tab_width - 6.5, y, }, {
+              x: x + tab_width - 5.5,
+              y: y + 2.5,
+            }),
+            LineTo({ x: x + tab_width + 1.5, y: y + PACKAGE_TAB_HEIGHT, }),
+            LineTo({ x: right - 2.5, y: y + PACKAGE_TAB_HEIGHT, }),
+            QuadraticTo({ x: right, y: y + PACKAGE_TAB_HEIGHT, }, {
+              x: right,
+              y: y + PACKAGE_TAB_HEIGHT + 2.5,
+            }),
+            LineTo({ x: right, y: bottom - 2.5, }),
+            QuadraticTo({ x: right, y: bottom, }, { x: right - 2.5, y: bottom, }),
+            LineTo({ x: x + 2.5, y: bottom, }),
+            QuadraticTo({ x, y: bottom, }, { x, y: bottom - 2.5, }),
+            LineTo({ x, y: y + 2.5, }),
+            QuadraticTo({ x, y, }, { x: x + 2.5, y, }),
+          ]),
+        )
+        output
+        .with_style({
+          ..Default::default(),
+          stroke: Color(border_color),
+          inline: true,
+        })
+        .draw(
+          Line({ x, y: y + PACKAGE_TAB_HEIGHT, }, {
+            x: x + tab_width + 1.5,
+            y: y + PACKAGE_TAB_HEIGHT,
+          }),
+        )
+        draw_entity_text(
+          output,
           x + 4.0,
           y + 16.0,
           group.display,
-          [("class", "package-title")],
           text_metrics.regular,
-        ),
-      )
-      output.write_char('\n')
-      if group.stereotype is Some(stereotype) {
-        let display = @tokenizer.display_stereotype(stereotype)
-        let metrics = text_metrics.italic.measure(display)
-        let stereotype_x = x +
-          (package_layout.width - metrics.width.to_double()) / 2.0
-        output.write_string(
-          @svg.text_markup(
+          class_name="package-title",
+        )
+        if group.stereotype is Some(stereotype) {
+          let display = @tokenizer.display_stereotype(stereotype)
+          let metrics = text_metrics.italic.measure(display)
+          let stereotype_x = x +
+            (package_layout.width - metrics.width.to_double()) / 2.0
+          draw_entity_text(
+            output,
             stereotype_x,
             y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double(),
             display,
-            [("class", "package-stereotype")],
             text_metrics.italic,
-          ),
-        )
-        output.write_char('\n')
-      }
-      output.write_string("</g>\n")
+            class_name="package-stereotype",
+          )
+        }
+      })
     }
   }
 }
@@ -181,33 +197,33 @@ fn lollipop_half_arc(
   center_x : Int,
   center_y : Int,
   direction : (Double, Double),
-) -> String {
+) -> Array[@graphics.PathSegment] {
   let radius = (LOLLIPOP_SIZE / 2).to_double()
   let x = center_x.to_double()
   let y = center_y.to_double()
-  if direction.0.abs() > direction.1.abs() {
-    if direction.0 > 0.0 {
-      // @entity.Entity on the right: bulge right.
-      (
-        $|M \{x},\{y - radius} A \{radius},\{radius} 0 0 1 \{x},\{y + radius}
-      )
+  let horizontal = direction.0.abs() > direction.1.abs()
+  let (start, end) : (@graphics.Point, @graphics.Point) = if horizontal {
+    if direction.0 > 0 {
+      ({ x, y: y - radius, }, { x, y: y + radius, })
     } else {
-      (
-        // @entity.Entity on the left: bulge left.
-        $|M \{x},\{y + radius} A \{radius},\{radius} 0 0 1 \{x},\{y - radius}
-      )
+      ({ x, y: y + radius, }, { x, y: y - radius, })
     }
-  } else if direction.1 > 0.0 {
-    // @entity.Entity below: bulge down.
-    (
-      $|M \{x - radius},\{y} A \{radius},\{radius} 0 0 0 \{x + radius},\{y}
-    )
+  } else if direction.1 > 0 {
+    ({ x: x - radius, y, }, { x: x + radius, y, })
   } else {
-    (
-      // @entity.Entity above: bulge up.
-      $|M \{x + radius},\{y} A \{radius},\{radius} 0 0 0 \{x - radius},\{y}
-    )
+    ({ x: x + radius, y, }, { x: x - radius, y, })
   }
+  [
+    MoveTo(start),
+    ArcTo(
+      rx=radius,
+      ry=radius,
+      rotation=0,
+      large_arc=false,
+      sweep=horizontal,
+      end~,
+    ),
+  ]
 }
 
 ///|
@@ -239,35 +255,61 @@ fn EntityPaintContext::append_lollipop(
   let title = self.text_metrics.regular.measure(entity.display)
   let title_x = x + LOLLIPOP_SIZE / 2 - title.width / 2
   let title_y = y + LOLLIPOP_SIZE + title.ascent
-  self.output <+
-    $|<g class="lollipop-node" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  let emphasized_width = @svg.emphasized_stroke_width()
-  match entity.kind {
-    LollipopHalf => {
-      let direction = lollipop_attachment_direction(
-        self.diagram,
-        entity.qualified_code,
-        (center_x, center_y),
-        layout,
-        self.text_metrics,
+  self.output.group(
+    {
+      ..Default::default(),
+      class_name: Some("lollipop-node"),
+      data: [("code", entity.qualified_code)],
+    },
+    graphic => {
+      let self = { ..self, output: graphic, }
+      match entity.kind {
+        LollipopHalf => {
+          let direction = lollipop_attachment_direction(
+            self.diagram,
+            entity.qualified_code,
+            (center_x, center_y),
+            layout,
+            self.text_metrics,
+          )
+          self.output
+          .with_style({
+            ..Default::default(),
+            fill: Color(fill),
+            stroke: Color(stroke),
+            stroke_width: Some(@svg.EMPHASIZED_STROKE_WIDTH),
+          })
+          .draw(Path(lollipop_half_arc(center_x, center_y, direction)), metadata={
+            ..Default::default(),
+          })
+        }
+        _ =>
+          self.output
+          .with_style({
+            ..Default::default(),
+            fill: Color(fill),
+            stroke: Color(stroke),
+            stroke_width: Some(@svg.EMPHASIZED_STROKE_WIDTH),
+          })
+          .draw(
+            Ellipse(
+              center={ x: center_x.to_double(), y: center_y.to_double(), },
+              rx=(width / 2).to_double(),
+              ry=(height / 2).to_double(),
+            ),
+          )
+      }
+      append_paint_text(
+        self.output,
+        title_x,
+        title_y,
+        entity.display,
+        "lollipop-title",
+        self.text_metrics.regular,
+        fill=self.diagram.style.diagram_text_color(),
       )
-      self.output <+
-        $|<path d="\{lollipop_half_arc(center_x, center_y, direction)}" fill="\{fill}" stroke="\{stroke}" stroke-width="\{emphasized_width}"/>
-    }
-    _ =>
-      self.output <+
-        $|<ellipse cx="\{center_x}" cy="\{center_y}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" stroke-width="\{emphasized_width}"/>
-  }
-  append_paint_text(
-    self.output,
-    title_x,
-    title_y,
-    entity.display,
-    "lollipop-title",
-    self.text_metrics.regular,
-    fill=self.diagram.style.diagram_text_color(),
+    },
   )
-  self.output.write_string("</g>\n")
 }
 
 ///|
@@ -286,8 +328,23 @@ fn EntityPaintContext::append_point(
     self.text_metrics,
   )
   let color = self.diagram.style.diagram_line_color()
-  self.output <+
-    $|<ellipse cx="\{x + width / 2}" cy="\{y + height / 2}" rx="\{width / 2}" ry="\{height / 2}" fill="\{color}" stroke="\{color}" stroke-width="1"/>
+  self.output
+  .with_style({
+    ..Default::default(),
+    fill: Color(color),
+    stroke: Color(color),
+    stroke_width: Some(1),
+  })
+  .draw(
+    Ellipse(
+      center={
+        x: (x + width / 2).to_double(),
+        y: (y + height / 2).to_double(),
+      },
+      rx=(width / 2).to_double(),
+      ry=(height / 2).to_double(),
+    ),
+  )
 }
 
 ///|
@@ -321,42 +378,60 @@ fn EntityPaintContext::append_object_like(
     entity.line_color,
     capability.style_role.border_color(self.diagram.style),
   )
-  let stroke_style = @svg.stroke_style(entity.line_style)
-  let line_attributes =
-    $| style="stroke:\{stroke};\{stroke_style}"
-  let separator_attributes =
-    $| style="stroke:\{stroke};stroke-width:\{@svg.standard_border_stroke_width()}"
+  let line_attributes = {
+    ..entity_line_style(entity.line_style),
+    stroke: Color(stroke),
+  }
+  let separator_attributes = {
+    ..entity_line_style(None),
+    stroke: Color(stroke),
+  }
   let placement = if is_json {
     header.json_placement(width)
   } else {
     header.placement(width)
   }
   let text_color = capability.style_role.font_color(self.diagram.style)
-  self.output <+
-    $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  if entity.url is Some(url) {
-    self.output <+
-      $|<a href="\{@svg.xml_escape(url)}">
-  }
-  self.output <+
-    $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="\{OBJECT_ROUND_CORNER}" ry="\{OBJECT_ROUND_CORNER}" fill="\{fill}" \{line_attributes}/>
-  self.append_object_header(
-    capability, entity, x, y, width, header, placement, text_color, line_attributes,
+  self.output.group(
+    {
+      ..Default::default(),
+      class_name: Some(capability.node_class()),
+      data: [("code", entity.qualified_code)],
+    },
+    graphic => {
+      let self = { ..self, output: graphic, }
+      with_entity_link(self.output, entity.url, graphic => {
+        let self = { ..self, output: graphic, }
+        self.output
+        .with_style({ ..line_attributes, fill: Color(fill), })
+        .draw(
+          Rectangle(
+            origin={ x: x.to_double(), y: y.to_double(), },
+            width=width.to_double(),
+            height=height.to_double(),
+            rx=Some(OBJECT_ROUND_CORNER),
+            ry=Some(OBJECT_ROUND_CORNER),
+          ),
+        )
+        self.append_object_header(
+          capability, entity, x, y, width, header, placement, text_color, line_attributes,
+        )
+        match capability.body {
+          MapEntries =>
+            self.append_map_body(
+              entity, x, y, width, header, separator_attributes, text_color,
+            )
+          OrderedMembers =>
+            self.append_object_body(
+              entity, x, y, width, header, separator_attributes,
+            )
+          JsonData =>
+            self.append_json_body(entity, x, y, header, stroke, text_color)
+          ClassCompartments | NoBody => panic()
+        }
+      })
+    },
   )
-  match capability.body {
-    MapEntries =>
-      self.append_map_body(
-        entity, x, y, width, header, separator_attributes, text_color,
-      )
-    OrderedMembers =>
-      self.append_object_body(entity, x, y, width, header, separator_attributes)
-    JsonData => self.append_json_body(entity, x, y, header, stroke, text_color)
-    ClassCompartments | NoBody => panic()
-  }
-  if entity.url is Some(_) {
-    self.output.write_string("</a>")
-  }
-  self.output.write_string("</g>\n")
 }
 
 ///|
@@ -370,7 +445,7 @@ fn EntityPaintContext::append_object_header(
   header : ObjectHeaderLayout,
   placement : (Int, Int, (Int, Int)?),
   text_color : String,
-  line_attributes : String,
+  line_attributes : @graphics.DrawingStyle,
 ) -> Unit {
   match (capability.renders_stereotype, header.stereotype, placement.2) {
     (true, Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
@@ -396,8 +471,14 @@ fn EntityPaintContext::append_object_header(
     self.text_metrics.regular,
     fill=text_color,
   )
-  self.output <+
-    $|<line x1="\{x}" y1="\{y + header.height}" x2="\{x + width}" y2="\{y + header.height}"\{line_attributes}/>
+  self.output
+  .with_style({ ..line_attributes, })
+  .draw(
+    Line({ x: x.to_double(), y: (y + header.height).to_double(), }, {
+      x: (x + width).to_double(),
+      y: (y + header.height).to_double(),
+    }),
+  )
 }
 
 ///|
@@ -408,7 +489,7 @@ fn EntityPaintContext::append_map_body(
   y : Int,
   width : Int,
   header : ObjectHeaderLayout,
-  separator_attributes : String,
+  separator_attributes : @graphics.DrawingStyle,
   text_color : String,
 ) -> Unit {
   let body = entity.map_body_layout(self.text_metrics)
@@ -416,57 +497,85 @@ fn EntityPaintContext::append_map_body(
   for row_index, row in body.rows {
     let row_y = y + header.height + row.top
     if row_index > 0 {
-      output <+
-        $|<line class="map-row-separator" x1="\{x}" y1="\{row_y}" x2="\{x + width}" y2="\{row_y}"\{separator_attributes}/>
+      output
+      .with_style({ ..separator_attributes, })
+      .draw(
+        Line({ x: x.to_double(), y: row_y.to_double(), }, {
+          x: (x + width).to_double(),
+          y: row_y.to_double(),
+        }),
+        metadata={
+          ..Default::default(),
+          class_name: Some("map-row-separator"),
+        },
+      )
     }
     let svg_port_id = "map-port-" +
       stable_port_identifier(entity.qualified_code) +
       "-" +
       row.port_id
-    output <+
-      $|<g id="\{svg_port_id}" class="map-row\{if row.entry.link_target is Some(_) { " map-link-row" } else { " map-value-row" }}" data-port="\{@svg.xml_escape(row.entry.key)}" data-port-id="\{row.port_id}">
-    let key_metrics = self.text_metrics.regular.measure(row.key)
-    let key_x = if row.entry.link_target is Some(_) {
-      x + (width - key_metrics.width) / 2
-    } else {
-      x + (body.key_column_width - key_metrics.width) / 2
-    }
-    let key_y = row_y +
-      (row.height - key_metrics.height) / 2 +
-      key_metrics.baseline
-    append_paint_text(
-      output,
-      key_x,
-      key_y,
-      row.key,
-      "map-key member",
-      self.text_metrics.regular,
-      fill=text_color,
-    )
-    match row.entry.value {
-      Some(value) => {
-        let value_metrics = self.text_metrics.regular.measure(value)
-        let divider_x = x + body.key_column_width
-        let value_x = divider_x +
-          (body.value_column_width - value_metrics.width) / 2
-        let value_y = row_y +
-          (row.height - value_metrics.height) / 2 +
-          value_metrics.baseline
-        output <+
-          $|<line class="map-column-separator" x1="\{divider_x}" y1="\{row_y}" x2="\{divider_x}" y2="\{row_y + row.height}"\{separator_attributes}/>
+    output.group(
+      {
+        id: Some(svg_port_id),
+        class_name: Some(
+          "map-row\{if row.entry.link_target is Some(_) { " map-link-row" } else { " map-value-row" }}",
+        ),
+        data: [("port", row.entry.key), ("port-id", row.port_id)],
+      },
+      output => {
+        let key_metrics = self.text_metrics.regular.measure(row.key)
+        let key_x = if row.entry.link_target is Some(_) {
+          x + (width - key_metrics.width) / 2
+        } else {
+          x + (body.key_column_width - key_metrics.width) / 2
+        }
+        let key_y = row_y +
+          (row.height - key_metrics.height) / 2 +
+          key_metrics.baseline
         append_paint_text(
           output,
-          value_x,
-          value_y,
-          value,
-          "map-value member",
+          key_x,
+          key_y,
+          row.key,
+          "map-key member",
           self.text_metrics.regular,
           fill=text_color,
         )
-      }
-      None => ()
-    }
-    output.write_string("</g>")
+        match row.entry.value {
+          Some(value) => {
+            let value_metrics = self.text_metrics.regular.measure(value)
+            let divider_x = x + body.key_column_width
+            let value_x = divider_x +
+              (body.value_column_width - value_metrics.width) / 2
+            let value_y = row_y +
+              (row.height - value_metrics.height) / 2 +
+              value_metrics.baseline
+            output
+            .with_style({ ..separator_attributes, })
+            .draw(
+              Line({ x: divider_x.to_double(), y: row_y.to_double(), }, {
+                x: divider_x.to_double(),
+                y: (row_y + row.height).to_double(),
+              }),
+              metadata={
+                ..Default::default(),
+                class_name: Some("map-column-separator"),
+              },
+            )
+            append_paint_text(
+              output,
+              value_x,
+              value_y,
+              value,
+              "map-value member",
+              self.text_metrics.regular,
+              fill=text_color,
+            )
+          }
+          None => ()
+        }
+      },
+    )
   }
 }
 
@@ -478,7 +587,7 @@ fn EntityPaintContext::append_object_body(
   y : Int,
   width : Int,
   header : ObjectHeaderLayout,
-  separator_attributes : String,
+  separator_attributes : @graphics.DrawingStyle,
 ) -> Unit {
   let body = entity.object_body_layout(self.text_metrics)
   let row_height = self.text_metrics.row_height()
@@ -489,12 +598,20 @@ fn EntityPaintContext::append_object_body(
   for entry in body.entries {
     if entry.is_separator {
       body_y += OBJECT_SEPARATOR_HEIGHT
-      output <+
-        $|<line class="object-separator" x1="\{x}" y1="\{body_y}" x2="\{x + width}" y2="\{body_y}"\{separator_attributes}/>
+      output
+      .with_style({ ..separator_attributes, })
+      .draw(
+        Line({ x: x.to_double(), y: body_y.to_double(), }, {
+          x: (x + width).to_double(),
+          y: body_y.to_double(),
+        }),
+        metadata={ ..Default::default(), class_name: Some("object-separator"), },
+      )
     } else {
       let member_y = body_y + row_height + 1
-      output <+
-        $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g>
+      output.group({ ..Default::default(), class_name: Some("member-icon"), }, graphic => {
+        entry.draw_visibility_icon(graphic, x + 5, member_y, entity_colors)
+      })
       append_paint_text(
         output,
         x + text_x,
@@ -520,17 +637,52 @@ fn EntityPaintContext::append_json_body(
 ) -> Unit {
   let body = entity.json_body_layout(self.text_metrics)
   let body_top = y + header.height
-  let json_separator_attributes =
-    $| style="stroke:\{stroke};stroke-width:1"
+  let json_separator_attributes = {
+    ..entity_line_style(None),
+    stroke: Color(stroke),
+    stroke_width: Some(1),
+  }
   let output = self.output
   for divider in body.dividers {
-    output <+
-      $|<line class="json-column-separator" x1="\{x + divider.x}" y1="\{body_top + divider.top}" x2="\{x + divider.x}" y2="\{body_top + divider.top + divider.height}"\{json_separator_attributes}/>
+    output
+    .with_style({ ..json_separator_attributes, })
+    .draw(
+      Line(
+        {
+          x: (x + divider.x).to_double(),
+          y: (body_top + divider.top).to_double(),
+        },
+        {
+          x: (x + divider.x).to_double(),
+          y: (body_top + divider.top + divider.height).to_double(),
+        },
+      ),
+      metadata={
+        ..Default::default(),
+        class_name: Some("json-column-separator"),
+      },
+    )
   }
   for row in body.rows {
     if row.hline {
-      output <+
-        $|<line class="json-row-separator" x1="\{x + row.hline_from}" y1="\{body_top + row.top}" x2="\{x + row.hline_from + row.hline_width}" y2="\{body_top + row.top}"\{json_separator_attributes}/>
+      output
+      .with_style({ ..json_separator_attributes, })
+      .draw(
+        Line(
+          {
+            x: (x + row.hline_from).to_double(),
+            y: (body_top + row.top).to_double(),
+          },
+          {
+            x: (x + row.hline_from + row.hline_width).to_double(),
+            y: (body_top + row.top).to_double(),
+          },
+        ),
+        metadata={
+          ..Default::default(),
+          class_name: Some("json-row-separator"),
+        },
+      )
     }
     match row.key {
       Some(key) => {
@@ -572,271 +724,12 @@ fn EntityPaintContext::append_entity(
   index : Int,
   layout : ClassLayout,
 ) -> Unit {
-  guard !entity.is_hidden && !entity.is_removed else { return }
-  let (x, y, width, height) = layout.entity_rect(
-    self.diagram,
-    index,
-    self.text_metrics,
-  )
-  let header = entity.header_layout(self.text_metrics, self.diagram.family)
-  let body = entity.body_layout(self.text_metrics, self.diagram.family)
-  let fill = @svg.svg_color(
-    entity.color,
-    @entity.class_background_color(self.diagram.style),
-  )
-  let stroke = @svg.svg_color(
-    entity.line_color,
-    @entity.class_border_color(self.diagram.style),
-  )
-  let stroke_style = @svg.stroke_style(entity.line_style)
-  let line_attributes =
-    $| style="stroke:\{stroke};\{stroke_style}"
-  let entity_colors = self.diagram.style.defaults().entity_colors()
-  let (spot_text, spot_fill) = entity.spot(self.diagram.family, entity_colors)
-  let placement = header.placement(width)
-  self.output <+
-    $|<g class="class-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}"\{line_attributes}/>
-  self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
-  self.append_class_header(entity, x, y, placement, header)
-  self.append_class_members(
-    entity, x, y, width, header, body, line_attributes, entity_colors,
-  )
-  self.output.write_string("</g>\n")
-}
-
-///|
-fn EntityPaintContext::append_class_spot(
-  self : EntityPaintContext,
-  entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  placement : ClassHeaderPlacement,
-  spot_text : String,
-  spot_fill : String,
-) -> Unit {
-  match
-    (
-      entity.render_capability(self.diagram.family).spot,
-      placement.circle_center,
-    ) {
-    (ClassSpot, Some((circle_cx, circle_cy))) if self.diagram.family is Mbti =>
-      // The mbti family labels the node with the bold kind word instead of a
-      // circled letter; the shared `.class-spot` style already bolds it.
-      append_paint_text(
-        self.output,
-        x + circle_cx,
-        y + circle_cy + 4,
-        spot_text,
-        "class-spot",
-        self.text_metrics.regular,
-      )
-    (ClassSpot, Some((circle_cx, circle_cy))) => {
-      self.output <+
-        $|<circle cx="\{x + circle_cx}" cy="\{y + circle_cy}" r="\{CLASS_SPOT_RADIUS}" fill="\{spot_fill}" stroke="\{self.diagram.style.diagram_line_color()}" stroke-width="1"/>
-      append_paint_text(
-        self.output,
-        x + circle_cx,
-        y + circle_cy + 4,
-        spot_text,
-        "class-spot",
-        self.text_metrics.regular,
-      )
-    }
-    _ => ()
+  let drawing = {
+    graphic: self.output,
+    diagram: self.diagram,
+    text_metrics: self.text_metrics,
   }
-}
-
-///|
-fn EntityPaintContext::append_class_header(
-  self : EntityPaintContext,
-  entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  placement : ClassHeaderPlacement,
-  header : ClassHeaderLayout,
-) -> Unit {
-  let title_attributes = match entity.kind {
-    @entity.EntityKind::AbstractClass | @entity.EntityKind::Interface =>
-      [("font-style", "italic")]
-    _ => []
-  }
-  let text_metrics = self.text_metrics
-  let stereotype_font_color = @entity.class_stereotype_font_color(
-    self.diagram.style,
-  )
-  match (header.stereotype, placement.stereotype_position) {
-    (Some(stereotype), Some((stereotype_x, stereotype_baseline))) =>
-      append_paint_text(
-        self.output,
-        x + stereotype_x,
-        y + stereotype_baseline,
-        stereotype,
-        "class-stereotype",
-        text_metrics.class_stereotype,
-        fill=stereotype_font_color,
-        font_family=text_metrics.class_stereotype_font_family,
-        font_size=text_metrics.class_stereotype.font_size,
-      )
-    _ => ()
-  }
-  append_paint_text(
-    self.output,
-    x + placement.title_x,
-    y + placement.title_baseline,
-    entity.display,
-    "class-title",
-    text_metrics.regular,
-    attributes=title_attributes,
-  )
-  match (header.annotation, placement.annotation_position) {
-    (Some(annotation), Some((annotation_x, annotation_baseline))) =>
-      append_paint_text(
-        self.output,
-        x + annotation_x,
-        y + annotation_baseline,
-        annotation,
-        "class-annotation",
-        text_metrics.class_stereotype,
-        fill=stereotype_font_color,
-        font_family=text_metrics.class_stereotype_font_family,
-        font_size=text_metrics.class_stereotype.font_size,
-      )
-    _ => ()
-  }
-}
-
-///|
-fn EntityPaintContext::append_class_members(
-  self : EntityPaintContext,
-  entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
-  header : ClassHeaderLayout,
-  body : ClassBodyLayout,
-  line_attributes : String,
-  entity_colors : @style.EntityColors,
-) -> Unit {
-  let interactive = self.text_metrics.member_interaction &&
-    self.diagram.family.capability().class_members_collapsible
-  let independent = self.diagram.family is Mbti
-  let sections = [
-    (
-      "fields",
-      body.fields,
-      body.fields_height,
-      body.fields_collapsed,
-      y + header.height,
-    ),
-    (
-      "methods",
-      body.methods,
-      body.methods_height,
-      body.methods_collapsed,
-      y + header.height + body.fields_height,
-    ),
-  ]
-  for (section, entries, height, collapsed, top) in sections {
-    if collapsed {
-      if height > 0 {
-        self.output <+
-          $|<line x1="\{x}" y1="\{top}" x2="\{x + width}" y2="\{top}"\{line_attributes}/>
-        append_paint_text(
-          self.output,
-          x + width / 2,
-          top + self.text_metrics.row_height() + 1,
-          "...",
-          "member",
-          self.text_metrics.regular,
-          attributes=[("text-anchor", "middle")],
-        )
-      }
-    } else {
-      append_member_section(
-        self.output,
-        x,
-        top,
-        width,
-        entries,
-        height,
-        self.text_metrics.row_height(),
-        entity_colors,
-        line_attributes,
-        self.text_metrics,
-      )
-    }
-    if interactive && independent && height > 0 {
-      append_member_toggle(
-        self.output,
-        entity.qualified_code,
-        section,
-        !collapsed,
-        x,
-        top,
-        width,
-        height,
-      )
-    }
-  }
-  if interactive && !independent {
-    append_member_toggle(
-      self.output,
-      entity.qualified_code,
-      "all",
-      !body.fields_collapsed,
-      x,
-      y,
-      width,
-      header.height,
-    )
-  }
-}
-
-///|
-/// The host handles activation and rerenders with updated member states.
-fn append_member_toggle(
-  output : StringBuilder,
-  code : String,
-  section : String,
-  expanded : Bool,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
-) -> Unit {
-  output <+
-    $|<rect data-member-node="\{@svg.xml_escape(code)}" data-member-section="\{section}" role="button" tabindex="0" aria-label="Toggle \{section}" aria-expanded="\{expanded}" x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="transparent" style="stroke:none;cursor:pointer;outline:none"/>
-}
-
-///|
-fn append_member_section(
-  output : StringBuilder,
-  x : Int,
-  y : Int,
-  width : Int,
-  entries : Array[@entity.Member],
-  section_height : Int,
-  row_height : Int,
-  entity_colors : @style.EntityColors,
-  line_attributes : String,
-  text_metrics : ClassTextMetrics,
-) -> Unit {
-  guard section_height > 0 else { return }
-  output <+
-    $|<line x1="\{x}" y1="\{y}" x2="\{x + width}" y2="\{y}"\{line_attributes}/>
-  for member_index, entry in entries {
-    let member_y = y + (member_index + 1) * row_height + 1
-    output <+
-      $|<g class="member-icon">\{entry.visibility_icon(x + 5, member_y, entity_colors)}</g>
-    append_paint_text(
-      output,
-      x + entry.member_text_x(),
-      member_y,
-      entry.display_without_visibility(),
-      "member",
-      text_metrics.regular,
-    )
-  }
+  drawing.draw_class(entity, index, layout)
 }
 
 ///|
@@ -862,7 +755,7 @@ fn EntityPaintContext::append_usecase(
     capability.style_role.border_color(self.diagram.style),
   )
   let text_color = capability.style_role.font_color(self.diagram.style)
-  let line_attributes = @svg.stroke_style(entity.line_style)
+  let line_attributes = entity_line_style(entity.line_style)
   match capability.renderer {
     UsecaseRenderer | ActorRenderer | ComponentRenderer => ()
     _ => {
@@ -870,31 +763,36 @@ fn EntityPaintContext::append_usecase(
       return
     }
   }
-  self.output <+
-    $|<g class="\{capability.node_class()}" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  if entity.url is Some(url) {
-    self.output <+
-      $|<a href="\{@svg.xml_escape(url)}">
-  }
-  match entity.kind {
-    @entity.EntityKind::Usecase | @entity.EntityKind::BusinessUsecase =>
-      self.append_usecase_body(
-        entity, x, y, width, height, capability, fill, stroke, line_attributes, text_color,
-      )
-    @entity.EntityKind::Actor | @entity.EntityKind::BusinessActor =>
-      self.append_actor_body(
-        entity, x, y, width, capability, fill, stroke, line_attributes, text_color,
-      )
-    @entity.EntityKind::Component =>
-      self.append_component_body(
-        entity, x, y, width, height, capability, fill, stroke, line_attributes, text_color,
-      )
-    _ => ()
-  }
-  if entity.url is Some(_) {
-    self.output.write_string("</a>")
-  }
-  self.output.write_string("</g>\n")
+  self.output.group(
+    {
+      ..Default::default(),
+      class_name: Some(capability.node_class()),
+      data: [("code", entity.qualified_code)],
+    },
+    graphic => {
+      let self = { ..self, output: graphic, }
+      with_entity_link(self.output, entity.url, graphic => {
+        let self = { ..self, output: graphic, }
+        match entity.kind {
+          @entity.EntityKind::Usecase | @entity.EntityKind::BusinessUsecase =>
+            self.append_usecase_body(
+              entity, x, y, width, height, capability, fill, stroke, line_attributes,
+              text_color,
+            )
+          @entity.EntityKind::Actor | @entity.EntityKind::BusinessActor =>
+            self.append_actor_body(
+              entity, x, y, width, capability, fill, stroke, line_attributes, text_color,
+            )
+          @entity.EntityKind::Component =>
+            self.append_component_body(
+              entity, x, y, width, height, capability, fill, stroke, line_attributes,
+              text_color,
+            )
+          _ => ()
+        }
+      })
+    },
+  )
 }
 
 ///|
@@ -908,7 +806,7 @@ fn EntityPaintContext::append_usecase_body(
   capability : @entity.EntityRenderCapability,
   fill : String,
   stroke : String,
-  line_attributes : String,
+  line_attributes : @graphics.DrawingStyle,
   text_color : String,
 ) -> Unit {
   let (_, content_height, stereotype) = entity.usecase_content_layout(
@@ -920,8 +818,18 @@ fn EntityPaintContext::append_usecase_body(
   let content_top = y + height / 2 - content_height / 2 + 2
   let title_metrics = self.text_metrics.usecase_regular.measure(entity.display)
   let output = self.output
-  output <+
-    $|<ellipse cx="\{x + width / 2}" cy="\{y + height / 2}" rx="\{width / 2}" ry="\{height / 2}" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/>
+  output
+  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+  .draw(
+    Ellipse(
+      center={
+        x: (x + width / 2).to_double(),
+        y: (y + height / 2).to_double(),
+      },
+      rx=(width / 2).to_double(),
+      ry=(height / 2).to_double(),
+    ),
+  )
   match stereotype {
     Some(value) => {
       let metrics = self.text_metrics.usecase_italic.measure(value)
@@ -959,8 +867,18 @@ fn EntityPaintContext::append_usecase_body(
   )
   if entity.kind is @entity.EntityKind::BusinessUsecase {
     let (mark_start, mark_end) = usecase_business_mark(x, y, width, height)
-    output <+
-      $|<path d="M \{mark_start.0} \{mark_start.1} L \{mark_end.0} \{mark_end.1}" class="usecase-business-mark" stroke="\{stroke}" style="\{line_attributes}"/>
+    output
+    .with_style({ ..line_attributes, stroke: Color(stroke), })
+    .draw(
+      Path([
+        MoveTo({ x: mark_start.0, y: mark_start.1, }),
+        LineTo({ x: mark_end.0, y: mark_end.1, }),
+      ]),
+      metadata={
+        ..Default::default(),
+        class_name: Some("usecase-business-mark"),
+      },
+    )
   }
 }
 
@@ -974,7 +892,7 @@ fn EntityPaintContext::append_actor_body(
   capability : @entity.EntityRenderCapability,
   fill : String,
   stroke : String,
-  line_attributes : String,
+  line_attributes : @graphics.DrawingStyle,
   text_color : String,
 ) -> Unit {
   let output = self.output
@@ -1011,18 +929,196 @@ fn EntityPaintContext::append_actor_body(
   }
   if entity.kind is @entity.EntityKind::Actor {
     match appearance {
-      Awesome =>
-        output <+
-          $|<circle cx="\{center_x}" cy="\{figure_top + 17}" r="16" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x - 27} \{figure_top + 50} Q \{center_x} \{figure_top + 38} \{center_x + 27} \{figure_top + 50} V \{figure_top + 62} Q \{center_x + 27} \{figure_top + 62} \{center_x + 19} \{figure_top + 62} H \{center_x - 19} Q \{center_x - 27} \{figure_top + 62} \{center_x - 27} \{figure_top + 54} Z" class="actor-awesome-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/>
-      Hollow =>
-        output <+
-          $|<circle cx="\{center_x}" cy="\{figure_top + 5}" r="4" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x - 13} \{figure_top + 12} H \{center_x + 13} V \{figure_top + 17} H \{center_x + 3} V \{figure_top + 27} L \{center_x + 9} \{figure_top + 35} H \{center_x + 3} L \{center_x} \{figure_top + 30} L \{center_x - 3} \{figure_top + 35} H \{center_x - 9} L \{center_x - 3} \{figure_top + 27} V \{figure_top + 17} H \{center_x - 13} Z" class="actor-hollow-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/>
+      Awesome => {
+        output
+        .with_style({
+          ..line_attributes,
+          fill: Color(fill),
+          stroke: Color(stroke),
+        })
+        .draw(
+          Circle(
+            center={
+              x: center_x.to_double(),
+              y: (figure_top + 17).to_double(),
+            },
+            radius=16,
+          ),
+        )
+        output
+        .with_style({
+          ..line_attributes,
+          fill: Color(fill),
+          stroke: Color(stroke),
+        })
+        .draw(
+          Path([
+            MoveTo({
+              x: (center_x - 27).to_double(),
+              y: (figure_top + 50).to_double(),
+            }),
+            QuadraticTo(
+              { x: center_x.to_double(), y: (figure_top + 38).to_double(), },
+              {
+                x: (center_x + 27).to_double(),
+                y: (figure_top + 50).to_double(),
+              },
+            ),
+            LineTo({
+              x: (center_x + 27).to_double(),
+              y: (figure_top + 62).to_double(),
+            }),
+            QuadraticTo(
+              {
+                x: (center_x + 27).to_double(),
+                y: (figure_top + 62).to_double(),
+              },
+              {
+                x: (center_x + 19).to_double(),
+                y: (figure_top + 62).to_double(),
+              },
+            ),
+            LineTo({
+              x: (center_x - 19).to_double(),
+              y: (figure_top + 62).to_double(),
+            }),
+            QuadraticTo(
+              {
+                x: (center_x - 27).to_double(),
+                y: (figure_top + 62).to_double(),
+              },
+              {
+                x: (center_x - 27).to_double(),
+                y: (figure_top + 54).to_double(),
+              },
+            ),
+            Close,
+          ]),
+          metadata={
+            ..Default::default(),
+            class_name: Some("actor-awesome-body"),
+          },
+        )
+      }
+      Hollow => {
+        output
+        .with_style({
+          ..line_attributes,
+          fill: Color(fill),
+          stroke: Color(stroke),
+        })
+        .draw(
+          Circle(
+            center={ x: center_x.to_double(), y: (figure_top + 5).to_double(), },
+            radius=4,
+          ),
+        )
+        output
+        .with_style({
+          ..line_attributes,
+          fill: Color(fill),
+          stroke: Color(stroke),
+        })
+        .draw(
+          Path([
+            MoveTo({
+              x: (center_x - 13).to_double(),
+              y: (figure_top + 12).to_double(),
+            }),
+            LineTo({
+              x: (center_x + 13).to_double(),
+              y: (figure_top + 12).to_double(),
+            }),
+            LineTo({
+              x: (center_x + 13).to_double(),
+              y: (figure_top + 17).to_double(),
+            }),
+            LineTo({
+              x: (center_x + 3).to_double(),
+              y: (figure_top + 17).to_double(),
+            }),
+            LineTo({
+              x: (center_x + 3).to_double(),
+              y: (figure_top + 27).to_double(),
+            }),
+            LineTo({
+              x: (center_x + 9).to_double(),
+              y: (figure_top + 35).to_double(),
+            }),
+            LineTo({
+              x: (center_x + 3).to_double(),
+              y: (figure_top + 35).to_double(),
+            }),
+            LineTo({
+              x: center_x.to_double(),
+              y: (figure_top + 30).to_double(),
+            }),
+            LineTo({
+              x: (center_x - 3).to_double(),
+              y: (figure_top + 35).to_double(),
+            }),
+            LineTo({
+              x: (center_x - 9).to_double(),
+              y: (figure_top + 35).to_double(),
+            }),
+            LineTo({
+              x: (center_x - 3).to_double(),
+              y: (figure_top + 27).to_double(),
+            }),
+            LineTo({
+              x: (center_x - 3).to_double(),
+              y: (figure_top + 17).to_double(),
+            }),
+            LineTo({
+              x: (center_x - 13).to_double(),
+              y: (figure_top + 17).to_double(),
+            }),
+            Close,
+          ]),
+          metadata={
+            ..Default::default(),
+            class_name: Some("actor-hollow-body"),
+          },
+        )
+      }
       Stickman => ()
     }
   }
   if entity.kind is @entity.EntityKind::BusinessActor || appearance is Stickman {
-    output <+
-      $|<circle cx="\{center_x}" cy="\{figure_top + 9}" r="8" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><path d="M \{center_x} \{figure_top + 17} L \{center_x} \{figure_top + 43} M \{center_x - 13} \{figure_top + 27} L \{center_x + 13} \{figure_top + 27} M \{center_x} \{figure_top + 43} L \{center_x - 13} \{figure_top + figure_height} M \{center_x} \{figure_top + 43} L \{center_x + 13} \{figure_top + figure_height}" fill="none" stroke="\{stroke}" style="\{line_attributes}"/>
+    output
+    .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+    .draw(
+      Circle(
+        center={ x: center_x.to_double(), y: (figure_top + 9).to_double(), },
+        radius=8,
+      ),
+    )
+    output
+    .with_style({ ..line_attributes, fill: None, stroke: Color(stroke), })
+    .draw(
+      Path([
+        MoveTo({ x: center_x.to_double(), y: (figure_top + 17).to_double(), }),
+        LineTo({ x: center_x.to_double(), y: (figure_top + 43).to_double(), }),
+        MoveTo({
+          x: (center_x - 13).to_double(),
+          y: (figure_top + 27).to_double(),
+        }),
+        LineTo({
+          x: (center_x + 13).to_double(),
+          y: (figure_top + 27).to_double(),
+        }),
+        MoveTo({ x: center_x.to_double(), y: (figure_top + 43).to_double(), }),
+        LineTo({
+          x: (center_x - 13).to_double(),
+          y: (figure_top + figure_height).to_double(),
+        }),
+        MoveTo({ x: center_x.to_double(), y: (figure_top + 43).to_double(), }),
+        LineTo({
+          x: (center_x + 13).to_double(),
+          y: (figure_top + figure_height).to_double(),
+        }),
+      ]),
+    )
   }
   append_paint_text(
     output,
@@ -1042,8 +1138,18 @@ fn EntityPaintContext::append_actor_body(
       figure_top + 9,
       8,
     )
-    output <+
-      $|<path d="M \{mark_start.0} \{mark_start.1} L \{mark_end.0} \{mark_end.1}" class="actor-business-mark" stroke="\{stroke}" style="\{line_attributes}"/>
+    output
+    .with_style({ ..line_attributes, stroke: Color(stroke), })
+    .draw(
+      Path([
+        MoveTo({ x: mark_start.0, y: mark_start.1, }),
+        LineTo({ x: mark_end.0, y: mark_end.1, }),
+      ]),
+      metadata={
+        ..Default::default(),
+        class_name: Some("actor-business-mark"),
+      },
+    )
   }
 }
 
@@ -1058,7 +1164,7 @@ fn EntityPaintContext::append_component_body(
   capability : @entity.EntityRenderCapability,
   fill : String,
   stroke : String,
-  line_attributes : String,
+  line_attributes : @graphics.DrawingStyle,
   text_color : String,
 ) -> Unit {
   let title = self.text_metrics.regular.measure(entity.display)
@@ -1067,8 +1173,54 @@ fn EntityPaintContext::append_component_body(
   let mark_x = tab_x - COMPONENT_TAB_MARK_LEFT_OFFSET
   let first_mark_y = tab_y + COMPONENT_TAB_MARK_TOP_OFFSET
   let second_mark_y = first_mark_y + COMPONENT_TAB_MARK_GAP
-  self.output <+
-    $|<rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" rx="2" ry="2" class="component-body" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{tab_x}" y="\{tab_y}" width="\{COMPONENT_TAB_WIDTH}" height="\{COMPONENT_TAB_HEIGHT}" class="component-tab" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{first_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/><rect x="\{mark_x}" y="\{second_mark_y}" width="\{COMPONENT_TAB_MARK_WIDTH}" height="\{COMPONENT_TAB_MARK_HEIGHT}" class="component-tab-mark" fill="\{fill}" stroke="\{stroke}" style="\{line_attributes}"/>
+  self.output
+  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+  .draw(
+    Rectangle(
+      origin={ x: x.to_double(), y: y.to_double(), },
+      width=width.to_double(),
+      height=height.to_double(),
+      rx=Some(2),
+      ry=Some(2),
+    ),
+    metadata={ ..Default::default(), class_name: Some("component-body"), },
+  )
+  self.output
+  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+  .draw(
+    Rectangle(
+      origin={ x: tab_x.to_double(), y: tab_y.to_double(), },
+      width=COMPONENT_TAB_WIDTH.to_double(),
+      height=COMPONENT_TAB_HEIGHT.to_double(),
+      rx=None,
+      ry=None,
+    ),
+    metadata={ ..Default::default(), class_name: Some("component-tab"), },
+  )
+  self.output
+  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+  .draw(
+    Rectangle(
+      origin={ x: mark_x.to_double(), y: first_mark_y.to_double(), },
+      width=COMPONENT_TAB_MARK_WIDTH.to_double(),
+      height=COMPONENT_TAB_MARK_HEIGHT.to_double(),
+      rx=None,
+      ry=None,
+    ),
+    metadata={ ..Default::default(), class_name: Some("component-tab-mark"), },
+  )
+  self.output
+  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+  .draw(
+    Rectangle(
+      origin={ x: mark_x.to_double(), y: second_mark_y.to_double(), },
+      width=COMPONENT_TAB_MARK_WIDTH.to_double(),
+      height=COMPONENT_TAB_MARK_HEIGHT.to_double(),
+      rx=None,
+      ry=None,
+    ),
+    metadata={ ..Default::default(), class_name: Some("component-tab-mark"), },
+  )
   append_paint_text(
     self.output,
     x + width / 2,

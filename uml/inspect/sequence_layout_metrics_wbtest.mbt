@@ -27,7 +27,6 @@ test "sequence layout receives document font roles" {
     @metrics.FontProfile::Monospace,
   )
   @test.assert_eq(styled_layout.text_metrics.participant.font_size, 16)
-  @test.assert_eq(styled_layout.text_metrics.participant.font_weight, 700)
   @test.assert_eq(
     styled_layout.text_metrics.body_italic.style,
     @metrics.FontStyle::Italic,

@@ -132,8 +132,8 @@ fn diagram_scale(style : @style.DocumentStyle) -> Double {
 }
 
 ///|
-fn append_chrome_stack(
-  output : StringBuilder,
+fn draw_chrome_stack(
+  output : @graphics.Graphic,
   blocks : Array[ChromeBlock],
   canvas_width : Double,
   start_y : Double,
@@ -143,28 +143,36 @@ fn append_chrome_stack(
   for block in blocks {
     let metrics = block.metrics.measure(block.text)
     let x = ((canvas_width - metrics.width.to_double()) / 2.0).max(0.0)
-    output <+
-      $|<g class="\{block.block_class}">
-    let attributes = [
-      ("class", "chrome-text"),
-      ("fill", color),
-      ..if block.bold {
-        [("font-weight", "700")]
-      } else {
-        []
+    output.group(
+      { ..Default::default(), class_name: Some(block.block_class), },
+      graphic => {
+        graphic
+        .with_style({ ..Default::default(), fill: Color(color), })
+        .draw(
+          StyledText(
+            entity_text_run(
+              block.text,
+              {
+                x,
+                y: y +
+                CHROME_BLOCK_PADDING.to_double() +
+                metrics.ascent.to_double(),
+              },
+              block.metrics,
+            ),
+            {
+              ..Default::default(),
+              weight: if block.bold {
+                Some(700)
+              } else {
+                None
+              },
+            },
+          ),
+          metadata={ ..Default::default(), class_name: Some("chrome-text"), },
+        )
       },
-    ]
-    output.write_string(
-      @svg.text_markup(
-        x,
-        y + CHROME_BLOCK_PADDING.to_double() + metrics.ascent.to_double(),
-        block.text,
-        attributes,
-        block.metrics,
-      ),
     )
-    output.write_char('\n')
-    output.write_string("</g>\n")
     y += (block.height() + CHROME_BLOCK_GAP).to_double()
   }
 }

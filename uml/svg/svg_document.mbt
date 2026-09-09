@@ -137,6 +137,7 @@ pub fn SvgDocument::empty(
   width : Int,
   height : Int,
   aria_label : String,
+  view_box? : (@graphics.Point, @graphics.Size),
 ) -> SvgDocument {
   let writer = XmlWriter::new()
   writer.open(
@@ -144,7 +145,9 @@ pub fn SvgDocument::empty(
     attributes=svg_root_attributes(
       width,
       height,
-      "0 0 \{width} \{height}",
+      view_box.map_or("0 0 \{width} \{height}", box => {
+        "\{box.0.x} \{box.0.y} \{box.1.width} \{box.1.height}"
+      }),
       aria_label,
     ),
   )

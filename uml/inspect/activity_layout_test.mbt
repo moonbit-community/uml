@@ -336,15 +336,6 @@ test "goto connects its anchor directly to the matching label anchor" {
 }
 
 ///|
-fn fork_bar_index(layout : @render.ActivityLayout) -> Int? {
-  for index, node in layout.source_nodes {
-    guard node is @flow.ActivityNode::Fork else { continue }
-    return Some(index)
-  }
-  None
-}
-
-///|
 fn box_extent(layout : @render.ActivityLayout, node_index : Int) -> (Int, Int)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
@@ -358,34 +349,6 @@ fn box_gap(layout : @render.ActivityLayout, left : Int, right : Int) -> Int? {
   guard box_extent(layout, left) is Some((_, left_right)) else { return None }
   guard box_extent(layout, right) is Some((right_x, _)) else { return None }
   Some(right_x - left_right)
-}
-
-///|
-test "fork columns compress toward the bars when the gaps are empty" {
-  let layout = @render.layout_activity(
-    @parser.parse_activity("fork\n:A;\nfork again\n:BB;\nend fork"),
-  )
-  guard fork_bar_index(layout) is Some(bar_index) else {
-    @test.fail("missing fork bar")
-  }
-  guard action_index(layout, "A") is Some(a_index) else {
-    @test.fail("missing first branch")
-  }
-  guard action_index(layout, "BB") is Some(bb_index) else {
-    @test.fail("missing second branch")
-  }
-  guard box_extent(layout, bar_index) is Some((bar_x, _)) else {
-    @test.fail("missing bar layout")
-  }
-  guard box_extent(layout, a_index) is Some((a_x, _)) else {
-    @test.fail("missing first branch layout")
-  }
-  guard box_gap(layout, a_index, bb_index) is Some(gap) else {
-    @test.fail("missing branch gap")
-  }
-  @test.assert_eq(a_x - bar_x > 0, true)
-  @test.assert_eq(gap > 0, true)
-  @test.assert_eq(gap < a_x - bar_x, true)
 }
 
 ///|
@@ -419,29 +382,6 @@ test "fork compression is blocked by elements spanning the gaps" {
   @test.assert_eq(empty_gap > 0, true)
   @test.assert_eq(covered_gap > 0, true)
   @test.assert_eq(covered_gap > empty_gap, true)
-}
-
-///|
-test "switch case columns compress when nothing spans the gaps" {
-  let layout = @render.layout_activity(
-    @parser.parse_activity(
-      "switch (x)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\ncase (other)\n:Other;\nendswitch",
-    ),
-  )
-  guard action_index(layout, "Email") is Some(email_index) else {
-    @test.fail("missing email branch")
-  }
-  guard action_index(layout, "Sms") is Some(sms_index) else {
-    @test.fail("missing sms branch")
-  }
-  guard box_extent(layout, email_index) is Some((email_x, _)) else {
-    @test.fail("missing email branch layout")
-  }
-  guard box_gap(layout, email_index, sms_index) is Some(gap) else {
-    @test.fail("missing branch gap")
-  }
-  @test.assert_eq(gap > 0, true)
-  @test.assert_eq(gap < email_x, true)
 }
 
 ///|

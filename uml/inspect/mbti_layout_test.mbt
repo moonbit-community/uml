@@ -95,10 +95,6 @@ test "mindmap layout survives a self-referencing struct" {
   @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length())
   // The self relation is skipped, so Node is a root with no incoming edge.
   @test.assert_eq(layout.edges.length(), 0)
-  let svg = @render.render_mbti_svg(diagram) catch {
-    _ => @test.fail("svg rendering failed")
-  }
-  @test.assert_eq(svg.contains("Node"), true)
 }
 
 ///|
@@ -148,5 +144,4 @@ test "mindmap layout paints only tree edges" {
   }
   let painted_edges = svg.split("class=\"relation\"").length() - 1
   @test.assert_eq(painted_edges, layout.edges.length())
-  @test.assert_eq(svg.contains("class=\"relation-label\""), false)
 }

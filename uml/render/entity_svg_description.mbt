@@ -324,48 +324,49 @@ fn EntityPaintContext::append_description(
     capability.style_role.border_color(diagram.style),
   )
   let text_color = capability.style_role.font_color(diagram.style)
-  let line_attributes = @svg.stroke_style(entity.line_style)
-  let stroke_attributes =
-    $| stroke="\{stroke}" style="\{line_attributes}"
+  let line_attributes = entity_line_style(entity.line_style)
+  let stroke_attributes = { ..line_attributes, stroke: Color(stroke), }
   let text = entity.description_text_layout(text_metrics)
   let (label_position, stereotype_position) = entity.description_text_placement(
     text_metrics, width, height,
   )
-  output <+
-    $|<g class="description-node" data-code="\{@svg.xml_escape(entity.qualified_code)}">
-  if entity.url is Some(url) {
-    output <+
-      $|<a href="\{@svg.xml_escape(url)}">
-  }
-  let symbol_ctx : DescriptionSymbolContext = {
-    output,
-    entity,
-    text_metrics,
-    x,
-    y,
-    width,
-    height,
-    fill,
-    stroke,
-    stroke_attributes,
-    line_attributes,
-  }
-  symbol_ctx.append_symbol(entity.description_symbol())
-  append_description_text(
-    output, entity, text_metrics, text_color, x, y, label_position, stereotype_position,
-    text,
+  output.group(
+    {
+      ..Default::default(),
+      class_name: Some("description-node"),
+      data: [("code", entity.qualified_code)],
+    },
+    output => {
+      with_entity_link(output, entity.url, graphic => {
+        let output = graphic
+        let symbol_ctx : DescriptionSymbolContext = {
+          output,
+          entity,
+          text_metrics,
+          x,
+          y,
+          width,
+          height,
+          fill,
+          stroke,
+          stroke_attributes,
+          line_attributes,
+        }
+        symbol_ctx.append_symbol(entity.description_symbol())
+        append_description_text(
+          output, entity, text_metrics, text_color, x, y, label_position, stereotype_position,
+          text,
+        )
+      })
+    },
   )
-  if entity.url is Some(_) {
-    output.write_string("</a>")
-  }
-  output.write_string("</g>\n")
 }
 
 ///|
 /// Everything a description symbol shape needs, bundled so each per-symbol
 /// painter stays single-purpose.
 priv struct DescriptionSymbolContext {
-  output : StringBuilder
+  output : @graphics.Graphic
   entity : @entity.Entity
   text_metrics : ClassTextMetrics
   x : Int
@@ -374,8 +375,8 @@ priv struct DescriptionSymbolContext {
   height : Int
   fill : String
   stroke : String
-  stroke_attributes : String
-  line_attributes : String
+  stroke_attributes : @graphics.DrawingStyle
+  line_attributes : @graphics.DrawingStyle
 }
 
 ///|
@@ -417,8 +418,43 @@ fn DescriptionSymbolContext::append_node(
   let y = self.y
   let width = self.width
   let height = self.height
-  output <+
-    $|<polygon points="\{x},\{y + 10} \{x + 10},\{y} \{x + width},\{y} \{x + width},\{y + height - 10} \{x + width - 10},\{y + height} \{x},\{y + height} \{x},\{y + 10}" fill="\{self.fill}" \{self.stroke_attributes}/><line x1="\{x + width - 10}" y1="\{y + 10}" x2="\{x + width}" y2="\{y}" stroke="\{self.stroke}" style="\{self.line_attributes}"/><line x1="\{x}" y1="\{y + 10}" x2="\{x + width - 10}" y2="\{y + 10}" stroke="\{self.stroke}" style="\{self.line_attributes}"/><line x1="\{x + width - 10}" y1="\{y + 10}" x2="\{x + width - 10}" y2="\{y + height}" stroke="\{self.stroke}" style="\{self.line_attributes}"/>
+  output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Polygon([
+      { x: x.to_double(), y: (y + 10).to_double(), },
+      { x: (x + 10).to_double(), y: y.to_double(), },
+      { x: (x + width).to_double(), y: y.to_double(), },
+      { x: (x + width).to_double(), y: (y + height - 10).to_double(), },
+      { x: (x + width - 10).to_double(), y: (y + height).to_double(), },
+      { x: x.to_double(), y: (y + height).to_double(), },
+      { x: x.to_double(), y: (y + 10).to_double(), },
+    ]),
+  )
+  output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(
+    Line({ x: (x + width - 10).to_double(), y: (y + 10).to_double(), }, {
+      x: (x + width).to_double(),
+      y: y.to_double(),
+    }),
+  )
+  output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(
+    Line({ x: x.to_double(), y: (y + 10).to_double(), }, {
+      x: (x + width - 10).to_double(),
+      y: (y + 10).to_double(),
+    }),
+  )
+  output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(
+    Line({ x: (x + width - 10).to_double(), y: (y + 10).to_double(), }, {
+      x: (x + width - 10).to_double(),
+      y: (y + height).to_double(),
+    }),
+  )
 }
 
 ///|
@@ -426,8 +462,33 @@ fn DescriptionSymbolContext::append_frame(
   self : DescriptionSymbolContext,
 ) -> Unit {
   let text_width = (self.width.to_double() / 3.0).round().to_int()
-  self.output <+
-    $|<rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="\{self.fill}" \{self.stroke_attributes}/><path d="M \{self.x + text_width} \{self.y} L \{self.x + text_width} \{self.y + 5} L \{self.x + text_width - 7} \{self.y + 12} L \{self.x} \{self.y + 12}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: self.x.to_double(), y: self.y.to_double(), },
+      width=self.width.to_double(),
+      height=self.height.to_double(),
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: (self.x + text_width).to_double(), y: self.y.to_double(), }),
+      LineTo({
+        x: (self.x + text_width).to_double(),
+        y: (self.y + 5).to_double(),
+      }),
+      LineTo({
+        x: (self.x + text_width - 7).to_double(),
+        y: (self.y + 12).to_double(),
+      }),
+      LineTo({ x: self.x.to_double(), y: (self.y + 12).to_double(), }),
+    ]),
+  )
 }
 
 ///|
@@ -440,8 +501,9 @@ fn DescriptionSymbolContext::append_cloud(
     self.x.to_double(),
     self.y.to_double(),
   )
-  self.output <+
-    $|<path d="\{path}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(Path(path))
 }
 
 ///|
@@ -449,8 +511,17 @@ fn DescriptionSymbolContext::append_storage(
   self : DescriptionSymbolContext,
 ) -> Unit {
   let radius = (35).min(self.width / 2)
-  self.output <+
-    $|<rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="\{radius}" ry="\{radius}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: self.x.to_double(), y: self.y.to_double(), },
+      width=self.width.to_double(),
+      height=self.height.to_double(),
+      rx=Some(radius.to_double()),
+      ry=Some(radius.to_double()),
+    ),
+  )
 }
 
 ///|
@@ -462,8 +533,52 @@ fn DescriptionSymbolContext::append_database(
   let y = self.y
   let width = self.width
   let height = self.height
-  self.output <+
-    $|<path d="M \{x} \{y + 10} C \{x} \{y} \{x + half} \{y} \{x + half} \{y} C \{x + half} \{y} \{x + width} \{y} \{x + width} \{y + 10} L \{x + width} \{y + height - 10} C \{x + width} \{y + height} \{x + half} \{y + height} \{x + half} \{y + height} C \{x + half} \{y + height} \{x} \{y + height} \{x} \{y + height - 10} L \{x} \{y + 10}" fill="\{self.fill}" \{self.stroke_attributes}/><path d="M \{x} \{y + 10} C \{x} \{y + 20} \{x + half} \{y + 20} \{x + half} \{y + 20} C \{x + half} \{y + 20} \{x + width} \{y + 20} \{x + width} \{y + 10}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Path([
+      MoveTo({ x: x.to_double(), y: (y + 10).to_double(), }),
+      CubicTo(
+        { x: x.to_double(), y: y.to_double(), },
+        { x: (x + half).to_double(), y: y.to_double(), },
+        { x: (x + half).to_double(), y: y.to_double(), },
+      ),
+      CubicTo(
+        { x: (x + half).to_double(), y: y.to_double(), },
+        { x: (x + width).to_double(), y: y.to_double(), },
+        { x: (x + width).to_double(), y: (y + 10).to_double(), },
+      ),
+      LineTo({ x: (x + width).to_double(), y: (y + height - 10).to_double(), }),
+      CubicTo(
+        { x: (x + width).to_double(), y: (y + height).to_double(), },
+        { x: (x + half).to_double(), y: (y + height).to_double(), },
+        { x: (x + half).to_double(), y: (y + height).to_double(), },
+      ),
+      CubicTo(
+        { x: (x + half).to_double(), y: (y + height).to_double(), },
+        { x: x.to_double(), y: (y + height).to_double(), },
+        { x: x.to_double(), y: (y + height - 10).to_double(), },
+      ),
+      LineTo({ x: x.to_double(), y: (y + 10).to_double(), }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: x.to_double(), y: (y + 10).to_double(), }),
+      CubicTo(
+        { x: x.to_double(), y: (y + 20).to_double(), },
+        { x: (x + half).to_double(), y: (y + 20).to_double(), },
+        { x: (x + half).to_double(), y: (y + 20).to_double(), },
+      ),
+      CubicTo(
+        { x: (x + half).to_double(), y: (y + 20).to_double(), },
+        { x: (x + width).to_double(), y: (y + 20).to_double(), },
+        { x: (x + width).to_double(), y: (y + 10).to_double(), },
+      ),
+    ]),
+  )
 }
 
 ///|
@@ -475,8 +590,52 @@ fn DescriptionSymbolContext::append_queue(
   let y = self.y
   let width = self.width
   let height = self.height
-  self.output <+
-    $|<path d="M \{x + 5} \{y} L \{x + width - 5} \{y} C \{x + width} \{y} \{x + width} \{half} \{x + width} \{half} C \{x + width} \{half} \{x + width} \{y + height} \{x + width - 5} \{y + height} L \{x + 5} \{y + height} C \{x} \{y + height} \{x} \{half} \{x} \{half} C \{x} \{half} \{x} \{y} \{x + 5} \{y}" fill="\{self.fill}" \{self.stroke_attributes}/><path d="M \{x + width - 5} \{y} C \{x + width - 10} \{y} \{x + width - 10} \{half} \{x + width - 10} \{half} C \{x + width - 10} \{y + height} \{x + width - 5} \{y + height} \{x + width - 5} \{y + height}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Path([
+      MoveTo({ x: (x + 5).to_double(), y: y.to_double(), }),
+      LineTo({ x: (x + width - 5).to_double(), y: y.to_double(), }),
+      CubicTo(
+        { x: (x + width).to_double(), y: y.to_double(), },
+        { x: (x + width).to_double(), y: half.to_double(), },
+        { x: (x + width).to_double(), y: half.to_double(), },
+      ),
+      CubicTo(
+        { x: (x + width).to_double(), y: half.to_double(), },
+        { x: (x + width).to_double(), y: (y + height).to_double(), },
+        { x: (x + width - 5).to_double(), y: (y + height).to_double(), },
+      ),
+      LineTo({ x: (x + 5).to_double(), y: (y + height).to_double(), }),
+      CubicTo(
+        { x: x.to_double(), y: (y + height).to_double(), },
+        { x: x.to_double(), y: half.to_double(), },
+        { x: x.to_double(), y: half.to_double(), },
+      ),
+      CubicTo(
+        { x: x.to_double(), y: half.to_double(), },
+        { x: x.to_double(), y: y.to_double(), },
+        { x: (x + 5).to_double(), y: y.to_double(), },
+      ),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: (x + width - 5).to_double(), y: y.to_double(), }),
+      CubicTo(
+        { x: (x + width - 10).to_double(), y: y.to_double(), },
+        { x: (x + width - 10).to_double(), y: half.to_double(), },
+        { x: (x + width - 10).to_double(), y: half.to_double(), },
+      ),
+      CubicTo(
+        { x: (x + width - 10).to_double(), y: (y + height).to_double(), },
+        { x: (x + width - 5).to_double(), y: (y + height).to_double(), },
+        { x: (x + width - 5).to_double(), y: (y + height).to_double(), },
+      ),
+    ]),
+  )
 }
 
 ///|
@@ -488,16 +647,62 @@ fn DescriptionSymbolContext::append_stack(
   let y = self.y.to_double()
   let width = self.width.to_double()
   let height = self.height.to_double()
-  self.output <+
-    $|<rect x="\{x + border}" y="\{y}" width="\{width - 2 * border}" height="\{height}" rx="2.5" ry="2.5" fill="\{self.fill}" stroke="none"/><path d="M \{x} \{y} L \{x + border - 2.5} \{y} A2.5,2.5 0 0 1 \{x + border} \{y + 2.5} L \{x + border} \{y + height - 2.5} A2.5,2.5 0 0 0 \{x + border + 2.5} \{y + height} L \{x + width - border - 2.5} \{y + height} A2.5,2.5 0 0 0 \{x + width - border} \{y + height - 2.5} L \{x + width - border} \{y + 2.5} A2.5,2.5 0 0 1 \{x + width - border + 2.5} \{y} L \{x + width} \{y}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..Default::default(), fill: Color(self.fill), stroke: None, })
+  .draw(
+    Rectangle(
+      origin={ x: x + border, y, },
+      width=width - 2 * border,
+      height~,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x, y, }),
+      LineTo({ x: x + border - 2.5, y, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: x + border,
+        y: y + 2.5,
+      }),
+      LineTo({ x: x + border, y: y + height - 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: x + border + 2.5,
+        y: y + height,
+      }),
+      LineTo({ x: x + width - border - 2.5, y: y + height, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: x + width - border,
+        y: y + height - 2.5,
+      }),
+      LineTo({ x: x + width - border, y: y + 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: x + width - border + 2.5,
+        y,
+      }),
+      LineTo({ x: x + width, y, }),
+    ]),
+  )
 }
 
 ///|
 fn DescriptionSymbolContext::append_rectangle(
   self : DescriptionSymbolContext,
 ) -> Unit {
-  self.output <+
-    $|<rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: self.x.to_double(), y: self.y.to_double(), },
+      width=self.width.to_double(),
+      height=self.height.to_double(),
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
 }
 
 ///|
@@ -506,8 +711,45 @@ fn DescriptionSymbolContext::append_artifact(
 ) -> Unit {
   let x_symbol = self.x + self.width - 12 - 5
   let y_symbol = self.y + 5
-  self.output <+
-    $|<rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="\{self.fill}" \{self.stroke_attributes}/><polygon points="\{x_symbol},\{y_symbol} \{x_symbol},\{y_symbol + 14} \{x_symbol + 12},\{y_symbol + 14} \{x_symbol + 12},\{y_symbol + 6} \{x_symbol + 6},\{y_symbol} \{x_symbol},\{y_symbol}" fill="\{self.fill}" \{self.stroke_attributes}/><line x1="\{x_symbol + 6}" y1="\{y_symbol}" x2="\{x_symbol + 6}" y2="\{y_symbol + 6}" stroke="\{self.stroke}" style="\{self.line_attributes}"/><line x1="\{x_symbol + 12}" y1="\{y_symbol + 6}" x2="\{x_symbol + 6}" y2="\{y_symbol + 6}" stroke="\{self.stroke}" style="\{self.line_attributes}"/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: self.x.to_double(), y: self.y.to_double(), },
+      width=self.width.to_double(),
+      height=self.height.to_double(),
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Polygon([
+      { x: x_symbol.to_double(), y: y_symbol.to_double(), },
+      { x: x_symbol.to_double(), y: (y_symbol + 14).to_double(), },
+      { x: (x_symbol + 12).to_double(), y: (y_symbol + 14).to_double(), },
+      { x: (x_symbol + 12).to_double(), y: (y_symbol + 6).to_double(), },
+      { x: (x_symbol + 6).to_double(), y: y_symbol.to_double(), },
+      { x: x_symbol.to_double(), y: y_symbol.to_double(), },
+    ]),
+  )
+  self.output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(
+    Line({ x: (x_symbol + 6).to_double(), y: y_symbol.to_double(), }, {
+      x: (x_symbol + 6).to_double(),
+      y: (y_symbol + 6).to_double(),
+    }),
+  )
+  self.output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(
+    Line({ x: (x_symbol + 12).to_double(), y: (y_symbol + 6).to_double(), }, {
+      x: (x_symbol + 6).to_double(),
+      y: (y_symbol + 6).to_double(),
+    }),
+  )
 }
 
 ///|
@@ -520,8 +762,44 @@ fn DescriptionSymbolContext::append_folder(
   let height = self.height.to_double()
   let wtitle = 46.0
   let htitle = 21.0
-  self.output <+
-    $|<path d="M \{x + 2.5} \{y} L \{x + wtitle - 2.5} \{y} A3.75,3.75 0 0 1 \{x + wtitle} \{y + 2.5} L \{x + wtitle + 7} \{y + htitle} L \{x + width - 2.5} \{y + htitle} A2.5,2.5 0 0 1 \{x + width} \{y + htitle + 2.5} L \{x + width} \{y + height - 2.5} A2.5,2.5 0 0 1 \{x + width - 2.5} \{y + height} L \{x + 2.5} \{y + height} A2.5,2.5 0 0 1 \{x} \{y + height - 2.5} L \{x} \{y + 2.5} A2.5,2.5 0 0 1 \{x + 2.5} \{y}" fill="\{self.fill}" \{self.stroke_attributes}/><line x1="\{x}" y1="\{y + htitle}" x2="\{x + wtitle + 7}" y2="\{y + htitle}" stroke="\{self.stroke}" style="\{self.line_attributes}"/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Path([
+      MoveTo({ x: x + 2.5, y, }),
+      LineTo({ x: x + wtitle - 2.5, y, }),
+      ArcTo(rx=3.75, ry=3.75, rotation=0, large_arc=false, sweep=true, end={
+        x: x + wtitle,
+        y: y + 2.5,
+      }),
+      LineTo({ x: x + wtitle + 7, y: y + htitle, }),
+      LineTo({ x: x + width - 2.5, y: y + htitle, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: x + width,
+        y: y + htitle + 2.5,
+      }),
+      LineTo({ x: x + width, y: y + height - 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: x + width - 2.5,
+        y: y + height,
+      }),
+      LineTo({ x: x + 2.5, y: y + height, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x,
+        y: y + height - 2.5,
+      }),
+      LineTo({ x, y: y + 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: x + 2.5,
+        y,
+      }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(Line({ x, y: y + htitle, }, { x: x + wtitle + 7, y: y + htitle, }), metadata={
+    ..Default::default(),
+  })
 }
 
 ///|
@@ -532,8 +810,43 @@ fn DescriptionSymbolContext::append_file(
   let y = self.y.to_double()
   let width = self.width.to_double()
   let height = self.height.to_double()
-  self.output <+
-    $|<path d="M \{x} \{y + 2.5} L \{x} \{y + height - 2.5} A2.5,2.5 0 0 0 \{x + 2.5} \{y + height} L \{x + width - 2.5} \{y + height} A2.5,2.5 0 0 0 \{x + width} \{y + height - 2.5} L \{x + width} \{y + 10} L \{x + width - 10} \{y} L \{x + 2.5} \{y} A2.5,2.5 0 0 0 \{x} \{y + 2.5}" fill="\{self.fill}" \{self.stroke_attributes}/><path d="M \{x + width - 10} \{y} L \{x + width - 10} \{y + 7.5} A2.5,2.5 0 0 0 \{x + width - 7.5} \{y + 10} L \{x + width} \{y + 10}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Path([
+      MoveTo({ x, y: y + 2.5, }),
+      LineTo({ x, y: y + height - 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: x + 2.5,
+        y: y + height,
+      }),
+      LineTo({ x: x + width - 2.5, y: y + height, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: x + width,
+        y: y + height - 2.5,
+      }),
+      LineTo({ x: x + width, y: y + 10, }),
+      LineTo({ x: x + width - 10, y, }),
+      LineTo({ x: x + 2.5, y, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x,
+        y: y + 2.5,
+      }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Path([
+      MoveTo({ x: x + width - 10, y, }),
+      LineTo({ x: x + width - 10, y: y + 7.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: x + width - 7.5,
+        y: y + 10,
+      }),
+      LineTo({ x: x + width, y: y + 10, }),
+    ]),
+  )
 }
 
 ///|
@@ -542,8 +855,30 @@ fn DescriptionSymbolContext::append_hexagon(
 ) -> Unit {
   let quarter_width = self.width / 4
   let half_height = self.height / 2
-  self.output <+
-    $|<polygon points="\{self.x + self.width},\{self.y + half_height} \{self.x + self.width - quarter_width},\{self.y} \{self.x + quarter_width},\{self.y} \{self.x},\{self.y + half_height} \{self.x + quarter_width},\{self.y + self.height} \{self.x + self.width - quarter_width},\{self.y + self.height}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Polygon([
+      {
+        x: (self.x + self.width).to_double(),
+        y: (self.y + half_height).to_double(),
+      },
+      {
+        x: (self.x + self.width - quarter_width).to_double(),
+        y: self.y.to_double(),
+      },
+      { x: (self.x + quarter_width).to_double(), y: self.y.to_double(), },
+      { x: self.x.to_double(), y: (self.y + half_height).to_double(), },
+      {
+        x: (self.x + quarter_width).to_double(),
+        y: (self.y + self.height).to_double(),
+      },
+      {
+        x: (self.x + self.width - quarter_width).to_double(),
+        y: (self.y + self.height).to_double(),
+      },
+    ]),
+  )
 }
 
 ///|
@@ -551,8 +886,20 @@ fn DescriptionSymbolContext::append_action(
   self : DescriptionSymbolContext,
 ) -> Unit {
   let half = self.y + self.height / 2
-  self.output <+
-    $|<polygon points="\{self.x},\{self.y} \{self.x + self.width - 10},\{self.y} \{self.x + self.width},\{half} \{self.x + self.width - 10},\{self.y + self.height} \{self.x},\{self.y + self.height}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Polygon([
+      { x: self.x.to_double(), y: self.y.to_double(), },
+      { x: (self.x + self.width - 10).to_double(), y: self.y.to_double(), },
+      { x: (self.x + self.width).to_double(), y: half.to_double(), },
+      {
+        x: (self.x + self.width - 10).to_double(),
+        y: (self.y + self.height).to_double(),
+      },
+      { x: self.x.to_double(), y: (self.y + self.height).to_double(), },
+    ]),
+  )
 }
 
 ///|
@@ -560,8 +907,21 @@ fn DescriptionSymbolContext::append_process(
   self : DescriptionSymbolContext,
 ) -> Unit {
   let half = self.y + self.height / 2
-  self.output <+
-    $|<polygon points="\{self.x},\{self.y} \{self.x + self.width - 10},\{self.y} \{self.x + self.width},\{half} \{self.x + self.width - 10},\{self.y + self.height} \{self.x},\{self.y + self.height} \{self.x + 10},\{half}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Polygon([
+      { x: self.x.to_double(), y: self.y.to_double(), },
+      { x: (self.x + self.width - 10).to_double(), y: self.y.to_double(), },
+      { x: (self.x + self.width).to_double(), y: half.to_double(), },
+      {
+        x: (self.x + self.width - 10).to_double(),
+        y: (self.y + self.height).to_double(),
+      },
+      { x: self.x.to_double(), y: (self.y + self.height).to_double(), },
+      { x: (self.x + 10).to_double(), y: half.to_double(), },
+    ]),
+  )
 }
 
 ///|
@@ -574,8 +934,28 @@ fn DescriptionSymbolContext::append_boundary(
   )
   let left = self.x.to_double() + figure_x + 4.0
   let top = self.y.to_double() + figure_y + 4.0
-  self.output <+
-    $|<path d="M \{left} \{top} L \{left} \{top + 24} M \{left} \{top + 12} L \{left + 17} \{top + 12}" fill="none" \{self.stroke_attributes}/><ellipse cx="\{self.x.to_double() + figure_x + 33}" cy="\{self.y.to_double() + figure_y + 16}" rx="12" ry="12" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: left, y: top, }),
+      LineTo({ x: left, y: top + 24, }),
+      MoveTo({ x: left, y: top + 12, }),
+      LineTo({ x: left + 17, y: top + 12, }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Ellipse(
+      center={
+        x: self.x.to_double() + figure_x + 33,
+        y: self.y.to_double() + figure_y + 16,
+      },
+      rx=12,
+      ry=12,
+    ),
+  )
 }
 
 ///|
@@ -588,8 +968,34 @@ fn DescriptionSymbolContext::append_control(
   )
   let wing_x = self.x.to_double() + figure_x + 12.0
   let wing_y = self.y.to_double() + figure_y + 4.0
-  self.output <+
-    $|<ellipse cx="\{self.x.to_double() + figure_x + 16}" cy="\{self.y.to_double() + figure_y + 16}" rx="12" ry="12" fill="\{self.fill}" \{self.stroke_attributes}/><polygon points="\{wing_x},\{wing_y} \{wing_x + 6},\{wing_y - 5} \{wing_x + 4},\{wing_y} \{wing_x + 6},\{wing_y + 5} \{wing_x},\{wing_y}" fill="\{self.stroke}" stroke="\{self.stroke}" stroke-width="1"/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Ellipse(
+      center={
+        x: self.x.to_double() + figure_x + 16,
+        y: self.y.to_double() + figure_y + 16,
+      },
+      rx=12,
+      ry=12,
+    ),
+  )
+  self.output
+  .with_style({
+    ..Default::default(),
+    fill: Color(self.stroke),
+    stroke: Color(self.stroke),
+    stroke_width: Some(1),
+  })
+  .draw(
+    Polygon([
+      { x: wing_x, y: wing_y, },
+      { x: wing_x + 6, y: wing_y - 5, },
+      { x: wing_x + 4, y: wing_y, },
+      { x: wing_x + 6, y: wing_y + 5, },
+      { x: wing_x, y: wing_y, },
+    ]),
+  )
 }
 
 ///|
@@ -600,16 +1006,60 @@ fn DescriptionSymbolContext::append_entity_domain(
     self.text_metrics,
     self.width,
   )
-  self.output <+
-    $|<ellipse cx="\{self.x.to_double() + figure_x + 16}" cy="\{self.y.to_double() + figure_y + 16}" rx="12" ry="12" fill="\{self.fill}" \{self.stroke_attributes}/><line x1="\{self.x.to_double() + figure_x + 4}" y1="\{self.y.to_double() + figure_y + 30}" x2="\{self.x.to_double() + figure_x + 28}" y2="\{self.y.to_double() + figure_y + 30}" stroke="\{self.stroke}" style="\{self.line_attributes}"/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Ellipse(
+      center={
+        x: self.x.to_double() + figure_x + 16,
+        y: self.y.to_double() + figure_y + 16,
+      },
+      rx=12,
+      ry=12,
+    ),
+  )
+  self.output
+  .with_style({ ..self.line_attributes, stroke: Color(self.stroke), })
+  .draw(
+    Line(
+      {
+        x: self.x.to_double() + figure_x + 4,
+        y: self.y.to_double() + figure_y + 30,
+      },
+      {
+        x: self.x.to_double() + figure_x + 28,
+        y: self.y.to_double() + figure_y + 30,
+      },
+    ),
+  )
 }
 
 ///|
 fn DescriptionSymbolContext::append_collections(
   self : DescriptionSymbolContext,
 ) -> Unit {
-  self.output <+
-    $|<rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="\{self.fill}" \{self.stroke_attributes}/><rect x="\{self.x - 4}" y="\{self.y - 4}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: self.x.to_double(), y: self.y.to_double(), },
+      width=self.width.to_double(),
+      height=self.height.to_double(),
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: (self.x - 4).to_double(), y: (self.y - 4).to_double(), },
+      width=self.width.to_double(),
+      height=self.height.to_double(),
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
 }
 
 ///|
@@ -625,8 +1075,29 @@ fn DescriptionSymbolContext::append_person(
   let body_x = self.x.to_double() +
     self.width.to_double() / 2.0 -
     body_width.to_double() / 2.0
-  self.output <+
-    $|<ellipse cx="\{head_x + head_size / 2.0}" cy="\{self.y.to_double() + head_size / 2.0}" rx="\{head_size / 2.0}" ry="\{head_size / 2.0}" fill="\{self.fill}" \{self.stroke_attributes}/><rect x="\{body_x}" y="\{self.y.to_double() + head_size}" width="\{body_width.to_double()}" height="\{body_height.to_double()}" rx="\{head_size / 2.0}" ry="\{head_size / 2.0}" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Ellipse(
+      center={
+        x: head_x + head_size / 2.0,
+        y: self.y.to_double() + head_size / 2.0,
+      },
+      rx=head_size / 2.0,
+      ry=head_size / 2.0,
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Rectangle(
+      origin={ x: body_x, y: self.y.to_double() + head_size, },
+      width=body_width.to_double(),
+      height=body_height.to_double(),
+      rx=Some(head_size / 2.0),
+      ry=Some(head_size / 2.0),
+    ),
+  )
 }
 
 ///|
@@ -637,13 +1108,23 @@ fn DescriptionSymbolContext::append_circle(
     self.text_metrics,
     self.width,
   )
-  self.output <+
-    $|<ellipse cx="\{self.x.to_double() + figure_x + 9}" cy="\{self.y.to_double() + figure_y + 9}" rx="8" ry="8" fill="\{self.fill}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: Color(self.fill), })
+  .draw(
+    Ellipse(
+      center={
+        x: self.x.to_double() + figure_x + 9,
+        y: self.y.to_double() + figure_y + 9,
+      },
+      rx=8,
+      ry=8,
+    ),
+  )
 }
 
 ///|
 fn append_description_text(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   entity : @entity.Entity,
   text_metrics : ClassTextMetrics,
   text_color : String,
@@ -813,7 +1294,7 @@ fn description_cloud_special_line(
 ///|
 fn description_cloud_curve(
   random : JavaRandom,
-  output : StringBuilder,
+  output : Array[@graphics.PathSegment],
   p1 : (Double, Double),
   p2 : (Double, Double),
 ) -> Unit {
@@ -828,8 +1309,9 @@ fn description_cloud_curve(
     length * (1.0 - coef),
     -length * random.ranged(0.4, 0.55),
   )
-  output <+
-    $| C \{m1x},\{m1y} \{m2x},\{m2y} \{p2.0},\{p2.1}
+  output.push(
+    CubicTo({ x: m1x, y: m1y, }, { x: m2x, y: m2y, }, { x: p2.0, y: p2.1, }),
+  )
 }
 
 ///|
@@ -840,7 +1322,7 @@ fn description_cloud_path(
   height : Double,
   origin_x : Double,
   origin_y : Double,
-) -> String {
+) -> Array[@graphics.PathSegment] {
   let random = JavaRandom::new(width.to_int64() + 7919L * height.to_int64())
   let mut bubble_size = 11.0
   let max_dim = width.max(height)
@@ -902,8 +1384,9 @@ fn description_cloud_path(
     )
   }
   points.push(points[0])
-  let output = StringBuilder()
-  output <+ "M \{origin_x + points[0].0},\{origin_y + points[0].1}"
+  let output : Array[@graphics.PathSegment] = [
+    MoveTo({ x: origin_x + points[0].0, y: origin_y + points[0].1, }),
+  ]
   for i in 0..<(points.length() - 1) {
     description_cloud_curve(
       random,
@@ -912,7 +1395,7 @@ fn description_cloud_path(
       (origin_x + points[i + 1].0, origin_y + points[i + 1].1),
     )
   }
-  output.to_string()
+  output
 }
 
 ///|
@@ -963,18 +1446,40 @@ fn EntityPaintContext::append_port(
   } else {
     y + height + metrics.height - 3
   }
-  output <+
-    $|<g class="port-node" data-code="\{@svg.xml_escape(entity.qualified_code)}"><rect x="\{x}" y="\{y}" width="\{width}" height="\{height}" fill="\{fill}" stroke="\{stroke}" stroke-width="\{@svg.emphasized_stroke_width()}"/>
-  append_paint_text(
-    output,
-    label_x,
-    label_y,
-    entity.display,
-    "port-title",
-    text_metrics.regular,
-    fill=diagram.style.diagram_text_color(),
+  output.group(
+    {
+      ..Default::default(),
+      class_name: Some("port-node"),
+      data: [("code", entity.qualified_code)],
+    },
+    output => {
+      output
+      .with_style({
+        ..Default::default(),
+        fill: Color(fill),
+        stroke: Color(stroke),
+        stroke_width: Some(@svg.EMPHASIZED_STROKE_WIDTH),
+      })
+      .draw(
+        Rectangle(
+          origin={ x: x.to_double(), y: y.to_double(), },
+          width=width.to_double(),
+          height=height.to_double(),
+          rx=None,
+          ry=None,
+        ),
+      )
+      append_paint_text(
+        output,
+        label_x,
+        label_y,
+        entity.display,
+        "port-title",
+        text_metrics.regular,
+        fill=diagram.style.diagram_text_color(),
+      )
+    },
   )
-  output.write_string("</g>")
 }
 
 ///|
@@ -982,7 +1487,7 @@ fn EntityPaintContext::append_port(
 /// draws the symbol over its whole cluster rectangle, with the bold title
 /// (and stereotype) placed by the symbol.
 fn append_symbol_packages(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
@@ -1053,7 +1558,7 @@ fn port_frontier(
 
 ///|
 fn append_symbol_package(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
   group : @entity.Package,
   symbol : String,
@@ -1081,36 +1586,37 @@ fn append_symbol_package(
     title_width: title.width.to_double(),
     title_height: title.height.to_double(),
     stereo,
-    stroke_attributes: (
-      $| stroke="\{stroke}" style="stroke-width:\{@svg.standard_border_stroke_width()}"
-    ),
+    stroke_attributes: { ..entity_line_style(None), stroke: Color(stroke), },
   }
-  match symbol {
-    "node" => symbol_ctx.append_node()
-    "frame" => symbol_ctx.append_frame()
-    "cloud" => symbol_ctx.append_cloud()
-    "database" => symbol_ctx.append_database()
-    "queue" => symbol_ctx.append_queue()
-    "stack" => symbol_ctx.append_stack()
-    "storage" => symbol_ctx.append_storage()
-    "artifact" => symbol_ctx.append_artifact()
-    "card" => symbol_ctx.append_card()
-    "file" => symbol_ctx.append_file()
-    "hexagon" => symbol_ctx.append_hexagon()
-    "rectangle" => symbol_ctx.append_rectangle()
-    "action" => symbol_ctx.append_action()
-    "process" => symbol_ctx.append_process()
-    "component" => symbol_ctx.append_component()
-    "folder" => symbol_ctx.append_folder()
-    _ => ()
-  }
+  output.group({ ..Default::default(), class_name: Some("symbol-package"), }, graphic => {
+    let symbol_ctx = { ..symbol_ctx, output: graphic, }
+    match symbol {
+      "node" => symbol_ctx.append_node()
+      "frame" => symbol_ctx.append_frame()
+      "cloud" => symbol_ctx.append_cloud()
+      "database" => symbol_ctx.append_database()
+      "queue" => symbol_ctx.append_queue()
+      "stack" => symbol_ctx.append_stack()
+      "storage" => symbol_ctx.append_storage()
+      "artifact" => symbol_ctx.append_artifact()
+      "card" => symbol_ctx.append_card()
+      "file" => symbol_ctx.append_file()
+      "hexagon" => symbol_ctx.append_hexagon()
+      "rectangle" => symbol_ctx.append_rectangle()
+      "action" => symbol_ctx.append_action()
+      "process" => symbol_ctx.append_process()
+      "component" => symbol_ctx.append_component()
+      "folder" => symbol_ctx.append_folder()
+      _ => ()
+    }
+  })
 }
 
 ///|
 /// Everything a symbol package branch needs, bundled to keep the per-shape
 /// painters single-purpose.
 priv struct SymbolPackageContext {
-  output : StringBuilder
+  output : @graphics.Graphic
   group : @entity.Package
   text_metrics : ClassTextMetrics
   x : Double
@@ -1120,7 +1626,7 @@ priv struct SymbolPackageContext {
   title_width : Double
   title_height : Double
   stereo : (String, Double, Double)?
-  stroke_attributes : String
+  stroke_attributes : @graphics.DrawingStyle
 }
 
 ///|
@@ -1140,7 +1646,6 @@ fn SymbolPackageContext::append_label(
       stereo_position.map(pos => (triple.0, pos.0, pos.1))
     }),
   )
-  self.output.write_string("</g>\n")
 }
 
 ///|
@@ -1162,8 +1667,43 @@ fn SymbolPackageContext::append_centered_label(
 
 ///|
 fn SymbolPackageContext::append_node(self : SymbolPackageContext) -> Unit {
-  self.output <+
-    $|<g class="symbol-package"><polygon points="\{self.x},\{self.y + 10} \{self.x + 10},\{self.y} \{self.x + self.width},\{self.y} \{self.x + self.width},\{self.y + self.height - 10} \{self.x + self.width - 10},\{self.y + self.height} \{self.x},\{self.y + self.height} \{self.x},\{self.y + 10}" fill="none" \{self.stroke_attributes}/><line x1="\{self.x + self.width - 10}" y1="\{self.y + 10}" x2="\{self.x + self.width}" y2="\{self.y}" \{self.stroke_attributes}/><line x1="\{self.x}" y1="\{self.y + 10}" x2="\{self.x + self.width - 10}" y2="\{self.y + 10}" \{self.stroke_attributes}/><line x1="\{self.x + self.width - 10}" y1="\{self.y + 10}" x2="\{self.x + self.width - 10}" y2="\{self.y + self.height}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Polygon([
+      { x: self.x, y: self.y + 10, },
+      { x: self.x + 10, y: self.y, },
+      { x: self.x + self.width, y: self.y, },
+      { x: self.x + self.width, y: self.y + self.height - 10, },
+      { x: self.x + self.width - 10, y: self.y + self.height, },
+      { x: self.x, y: self.y + self.height, },
+      { x: self.x, y: self.y + 10, },
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, })
+  .draw(
+    Line({ x: self.x + self.width - 10, y: self.y + 10, }, {
+      x: self.x + self.width,
+      y: self.y,
+    }),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, })
+  .draw(
+    Line({ x: self.x, y: self.y + 10, }, {
+      x: self.x + self.width - 10,
+      y: self.y + 10,
+    }),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, })
+  .draw(
+    Line({ x: self.x + self.width - 10, y: self.y + 10, }, {
+      x: self.x + self.width - 10,
+      y: self.y + self.height,
+    }),
+  )
   self.append_label(
     self.x + (self.width - self.title_width) / 2.0 - 4.0,
     self.y + 13.0,
@@ -1177,8 +1717,27 @@ fn SymbolPackageContext::append_node(self : SymbolPackageContext) -> Unit {
 fn SymbolPackageContext::append_frame(self : SymbolPackageContext) -> Unit {
   let text_width = self.title_width + 10.0
   let text_height = self.title_height + 3.0
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="none" \{self.stroke_attributes}/><path d="M \{self.x + text_width} \{self.y} L \{self.x + text_width} \{self.y + text_height - 10} L \{self.x + text_width - 10} \{self.y + text_height} L \{self.x} \{self.y + text_height}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x, y: self.y, },
+      width=self.width,
+      height=self.height,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x + text_width, y: self.y, }),
+      LineTo({ x: self.x + text_width, y: self.y + text_height - 10, }),
+      LineTo({ x: self.x + text_width - 10, y: self.y + text_height, }),
+      LineTo({ x: self.x, y: self.y + text_height, }),
+    ]),
+  )
   self.append_label(
     self.x + 3.0,
     self.y + 1.0,
@@ -1191,40 +1750,173 @@ fn SymbolPackageContext::append_frame(self : SymbolPackageContext) -> Unit {
 ///|
 fn SymbolPackageContext::append_cloud(self : SymbolPackageContext) -> Unit {
   let path = description_cloud_path(self.width, self.height, self.x, self.y)
-  self.output <+
-    $|<g class="symbol-package"><path d="\{path}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(Path(path))
   self.append_centered_label(13.0, 13.0)
 }
 
 ///|
 fn SymbolPackageContext::append_database(self : SymbolPackageContext) -> Unit {
   let half = self.width / 2.0
-  self.output <+
-    $|<g class="symbol-package"><path d="M \{self.x} \{self.y + 10} C \{self.x} \{self.y} \{self.x + half} \{self.y} \{self.x + half} \{self.y} C \{self.x + half} \{self.y} \{self.x + self.width} \{self.y} \{self.x + self.width} \{self.y + 10} L \{self.x + self.width} \{self.y + self.height - 10} C \{self.x + self.width} \{self.y + self.height} \{self.x + half} \{self.y + self.height} \{self.x + half} \{self.y + self.height} C \{self.x + half} \{self.y + self.height} \{self.x} \{self.y + self.height} \{self.x} \{self.y + self.height - 10} L \{self.x} \{self.y + 10}" fill="none" \{self.stroke_attributes}/><path d="M \{self.x} \{self.y + 10} C \{self.x} \{self.y + 20} \{self.x + half} \{self.y + 20} \{self.x + half} \{self.y + 20} C \{self.x + half} \{self.y + 20} \{self.x + self.width} \{self.y + 20} \{self.x + self.width} \{self.y + 10}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x, y: self.y + 10, }),
+      CubicTo({ x: self.x, y: self.y, }, { x: self.x + half, y: self.y, }, {
+        x: self.x + half,
+        y: self.y,
+      }),
+      CubicTo(
+        { x: self.x + half, y: self.y, },
+        { x: self.x + self.width, y: self.y, },
+        { x: self.x + self.width, y: self.y + 10, },
+      ),
+      LineTo({ x: self.x + self.width, y: self.y + self.height - 10, }),
+      CubicTo(
+        { x: self.x + self.width, y: self.y + self.height, },
+        { x: self.x + half, y: self.y + self.height, },
+        { x: self.x + half, y: self.y + self.height, },
+      ),
+      CubicTo(
+        { x: self.x + half, y: self.y + self.height, },
+        { x: self.x, y: self.y + self.height, },
+        { x: self.x, y: self.y + self.height - 10, },
+      ),
+      LineTo({ x: self.x, y: self.y + 10, }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x, y: self.y + 10, }),
+      CubicTo(
+        { x: self.x, y: self.y + 20, },
+        { x: self.x + half, y: self.y + 20, },
+        { x: self.x + half, y: self.y + 20, },
+      ),
+      CubicTo(
+        { x: self.x + half, y: self.y + 20, },
+        { x: self.x + self.width, y: self.y + 20, },
+        { x: self.x + self.width, y: self.y + 10, },
+      ),
+    ]),
+  )
   self.append_centered_label(22.0, 22.0)
 }
 
 ///|
 fn SymbolPackageContext::append_queue(self : SymbolPackageContext) -> Unit {
   let half = self.y + self.height / 2.0
-  self.output <+
-    $|<g class="symbol-package"><path d="M \{self.x + 5} \{self.y} L \{self.x + self.width - 5} \{self.y} C \{self.x + self.width} \{self.y} \{self.x + self.width} \{half} \{self.x + self.width} \{half} C \{self.x + self.width} \{half} \{self.x + self.width} \{self.y + self.height} \{self.x + self.width - 5} \{self.y + self.height} L \{self.x + 5} \{self.y + self.height} C \{self.x} \{self.y + self.height} \{self.x} \{half} \{self.x} \{half} C \{self.x} \{half} \{self.x} \{self.y} \{self.x + 5} \{self.y}" fill="none" \{self.stroke_attributes}/><path d="M \{self.x + self.width - 5} \{self.y} C \{self.x + self.width - 10} \{self.y} \{self.x + self.width - 10} \{half} \{self.x + self.width - 10} \{half} C \{self.x + self.width - 10} \{self.y + self.height} \{self.x + self.width - 5} \{self.y + self.height} \{self.x + self.width - 5} \{self.y + self.height}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x + 5, y: self.y, }),
+      LineTo({ x: self.x + self.width - 5, y: self.y, }),
+      CubicTo(
+        { x: self.x + self.width, y: self.y, },
+        { x: self.x + self.width, y: half, },
+        { x: self.x + self.width, y: half, },
+      ),
+      CubicTo(
+        { x: self.x + self.width, y: half, },
+        { x: self.x + self.width, y: self.y + self.height, },
+        { x: self.x + self.width - 5, y: self.y + self.height, },
+      ),
+      LineTo({ x: self.x + 5, y: self.y + self.height, }),
+      CubicTo(
+        { x: self.x, y: self.y + self.height, },
+        { x: self.x, y: half, },
+        { x: self.x, y: half, },
+      ),
+      CubicTo({ x: self.x, y: half, }, { x: self.x, y: self.y, }, {
+        x: self.x + 5,
+        y: self.y,
+      }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x + self.width - 5, y: self.y, }),
+      CubicTo(
+        { x: self.x + self.width - 10, y: self.y, },
+        { x: self.x + self.width - 10, y: half, },
+        { x: self.x + self.width - 10, y: half, },
+      ),
+      CubicTo(
+        { x: self.x + self.width - 10, y: self.y + self.height, },
+        { x: self.x + self.width - 5, y: self.y + self.height, },
+        { x: self.x + self.width - 5, y: self.y + self.height, },
+      ),
+    ]),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
 ///|
 fn SymbolPackageContext::append_stack(self : SymbolPackageContext) -> Unit {
   let border = 15.0
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x + border}" y="\{self.y}" width="\{self.width - 2 * border}" height="\{self.height}" rx="2.5" ry="2.5" fill="none" stroke="none"/><path d="M \{self.x} \{self.y} L \{self.x + border - 2.5} \{self.y} A2.5,2.5 0 0 1 \{self.x + border} \{self.y + 2.5} L \{self.x + border} \{self.y + self.height - 2.5} A2.5,2.5 0 0 0 \{self.x + border + 2.5} \{self.y + self.height} L \{self.x + self.width - border - 2.5} \{self.y + self.height} A2.5,2.5 0 0 0 \{self.x + self.width - border} \{self.y + self.height - 2.5} L \{self.x + self.width - border} \{self.y + 2.5} A2.5,2.5 0 0 1 \{self.x + self.width - border + 2.5} \{self.y} L \{self.x + self.width} \{self.y}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..Default::default(), fill: None, stroke: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x + border, y: self.y, },
+      width=self.width - 2 * border,
+      height=self.height,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x, y: self.y, }),
+      LineTo({ x: self.x + border - 2.5, y: self.y, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x + border,
+        y: self.y + 2.5,
+      }),
+      LineTo({ x: self.x + border, y: self.y + self.height - 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: self.x + border + 2.5,
+        y: self.y + self.height,
+      }),
+      LineTo({ x: self.x + self.width - border - 2.5, y: self.y + self.height, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: self.x + self.width - border,
+        y: self.y + self.height - 2.5,
+      }),
+      LineTo({ x: self.x + self.width - border, y: self.y + 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x + self.width - border + 2.5,
+        y: self.y,
+      }),
+      LineTo({ x: self.x + self.width, y: self.y, }),
+    ]),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
 ///|
 fn SymbolPackageContext::append_storage(self : SymbolPackageContext) -> Unit {
   let radius = (35).min((self.width / 2.0).to_int())
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="\{radius}" ry="\{radius}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x, y: self.y, },
+      width=self.width,
+      height=self.height,
+      rx=Some(radius.to_double()),
+      ry=Some(radius.to_double()),
+    ),
+  )
   self.append_centered_label(7.0, 5.0)
 }
 
@@ -1232,22 +1924,103 @@ fn SymbolPackageContext::append_storage(self : SymbolPackageContext) -> Unit {
 fn SymbolPackageContext::append_artifact(self : SymbolPackageContext) -> Unit {
   let x_symbol = self.x + self.width - 17.0
   let y_symbol = self.y + 5.0
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="none" \{self.stroke_attributes}/><polygon points="\{x_symbol},\{y_symbol} \{x_symbol},\{y_symbol + 14} \{x_symbol + 12},\{y_symbol + 14} \{x_symbol + 12},\{y_symbol + 6} \{x_symbol + 6},\{y_symbol} \{x_symbol},\{y_symbol}" fill="none" \{self.stroke_attributes}/><line x1="\{x_symbol + 6}" y1="\{y_symbol}" x2="\{x_symbol + 6}" y2="\{y_symbol + 6}" \{self.stroke_attributes}/><line x1="\{x_symbol + 12}" y1="\{y_symbol + 6}" x2="\{x_symbol + 6}" y2="\{y_symbol + 6}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x, y: self.y, },
+      width=self.width,
+      height=self.height,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Polygon([
+      { x: x_symbol, y: y_symbol, },
+      { x: x_symbol, y: y_symbol + 14, },
+      { x: x_symbol + 12, y: y_symbol + 14, },
+      { x: x_symbol + 12, y: y_symbol + 6, },
+      { x: x_symbol + 6, y: y_symbol, },
+      { x: x_symbol, y: y_symbol, },
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, })
+  .draw(
+    Line({ x: x_symbol + 6, y: y_symbol, }, {
+      x: x_symbol + 6,
+      y: y_symbol + 6,
+    }),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, })
+  .draw(
+    Line({ x: x_symbol + 12, y: y_symbol + 6, }, {
+      x: x_symbol + 6,
+      y: y_symbol + 6,
+    }),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
 ///|
 fn SymbolPackageContext::append_card(self : SymbolPackageContext) -> Unit {
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x, y: self.y, },
+      width=self.width,
+      height=self.height,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
 ///|
 fn SymbolPackageContext::append_file(self : SymbolPackageContext) -> Unit {
-  self.output <+
-    $|<g class="symbol-package"><path d="M \{self.x} \{self.y + 2.5} L \{self.x} \{self.y + self.height - 2.5} A2.5,2.5 0 0 0 \{self.x + 2.5} \{self.y + self.height} L \{self.x + self.width - 2.5} \{self.y + self.height} A2.5,2.5 0 0 0 \{self.x + self.width} \{self.y + self.height - 2.5} L \{self.x + self.width} \{self.y + 10} L \{self.x + self.width - 10} \{self.y} L \{self.x + 2.5} \{self.y} A2.5,2.5 0 0 0 \{self.x} \{self.y + 2.5}" fill="none" \{self.stroke_attributes}/><path d="M \{self.x + self.width - 10} \{self.y} L \{self.x + self.width - 10} \{self.y + 7.5} A2.5,2.5 0 0 0 \{self.x + self.width - 7.5} \{self.y + 10} L \{self.x + self.width} \{self.y + 10}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x, y: self.y + 2.5, }),
+      LineTo({ x: self.x, y: self.y + self.height - 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: self.x + 2.5,
+        y: self.y + self.height,
+      }),
+      LineTo({ x: self.x + self.width - 2.5, y: self.y + self.height, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: self.x + self.width,
+        y: self.y + self.height - 2.5,
+      }),
+      LineTo({ x: self.x + self.width, y: self.y + 10, }),
+      LineTo({ x: self.x + self.width - 10, y: self.y, }),
+      LineTo({ x: self.x + 2.5, y: self.y, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: self.x,
+        y: self.y + 2.5,
+      }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x + self.width - 10, y: self.y, }),
+      LineTo({ x: self.x + self.width - 10, y: self.y + 7.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=false, end={
+        x: self.x + self.width - 7.5,
+        y: self.y + 10,
+      }),
+      LineTo({ x: self.x + self.width, y: self.y + 10, }),
+    ]),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
@@ -1255,23 +2028,51 @@ fn SymbolPackageContext::append_file(self : SymbolPackageContext) -> Unit {
 fn SymbolPackageContext::append_hexagon(self : SymbolPackageContext) -> Unit {
   let quarter_width = self.width / 4.0
   let half_height = self.height / 2.0
-  self.output <+
-    $|<g class="symbol-package"><polygon points="\{self.x + self.width},\{self.y + half_height} \{self.x + self.width - quarter_width},\{self.y} \{self.x + quarter_width},\{self.y} \{self.x},\{self.y + half_height} \{self.x + quarter_width},\{self.y + self.height} \{self.x + self.width - quarter_width},\{self.y + self.height}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Polygon([
+      { x: self.x + self.width, y: self.y + half_height, },
+      { x: self.x + self.width - quarter_width, y: self.y, },
+      { x: self.x + quarter_width, y: self.y, },
+      { x: self.x, y: self.y + half_height, },
+      { x: self.x + quarter_width, y: self.y + self.height, },
+      { x: self.x + self.width - quarter_width, y: self.y + self.height, },
+    ]),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
 ///|
 fn SymbolPackageContext::append_rectangle(self : SymbolPackageContext) -> Unit {
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x, y: self.y, },
+      width=self.width,
+      height=self.height,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
   self.append_centered_label(2.0, 2.0)
 }
 
 ///|
 fn SymbolPackageContext::append_action(self : SymbolPackageContext) -> Unit {
   let half = self.y + self.height / 2.0
-  self.output <+
-    $|<g class="symbol-package"><polygon points="\{self.x},\{self.y} \{self.x + self.width - 10},\{self.y} \{self.x + self.width},\{half} \{self.x + self.width - 10},\{self.y + self.height} \{self.x},\{self.y + self.height}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Polygon([
+      { x: self.x, y: self.y, },
+      { x: self.x + self.width - 10, y: self.y, },
+      { x: self.x + self.width, y: half, },
+      { x: self.x + self.width - 10, y: self.y + self.height, },
+      { x: self.x, y: self.y + self.height, },
+    ]),
+  )
   self.append_label(
     self.x + (self.width - self.title_width) / 2.0,
     self.y + 2.0,
@@ -1287,8 +2088,18 @@ fn SymbolPackageContext::append_action(self : SymbolPackageContext) -> Unit {
 ///|
 fn SymbolPackageContext::append_process(self : SymbolPackageContext) -> Unit {
   let half = self.y + self.height / 2.0
-  self.output <+
-    $|<g class="symbol-package"><polygon points="\{self.x},\{self.y} \{self.x + self.width - 10},\{self.y} \{self.x + self.width},\{half} \{self.x + self.width - 10},\{self.y + self.height} \{self.x},\{self.y + self.height} \{self.x + 10},\{half}" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Polygon([
+      { x: self.x, y: self.y, },
+      { x: self.x + self.width - 10, y: self.y, },
+      { x: self.x + self.width, y: half, },
+      { x: self.x + self.width - 10, y: self.y + self.height, },
+      { x: self.x, y: self.y + self.height, },
+      { x: self.x + 10, y: half, },
+    ]),
+  )
   self.append_label(
     self.x + (self.width - self.title_width) / 2.0,
     self.y + 2.0,
@@ -1303,8 +2114,50 @@ fn SymbolPackageContext::append_process(self : SymbolPackageContext) -> Unit {
 
 ///|
 fn SymbolPackageContext::append_component(self : SymbolPackageContext) -> Unit {
-  self.output <+
-    $|<g class="symbol-package"><rect x="\{self.x}" y="\{self.y}" width="\{self.width}" height="\{self.height}" rx="2.5" ry="2.5" fill="none" \{self.stroke_attributes}/><rect x="\{self.x + self.width - 20}" y="\{self.y + 5}" width="15" height="10" fill="none" \{self.stroke_attributes}/><rect x="\{self.x + self.width - 22}" y="\{self.y + 7}" width="4" height="2" fill="none" \{self.stroke_attributes}/><rect x="\{self.x + self.width - 22}" y="\{self.y + 11}" width="4" height="2" fill="none" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x, y: self.y, },
+      width=self.width,
+      height=self.height,
+      rx=Some(2.5),
+      ry=Some(2.5),
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x + self.width - 20, y: self.y + 5, },
+      width=15,
+      height=10,
+      rx=None,
+      ry=None,
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x + self.width - 22, y: self.y + 7, },
+      width=4,
+      height=2,
+      rx=None,
+      ry=None,
+    ),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Rectangle(
+      origin={ x: self.x + self.width - 22, y: self.y + 11, },
+      width=4,
+      height=2,
+      rx=None,
+      ry=None,
+    ),
+  )
   self.append_centered_label(13.0, 13.0)
 }
 
@@ -1312,8 +2165,47 @@ fn SymbolPackageContext::append_component(self : SymbolPackageContext) -> Unit {
 fn SymbolPackageContext::append_folder(self : SymbolPackageContext) -> Unit {
   let wtitle = self.title_width + 6.0
   let htitle = self.title_height + 6.0
-  self.output <+
-    $|<g class="symbol-package"><path d="M \{self.x + 2.5} \{self.y} L \{self.x + wtitle - 2.5} \{self.y} A3.75,3.75 0 0 1 \{self.x + wtitle} \{self.y + 2.5} L \{self.x + wtitle + 7} \{self.y + htitle} L \{self.x + self.width - 2.5} \{self.y + htitle} A2.5,2.5 0 0 1 \{self.x + self.width} \{self.y + htitle + 2.5} L \{self.x + self.width} \{self.y + self.height - 2.5} A2.5,2.5 0 0 1 \{self.x + self.width - 2.5} \{self.y + self.height} L \{self.x + 2.5} \{self.y + self.height} A2.5,2.5 0 0 1 \{self.x} \{self.y + self.height - 2.5} L \{self.x} \{self.y + 2.5} A2.5,2.5 0 0 1 \{self.x + 2.5} \{self.y}" fill="none" \{self.stroke_attributes}/><line x1="\{self.x}" y1="\{self.y + htitle}" x2="\{self.x + wtitle + 7}" y2="\{self.y + htitle}" \{self.stroke_attributes}/>
+  self.output
+  .with_style({ ..self.stroke_attributes, fill: None, })
+  .draw(
+    Path([
+      MoveTo({ x: self.x + 2.5, y: self.y, }),
+      LineTo({ x: self.x + wtitle - 2.5, y: self.y, }),
+      ArcTo(rx=3.75, ry=3.75, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x + wtitle,
+        y: self.y + 2.5,
+      }),
+      LineTo({ x: self.x + wtitle + 7, y: self.y + htitle, }),
+      LineTo({ x: self.x + self.width - 2.5, y: self.y + htitle, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x + self.width,
+        y: self.y + htitle + 2.5,
+      }),
+      LineTo({ x: self.x + self.width, y: self.y + self.height - 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x + self.width - 2.5,
+        y: self.y + self.height,
+      }),
+      LineTo({ x: self.x + 2.5, y: self.y + self.height, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x,
+        y: self.y + self.height - 2.5,
+      }),
+      LineTo({ x: self.x, y: self.y + 2.5, }),
+      ArcTo(rx=2.5, ry=2.5, rotation=0, large_arc=false, sweep=true, end={
+        x: self.x + 2.5,
+        y: self.y,
+      }),
+    ]),
+  )
+  self.output
+  .with_style({ ..self.stroke_attributes, })
+  .draw(
+    Line({ x: self.x, y: self.y + htitle, }, {
+      x: self.x + wtitle + 7,
+      y: self.y + htitle,
+    }),
+  )
   self.append_label(
     self.x + 4.0,
     self.y + 2.0,
@@ -1325,7 +2217,7 @@ fn SymbolPackageContext::append_folder(self : SymbolPackageContext) -> Unit {
 
 ///|
 fn append_symbol_package_text(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   group : @entity.Package,
   text_metrics : ClassTextMetrics,
   title_x : Double,
@@ -1335,28 +2227,24 @@ fn append_symbol_package_text(
   match stereo {
     Some((display, x, top)) => {
       let stereo_height = text_metrics.italic.measure(display).height.to_double()
-      output.write_string(
-        @svg.text_markup(
-          x,
-          top + stereo_height - 3.0,
-          display,
-          [("class", "package-stereotype")],
-          text_metrics.italic,
-        ),
+      draw_entity_text(
+        output,
+        x,
+        top + stereo_height - 3.0,
+        display,
+        text_metrics.italic,
+        class_name="package-stereotype",
       )
-      output.write_char('\n')
     }
     None => ()
   }
   let title_height = text_metrics.regular.measure(group.display).height.to_double()
-  output.write_string(
-    @svg.text_markup(
-      title_x,
-      title_top + title_height - 3.0,
-      group.display,
-      [("class", "package-title")],
-      text_metrics.regular,
-    ),
+  draw_entity_text(
+    output,
+    title_x,
+    title_top + title_height - 3.0,
+    group.display,
+    text_metrics.regular,
+    class_name="package-title",
   )
-  output.write_char('\n')
 }

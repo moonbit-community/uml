@@ -1,46 +1,56 @@
 ///|
 fn append_participant(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : ParticipantLayout,
   y : Int,
   is_tail : Bool,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
   let fill = svg_color(layout.participant.color, layout.defaults)
-  if layout.participant.url is Some(url) {
-    output <+ "<a href=\"\{@svg.xml_escape(url)}\" target=\"_top\">\n"
-  }
-  output <+
-    $|<g class="participant \{layout.participant.typ.css_class()}" data-code="\{@svg.xml_escape(layout.participant.code)}">
-  match layout.participant.typ {
-    Actor | Boundary | Control | Entity | Database =>
-      append_vertical_participant(output, layout, y, is_tail, fill)
-    Queue => append_queue_participant(output, layout, y, fill)
-    Collections => append_collections_participant(output, layout, y, fill)
-    @seq.Participant => {
-      output <+
-        $|<rect x="\{left}" y="\{y}" width="\{layout.width}" height="36" rx="2" fill="\{fill}"/>
-      append_text(
-        output,
-        layout.center_x,
-        y + 23,
-        layout.participant.display,
-        "participant-label",
-        layout.defaults,
-        line_height=layout.text_metrics.participant.line_height,
-        font_metrics=Some(layout.text_metrics.participant),
-      )
-    }
-  }
-  output.write_string("</g>\n")
-  if layout.participant.url is Some(_) {
-    output.write_string("</a>\n")
-  }
+  output.link(layout.participant.url, output => {
+    output.group(
+      {
+        ..Default::default(),
+        class_name: Some("participant \{layout.participant.typ.css_class()}"),
+        data: [("code", layout.participant.code)],
+      },
+      output => {
+        match layout.participant.typ {
+          Actor | Boundary | Control | Entity | Database =>
+            append_vertical_participant(output, layout, y, is_tail, fill)
+          Queue => append_queue_participant(output, layout, y, fill)
+          Collections => append_collections_participant(output, layout, y, fill)
+          @seq.Participant => {
+            output.draw(
+              Rectangle(
+                origin=sequence_point(left, y),
+                width=layout.width.to_double(),
+                height=36,
+                rx=Some(2),
+                ry=None,
+              ),
+              fill=Color(fill),
+            )
+            append_text(
+              output,
+              layout.center_x,
+              y + 23,
+              layout.participant.display,
+              "participant-label",
+              layout.defaults,
+              line_height=layout.text_metrics.participant.line_height,
+              font_metrics=Some(layout.text_metrics.participant),
+            )
+          }
+        }
+      },
+    )
+  })
 }
 
 ///|
 fn append_vertical_participant(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : ParticipantLayout,
   y : Int,
   is_tail : Bool,
@@ -71,7 +81,7 @@ fn append_vertical_participant(
 
 ///|
 fn append_queue_participant(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : ParticipantLayout,
   y : Int,
   fill : String,
@@ -79,8 +89,36 @@ fn append_queue_participant(
   let left = layout.center_x - layout.width / 2
   let right = left + layout.width
   let middle = y + 13
-  output <+
-    $|<path d="M\{left + 5} \{y}H\{right - 5}C\{right} \{y} \{right} \{middle} \{right} \{middle}C\{right} \{middle} \{right} \{y + 26} \{right - 5} \{y + 26}H\{left + 5}C\{left} \{y + 26} \{left} \{middle} \{left} \{middle}C\{left} \{middle} \{left} \{y} \{left + 5} \{y}Z" fill="\{fill}" class="participant-icon"/>
+  output.draw(
+    Path([
+      MoveTo(sequence_point(left + 5, y)),
+      LineTo(sequence_point(right - 5, y)),
+      CubicTo(
+        sequence_point(right, y),
+        sequence_point(right, middle),
+        sequence_point(right, middle),
+      ),
+      CubicTo(
+        sequence_point(right, middle),
+        sequence_point(right, y + 26),
+        sequence_point(right - 5, y + 26),
+      ),
+      LineTo(sequence_point(left + 5, y + 26)),
+      CubicTo(
+        sequence_point(left, y + 26),
+        sequence_point(left, middle),
+        sequence_point(left, middle),
+      ),
+      CubicTo(
+        sequence_point(left, middle),
+        sequence_point(left, y),
+        sequence_point(left + 5, y),
+      ),
+      Close,
+    ]),
+    class_name="participant-icon",
+    fill=Color(fill),
+  )
   append_text(
     output,
     layout.center_x,
@@ -95,16 +133,32 @@ fn append_queue_participant(
 
 ///|
 fn append_collections_participant(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : ParticipantLayout,
   y : Int,
   fill : String,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
-  output <+
-    $|<rect x="\{left + 4}" y="\{y}" width="\{layout.width - 4}" height="36" rx="2" fill="\{fill}"/>
-  output <+
-    $|<rect x="\{left}" y="\{y + 4}" width="\{layout.width - 4}" height="36" rx="2" fill="\{fill}"/>
+  output.draw(
+    Rectangle(
+      origin=sequence_point(left + 4, y),
+      width=(layout.width - 4).to_double(),
+      height=36,
+      rx=Some(2),
+      ry=None,
+    ),
+    fill=Color(fill),
+  )
+  output.draw(
+    Rectangle(
+      origin=sequence_point(left, y + 4),
+      width=(layout.width - 4).to_double(),
+      height=36,
+      rx=Some(2),
+      ry=None,
+    ),
+    fill=Color(fill),
+  )
   append_text(
     output,
     layout.center_x,
@@ -119,7 +173,7 @@ fn append_collections_participant(
 
 ///|
 fn append_participant_symbol(
-  output : StringBuilder,
+  output : SequenceDrawing,
   typ : @seq.ParticipantType,
   x : Int,
   y : Int,
@@ -128,37 +182,83 @@ fn append_participant_symbol(
 ) -> Unit {
   match typ {
     Actor => {
-      output <+
-        $|<circle cx="\{x}" cy="\{y + 9}" r="8" fill="\{fill}" class="participant-icon"/>
+      output.draw(
+        Circle(center=sequence_point(x, y + 9), radius=8),
+        class_name="participant-icon",
+        fill=Color(fill),
+      )
       append_line(output, x, y + 17, x, y + 44, "participant-icon")
       append_line(output, x - 13, y + 25, x + 13, y + 25, "participant-icon")
       append_line(output, x, y + 44, x - 13, y + 59, "participant-icon")
       append_line(output, x, y + 44, x + 13, y + 59, "participant-icon")
     }
     Boundary => {
-      output <+
-        $|<circle cx="\{x + 9}" cy="\{y + 16}" r="12" fill="\{fill}" class="participant-icon"/>
+      output.draw(
+        Circle(center=sequence_point(x + 9, y + 16), radius=12),
+        class_name="participant-icon",
+        fill=Color(fill),
+      )
       append_line(output, x - 20, y + 4, x - 20, y + 28, "participant-icon")
       append_line(output, x - 20, y + 16, x - 3, y + 16, "participant-icon")
     }
     Control => {
-      output <+
-        $|<circle cx="\{x}" cy="\{y + 16}" r="12" fill="\{fill}" class="participant-icon"/>
-      output <+
-        $|<path d="M\{x + 8} \{y + 4}l6 -5 -2 5 2 5z" fill="\{line}" class="participant-icon"/>
+      output.draw(
+        Circle(center=sequence_point(x, y + 16), radius=12),
+        class_name="participant-icon",
+        fill=Color(fill),
+      )
+      output.draw(
+        Path([
+          MoveTo(sequence_point(x + 8, y + 4)),
+          LineTo(sequence_point(x + 14, y - 1)),
+          LineTo(sequence_point(x + 12, y + 4)),
+          LineTo(sequence_point(x + 14, y + 9)),
+          Close,
+        ]),
+        class_name="participant-icon",
+        fill=Color(line),
+      )
     }
     Entity => {
-      output <+
-        $|<ellipse cx="\{x}" cy="\{y + 16}" rx="12" ry="12" fill="\{fill}" class="participant-icon"/>
+      output.draw(
+        Ellipse(center=sequence_point(x, y + 16), rx=12, ry=12),
+        class_name="participant-icon",
+        fill=Color(fill),
+      )
       append_line(output, x - 12, y + 30, x + 12, y + 30, "participant-icon")
     }
     Database => {
-      output <+
-        $|<ellipse cx="\{x}" cy="\{y + 10}" rx="18" ry="10" fill="\{fill}" class="participant-icon"/>
-      output <+
-        $|<path d="M\{x - 18} \{y + 10}v31c0 7 36 7 36 0V\{y + 10}" fill="\{fill}" class="participant-icon"/>
-      output <+
-        $|<path d="M\{x - 18} \{y + 10}c0 13 36 13 36 0" fill="none" class="participant-icon"/>
+      output.draw(
+        Ellipse(center=sequence_point(x, y + 10), rx=18, ry=10),
+        class_name="participant-icon",
+        fill=Color(fill),
+      )
+      output.draw(
+        Path([
+          MoveTo(sequence_point(x - 18, y + 10)),
+          LineTo(sequence_point(x - 18, y + 41)),
+          CubicTo(
+            sequence_point(x - 18, y + 48),
+            sequence_point(x + 18, y + 48),
+            sequence_point(x + 18, y + 41),
+          ),
+          LineTo(sequence_point(x + 18, y + 10)),
+        ]),
+        class_name="participant-icon",
+        fill=Color(fill),
+      )
+      output.draw(
+        Path([
+          MoveTo(sequence_point(x - 18, y + 10)),
+          CubicTo(
+            sequence_point(x - 18, y + 23),
+            sequence_point(x + 18, y + 23),
+            sequence_point(x + 18, y + 10),
+          ),
+        ]),
+        class_name="participant-icon",
+        fill=None,
+      )
     }
     @seq.Participant | Queue | Collections => ()
   }
@@ -190,7 +290,7 @@ fn @seq.ParticipantType::css_class(self : @seq.ParticipantType) -> String {
 
 ///|
 fn append_participant_box(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layouts : Array[ParticipantLayout],
   box : @seq.ParticipantBox,
   depth : Int,
@@ -201,8 +301,17 @@ fn append_participant_box(
   let (left, right) = participant_box_horizontal_bounds(layouts, box)
   let y = 4 + depth * (first.text_metrics.small_bold.line_height + 5)
   let height = (diagram_layout.height - y - 5).max(22)
-  output <+
-    $|<rect x="\{left}" y="\{y}" width="\{right - left}" height="\{height}" class="participant-box-group" fill="\{svg_color(box.color, diagram_layout.defaults)}"/>
+  output.draw(
+    Rectangle(
+      origin=sequence_point(left, y),
+      width=(right - left).to_double(),
+      height=height.to_double(),
+      rx=None,
+      ry=None,
+    ),
+    class_name="participant-box-group",
+    fill=Color(svg_color(box.color, diagram_layout.defaults)),
+  )
   if box.label is Some(label) {
     append_text(
       output,
@@ -211,7 +320,7 @@ fn append_participant_box(
       label,
       "participant-box-label",
       diagram_layout.defaults,
-      anchor="start",
+      anchor=Start,
       line_height=first.text_metrics.small_bold.line_height,
       font_metrics=Some(first.text_metrics.small_bold),
     )
@@ -220,7 +329,7 @@ fn append_participant_box(
 
 ///|
 fn append_participant_boxes(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
 ) -> Unit {
   let max_depth = max_participant_box_depth(layout.participants)

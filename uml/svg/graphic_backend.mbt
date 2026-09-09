@@ -1,4 +1,16 @@
 ///|
+fn text_style_attributes(font : @graphics.TextStyle) -> Array[(String, String)] {
+  [
+    ..font.font_size.map_or([], size => [("font-size", size.to_string())]),
+    ..font.font_family.map_or([], family => [("font-family", family)]),
+    ..font.italic.map_or([], italic => {
+      [("font-style", if italic { "italic" } else { "normal" })]
+    }),
+    ..font.weight.map_or([], weight => [("font-weight", weight.to_string())]),
+  ]
+}
+
+///|
 /// SVG driver for the typed drawing API. Geometry and styles become XML
 /// only here; renderers supply unescaped values and measured text advances.
 pub fn XmlWriter::graphic(self : XmlWriter) -> @graphics.Graphic {
@@ -38,7 +50,7 @@ fn paint_attributes(
 fn drawing_style_attributes(
   style : @graphics.DrawingStyle,
 ) -> Array[(String, String)] {
-  [
+  let attributes = [
     ..paint_attributes("fill", style.fill),
     ..paint_attributes("stroke", style.stroke),
     ..style.stroke_width.map_or([], width => {
@@ -57,6 +69,11 @@ fn drawing_style_attributes(
       ]
     }),
   ]
+  if style.inline {
+    [("style", attributes.map(pair => "\{pair.0}:\{pair.1}").join(";"))]
+  } else {
+    attributes
+  }
 }
 
 ///|
@@ -106,21 +123,27 @@ fn XmlWriter::draw_command(
   command : @graphics.DrawCommand,
 ) -> Unit {
   match command {
+    BeginScale(scale) =>
+      self.open("g", attributes=[("transform", "scale(\{scale})")])
     BeginGroup(metadata) =>
       self.open("g", attributes=metadata_attributes(metadata))
     EndGroup => self.close()
     BeginLink(url) => self.open("a", attributes=[("href", url)])
+    BeginLinkWithTarget(url, target) =>
+      self.open("a", attributes=[("href", url), ("target", target)])
     EndLink => self.close()
+    Annotation(metadata) =>
+      self.empty("metadata", attributes=metadata_attributes(metadata))
     Draw(shape, style, translation, metadata) => {
       let attributes = [
         ..match shape {
-          StyledTextBlock(_, font) =>
-            [
-              ..font.font_size.map_or([], size => {
-                [("font-size", size.to_string())]
-              }),
-              ..font.font_family.map_or([], family => [("font-family", family)]),
-            ]
+          StyledTextBlock(_, font) => text_style_attributes(font)
+          StyledText(_, font) =>
+            text_style_attributes({
+              ..font,
+              font_size: None,
+              font_family: None,
+            })
           _ => []
         },
         ..drawing_style_attributes(style),
@@ -131,6 +154,23 @@ fn XmlWriter::draw_command(
         },
       ]
       match shape {
+        ToggleArea(origin~, width~, height~, label~, expanded~) =>
+          self.empty(
+            "rect",
+            attributes=[
+              ("x", (origin.x + translation.x).to_string()),
+              ("y", (origin.y + translation.y).to_string()),
+              ("width", width.to_string()),
+              ("height", height.to_string()),
+              ("role", "button"),
+              ("tabindex", "0"),
+              ("aria-label", label),
+              ("aria-expanded", expanded.to_string()),
+              ("fill", "transparent"),
+              ("style", "stroke:none;cursor:pointer;outline:none"),
+              ..attributes,
+            ],
+          )
         Circle(center~, radius~) =>
           self.empty(
             "circle",
@@ -223,7 +263,18 @@ fn XmlWriter::draw_command(
           }
           self.close()
         }
-        Text(run) =>
+        Text(run) | StyledText(run, _) => {
+          let run = if shape is StyledText(_, font) {
+            {
+              ..run,
+              font_size: font.font_size.unwrap_or(run.font_size),
+              font_family: font.font_family.map_or(run.font_family, family => {
+                Some(family)
+              }),
+            }
+          } else {
+            run
+          }
           self.text(
             "text",
             run.text,
@@ -245,6 +296,7 @@ fn XmlWriter::draw_command(
               ..attributes,
             ],
           )
+        }
       }
     }
   }

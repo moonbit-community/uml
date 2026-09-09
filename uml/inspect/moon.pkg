@@ -3,7 +3,6 @@ import {
   "moonbitlang/core/test",
   "kokic/uml/parser",
   "kokic/uml/render",
-  "kokic/uml/style",
   "kokic/metrics",
 } for "wbtest"
 

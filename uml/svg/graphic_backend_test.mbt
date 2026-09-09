@@ -90,7 +90,19 @@ test "link and metadata values cannot inject XML elements or attributes" {
       class_name: Some(value),
       data: [("code", value)],
     },
-    graphic => graphic.link(value, link => link.draw(Path([]))),
+    graphic => {
+      graphic.link(
+        value,
+        link => {
+          link.draw(Path([]))
+          link.annotate({
+            ..@graphics.Metadata::default(),
+            data: [("page", value)],
+          })
+        },
+        target=value,
+      )
+    },
   )
   let xml = writer.to_string()
   @test.assert_eq(
@@ -103,6 +115,14 @@ test "link and metadata values cannot inject XML elements or attributes" {
   )
   @test.assert_eq(
     attribute(xml, "href"),
+    Some(@svg.xml_escape_attribute(value)),
+  )
+  @test.assert_eq(
+    attribute(xml, "target"),
+    Some(@svg.xml_escape_attribute(value)),
+  )
+  @test.assert_eq(
+    attribute(xml, "data-page"),
     Some(@svg.xml_escape_attribute(value)),
   )
   @test.assert_eq(xml.contains("<script>"), false)
@@ -201,4 +221,107 @@ test "styled multiline blocks supply fonts without changing inherited blocks" {
     attribute(styled.to_string(), "textLength"),
     attribute(inherited.to_string(), "textLength"),
   )
+}
+
+///|
+test "toggle areas preserve geometry state and escaped accessibility data" {
+  let metrics = @metrics.FontMetrics::from_defaults()
+  let origin = @graphics.Point::{
+    x: metrics.font_size.to_double(),
+    y: metrics.line_height.to_double(),
+  }
+  let label = "Toggle <member> & details"
+  for expanded in [true, false] {
+    let writer = @svg.XmlWriter::new()
+    writer
+    .graphic()
+    .draw(
+      ToggleArea(origin~, width=origin.x, height=origin.y, label~, expanded~),
+    )
+    let xml = writer.to_string()
+    @test.assert_eq(
+      attribute(xml, "aria-label"),
+      Some(@svg.xml_escape_attribute(label)),
+    )
+    @test.assert_eq(attribute(xml, "aria-expanded"), Some(expanded.to_string()))
+    @test.assert_eq(attribute(xml, "role"), Some("button"))
+    @test.assert_eq(attribute(xml, "x"), Some(origin.x.to_string()))
+    @test.assert_eq(attribute(xml, "y"), Some(origin.y.to_string()))
+    @test.assert_eq(attribute(xml, "width"), Some(origin.x.to_string()))
+    @test.assert_eq(attribute(xml, "height"), Some(origin.y.to_string()))
+  }
+}
+
+///|
+test "styled runs override font presentation without duplicating XML attributes" {
+  let metrics = @metrics.FontMetrics::from_defaults()
+  let size = metrics.font_size.to_double()
+  let font : @graphics.TextStyle = {
+    font_size: Some(size + size),
+    font_family: Some("serif"),
+    italic: Some(true),
+    weight: Some(700),
+  }
+  let run : @graphics.TextRun = {
+    text: "sample",
+    position: @graphics.Point::default(),
+    advance: Some(size),
+    anchor: Start,
+    font_size: size,
+    font_family: Some("sans-serif"),
+    strike: false,
+  }
+  let writer = @svg.XmlWriter::new()
+  writer.graphic().draw(StyledText(run, font))
+  let xml = writer.to_string()
+  @test.assert_eq(attribute(xml, "font-family"), font.font_family)
+  @test.assert_eq(
+    attribute(xml, "font-size"),
+    font.font_size.map(size => "\{size}px"),
+  )
+  @test.assert_eq(
+    attribute(xml, "font-weight"),
+    font.weight.map(weight => weight.to_string()),
+  )
+  @test.assert_eq(
+    attribute(xml, "textLength"),
+    run.advance.map(advance => advance.to_string()),
+  )
+  @test.assert_eq(xml.split(" font-size=").to_array().length(), 2)
+  @test.assert_eq(xml.split(" font-family=").to_array().length(), 2)
+}
+
+///|
+test "inline drawing styles retain explicit overrides and viewport keeps layout origin" {
+  let metrics = @metrics.FontMetrics::from_defaults()
+  let origin = @graphics.Point::{
+    x: -metrics.font_size.to_double(),
+    y: -metrics.line_height.to_double(),
+  }
+  let size = @graphics.Size::{
+    width: metrics.font_size.to_double(),
+    height: metrics.line_height.to_double(),
+  }
+  let document = @svg.SvgDocument::empty(
+    metrics.font_size,
+    metrics.line_height,
+    "diagram",
+    view_box=(origin, size),
+  )
+  let color = "navy"
+  document
+  .graphic()
+  .with_style({
+    ..@graphics.DrawingStyle::default(),
+    stroke: Color(color),
+    inline: true,
+  })
+  .draw(Path([]))
+  let xml = document.to_string()
+  @test.assert_eq(
+    attribute(xml, "viewBox"),
+    Some("\{origin.x} \{origin.y} \{size.width} \{size.height}"),
+  )
+  @test.assert_eq(attribute(xml, "stroke"), None)
+  @test.assert_eq(attribute(xml, "style"), Some("stroke:\{color}"))
 }

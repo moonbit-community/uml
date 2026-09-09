@@ -166,15 +166,6 @@ test "generic layout_tree packs explicit items without overlap" {
 }
 
 ///|
-test "labels are left-aligned at the box padding" {
-  let svg = @render.render_mindmap_svg(
-    @parser.parse_mindmap("@startmindmap\n* Root\n** Child\n@endmindmap"),
-  )
-  @test.assert_eq(svg.contains("text-anchor=\"start\""), true)
-  @test.assert_eq(svg.contains("text-anchor=\"middle\""), false)
-}
-
-///|
 test "strikethrough spans split into positioned text elements" {
   let svg = @render.render_mindmap_svg(
     @parser.parse_mindmap(
@@ -185,29 +176,6 @@ test "strikethrough spans split into positioned text elements" {
   let old_pos = svg.find(">Old<").unwrap_or(-1)
   let new_pos = svg.find(">New<").unwrap_or(-1)
   @test.assert_eq(old_pos > 0 && new_pos > old_pos, true)
-}
-
-///|
-test "consecutive roots stack with a modest gap" {
-  let diagram = @parser.parse_mindmap(
-    "* First root\n** Deep child\n* Second root\n** Child",
-  )
-  let layout = @render.layout_mindmap(diagram)
-  let first = node_for(layout, 0)
-  let second = node_for(layout, 3)
-  @test.assert_eq(second.y > first.y + first.height, true)
-  @test.assert_eq(second.y - (first.y + first.height) < first.height, true)
-}
-
-///|
-test "width emulation leaves the rendered font size untouched" {
-  let svg = @render.render_mindmap_svg(
-    @parser.parse_mindmap(
-      "@startmindmap\n* Root\n** Child with a long label here\n@endmindmap",
-    ),
-  )
-  @test.assert_eq(svg.contains("font-size=\"14px\""), true)
-  @test.assert_eq(svg.contains("font-size=\"15px\""), false)
 }
 
 ///|

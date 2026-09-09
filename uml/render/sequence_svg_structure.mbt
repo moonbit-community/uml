@@ -33,76 +33,111 @@ fn GroupSpan::comment_text(self : GroupSpan) -> String? {
 }
 
 ///|
-fn append_groups(output : StringBuilder, layout : DiagramLayout) -> Unit {
+fn append_groups(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
   for group in layout.groups {
     let (x, width) = layout.group_bounds(group)
     let height = (group.end_y - group.start_y).max(1)
-    output <+
-      $|<g class="group" data-keyword="\{group.keyword.label()}">
-    if !group.parallel {
-      let body_fill = group.color.map_or("none", _ => {
-        svg_color(group.color, layout.defaults)
-      })
-      output <+
-        $|<rect x="\{x}" y="\{group.start_y}" width="\{width}" height="\{height}" class="group-body" fill="\{body_fill}"/>
-    }
-    for branch_index, branch in group.branches {
-      match branch.color {
-        Some(color) => {
-          let branch_height = (branch.end_y - branch.start_y).max(1)
-          output <+
-            $|<rect x="\{x}" y="\{branch.start_y}" width="\{width}" height="\{branch_height}" class="group-branch" fill="\{svg_color(Some(color), layout.defaults)}"/>
+    output.group(
+      {
+        ..Default::default(),
+        class_name: Some("group"),
+        data: [("keyword", group.keyword.label())],
+      },
+      output => {
+        if !group.parallel {
+          let body_fill = group.color.map_or(@graphics.Paint::None, color => {
+            Color(svg_color(Some(color), layout.defaults))
+          })
+          output.draw(
+            Rectangle(
+              origin=sequence_point(x, group.start_y),
+              width=width.to_double(),
+              height=height.to_double(),
+              rx=None,
+              ry=None,
+            ),
+            class_name="group-body",
+            fill=body_fill,
+          )
         }
-        None => ()
-      }
-      if branch_index > 0 {
-        append_line(
-          output,
-          x,
-          branch.start_y,
-          x + width,
-          branch.start_y,
-          "group-separator",
-        )
-        if branch.label is Some(label) {
+        for branch_index, branch in group.branches {
+          if branch.color is Some(color) {
+            let branch_height = (branch.end_y - branch.start_y).max(1)
+            output.draw(
+              Rectangle(
+                origin=sequence_point(x, branch.start_y),
+                width=width.to_double(),
+                height=branch_height.to_double(),
+                rx=None,
+                ry=None,
+              ),
+              class_name="group-branch",
+              fill=Color(svg_color(Some(color), layout.defaults)),
+            )
+          }
+          if branch_index > 0 {
+            append_line(
+              output,
+              x,
+              branch.start_y,
+              x + width,
+              branch.start_y,
+              "group-separator",
+            )
+            if branch.label is Some(label) {
+              append_text(
+                output,
+                x + 8,
+                branch.start_y + 12,
+                "[\{label}]",
+                "group-label",
+                layout.defaults,
+                anchor=Start,
+                line_height=layout.text_metrics.body_bold.line_height,
+                font_metrics=Some(layout.text_metrics.body_bold),
+              )
+            }
+          }
+        }
+        if !group.parallel {
+          let header = group.header_text()
+          let comment = group.comment_text()
+          let label = comment.map_or(header, value => "\{header} [\{value}]")
+          let header_width = (TextSize::of_with(
+            label,
+            layout.text_metrics.body_bold,
+          ).width +
+          38).max(54)
+          let header_right = x + header_width
+          let header_bottom = group.start_y + 22
+          output.draw(
+            Path([
+              MoveTo(sequence_point(x, group.start_y)),
+              LineTo(sequence_point(header_right, group.start_y)),
+              LineTo(sequence_point(header_right, header_bottom)),
+              LineTo(sequence_point(header_right - 8, header_bottom)),
+              LineTo(sequence_point(header_right - 13, header_bottom + 5)),
+              LineTo(sequence_point(header_right - 18, header_bottom)),
+              LineTo(sequence_point(x, header_bottom)),
+              Close,
+            ]),
+            class_name="group-header",
+            fill=Color(svg_color(group.header_color, layout.defaults)),
+          )
           append_text(
             output,
             x + 8,
-            branch.start_y + 12,
-            "[\{label}]",
+            group.start_y + 16,
+            label,
             "group-label",
             layout.defaults,
-            anchor="start",
+            anchor=Start,
             line_height=layout.text_metrics.body_bold.line_height,
             font_metrics=Some(layout.text_metrics.body_bold),
           )
         }
-      }
-    }
-    if !group.parallel {
-      let header = group.header_text()
-      let comment = group.comment_text()
-      let label = comment.map_or(header, value => "\{header} [\{value}]")
-      let header_width = (TextSize::of_with(
-        label,
-        layout.text_metrics.body_bold,
-      ).width +
-      38).max(54)
-      output <+
-        $|<path d="M\{x} \{group.start_y}h\{header_width}v22h-8l-5 5-5-5h-\{header_width - 18}z" class="group-header" fill="\{svg_color(group.header_color, layout.defaults)}"/>
-      append_text(
-        output,
-        x + 8,
-        group.start_y + 16,
-        label,
-        "group-label",
-        layout.defaults,
-        anchor="start",
-        line_height=layout.text_metrics.body_bold.line_height,
-        font_metrics=Some(layout.text_metrics.body_bold),
-      )
-    }
-    output.write_string("</g>\n")
+      },
+    )
   }
 }
 
@@ -123,7 +158,7 @@ fn delay_ranges(
 
 ///|
 fn append_lifelines(
-  output : StringBuilder,
+  output : SequenceDrawing,
   layout : DiagramLayout,
   events : Array[@seq.Event],
 ) -> Unit {
@@ -161,7 +196,7 @@ fn append_lifelines(
 }
 
 ///|
-fn append_activations(output : StringBuilder, layout : DiagramLayout) -> Unit {
+fn append_activations(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
   for activation in layout.activations {
     guard layout.participant_at(activation.participant_code)
       is Some(participant) else {
@@ -170,8 +205,17 @@ fn append_activations(output : StringBuilder, layout : DiagramLayout) -> Unit {
     let width = 10
     let x = participant.center_x - width / 2 + activation.depth * 8
     let height = (activation.end_y - activation.start_y).max(12)
-    output <+
-      $|<rect x="\{x}" y="\{activation.start_y}" width="\{width}" height="\{height}" class="activation" fill="\{activation_color(activation.color, layout.defaults)}"/>
+    output.draw(
+      Rectangle(
+        origin=sequence_point(x, activation.start_y),
+        width=width.to_double(),
+        height=height.to_double(),
+        rx=None,
+        ry=None,
+      ),
+      class_name="activation",
+      fill=Color(activation_color(activation.color, layout.defaults)),
+    )
   }
 }
 

@@ -63,14 +63,15 @@ fn @entity.Member::member_text_x(self : @entity.Member) -> Int {
 }
 
 ///|
-fn @entity.Member::visibility_icon(
+fn @entity.Member::draw_visibility_icon(
   self : @entity.Member,
+  graphic : @graphics.Graphic,
   x : Int,
   baseline_y : Int,
   defaults : @style.EntityColors,
-) -> String {
+) -> Unit {
   if self.visibility is Unknown {
-    return ""
+    return
   }
   let (color, method_fill) = match self.visibility {
     Public =>
@@ -83,19 +84,47 @@ fn @entity.Member::visibility_icon(
       (defaults.visibility_package_stroke, defaults.visibility_package_fill)
     Unknown => (defaults.text, defaults.visibility_public_fill)
   }
-  let fill = if self.is_method { method_fill } else { "none" }
-  let center_y = baseline_y - 4
-  match self.visibility {
-    Public =>
-      "<circle cx=\"\{x + 5}\" cy=\"\{center_y}\" r=\"3\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
-    Private =>
-      "<rect x=\"\{x + 2}\" y=\"\{center_y - 3}\" width=\"6\" height=\"6\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
-    Protected =>
-      "<path d=\"M \{x + 5} \{center_y - 4} L \{x + 9} \{center_y} L \{x + 5} \{center_y + 4} L \{x + 1} \{center_y} Z\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
-    @entity.Package =>
-      "<path d=\"M \{x + 5} \{center_y - 3} L \{x + 9} \{center_y + 3} L \{x + 1} \{center_y + 3} Z\" fill=\"\{fill}\" stroke=\"\{color}\" stroke-width=\"1\"/>"
-    Unknown => ""
+  let fill : @graphics.Paint = if self.is_method {
+    Color(method_fill)
+  } else {
+    None
   }
+  let center_y = baseline_y - 4
+  let shape : @graphics.Shape = match self.visibility {
+    Public => Circle(center=class_point(x + 5, center_y), radius=3)
+    Private =>
+      Rectangle(
+        origin=class_point(x + 2, center_y - 3),
+        width=6,
+        height=6,
+        rx=None,
+        ry=None,
+      )
+    Protected =>
+      Path([
+        MoveTo(class_point(x + 5, center_y - 4)),
+        LineTo(class_point(x + 9, center_y)),
+        LineTo(class_point(x + 5, center_y + 4)),
+        LineTo(class_point(x + 1, center_y)),
+        Close,
+      ])
+    @entity.Package =>
+      Path([
+        MoveTo(class_point(x + 5, center_y - 3)),
+        LineTo(class_point(x + 9, center_y + 3)),
+        LineTo(class_point(x + 1, center_y + 3)),
+        Close,
+      ])
+    Unknown => return
+  }
+  graphic
+  .with_style({
+    ..Default::default(),
+    fill,
+    stroke: Color(color),
+    stroke_width: Some(1),
+  })
+  .draw(shape)
 }
 
 ///|

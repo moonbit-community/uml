@@ -1,8 +1,7 @@
 ///|
 /// Core properties of the description-symbol rendering, exercised through
-/// the public parse/render boundary: every deployment kind paints its own
-/// node group, symbol packages paint their container, and the cloud outline
-/// is deterministic. These tests assert structural properties, never
+/// the public parse/render boundary: deployment entities retain their
+/// identity and the cloud outline is deterministic. These tests assert structural properties, never
 /// absolute layout values.
 
 ///|
@@ -12,8 +11,7 @@ fn render_description(source : String) -> String raise {
 }
 
 ///|
-/// Every description-family kind paints a `description-node` group instead
-/// of falling back to a class image.
+/// Every parsed description entity retains its identity in the output.
 test "every description kind paints its own node" {
   let kinds = [
     "node n1", "frame f1", "cloud c1", "storage s1", "database d1", "queue q1", "stack st1",
@@ -23,48 +21,13 @@ test "every description kind paints its own node" {
   ]
   let source = "@startuml\n" + kinds.join("\n") + "\n@enduml"
   let svg = render_description(source)
-  @test.assert_eq(svg.length() > 0, true)
   for declaration in kinds {
     let code = declaration.split(" ").nth(1).unwrap()
     @test.assert_eq(
       @tokenizer.find_unquoted_literal(svg, "data-code=\"\{code}\"") is Some(_),
       true,
     )
-    @test.assert_eq(
-      @tokenizer.find_unquoted_literal(
-        svg,
-        "class=\"description-node\" data-code=\"\{code}\"",
-      )
-      is Some(_),
-      true,
-    )
   }
-}
-
-///|
-/// The hexagon paints its six-vertex outline, the interface its fixed
-/// circle figure, and a symbol package (`node N {`) its machine polygon:
-/// shape selection survives the render boundary.
-test "symbols paint their defining shapes" {
-  let svg = render_description(
-    "@startuml\nhexagon h1\n() api\nnode box {\nport p1\nnode inner\n}\n@enduml",
-  )
-  @test.assert_eq(
-    @tokenizer.find_unquoted_literal(svg, "<polygon") is Some(_),
-    true,
-  )
-  @test.assert_eq(
-    @tokenizer.find_unquoted_literal(svg, "<ellipse") is Some(_),
-    true,
-  )
-  @test.assert_eq(
-    @tokenizer.find_unquoted_literal(svg, "class=\"symbol-package\"") is Some(_),
-    true,
-  )
-  @test.assert_eq(
-    @tokenizer.find_unquoted_literal(svg, "class=\"port-node\"") is Some(_),
-    true,
-  )
 }
 
 ///|

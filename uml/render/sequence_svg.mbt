@@ -1,7 +1,6 @@
 ///|
-fn append_svg_preamble(
-  output : StringBuilder,
-  layout : DiagramLayout,
+fn sequence_stylesheet(
+  document : @svg.SvgDocument,
   style : @style.DocumentStyle,
 ) -> Unit {
   let background = style.canvas_color()
@@ -15,25 +14,7 @@ fn append_svg_preamble(
   let defaults = style.defaults().sequence_colors()
   let border_width = @svg.standard_border_stroke_width()
   let emphasized_width = @svg.emphasized_stroke_width()
-  output.write_string(
-    @svg.svg_root_markup(
-      layout.width,
-      layout.height,
-      "0 0 \{layout.width} \{layout.height}",
-      "Sequence diagram",
-    ),
-  )
-  let defs =
-    $|<defs>
-    $|\{@svg.arrow_marker_markup("arrow", marker_width=7.0, marker_height=7.0, path_class="arrow-fill")}
-    $|<marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" class="arrow-fill"/></marker>
-    $|<marker id="open-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10" class="arrow-open"/></marker>
-    $|<marker id="open-arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10" class="arrow-open"/></marker>
-    $|</defs>
-  output.write_string(defs)
-
   let svg_style =
-    $|<style>
     $|\{@svg.svg_style_rule(font_family, font_size, background)}
     $|.participant rect{stroke:\{line_color};stroke-width:0.5}
     $|.activation{stroke:\{line_color};stroke-width:1}
@@ -69,8 +50,7 @@ fn append_svg_preamble(
     $|.page-break{stroke:\{defaults.page_break};stroke-width:\{border_width};stroke-dasharray:\{@svg.page_break_dash_pattern()}}
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{fill:none;stroke:#A80036;stroke-width:2}
-    $|</style>
-  output.write_string(svg_style)
+  document.stylesheet(svg_style)
 }
 
 ///|
@@ -86,14 +66,22 @@ fn @seq.SequenceDiagram::render_svg(
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = self.layout()
-  let output = StringBuilder()
-  append_svg_preamble(output, layout, self.style)
-  output.write_string(
-    @svg.background_rect_markup(
-      layout.width,
-      layout.height,
-      self.style.canvas_color(),
+  let document = @svg.SvgDocument::empty(
+    layout.width,
+    layout.height,
+    "Sequence diagram",
+  )
+  let output = sequence_drawing(document)
+  sequence_stylesheet(document, self.style)
+  output.draw(
+    Rectangle(
+      origin=sequence_point(0, 0),
+      width=layout.width.to_double(),
+      height=layout.height.to_double(),
+      rx=None,
+      ry=None,
     ),
+    fill=Color(self.style.canvas_color()),
   )
   append_groups(output, layout)
   append_participant_boxes(output, layout)
@@ -134,22 +122,20 @@ fn @seq.SequenceDiagram::render_svg(
         if !last_carrier_is_message {
           note_suppress[index] = true
         }
-        match note.url {
-          Some(url) if last_carrier_is_message &&
-            !note_urls.contains(last_carrier_index) =>
+        if last_carrier_is_message && !note_urls.contains(last_carrier_index) {
+          if note.url is Some(url) {
             note_urls[last_carrier_index] = url
-          _ => ()
+          }
         }
       }
       @seq.Notes(notes) if notes[0].on_arrow => {
         if !last_carrier_is_message {
           note_suppress[index] = true
         }
-        match notes[0].url {
-          Some(url) if last_carrier_is_message &&
-            !note_urls.contains(last_carrier_index) =>
+        if last_carrier_is_message && !note_urls.contains(last_carrier_index) {
+          if notes[0].url is Some(url) {
             note_urls[last_carrier_index] = url
-          _ => ()
+          }
         }
       }
       _ => ()
@@ -174,8 +160,7 @@ fn @seq.SequenceDiagram::render_svg(
   if self.show_footbox {
     append_footboxes(output, layout)
   }
-  output.write_string(@svg.svg_close_markup())
-  output.to_string()
+  document.to_string()
 }
 
 ///|

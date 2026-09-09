@@ -106,25 +106,38 @@ fn clamp_double(value : Double, lower : Double, upper : Double) -> Double {
 }
 
 ///|
-fn normal_note_path(note : @graphviz.GraphvizNote) -> String {
+fn normal_note_path(
+  note : @graphviz.GraphvizNote,
+) -> Array[@graphics.PathSegment] {
   let x = note.x - note.width / 2.0
   let y = note.y - note.height / 2.0
   let right = x + note.width
   let bottom = y + note.height
-  (
-    $|M \{x} \{y} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
-  )
+  [
+    MoveTo({ x, y, }),
+    LineTo({ x, y: bottom, }),
+    LineTo({ x: right, y: bottom, }),
+    LineTo({ x: right, y: y + NOTE_CORNER_SIZE, }),
+    LineTo({ x: right - NOTE_CORNER_SIZE, y, }),
+    Close,
+  ]
 }
 
 ///|
 /// Mirrors `Opale.getCorner` for PlantUML's default zero-rounding geometry.
-fn note_corner_path(note : @graphviz.GraphvizNote) -> String {
+fn note_corner_path(
+  note : @graphviz.GraphvizNote,
+) -> Array[@graphics.PathSegment] {
   let x = note.x - note.width / 2.0
   let y = note.y - note.height / 2.0
   let right = x + note.width
-  (
-    $|M \{right - NOTE_CORNER_SIZE} \{y} L \{right - NOTE_CORNER_SIZE} \{y + NOTE_CORNER_SIZE} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
-  )
+  [
+    MoveTo({ x: right - NOTE_CORNER_SIZE, y, }),
+    LineTo({ x: right - NOTE_CORNER_SIZE, y: y + NOTE_CORNER_SIZE, }),
+    LineTo({ x: right, y: y + NOTE_CORNER_SIZE, }),
+    LineTo({ x: right - NOTE_CORNER_SIZE, y, }),
+    Close,
+  ]
 }
 
 ///|
@@ -133,7 +146,7 @@ fn note_corner_path(note : @graphviz.GraphvizNote) -> String {
 fn opale_note_path(
   note : @graphviz.GraphvizNote,
   attachment : NoteOpaleAttachment,
-) -> String {
+) -> Array[@graphics.PathSegment] {
   let x = note.x - note.width / 2.0
   let y = note.y - note.height / 2.0
   let right = x + note.width
@@ -146,9 +159,17 @@ fn opale_note_path(
         y,
         bottom - 2.0 * NOTE_POINTER_DELTA,
       )
-      (
-        $|M \{x} \{y} L \{x} \{base} L \{tip.0} \{tip.1} L \{x} \{base + 2.0 * NOTE_POINTER_DELTA} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
-      )
+      [
+        MoveTo({ x, y, }),
+        LineTo({ x, y: base, }),
+        LineTo({ x: tip.0, y: tip.1, }),
+        LineTo({ x, y: base + 2.0 * NOTE_POINTER_DELTA, }),
+        LineTo({ x, y: bottom, }),
+        LineTo({ x: right, y: bottom, }),
+        LineTo({ x: right, y: y + NOTE_CORNER_SIZE, }),
+        LineTo({ x: right - NOTE_CORNER_SIZE, y, }),
+        Close,
+      ]
     }
     OpaleRight => {
       let base = clamp_double(
@@ -156,9 +177,17 @@ fn opale_note_path(
         y + NOTE_CORNER_SIZE,
         bottom - 2.0 * NOTE_POINTER_DELTA,
       )
-      (
-        $|M \{x} \{y} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{base + 2.0 * NOTE_POINTER_DELTA} L \{tip.0} \{tip.1} L \{right} \{base} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
-      )
+      [
+        MoveTo({ x, y, }),
+        LineTo({ x, y: bottom, }),
+        LineTo({ x: right, y: bottom, }),
+        LineTo({ x: right, y: base + 2.0 * NOTE_POINTER_DELTA, }),
+        LineTo({ x: tip.0, y: tip.1, }),
+        LineTo({ x: right, y: base, }),
+        LineTo({ x: right, y: y + NOTE_CORNER_SIZE, }),
+        LineTo({ x: right - NOTE_CORNER_SIZE, y, }),
+        Close,
+      ]
     }
     OpaleUp => {
       let base = clamp_double(
@@ -166,9 +195,17 @@ fn opale_note_path(
         x,
         right - NOTE_CORNER_SIZE,
       )
-      (
-        $|M \{x} \{y} L \{x} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} L \{base + 2.0 * NOTE_POINTER_DELTA} \{y} L \{tip.0} \{tip.1} L \{base} \{y} Z
-      )
+      [
+        MoveTo({ x, y, }),
+        LineTo({ x, y: bottom, }),
+        LineTo({ x: right, y: bottom, }),
+        LineTo({ x: right, y: y + NOTE_CORNER_SIZE, }),
+        LineTo({ x: right - NOTE_CORNER_SIZE, y, }),
+        LineTo({ x: base + 2.0 * NOTE_POINTER_DELTA, y, }),
+        LineTo({ x: tip.0, y: tip.1, }),
+        LineTo({ x: base, y, }),
+        Close,
+      ]
     }
     OpaleDown => {
       let base = clamp_double(
@@ -176,9 +213,17 @@ fn opale_note_path(
         x,
         right,
       )
-      (
-        $|M \{x} \{y} L \{x} \{bottom} L \{base} \{bottom} L \{tip.0} \{tip.1} L \{base + 2.0 * NOTE_POINTER_DELTA} \{bottom} L \{right} \{bottom} L \{right} \{y + NOTE_CORNER_SIZE} L \{right - NOTE_CORNER_SIZE} \{y} Z
-      )
+      [
+        MoveTo({ x, y, }),
+        LineTo({ x, y: bottom, }),
+        LineTo({ x: base, y: bottom, }),
+        LineTo({ x: tip.0, y: tip.1, }),
+        LineTo({ x: base + 2.0 * NOTE_POINTER_DELTA, y: bottom, }),
+        LineTo({ x: right, y: bottom, }),
+        LineTo({ x: right, y: y + NOTE_CORNER_SIZE, }),
+        LineTo({ x: right - NOTE_CORNER_SIZE, y, }),
+        Close,
+      ]
     }
   }
 }
@@ -238,8 +283,8 @@ fn fallback_note_layouts(
 }
 
 ///|
-fn append_notes(
-  output : StringBuilder,
+fn draw_entity_notes(
+  output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,
@@ -259,7 +304,7 @@ fn append_notes(
     )
     let mut path = normal_note_path(note_layout)
     let corner_path = note_corner_path(note_layout)
-    let mut path_class = ""
+    let mut path_class : String? = None
     if note.target_kind is @entity.NoteTargetKind::EntityNote ||
       note.target_kind is MemberTip {
       match layout.graphviz {
@@ -278,7 +323,7 @@ fn append_notes(
                     ) {
                     Some(attachment) => {
                       path = opale_note_path(note_layout, attachment)
-                      path_class = " class=\"note-opale-link\""
+                      path_class = Some("note-opale-link")
                     }
                     None => ()
                   }
@@ -290,23 +335,43 @@ fn append_notes(
         None => ()
       }
     }
-    output <+
-      $|<g class="class-note" style="stroke:\{@entity.note_border_color(diagram.style)}"><path d="\{path}"\{path_class} fill="\{fill}"/><path d="\{corner_path}" fill="\{fill}"/></g>
+    output.group({ ..Default::default(), class_name: Some("class-note"), }, graphic => {
+      graphic
+      .with_style({
+        ..Default::default(),
+        fill: Color(fill),
+        stroke: Color(@entity.note_border_color(diagram.style)),
+      })
+      .draw(Path(path), metadata={
+        ..Default::default(),
+        class_name: path_class,
+      })
+      graphic
+      .with_style({
+        ..Default::default(),
+        fill: Color(fill),
+        stroke: Color(@entity.note_border_color(diagram.style)),
+      })
+      .draw(Path(corner_path))
+    })
     for line_index, line in note.text.split("\n") {
       let line_text = line.to_owned()
-      output.write_string(
-        @svg.text_markup(
-          x + NOTE_LEFT_PADDING.to_double(),
-          y +
-          NOTE_VERTICAL_PADDING.to_double() +
-          text_metrics.note.ascent.to_double() +
-          line_index.to_double() * text_metrics.note.line_height.to_double(),
-          line_text,
-          [("class", "note-text")],
-          text_metrics.note,
+      output.draw(
+        Text(
+          entity_text_run(
+            line_text,
+            {
+              x: x + NOTE_LEFT_PADDING.to_double(),
+              y: y +
+              NOTE_VERTICAL_PADDING.to_double() +
+              text_metrics.note.ascent.to_double() +
+              line_index.to_double() * text_metrics.note.line_height.to_double(),
+            },
+            text_metrics.note,
+          ),
         ),
+        metadata={ ..Default::default(), class_name: Some("note-text"), },
       )
-      output.write_char('\n')
     }
   }
 }

@@ -8,11 +8,11 @@ pub fn spline_path_data(points : Array[(Double, Double)]) -> String {
 ///|
 /// The shared PlantUML border width used by node, relation, endpoint, and
 /// reference outlines across diagram families.
-const STANDARD_BORDER_STROKE_WIDTH : String = "1.2"
+pub const STANDARD_BORDER_WIDTH : Double = 1.2
 
 ///|
 pub fn standard_border_stroke_width() -> String {
-  STANDARD_BORDER_STROKE_WIDTH
+  STANDARD_BORDER_WIDTH.to_string()
 }
 
 ///|
@@ -140,7 +140,7 @@ pub fn line_style_attributes_markup(line_style : String?) -> String {
 /// stroke width (empty means no stroke attribute).
 pub fn stroke_style(
   line_style : String?,
-  default_width? : String = STANDARD_BORDER_STROKE_WIDTH,
+  default_width? : String = STANDARD_BORDER_WIDTH.to_string(),
 ) -> String {
   match line_style_attributes(line_style) {
     [(name, value)] => "\{name}:\{value}"

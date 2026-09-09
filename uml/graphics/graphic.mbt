@@ -21,6 +21,8 @@ pub(all) struct DrawingStyle {
   stroke : Paint
   stroke_width : Double?
   dash : Array[Double]?
+  /// Explicit inline styles override document CSS, like PlantUML skin overrides.
+  inline : Bool
 } derive(Eq, Debug, Default)
 
 ///|
@@ -38,9 +40,12 @@ pub(all) struct Metadata {
 pub(all) enum DrawCommand {
   Draw(Shape, DrawingStyle, Point, Metadata)
   BeginGroup(Metadata)
+  BeginScale(Double)
   EndGroup
   BeginLink(String)
+  BeginLinkWithTarget(String, String)
   EndLink
+  Annotation(Metadata)
 } derive(Eq, Debug)
 
 ///|
@@ -127,8 +132,29 @@ pub fn Graphic::link(
   self : Graphic,
   url : String,
   draw : (Graphic) -> Unit,
+  target? : String,
 ) -> Unit {
-  (self.emit)(BeginLink(url))
+  (self.emit)(
+    target.map_or(BeginLink(url), target => BeginLinkWithTarget(url, target)),
+  )
   draw(self)
   (self.emit)(EndLink)
+}
+
+///|
+/// Attach nonvisual document data at the current drawing position.
+pub fn Graphic::annotate(self : Graphic, metadata : Metadata) -> Unit {
+  (self.emit)(Annotation(metadata.snapshot()))
+}
+
+///|
+/// Scale a complete drawing scope, including text and stroke widths.
+pub fn Graphic::scale_group(
+  self : Graphic,
+  scale : Double,
+  draw : (Graphic) -> Unit,
+) -> Unit {
+  (self.emit)(BeginScale(scale))
+  draw(self)
+  (self.emit)(EndGroup)
 }

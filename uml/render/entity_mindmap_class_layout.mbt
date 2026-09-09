@@ -129,31 +129,25 @@ fn @entity.EntityDiagram::mindmap_class_layout(
 
 ///|
 /// Paint the packed parent-child curves from the current layout.
-fn append_mindmap_structure_edges(
-  output : StringBuilder,
+fn draw_mindmap_structure_edges(
+  output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
   layout : ClassLayout,
 ) -> Unit {
-  match layout.mindmap {
-    Some(mindmap) => {
-      let color = diagram.style.diagram_line_color()
-      let background = diagram.style.canvas_color()
-      for edge in mindmap.structure_edges {
-        append_mindmap_class_edge(output, edge, color, background, "", "")
-      }
-    }
-    None => ()
+  guard layout.mindmap is Some(mindmap) else { return }
+  let color = diagram.style.diagram_line_color()
+  let background = diagram.style.canvas_color()
+  for edge in mindmap.structure_edges {
+    draw_mindmap_class_edge(output, edge, color, background)
   }
 }
 
 ///|
-fn append_mindmap_class_edge(
-  output : StringBuilder,
+fn draw_mindmap_class_edge(
+  output : @graphics.Graphic,
   edge : MindmapClassEdge,
   relation_color : String,
   background_color : String,
-  line_attributes : String,
-  dash : String,
 ) -> Unit {
   let path : Array[(Double, Double)] = [
     (edge.x1.to_double(), edge.y1.to_double()),
@@ -166,12 +160,17 @@ fn append_mindmap_class_edge(
     edge.parent_end.decoration_length(),
     edge.child_end.decoration_length(),
   ).pairs()
-  output <+
-    $|<path d="
-  output.write_string(@svg.spline_path_data(visible_path))
-  output <+
-    $|" class="relation" style="stroke:\{relation_color};\{line_attributes}"\{dash}/>
-  append_relation_decoration(
+  output
+  .with_style({
+    ..Default::default(),
+    stroke: Color(relation_color),
+    inline: true,
+  })
+  .draw(Path(@graphics.spline_segments(visible_path)), metadata={
+    ..Default::default(),
+    class_name: Some("relation"),
+  })
+  draw_relation_decoration(
     output,
     edge.parent_end,
     path[0],
@@ -180,7 +179,7 @@ fn append_mindmap_class_edge(
     background_color,
   )
   let last_point = path.length() - 1
-  append_relation_decoration(
+  draw_relation_decoration(
     output,
     edge.child_end,
     path[last_point],

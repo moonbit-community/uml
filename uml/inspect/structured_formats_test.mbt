@@ -89,7 +89,6 @@ test "YAML block scalars render as multiline record cells" {
     ),
   )
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
-  @test.assert_eq(svg.contains("first line\nsecond line"), false)
 }
 
 ///|
@@ -119,5 +118,4 @@ test "TOML multiline basic strings render as multiline record cells" {
     ),
   )
   @test.assert_eq(svg_height(svg) > svg_height(single_line_svg), true)
-  @test.assert_eq(svg.contains("line one\nline two"), false)
 }

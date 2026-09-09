@@ -25,27 +25,30 @@ fn note_color(
 
 ///|
 fn append_line(
-  output : StringBuilder,
+  output : SequenceDrawing,
   x1 : Int,
   y1 : Int,
   x2 : Int,
   y2 : Int,
   class_name : String,
-  fill? : String = "none",
+  fill? : @graphics.Paint = None,
 ) -> Unit {
-  output <+
-    $|<line x1="\{x1}" y1="\{y1}" x2="\{x2}" y2="\{y2}" fill="\{fill}" class="\{class_name}"/>
+  output.draw(
+    Line(sequence_point(x1, y1), sequence_point(x2, y2)),
+    class_name~,
+    fill~,
+  )
 }
 
 ///|
 fn append_text(
-  output : StringBuilder,
+  output : SequenceDrawing,
   x : Int,
   y : Int,
   text : String,
   class_name : String,
   defaults : @style.SequenceColors,
-  anchor? : String = "middle",
+  anchor? : @graphics.TextAnchor = Middle,
   line_height? : Int = 15,
   font_metrics? : @metrics.FontMetrics? = None,
 ) -> Unit {
@@ -55,15 +58,20 @@ fn append_text(
       line_height~,
     ),
   )
-  @svg.append_text_markup(
-    output,
-    x.to_double(),
-    y.to_double(),
-    text,
-    [("text-anchor", anchor), ("fill", defaults.text), ("class", class_name)],
-    line_height=line_height.to_double(),
-    anchor=Baseline,
-    text_metrics=Some(text_metrics),
+  output.draw(
+    TextBlock(
+      @svg.layout_multiline_text(
+        x.to_double(),
+        y.to_double(),
+        text,
+        line_height=line_height.to_double(),
+        anchor=Baseline,
+        text_anchor=anchor,
+        text_metrics=Some(text_metrics),
+      ),
+    ),
+    class_name~,
+    fill=Color(defaults.text),
   )
 }
 

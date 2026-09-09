@@ -7,9 +7,6 @@ fn @entity.EntityDiagram::render_svg_with_mode(
 ) -> String raise @dot_layout.DotLayoutError {
   let family_capability = self.family.capability()
   let usecase = family_capability.usecase_relation_style
-  let background = self.style.canvas_color()
-  let font_family = self.style.font_family()
-  let font_size = self.style.font_size()
   let line_color = self.style.diagram_line_color()
   let text_color = self.style.diagram_text_color()
   let text_metrics = {
@@ -66,114 +63,96 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   let view_box_y = bounds.min_y -
     SVG_MARGIN_TOP.to_double() -
     top_height.to_double()
-  let output = StringBuilder()
   let border_width = @svg.standard_border_stroke_width()
   let scale = diagram_scale(self.style)
   let scaled_width = (output_width.to_double() * scale).ceil().to_int()
   let scaled_height = (output_height.to_double() * scale).ceil().to_int()
-  output.write_string(
-    @svg.svg_root_markup(
-      scaled_width,
-      scaled_height,
-      "\{view_box_x} \{view_box_y} \{output_width} \{output_height}",
-      family_capability.aria_label,
+  let document = @svg.SvgDocument::empty(
+    scaled_width,
+    scaled_height,
+    family_capability.aria_label,
+    view_box=(
+      { x: view_box_x, y: view_box_y, },
+      { width: output_width.to_double(), height: output_height.to_double(), },
     ),
   )
-  if scale != 1.0 {
-    output <+
-      $|<g transform="scale(\{scale})">
+  document.stylesheet(entity_stylesheet(self.style, usecase))
+  if self.entities.any(entity => {
+      let renderer = entity.render_capability(self.family).renderer
+      renderer is ObjectRenderer ||
+      renderer is MapRenderer ||
+      renderer is JsonRenderer
+    }) {
+    document.stylesheet(
+      (
+        $|.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{border_width}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}
+      ),
+    )
   }
-  append_chrome_stack(
-    output,
-    top_blocks,
-    output_width.to_double(),
-    view_box_y,
-    text_color,
-  )
-  let relations_style =
-    $|<style>
-    $|\{@svg.svg_style_rule(font_family, font_size, background)}
-    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{border_width}}
-    $|.relation{stroke:\{line_color};stroke-width:\{border_width}}
-    $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
-    $|.class-node > line,.relation{fill:none}
-    $|.class-title{fill:\{text_color}}
-    $|.class-stereotype{font-style:italic}
-    $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
-    $|.usecase-title{fill:\{text_color};text-anchor:middle}
-    $|.usecase-stereotype{text-anchor:middle;font-style:italic}
-    $|.member{fill:\{text_color}}
-    $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
-    $|</style>
-  output.write_string(relations_style)
-  let has_object_image = self.entities.any(entity => {
-    let renderer = entity.render_capability(self.family).renderer
-    renderer is ObjectRenderer ||
-    renderer is MapRenderer ||
-    renderer is JsonRenderer
-  })
-  if has_object_image {
-    let object_style =
-      $|<style>.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{border_width}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}</style>
-    output.write_string(object_style)
-  }
-  let has_description_image = self.entities.any(entity => {
+  if self.entities.any(entity => {
       entity.render_capability(self.family).renderer is DescriptionRenderer
     }) ||
-    self.packages.any(group => group.symbol is Some(_))
-  if has_description_image {
-    let description_style =
-      $|<style>.description-node > polygon,.description-node > path,.description-node > rect,.description-node > ellipse{stroke-width:\{border_width}}.description-title,.port-title{fill:\{text_color}}.description-stereotype{fill:\{text_color};font-style:italic}.symbol-package{font-weight:bold}.symbol-package > path,.symbol-package > rect,.symbol-package > polygon,.symbol-package > line{fill:none}</style>
-    output.write_string(description_style)
+    self.packages.any(group => group.symbol is Some(_)) {
+    document.stylesheet(
+      (
+        $|.description-node > polygon,.description-node > path,.description-node > rect,.description-node > ellipse{stroke-width:\{border_width}}.description-title,.port-title{fill:\{text_color}}.description-stereotype{fill:\{text_color};font-style:italic}.symbol-package{font-weight:bold}.symbol-package > path,.symbol-package > rect,.symbol-package > polygon,.symbol-package > line{fill:none}
+      ),
+    )
   }
-
-  let style_note =
-    $|<style>.package path,.package line{stroke:\{line_color};stroke-width:\{border_width}}.package-title{fill:\{text_color};font-weight:bold}.package-stereotype{fill:\{text_color};font-style:italic}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{border_width}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}</style>
-  output.write_string(style_note)
-  if family_capability.renders_packages {
-    append_packages(output, self, text_metrics, layout)
-  }
-  append_symbol_packages(output, self, text_metrics, layout)
-  match family_capability.paint_order {
-    EntitiesBeforeRelations => {
-      let ctx = { output, diagram: self, text_metrics, }
-      for index, entity in self.entities {
-        ctx.append_entity_image(entity, index, layout)
-      }
-      for relation_index, relation in self.relations {
-        append_relation(
-          output, self, relation_index, relation, text_metrics, layout,
-        )
-      }
-    }
-    RelationsBeforeEntities => {
-      let ctx = { output, diagram: self, text_metrics, }
-      append_mindmap_structure_edges(output, self, layout)
-      for relation_index, relation in self.relations {
-        append_relation(
-          output, self, relation_index, relation, text_metrics, layout,
-        )
-      }
-      for index, entity in self.entities {
-        ctx.append_entity_image(entity, index, layout)
-      }
-    }
-  }
-  if family_capability.renders_notes {
-    append_notes(output, self, text_metrics, layout)
-  }
-  append_chrome_stack(
-    output,
-    bottom_blocks,
-    output_width.to_double(),
-    bounds.max_y + SVG_MARGIN_BOTTOM.to_double(),
-    text_color,
+  document.stylesheet(
+    (
+      $|.package path,.package line{stroke:\{line_color};stroke-width:\{border_width}}.package-title{fill:\{text_color};font-weight:bold}.package-stereotype{fill:\{text_color};font-style:italic}.class-note rect,.class-note path{stroke:\{line_color};stroke-width:\{border_width}}.note-text{fill:\{text_color};font-size:\{NOTE_FONT_SIZE}px}
+    ),
   )
-  if scale != 1.0 {
-    output.write_string("</g>\n")
+  let paint = (output : @graphics.Graphic) => {
+    draw_chrome_stack(
+      output,
+      top_blocks,
+      output_width.to_double(),
+      view_box_y,
+      text_color,
+    )
+    if family_capability.renders_packages {
+      append_packages(output, self, text_metrics, layout)
+    }
+    append_symbol_packages(output, self, text_metrics, layout)
+    let ctx = { output, diagram: self, text_metrics, }
+    match family_capability.paint_order {
+      EntitiesBeforeRelations => {
+        for index, entity in self.entities {
+          ctx.append_entity_image(entity, index, layout)
+        }
+        for index, relation in self.relations {
+          append_relation(output, self, index, relation, text_metrics, layout)
+        }
+      }
+      RelationsBeforeEntities => {
+        draw_mindmap_structure_edges(output, self, layout)
+        for index, relation in self.relations {
+          append_relation(output, self, index, relation, text_metrics, layout)
+        }
+        for index, entity in self.entities {
+          ctx.append_entity_image(entity, index, layout)
+        }
+      }
+    }
+    if family_capability.renders_notes {
+      draw_entity_notes(output, self, text_metrics, layout)
+    }
+    draw_chrome_stack(
+      output,
+      bottom_blocks,
+      output_width.to_double(),
+      bounds.max_y + SVG_MARGIN_BOTTOM.to_double(),
+      text_color,
+    )
   }
-  output.write_string(@svg.svg_close_markup())
-  output.to_string()
+  if scale != 1 {
+    document.graphic().scale_group(scale, paint)
+  } else {
+    paint(document.graphic())
+  }
+  document.to_string()
 }
 
 ///|
@@ -244,5 +223,29 @@ pub fn render_mbti_svg(
     class_member_collapsible~,
     member_states~,
     render_options~,
+  )
+}
+
+///|
+fn entity_stylesheet(style : @style.DocumentStyle, usecase : Bool) -> String {
+  let font_family = style.font_family()
+  let font_size = style.font_size()
+  let background = style.canvas_color()
+  let line_color = style.diagram_line_color()
+  let text_color = style.diagram_text_color()
+  let border_width = @svg.standard_border_stroke_width()
+  (
+    $|\{@svg.svg_style_rule(font_family, font_size, background)}
+    $|.class-node > rect,.class-node > line{stroke:\{line_color};stroke-width:\{border_width}}
+    $|.relation{stroke:\{line_color};stroke-width:\{border_width}}
+    $|.relation-decoration{stroke-width:1;stroke-linejoin:miter}
+    $|.class-node > line,.relation{fill:none}
+    $|.class-title{fill:\{text_color}}
+    $|.class-stereotype{font-style:italic}
+    $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
+    $|.usecase-title{fill:\{text_color};text-anchor:middle}
+    $|.usecase-stereotype{text-anchor:middle;font-style:italic}
+    $|.member{fill:\{text_color}}
+    $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
   )
 }

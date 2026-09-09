@@ -1,56 +1,69 @@
 ///|
-fn relation_decoration_fill(
-  fill : RelationDecorationFill,
-  color : String,
-  background : String,
-) -> String {
-  match fill {
-    NoDecorationFill => "none"
-    LineDecorationFill => color
-    BackgroundDecorationFill => background
-  }
-}
-
-///|
-fn append_relation_decoration_primitive(
-  output : StringBuilder,
+fn draw_relation_decoration_primitive(
+  output : @graphics.Graphic,
   primitive : RelationDecorationPrimitive,
   color : String,
   background : String,
 ) -> Unit {
-  let fill = relation_decoration_fill(primitive.fill, color, background)
-  let style =
-    $| style="stroke:\{color};stroke-width:\{primitive.stroke_width}"
-  match primitive.shape {
-    DecorationPolygon(points) => {
-      guard points.length() > 0 else { return }
-      output <+
-        $|<path d="M \{points[0].0} \{points[0].1}
-      for index in 1..<points.length() {
-        output <+
-          $| L \{points[index].0} \{points[index].1}
-      }
-      output <+
-        $| z" class="relation-decoration" fill="\{fill}"\{style}/>
-    }
-    DecorationSegment(start, end) =>
-      output <+
-        $|<line x1="\{start.0}" y1="\{start.1}" x2="\{end.0}" y2="\{end.1}" class="relation-decoration" fill="none"\{style}/>
-    DecorationCircle(center, radius) =>
-      output <+
-        $|<circle cx="\{center.0}" cy="\{center.1}" r="\{radius}" class="relation-decoration" fill="\{fill}"\{style}/>
-    DecorationSquare(center, radius) =>
-      output <+
-        $|<rect x="\{center.0 - radius}" y="\{center.1 - radius}" width="\{radius * 2.0}" height="\{radius * 2.0}" class="relation-decoration" fill="\{fill}"\{style}/>
-    DecorationArc(arc) =>
-      output <+
-        $|<path d="M \{arc.start.0} \{arc.start.1} A \{arc.radius} \{arc.radius} 0 \{if arc.large_arc { 1 } else { 0 }} \{if arc.sweep { 1 } else { 0 }} \{arc.end.0} \{arc.end.1}" class="relation-decoration" fill="\{fill}"\{style}/>
+  let fill : @graphics.Paint = match primitive.fill {
+    NoDecorationFill => None
+    LineDecorationFill => Color(color)
+    BackgroundDecorationFill => Color(background)
   }
+  let point = (pair : (Double, Double)) => @graphics.Point::{
+    x: pair.0,
+    y: pair.1,
+  }
+  let shape : @graphics.Shape = match primitive.shape {
+    DecorationPolygon(points) => {
+      guard !points.is_empty() else { return }
+      let path : Array[@graphics.PathSegment] = [MoveTo(point(points[0]))]
+      for index in 1..<points.length() {
+        path.push(LineTo(point(points[index])))
+      }
+      path.push(Close)
+      Path(path)
+    }
+    DecorationSegment(start, end) => Line(point(start), point(end))
+    DecorationCircle(center, radius) => Circle(center=point(center), radius~)
+    DecorationSquare(center, radius) =>
+      Rectangle(
+        origin={ x: center.0 - radius, y: center.1 - radius, },
+        width=radius * 2,
+        height=radius * 2,
+        rx=None,
+        ry=None,
+      )
+    DecorationArc(arc) =>
+      Path([
+        MoveTo(point(arc.start)),
+        ArcTo(
+          rx=arc.radius,
+          ry=arc.radius,
+          rotation=0,
+          large_arc=arc.large_arc,
+          sweep=arc.sweep,
+          end=point(arc.end),
+        ),
+      ])
+  }
+  output
+  .with_style({
+    ..Default::default(),
+    fill,
+    stroke: Color(color),
+    stroke_width: Some(primitive.stroke_width),
+    inline: true,
+  })
+  .draw(shape, metadata={
+    ..Default::default(),
+    class_name: Some("relation-decoration"),
+  })
 }
 
 ///|
-fn append_relation_decoration(
-  output : StringBuilder,
+fn draw_relation_decoration(
+  output : @graphics.Graphic,
   end : @entity.RelationEnd,
   endpoint : (Double, Double),
   adjacent : (Double, Double),
@@ -62,7 +75,7 @@ fn append_relation_decoration(
     return
   }
   for primitive in geometry.primitives {
-    append_relation_decoration_primitive(output, primitive, color, background)
+    draw_relation_decoration_primitive(output, primitive, color, background)
   }
 }
 
@@ -97,13 +110,12 @@ fn move_relation_spline_endpoint(
 ///|
 /// Paint the routed splines with their current node contacts.
 fn append_relation_spline(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   edge : @graphviz.GraphvizEdge,
   relation : @entity.Relation,
   left : RelationEndpoint,
   right : RelationEndpoint,
-  style : String,
-  dash : String,
+  style : @graphics.DrawingStyle,
   relation_color : String,
   background_color : String,
 ) -> Unit {
@@ -134,13 +146,14 @@ fn append_relation_spline(
         0.0
       },
     ).pairs()
-    output <+
-      $|<path d="
-    output.write_string(@svg.spline_path_data(visible_path))
-    output <+
-      $|" class="relation"\{style}\{dash}/>
+    output
+    .with_style(style)
+    .draw(Path(@graphics.spline_segments(visible_path)), metadata={
+      ..Default::default(),
+      class_name: Some("relation"),
+    })
     if first {
-      append_relation_decoration(
+      draw_relation_decoration(
         output,
         relation.left_end,
         left.endpoint,
@@ -152,7 +165,7 @@ fn append_relation_spline(
     }
     if last {
       let last_point = adjusted.length() - 1
-      append_relation_decoration(
+      draw_relation_decoration(
         output,
         relation.right_end,
         right.endpoint,
@@ -167,11 +180,10 @@ fn append_relation_spline(
 
 ///|
 fn append_relation_line(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   left : RelationEndpoint,
   right : RelationEndpoint,
-  style : String,
-  dash : String,
+  style : @graphics.DrawingStyle,
   relation_color : String,
   background_color : String,
   relation : @entity.Relation,
@@ -181,9 +193,16 @@ fn append_relation_line(
     relation.left_end.decoration_length(),
     relation.right_end.decoration_length(),
   ).pairs()
-  output <+
-    $|<line x1="\{visible_line[0].0}" y1="\{visible_line[0].1}" x2="\{visible_line[1].0}" y2="\{visible_line[1].1}" class="relation"\{style}\{dash}/>
-  append_relation_decoration(
+  output
+  .with_style(style)
+  .draw(
+    Line({ x: visible_line[0].0, y: visible_line[0].1, }, {
+      x: visible_line[1].0,
+      y: visible_line[1].1,
+    }),
+    metadata={ ..Default::default(), class_name: Some("relation"), },
+  )
+  draw_relation_decoration(
     output,
     relation.left_end,
     left.endpoint,
@@ -192,7 +211,7 @@ fn append_relation_line(
     background_color,
     side=left.side,
   )
-  append_relation_decoration(
+  draw_relation_decoration(
     output,
     relation.right_end,
     right.endpoint,
@@ -205,11 +224,10 @@ fn append_relation_line(
 
 ///|
 fn append_relation_path(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   left : RelationEndpoint,
   right : RelationEndpoint,
-  style : String,
-  dash : String,
+  style : @graphics.DrawingStyle,
   relation_color : String,
   background_color : String,
   edge? : @graphviz.GraphvizEdge? = None,
@@ -217,11 +235,11 @@ fn append_relation_path(
 ) -> Unit {
   if edge is Some(edge) {
     append_relation_spline(
-      output, edge, relation, left, right, style, dash, relation_color, background_color,
+      output, edge, relation, left, right, style, relation_color, background_color,
     )
   } else {
     append_relation_line(
-      output, left, right, style, dash, relation_color, background_color, relation,
+      output, left, right, style, relation_color, background_color, relation,
     )
   }
 }
@@ -246,7 +264,7 @@ fn relation_edge_endpoints(
 /// Qualifier labels sit outside the relation endpoint, mirroring the `Kal`
 /// decoration of the Java edge without its dot-path internals.
 fn append_relation_qualifiers(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   relation : @entity.Relation,
   left_endpoint : (Double, Double),
   right_endpoint : (Double, Double),
@@ -254,53 +272,39 @@ fn append_relation_qualifiers(
 ) -> Unit {
   let font_size = text_metrics.relation_end_regular.font_size
   let font_family = text_metrics.relation_end_font_family
-  match relation.left_qualifier {
-    Some(qualifier) => {
-      let metrics = text_metrics.relation_end_regular.measure(qualifier)
-      let x = left_endpoint.0 - metrics.width.to_double() - 6.0
-      output.write_string(
-        @svg.text_markup(
-          x,
-          left_endpoint.1 + metrics.ascent.to_double(),
-          qualifier,
-          [
-            ("class", "relation-qualifier"),
-            ("font-family", font_family),
-            ("font-size", font_size.to_string()),
-          ],
-          text_metrics.relation_end_regular,
-        ),
-      )
-      output.write_char('\n')
-    }
-    None => ()
+  if relation.left_qualifier is Some(qualifier) {
+    let metrics = text_metrics.relation_end_regular.measure(qualifier)
+    let x = left_endpoint.0 - metrics.width.to_double() - 6.0
+    draw_entity_text(
+      output,
+      x,
+      left_endpoint.1 + metrics.ascent.to_double(),
+      qualifier,
+      text_metrics.relation_end_regular,
+      class_name="relation-qualifier",
+      font_family~,
+      font_size~,
+    )
   }
-  match relation.right_qualifier {
-    Some(qualifier) => {
-      let metrics = text_metrics.relation_end_regular.measure(qualifier)
-      let x = right_endpoint.0 + 6.0
-      output.write_string(
-        @svg.text_markup(
-          x,
-          right_endpoint.1 - metrics.ascent.to_double(),
-          qualifier,
-          [
-            ("class", "relation-qualifier"),
-            ("font-family", font_family),
-            ("font-size", font_size.to_string()),
-          ],
-          text_metrics.relation_end_regular,
-        ),
-      )
-      output.write_char('\n')
-    }
-    None => ()
+  if relation.right_qualifier is Some(qualifier) {
+    let metrics = text_metrics.relation_end_regular.measure(qualifier)
+    let x = right_endpoint.0 + 6.0
+    draw_entity_text(
+      output,
+      x,
+      right_endpoint.1 - metrics.ascent.to_double(),
+      qualifier,
+      text_metrics.relation_end_regular,
+      class_name="relation-qualifier",
+      font_family~,
+      font_size~,
+    )
   }
 }
 
 ///|
 fn append_relation(
-  output : StringBuilder,
+  output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
   relation_index : Int,
   relation : @entity.Relation,
@@ -324,12 +328,14 @@ fn append_relation(
   )
   // Dotted arrows render with the dash pattern shared by the dashed line
   // style, matching PlantUML where a dotted arrow draws dash-like segments.
-  let dash = if relation.dotted {
-    @svg.line_style_attributes_markup(Some("dashed"))
-  } else {
-    ""
-  }
-  let relation_style = @svg.stroke_style(relation.line_style, default_width="")
+  let dash = @svg.line_drawing_style(
+    if relation.dotted {
+      Some("dashed")
+    } else {
+      None
+    },
+  )
+  let relation_style = @svg.line_drawing_style(relation.line_style)
   let relation_color = @svg.svg_color(
     relation.color,
     diagram.style.diagram_line_color(),
@@ -356,8 +362,12 @@ fn append_relation(
   let relation_label_layout = layout.relation_label_layout(
     diagram, relation_index, relation, text_metrics,
   )
-  let style =
-    $| style="stroke:\{relation_color};\{relation_style}"
+  let style = {
+    ..relation_style,
+    stroke: Color(relation_color),
+    inline: true,
+    dash: relation_style.dash.map_or(dash.dash, value => Some(value)),
+  }
   let edge_endpoints = layout.graphviz.bind(graphviz => {
     let mut endpoints : ((Double, Double), (Double, Double))? = None
     for edge in graphviz.edges {
@@ -370,134 +380,113 @@ fn append_relation(
   let (left_endpoint, right_endpoint) = edge_endpoints.unwrap_or(
     ((x1, y1), (x2, y2)),
   )
-  if relation.url is Some(url) {
-    output <+
-      $|<a href="\{@svg.xml_escape(url)}">
-  }
-  let mut drew_spline = false
-  match layout.graphviz {
-    Some(graphviz) if !(usecase &&
-      relation.dotted &&
-      relation.direction is Automatic) =>
-      for edge in graphviz.edges {
-        if edge.index == relation_index {
-          match relation_edge_first_spline_index(edge) {
-            Some(first_index) => {
-              let last_index = relation_edge_last_spline_index(edge)
-              let first_path = edge.splines[first_index].points.map(point => {
-                point.pair()
-              })
-              let last_path = edge.splines[last_index.unwrap_or(first_index)].points.map(point => {
+  with_entity_link(output, relation.url, output => {
+    let mut drew_spline = false
+    match layout.graphviz {
+      Some(graphviz) if !(usecase &&
+        relation.dotted &&
+        relation.direction is Automatic) =>
+        for edge in graphviz.edges {
+          if edge.index == relation_index {
+            match relation_edge_first_spline_index(edge) {
+              Some(first_index) => {
+                let last_index = relation_edge_last_spline_index(edge)
+                let first_path = edge.splines[first_index].points.map(point => {
                   point.pair()
-                },
-              )
-              let left_contact = graphviz
-                .node(relation.left)
-                .map(node => node.contact(point_from_pair(first_path[0])))
-              let right_contact = graphviz
-                .node(relation.right)
-                .map(node => {
-                  node.contact(
-                    point_from_pair(last_path[last_path.length() - 1]),
-                  )
                 })
-              let left = relation_endpoint(
-                left_contact.map_or(first_path[0], value => value.point.pair()),
-                left_contact.map(value => value.side),
-              )
-              let right = relation_endpoint(
-                right_contact.map_or(last_path[last_path.length() - 1], value => {
-                  value.point.pair()
-                }),
-                right_contact.map(value => value.side),
-              )
-              drew_spline = true
-              append_relation_path(
-                output,
-                left,
-                right,
-                style,
-                dash,
-                relation_color,
-                background_color,
-                edge=Some(edge),
-                relation,
-              )
+                let last_path = edge.splines[last_index.unwrap_or(first_index)].points.map(point => {
+                    point.pair()
+                  },
+                )
+                let left_contact = graphviz
+                  .node(relation.left)
+                  .map(node => node.contact(point_from_pair(first_path[0])))
+                let right_contact = graphviz
+                  .node(relation.right)
+                  .map(node => {
+                    node.contact(
+                      point_from_pair(last_path[last_path.length() - 1]),
+                    )
+                  })
+                let left = relation_endpoint(
+                  left_contact.map_or(first_path[0], value => value.point.pair()),
+                  left_contact.map(value => value.side),
+                )
+                let right = relation_endpoint(
+                  right_contact.map_or(last_path[last_path.length() - 1], value => {
+                    value.point.pair()
+                  }),
+                  right_contact.map(value => value.side),
+                )
+                drew_spline = true
+                append_relation_path(
+                  output,
+                  left,
+                  right,
+                  style,
+                  relation_color,
+                  background_color,
+                  edge=Some(edge),
+                  relation,
+                )
+              }
+              None => ()
             }
-            None => ()
           }
         }
-      }
-    _ => ()
-  }
-  if !drew_spline {
-    let left = relation_endpoint((x1, y1), None)
-    let right = relation_endpoint((x2, y2), None)
-    append_relation_path(
-      output,
-      left,
-      right,
-      style,
-      dash,
-      relation_color,
-      background_color,
-      edge=None,
-      relation,
-    )
-  }
-  match relation_label_layout.label {
-    Some(text_box) => {
+      _ => ()
+    }
+    if !drew_spline {
+      let left = relation_endpoint((x1, y1), None)
+      let right = relation_endpoint((x2, y2), None)
+      append_relation_path(
+        output,
+        left,
+        right,
+        style,
+        relation_color,
+        background_color,
+        edge=None,
+        relation,
+      )
+    }
+    if relation_label_layout.label is Some(text_box) {
       let x = if usecase {
         text_box.x + text_box.width / 2.0
       } else {
         text_box.x
       }
-      let attributes = [
-        ("class", "relation-label"),
-        ("fill", label_color),
-        ("font-family", label_font_family),
-        ("font-size", label_font_size.to_string()),
-        ..if !usecase {
-          [("text-anchor", "start")]
-        },
-      ]
-      output.write_string(
-        @svg.text_markup(
-          x,
-          text_box.baseline,
-          text_box.text,
-          attributes,
-          text_metrics.relation_label_regular,
-        ),
+      draw_entity_text(
+        output,
+        x,
+        text_box.baseline,
+        text_box.text,
+        text_metrics.relation_label_regular,
+        class_name="relation-label",
+        fill=label_color,
+        font_family=label_font_family,
+        font_size=label_font_size,
+        anchor=if usecase { Middle } else { Start },
       )
-      output.write_char('\n')
     }
-    None => ()
-  }
-  let end_label_font_size = text_metrics.relation_end_regular.font_size
-  let end_label_font_family = text_metrics.relation_end_font_family
-  for text_box in relation_label_layout.end_boxes() {
-    output.write_string(
-      @svg.text_markup(
+    let end_label_font_size = text_metrics.relation_end_regular.font_size
+    let end_label_font_family = text_metrics.relation_end_font_family
+    for text_box in relation_label_layout.end_boxes() {
+      draw_entity_text(
+        output,
         text_box.x,
         text_box.baseline,
         text_box.text,
-        [
-          ("class", "relation-end-label"),
-          ("font-family", end_label_font_family),
-          ("font-size", end_label_font_size.to_string()),
-        ],
         text_metrics.relation_end_regular,
-      ),
+        class_name="relation-end-label",
+        font_family=end_label_font_family,
+        font_size=end_label_font_size,
+      )
+    }
+    append_relation_qualifiers(
+      output, relation, left_endpoint, right_endpoint, text_metrics,
     )
-    output.write_char('\n')
-  }
-  append_relation_qualifiers(
-    output, relation, left_endpoint, right_endpoint, text_metrics,
-  )
-  if relation.url is Some(_) {
-    output.write_string("</a>\n")
-  }
+  })
 }
 
 ///|
