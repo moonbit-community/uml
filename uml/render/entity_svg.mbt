@@ -85,7 +85,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     }) {
     document.stylesheet(
       (
-        $|.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{border_width}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color};text-anchor:middle}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};text-anchor:middle;font-style:italic}
+        $|.object-node > rect,.object-node > line,.map-node > rect,.map-node > line,.json-node > rect,.json-node > line{stroke-width:\{border_width}}.object-node > line,.map-node > line,.json-node > line,.object-separator,.map-row-separator,.map-column-separator,.json-row-separator,.json-column-separator{fill:none}.object-title,.map-title,.json-title{fill:\{text_color}}.object-stereotype,.map-stereotype,.json-stereotype{fill:\{text_color};font-style:italic}
       ),
     )
   }
