@@ -3,9 +3,9 @@
 A MoonBit library that converts PlantUML source text to SVG, aiming to align
 with PlantUML's behavior, including its layout.
 
-The examples below illustrate the API. Gallery images in
-[`__snapshot__/`](./__snapshot__/) are documentation assets, not byte-for-byte
-SVG expectations in the test suite.
+Gallery examples below are executable MoonBit tests. Their SVG snapshots in
+[`__snapshot__/`](./__snapshot__/) also provide the images in this document.
+Run `moon test --update` from this directory to refresh them.
 
 ## Quick start
 
@@ -40,29 +40,32 @@ let svg = @api.render_svg(source)
 Participants and actors, activations, `autonumber`, `alt`/`else` groups, and
 notes:
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startuml
-  #|autonumber
-  #|actor User
-  #|participant "Web App" as App
-  #|participant "Auth Service" as Auth
-  #|User -> App : sign in
-  #|App -> Auth : POST /token
-  #|activate Auth
-  #|Auth --> App : access token
-  #|deactivate Auth
-  #|alt token granted
-  #|App --> User : welcome page
-  #|else invalid credentials
-  #|App --> User : error message
-  #|end
-  #|note right of Auth : stateless issuer
-  #|@enduml
+test "sequence diagram" (it : @test.Test) {
+  let source =
+    #|@startuml
+    #|autonumber
+    #|actor User
+    #|participant "Web App" as App
+    #|participant "Auth Service" as Auth
+    #|User -> App : sign in
+    #|App -> Auth : POST /token
+    #|activate Auth
+    #|Auth --> App : access token
+    #|deactivate Auth
+    #|alt token granted
+    #|App --> User : welcome page
+    #|else invalid credentials
+    #|App --> User : error message
+    #|end
+    #|note right of Auth : stateless issuer
+    #|@enduml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="sequence.svg")
+}
 ```
 
 ![Sequence diagram](./__snapshot__/sequence.svg)
@@ -71,32 +74,35 @@ let svg = @api.render_svg(source)
 
 Interfaces, abstract classes, visibility markers, and relations:
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startuml
-  #|interface Shape {
-  #|  + area() : Double
-  #|}
-  #|abstract class Polygon {
-  #|  # vertices : Array[Point]
-  #|  + area() : Double
-  #|}
-  #|class Circle {
-  #|  - radius : Double
-  #|  + area() : Double
-  #|}
-  #|class Point {
-  #|  + x : Double
-  #|  + y : Double
-  #|}
-  #|Shape <|.. Polygon
-  #|Shape <|.. Circle
-  #|Polygon o-- Point
-  #|@enduml
+test "class diagram" (it : @test.Test) {
+  let source =
+    #|@startuml
+    #|interface Shape {
+    #|  + area() : Double
+    #|}
+    #|abstract class Polygon {
+    #|  # vertices : Array[Point]
+    #|  + area() : Double
+    #|}
+    #|class Circle {
+    #|  - radius : Double
+    #|  + area() : Double
+    #|}
+    #|class Point {
+    #|  + x : Double
+    #|  + y : Double
+    #|}
+    #|Shape <|.. Polygon
+    #|Shape <|.. Circle
+    #|Polygon o-- Point
+    #|@enduml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="class.svg")
+}
 ```
 
 ![Class diagram](./__snapshot__/class.svg)
@@ -106,35 +112,38 @@ let svg = @api.render_svg(source)
 Objects with slots, map tables, JSON trees, notes and relations; the title
 chrome renders above the content:
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startuml
-  #|title
-  #|Order snapshot
-  #|end title
-  #|object "Ada Lovelace" as ada <<customer>> #lightblue {
-  #|  + id = "customer-42"
-  #|  + active = true
-  #|}
-  #|map OrderIndex {
-  #|  orderId => "order-7"
-  #|}
-  #|json Profile {
-  #|  "name": "Ada",
-  #|  "preferences": {
-  #|    "locale": "en-GB",
-  #|    "template": "{customer}/{order}"
-  #|  }
-  #|}
-  #|ada --> Profile : serialized
-  #|note right of ada
-  #|  Captured at checkout
-  #|end note
-  #|@enduml
+test "object diagram" (it : @test.Test) {
+  let source =
+    #|@startuml
+    #|title
+    #|Order snapshot
+    #|end title
+    #|object "Ada Lovelace" as ada <<customer>> #lightblue {
+    #|  + id = "customer-42"
+    #|  + active = true
+    #|}
+    #|map OrderIndex {
+    #|  orderId => "order-7"
+    #|}
+    #|json Profile {
+    #|  "name": "Ada",
+    #|  "preferences": {
+    #|    "locale": "en-GB",
+    #|    "template": "{customer}/{order}"
+    #|  }
+    #|}
+    #|ada --> Profile : serialized
+    #|note right of ada
+    #|  Captured at checkout
+    #|end note
+    #|@enduml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="object.svg")
+}
 ```
 
 ![Object diagram](./__snapshot__/object.svg)
@@ -143,18 +152,21 @@ let svg = @api.render_svg(source)
 
 Actors, use cases, and dotted relations:
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startuml
-  #|:Customer: --> (Browse catalog)
-  #|:Customer: --> (Place order)
-  #|:Sales clerk: --> (Approve order)
-  #|(Place order) ..> (Approve order) : include
-  #|@enduml
+test "usecase diagram" (it : @test.Test) {
+  let source =
+    #|@startuml
+    #|:Customer: --> (Browse catalog)
+    #|:Customer: --> (Place order)
+    #|:Sales clerk: --> (Approve order)
+    #|(Place order) ..> (Approve order) : include
+    #|@enduml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="usecase.svg")
+}
 ```
 
 ![Use case diagram](./__snapshot__/usecase.svg)
@@ -163,94 +175,106 @@ let svg = @api.render_svg(source)
 
 `*` levels grow to the right, `--` levels grow to the left:
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startmindmap
-  #|* uml
-  #|** Diagrams
-  #|*** Sequence
-  #|*** Class
-  #|*** Use case
-  #|** Formats
-  #|*** JSON
-  #|*** YAML
-  #|*** TOML
-  #|-- Backend
-  #|--- SVG
-  #|-- Tooling
-  #|--- moon test
-  #|@endmindmap
+test "mindmap diagram" (it : @test.Test) {
+  let source =
+    #|@startmindmap
+    #|* uml
+    #|** Diagrams
+    #|*** Sequence
+    #|*** Class
+    #|*** Use case
+    #|** Formats
+    #|*** JSON
+    #|*** YAML
+    #|*** TOML
+    #|-- Backend
+    #|--- SVG
+    #|-- Tooling
+    #|--- moon test
+    #|@endmindmap
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="mindmap.svg")
+}
 ```
 
 ![Mindmap diagram](./__snapshot__/mindmap.svg)
 
 ### JSON data diagram
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startjson
-  #|{
-  #|  "name": "kokic/uml",
-  #|  "version": "0.1.2",
-  #|  "targets": ["wasm", "js", "native"],
-  #|  "diagrams": {
-  #|    "available": 7,
-  #|    "planned": 3
-  #|  }
-  #|}
-  #|@endjson
+test "json diagram" (it : @test.Test) {
+  let source =
+    #|@startjson
+    #|{
+    #|  "name": "kokic/uml",
+    #|  "version": "0.1.2",
+    #|  "targets": ["wasm", "js", "native"],
+    #|  "diagrams": {
+    #|    "available": 7,
+    #|    "planned": 3
+    #|  }
+    #|}
+    #|@endjson
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="json.svg")
+}
 ```
 
 ![JSON diagram](./__snapshot__/json.svg)
 
 ### YAML data diagram
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startyaml
-  #|name: uml
-  #|license: Apache-2.0
-  #|diagrams:
-  #|  - sequence
-  #|  - class
-  #|  - mindmap
-  #|render:
-  #|  backend: svg
-  #|  compatible: PlantUML
-  #|@endyaml
+test "yaml diagram" (it : @test.Test) {
+  let source =
+    #|@startyaml
+    #|name: uml
+    #|license: Apache-2.0
+    #|diagrams:
+    #|  - sequence
+    #|  - class
+    #|  - mindmap
+    #|render:
+    #|  backend: svg
+    #|  compatible: PlantUML
+    #|@endyaml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="yaml.svg")
+}
 ```
 
 ![YAML diagram](./__snapshot__/yaml.svg)
 
 ### TOML data diagram
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@starttoml
-  #|[package]
-  #|name = "uml"
-  #|version = "0.1.2"
-  #|
-  #|[render]
-  #|backend = "svg"
-  #|targets = ["wasm", "js"]
-  #|@endtoml
+test "toml diagram" (it : @test.Test) {
+  let source =
+    #|@starttoml
+    #|[package]
+    #|name = "uml"
+    #|version = "0.1.2"
+    #|
+    #|[render]
+    #|backend = "svg"
+    #|targets = ["wasm", "js"]
+    #|@endtoml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="toml.svg")
+}
 ```
 
 ![TOML diagram](./__snapshot__/toml.svg)
@@ -260,19 +284,22 @@ let svg = @api.render_svg(source)
 `@startdot` forwards the DOT source to the shared graphviz engine, like
 PlantUML does with the system `dot` executable:
 
-```mbt nocheck
+```mbt check
 ///|
-let source =
-  #|@startdot
-  #|digraph G {
-  #|  rankdir=LR;
-  #|  a -> b -> c;
-  #|  a -> c [label="direct"];
-  #|}
-  #|@enduml
+test "dot diagram" (it : @test.Test) {
+  let source =
+    #|@startdot
+    #|digraph G {
+    #|  rankdir=LR;
+    #|  a -> b -> c;
+    #|  a -> c [label="direct"];
+    #|}
+    #|@enduml
 
-///|
-let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source)
+  it.write(svg)
+  it.snapshot(filename="dot.svg")
+}
 ```
 
 ![DOT diagram](./__snapshot__/dot.svg)
@@ -285,32 +312,34 @@ color or a CSS variable such as `var(--uml-text)`, so one scheme can target a
 specific light or dark page without touching each diagram. Document-level
 `skinparam` lines still win over the scheme.
 
-```mbt nocheck
+```mbt check
 ///|
-let dark = @style.ColorScheme::ColorScheme(
-  "#e6edf3", // text
-  "#8b949e", // line
-  canvas="#0d1117",
-  participant="#161b22",
-  activation="#21262d",
-  lifeline="#30363d",
-  note="#2d2a1f",
-)
+test "sequence dark diagram" (it : @test.Test) {
+  let dark = @style.ColorScheme::ColorScheme(
+    "#e6edf3", // text
+    "#8b949e", // line
+    canvas="#0d1117",
+    participant="#161b22",
+    activation="#21262d",
+    lifeline="#30363d",
+    note="#2d2a1f",
+  )
 
-///|
-let source =
-  #|@startuml
-  #|participant "Web App" as App
-  #|participant "Auth Service" as Auth
-  #|App -> Auth : POST /token
-  #|activate Auth
-  #|Auth --> App : access token
-  #|deactivate Auth
-  #|note right of Auth : stateless issuer
-  #|@enduml
+  let source =
+    #|@startuml
+    #|participant "Web App" as App
+    #|participant "Auth Service" as Auth
+    #|App -> Auth : POST /token
+    #|activate Auth
+    #|Auth --> App : access token
+    #|deactivate Auth
+    #|note right of Auth : stateless issuer
+    #|@enduml
 
-///|
-let svg = @api.render_svg(source, color_scheme=dark)
+  let svg = @api.render_svg(source, color_scheme=dark)
+  it.write(svg)
+  it.snapshot(filename="sequence_dark.svg")
+}
 ```
 
 ![Dark sequence diagram](./__snapshot__/sequence_dark.svg)
@@ -353,10 +382,18 @@ let source =
 let svg = @api.render_svg(source, class_member_collapsible=true)
 ```
 
-## Testing
+## Testing and updating gallery images
 
-`moon test` checks parsing semantics, data flow and geometry properties.
-Gallery images are maintained separately; tests do not freeze their SVG markup.
+Run from the `uml/` directory:
+
+```bash
+moon test                       # run tests, including gallery snapshots
+moon test -p kokic/uml --update  # update __snapshot__/*.svg from README examples
+```
+
+The gallery tests render the examples directly, including theme settings,
+and write the images through MoonBit's snapshot mechanism. To update only
+the object example, add `--filter 'object diagram'` to the update command.
 
 ## License
 

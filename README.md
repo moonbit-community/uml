@@ -10,10 +10,11 @@ A MoonBit project that converts UML strings to SVG, aiming to align with PlantUM
 |---|---|
 | ![Mindmap diagram](./uml/__snapshot__/mindmap.svg) | ![JSON diagram](./uml/__snapshot__/json.svg) |
 
-Every image above is a test snapshot: the [library README](./uml/README.mbt.md)
-is an executable document whose code blocks run under `moon test` and write
-these SVGs into [`uml/__snapshot__/`](./uml/__snapshot__/). See it for the full
-gallery (use case, YAML, TOML, dark theming) and API walkthrough.
+Every image above is a snapshot of an executable example in the
+[library README](./uml/README.mbt.md). Run `moon test -p kokic/uml --update`
+from the `uml/` directory to update [`uml/__snapshot__/`](./uml/__snapshot__/)
+using the local implementation. See the library README for the full gallery
+and API walkthrough.
 
 ## Supported diagrams
 
