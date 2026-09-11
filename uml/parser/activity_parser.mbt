@@ -105,12 +105,7 @@ pub fn parse_activity(
       continue
     }
     if lower == "skinparam {" {
-      let closed = @style.consume_skinparam_body(() => buffer.take_next(), directive => {
-        style.apply(directive)
-      })
-      guard closed else {
-        raise SyntaxError(buffer.length(), "unclosed skinparam")
-      }
+      buffer.consume_skinparam(style, buffer.length())
       continue
     }
     if @style.parse_style_directive(line) is Some(directive) {

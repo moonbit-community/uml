@@ -32,212 +32,6 @@ const STATE_CIRCLE_DECORATION_RADIUS : Double = 5.0
 const STATE_CIRCLE_DECORATION_OFFSET : Double = 8.0
 
 ///|
-fn initial_background_color(style : @style.DocumentStyle) -> String {
-  style.property_color("ActivityStartColor", style.defaults().line)
-}
-
-///|
-fn terminal_border_color(style : @style.DocumentStyle) -> String {
-  style.defaults().line
-}
-
-///|
-fn final_border_color(style : @style.DocumentStyle) -> String {
-  style.property_color("ActivityEndColor", style.defaults().line)
-}
-
-///|
-fn diamond_background_color(style : @style.DocumentStyle) -> String {
-  style.property_color("ActivityDiamondBackgroundColor", style.defaults().node)
-}
-
-///|
-fn diamond_border_color(style : @style.DocumentStyle) -> String {
-  style.property_color("ActivityDiamondBorderColor", style.defaults().line)
-}
-
-///|
-fn diamond_font_color(style : @style.DocumentStyle) -> String {
-  style.property_font_color("ActivityDiamondFontColor")
-}
-
-///|
-fn diamond_font_family(style : @style.DocumentStyle) -> String {
-  style.property_font_family("ActivityDiamondFontName")
-}
-
-///|
-fn diamond_font_size(style : @style.DocumentStyle) -> Int {
-  style.property_font_size("ActivityDiamondFontSize", fallback=14)
-}
-
-///|
-fn diamond_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
-  style.font_metrics_for(
-    diamond_font_family(style),
-    font_size=diamond_font_size(style),
-  )
-}
-
-///|
-fn synchronization_background_color(style : @style.DocumentStyle) -> String {
-  style.property_color("ActivityBarColor", style.defaults().line)
-}
-
-///|
-fn state_style_property(
-  state : @flow.StateNode,
-  style : @style.DocumentStyle,
-  key : String,
-) -> String? {
-  match state.stereotype {
-    Some(stereotype) =>
-      style
-      .property(key + stereotype)
-      .map_or(style.property(key), value => Some(value))
-    None => style.property(key)
-  }
-}
-
-///|
-fn state_style_color(
-  state : @flow.StateNode,
-  style : @style.DocumentStyle,
-  key : String,
-  fallback : String,
-) -> String {
-  @svg.svg_color(state_style_property(state, style, key), fallback)
-}
-
-///|
-/// Resolve normal-state paint with PlantUML's inline-color precedence.
-fn state_background_color(
-  state : @flow.StateNode,
-  style : @style.DocumentStyle,
-) -> String {
-  let fallback = state_style_color(
-    state,
-    style,
-    "StateBackgroundColor",
-    style.defaults().node,
-  )
-  @svg.svg_color(state.color, fallback)
-}
-
-///|
-fn state_border_color(
-  state : @flow.StateNode,
-  style : @style.DocumentStyle,
-) -> String {
-  state_style_color(
-    state,
-    style,
-    "StateBorderColor",
-    style.diagram_line_color(),
-  )
-}
-
-///|
-fn composite_state_background_color(
-  state : @flow.StateNode,
-  style : @style.DocumentStyle,
-) -> String {
-  state_background_color(state, style)
-}
-
-///|
-fn composite_state_border_color(
-  state : @flow.StateNode,
-  style : @style.DocumentStyle,
-) -> String {
-  state_border_color(state, style)
-}
-
-///|
-fn state_font_color(style : @style.DocumentStyle) -> String {
-  style.property_font_color("StateFontColor")
-}
-
-///|
-fn state_font_family(style : @style.DocumentStyle) -> String {
-  style.property_font_family("StateFontName")
-}
-
-///|
-fn state_font_size(style : @style.DocumentStyle) -> Int {
-  style.property_font_size("StateFontSize", fallback=14)
-}
-
-///|
-fn state_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
-  let family = state_font_family(style)
-  style.font_metrics_for(family, font_size=state_font_size(style))
-}
-
-///|
-fn state_description_font_color(style : @style.DocumentStyle) -> String {
-  style.property_font_color("StateAttributeFontColor")
-}
-
-///|
-fn state_description_font_family(style : @style.DocumentStyle) -> String {
-  style.property_font_family("StateAttributeFontName")
-}
-
-///|
-fn state_description_font_size(style : @style.DocumentStyle) -> Int {
-  style.property_font_size("StateAttributeFontSize", fallback=14)
-}
-
-///|
-fn state_description_font_metrics(
-  style : @style.DocumentStyle,
-) -> @metrics.FontMetrics {
-  let family = state_description_font_family(style)
-  style.font_metrics_for(family, font_size=state_description_font_size(style))
-}
-
-///|
-fn note_background_color(
-  note : @flow.StateNote,
-  style : @style.DocumentStyle,
-) -> String {
-  let fallback = style.property_color(
-    "NoteBackgroundColor",
-    style.defaults().note,
-  )
-  @svg.svg_color(note.color, fallback)
-}
-
-///|
-fn note_border_color(style : @style.DocumentStyle) -> String {
-  style.property_color("NoteBorderColor", style.diagram_line_color())
-}
-
-///|
-fn note_font_color(style : @style.DocumentStyle) -> String {
-  style.property_font_color("NoteFontColor")
-}
-
-///|
-fn note_font_family(style : @style.DocumentStyle) -> String {
-  style.property_font_family("NoteFontName")
-}
-
-///|
-fn note_font_size(style : @style.DocumentStyle) -> Int {
-  style.property_font_size("NoteFontSize", fallback=style.font_size_value())
-}
-
-///|
-fn note_font_metrics(style : @style.DocumentStyle) -> @metrics.FontMetrics {
-  style.font_metrics_for(
-    note_font_family(style),
-    font_size=note_font_size(style),
-  )
-}
-
-///|
 fn state_class(name : String) -> @graphics.Metadata {
   { ..@graphics.Metadata::default(), class_name: Some(name), }
 }
@@ -449,7 +243,7 @@ fn append_state_node_body(
       center_x,
       y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
       "state-label",
-      state_font_metrics(diagram.style),
+      resolve_state_font(diagram.style, StateLabel).metrics,
     )
     return
   }
@@ -520,7 +314,7 @@ fn append_state_node_body(
         center_x,
         center_y + 5.0,
         "state-pseudostate-label",
-        diamond_font_metrics(diagram.style),
+        resolve_state_font(diagram.style, DiamondLabel).metrics,
       )
     }
     @flow.StateKind::Synchronization =>
@@ -584,7 +378,7 @@ fn append_state_node_body(
           center_x,
           center_y + 4.0,
           "state-label",
-          state_font_metrics(diagram.style),
+          resolve_state_font(diagram.style, StateLabel).metrics,
         )
       } else {
         output
@@ -606,7 +400,7 @@ fn append_state_node_body(
           center_x,
           y + STATE_HEADER_HEIGHT / 2.0 + 4.0,
           "state-label",
-          state_font_metrics(diagram.style),
+          resolve_state_font(diagram.style, StateLabel).metrics,
         )
         if state.description is Some(description) && description.length() > 0 {
           append_state_label(
@@ -615,7 +409,7 @@ fn append_state_node_body(
             center_x,
             y + STATE_HEADER_HEIGHT + (height - STATE_HEADER_HEIGHT) / 2.0 + 4.0,
             "state-description-label",
-            state_description_font_metrics(diagram.style),
+            resolve_state_font(diagram.style, StateDescription).metrics,
           )
         }
       }
@@ -760,7 +554,7 @@ fn append_state_note(
         layout.x + layout.width / 2.0,
         layout.y + layout.height / 2.0 + 5.0,
         "state-note-label",
-        note_font_metrics(diagram.style),
+        resolve_state_font(diagram.style, NoteLabel).metrics,
       )
     },
   )
@@ -783,15 +577,19 @@ fn @flow.StateDiagram::render_svg(
     fill=self.style.diagram_line_color(),
   )
   let cross = define_state_cross_marker(document, self.style)
+  let state_font = resolve_state_font(self.style, StateLabel)
+  let state_description_font = resolve_state_font(self.style, StateDescription)
+  let diamond_font = resolve_state_font(self.style, DiamondLabel)
+  let note_font = resolve_state_font(self.style, NoteLabel)
   document.stylesheet(
     (
       $|.state-transition{stroke:\{self.style.diagram_line_color()};stroke-width:\{@svg.emphasized_stroke_width()}}
       $|.state-region-separator{stroke:\{self.style.diagram_line_color()};stroke-width:\{@svg.standard_border_stroke_width()}}
-      $|.state-label{font-family:\{state_font_family(self.style)};font-size:\{state_font_size(self.style)}px;fill:\{state_font_color(self.style)}}
-      $|.state-description-label{font-family:\{state_description_font_family(self.style)};font-size:\{state_description_font_size(self.style)}px;fill:\{state_description_font_color(self.style)}}
-      $|.state-pseudostate-label{font-family:\{diamond_font_family(self.style)};font-size:\{diamond_font_size(self.style)}px;fill:\{diamond_font_color(self.style)}}
+      $|.state-label{font-family:\{state_font.family};font-size:\{state_font.size}px;fill:\{state_font.color}}
+      $|.state-description-label{font-family:\{state_description_font.family};font-size:\{state_description_font.size}px;fill:\{state_description_font.color}}
+      $|.state-pseudostate-label{font-family:\{diamond_font.family};font-size:\{diamond_font.size}px;fill:\{diamond_font.color}}
       $|.state-transition-label{font-family:\{self.style.font_family()};font-size:\{@svg.auxiliary_label_font_size()};fill:\{self.style.diagram_text_color()}}
-      $|.state-note-label{font-family:\{note_font_family(self.style)};font-size:\{note_font_size(self.style)}px;fill:\{note_font_color(self.style)}},
+      $|.state-note-label{font-family:\{note_font.family};font-size:\{note_font.size}px;fill:\{note_font.color}},
     ),
   )
   let output = document.graphic()

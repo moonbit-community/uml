@@ -20,14 +20,13 @@ priv struct ItemPrefix {
 
 ///|
 priv struct WbsParser {
-  lines : Array[String]
+  buffer : LineBuffer
   nodes : Array[@tree.WbsNode]
   links : Array[@tree.WbsLink]
   codes : Map[String, Int]
   style : @style.DocumentStyle
   style_properties : Array[@tree.WbsStyleProperty]
   mut first_marker : String?
-  mut index : Int
 }
 
 ///|
@@ -58,14 +57,16 @@ fn logical_wbs_lines(input : String) -> Array[String] {
 ///|
 fn WbsParser::new(input : String) -> WbsParser {
   {
-    lines: logical_wbs_lines(@tokenizer.preprocess(input)),
+    buffer: {
+      lines: logical_wbs_lines(@tokenizer.preprocess(input)),
+      index: 0,
+    },
     nodes: [],
     links: [],
     codes: {},
     style: @style.DocumentStyle::empty(),
     style_properties: [],
     first_marker: None,
-    index: 0,
   }
 }
 
@@ -353,13 +354,13 @@ fn WbsParser::complete_multiline(
   first : String,
 ) -> (String, String?) raise @tokenizer.ParseError {
   let values = [first.trim().to_owned()]
-  let start = self.index
+  let start = self.buffer.index
   while true {
-    self.index += 1
-    guard self.index < self.lines.length() else {
+    self.buffer.advance()
+    guard !self.buffer.at_end() else {
       raise SyntaxError(start + 1, "unclosed WBS item")
     }
-    let current = self.lines[self.index].trim().to_owned()
+    let current = self.buffer.current().trim().to_owned()
     if current.has_prefix("'") {
       continue
     }
@@ -396,7 +397,7 @@ fn WbsParser::smart_level(
   if normalized.has_prefix(first) {
     return normalized.length() - first.length()
   }
-  raise SyntaxError(self.index + 1, "unsupported WBS indentation")
+  raise SyntaxError(self.buffer.line_number(), "unsupported WBS indentation")
 }
 
 ///|
@@ -407,7 +408,7 @@ fn WbsParser::parent_for(
   let last_index = self.nodes.length() - 1
   let last = self.nodes[last_index]
   guard level <= last.level + 1 else {
-    raise SyntaxError(self.index + 1, "Bad tree structure")
+    raise SyntaxError(self.buffer.line_number(), "Bad tree structure")
   }
   if level == last.level + 1 {
     return last_index
@@ -416,13 +417,13 @@ fn WbsParser::parent_for(
   let mut remaining = last.level - level + 1
   while remaining > 0 {
     guard parent is Some(index) else {
-      raise SyntaxError(self.index + 1, "Bad tree structure")
+      raise SyntaxError(self.buffer.line_number(), "Bad tree structure")
     }
     parent = self.nodes[index].parent
     remaining -= 1
   }
   guard parent is Some(index) else {
-    raise SyntaxError(self.index + 1, "Bad tree structure")
+    raise SyntaxError(self.buffer.line_number(), "Bad tree structure")
   }
   index
 }
@@ -434,7 +435,7 @@ fn WbsParser::add_item(
 ) -> Unit raise @tokenizer.ParseError {
   let level = self.smart_level(item.marker)
   guard item.label is Some(_) || item.shape is @tree.NodeShape::Pseudo else {
-    raise SyntaxError(self.index + 1, "Missing label for WBS node.")
+    raise SyntaxError(self.buffer.line_number(), "Missing label for WBS node.")
   }
   if self.nodes.is_empty() {
     let (label, stereotype) = if item.multiline {
@@ -456,7 +457,7 @@ fn WbsParser::add_item(
   }
   guard level > 0 else {
     raise SyntaxError(
-      self.index + 1,
+      self.buffer.line_number(),
       "WBS diagram only accepts one root first declared.",
     )
   }
@@ -577,10 +578,10 @@ fn WbsParser::parse_link(
   ignore(cursor.skip_while(char => char.is_whitespace()))
   guard cursor.is_eof() else { return false }
   guard self.codes.get(source_code) is Some(source) else {
-    raise SyntaxError(self.index + 1, "No such node \{source_code}")
+    raise SyntaxError(self.buffer.line_number(), "No such node \{source_code}")
   }
   guard self.codes.get(target_code) is Some(target) else {
-    raise SyntaxError(self.index + 1, "No such node \{target_code}")
+    raise SyntaxError(self.buffer.line_number(), "No such node \{target_code}")
   }
   self.links.push({ source, target, color, stereotype, label, })
   true
@@ -590,77 +591,58 @@ fn WbsParser::parse_link(
 fn WbsParser::consume_style_block(
   self : WbsParser,
 ) -> Unit raise @tokenizer.ParseError {
-  let start = self.index
+  let start = self.buffer.index
   let selectors = []
-  self.index += 1
-  while self.index < self.lines.length() {
-    let line = @tokenizer.strip_line_comment(self.lines[self.index])
+  self.buffer.advance()
+  while !self.buffer.at_end() {
+    let line = @tokenizer.strip_line_comment(self.buffer.current())
       .trim()
       .to_owned()
     if line.equal_ignore_ascii_case("</style>") {
       guard selectors.is_empty() else {
-        raise SyntaxError(self.index + 1, "unclosed WBS style selector")
+        raise SyntaxError(
+          self.buffer.line_number(),
+          "unclosed WBS style selector",
+        )
       }
       return
     }
     if line.length() == 0 {
-      self.index += 1
+      self.buffer.advance()
       continue
     }
     if line.has_suffix("{") {
       selectors.push(line[:line.length() - 1].trim().to_owned())
-      self.index += 1
+      self.buffer.advance()
       continue
     }
     if line == "}" {
       guard selectors.pop() is Some(_) else {
-        raise SyntaxError(self.index + 1, "unexpected WBS style closing brace")
+        raise SyntaxError(
+          self.buffer.line_number(),
+          "unexpected WBS style closing brace",
+        )
       }
-      self.index += 1
+      self.buffer.advance()
       continue
     }
     let words = @tokenizer.syntax_words(line)
     guard !selectors.is_empty() && words.length() >= 2 else {
-      raise SyntaxError(self.index + 1, "invalid WBS style property")
+      raise SyntaxError(self.buffer.line_number(), "invalid WBS style property")
     }
     self.style_properties.push({
       selector: selectors.join(" "),
       name: words[0],
       value: words[1:].to_owned().join(" "),
     })
-    self.index += 1
+    self.buffer.advance()
   }
   raise SyntaxError(start + 1, "unclosed WBS style block")
 }
 
 ///|
-fn WbsParser::consume_text_block(
-  self : WbsParser,
-  kind : String,
-) -> Unit raise @tokenizer.ParseError {
-  let start = self.index
-  let values = []
-  self.index += 1
-  while self.index < self.lines.length() {
-    let line = @tokenizer.strip_line_comment_preserving_indent(
-        self.lines[self.index],
-      )
-      .trim()
-      .to_owned()
-    if line.equal_ignore_ascii_case("end \{kind}") ||
-      line.equal_ignore_ascii_case("end\{kind}") {
-      self.style.apply(@style.TextBlock(kind, values.join("\n")))
-      return
-    }
-    values.push(line)
-    self.index += 1
-  }
-  raise SyntaxError(start + 1, "unclosed \{kind}")
-}
-
-///|
 fn WbsParser::parse_line(self : WbsParser) -> Unit raise @tokenizer.ParseError {
-  let trimmed = self.lines[self.index].trim().to_owned()
+  let trimmed = self.buffer.current().trim().to_owned()
   let lower = trimmed.to_lower()
   if trimmed.length() == 0 ||
     trimmed.has_prefix("'") ||
@@ -671,38 +653,8 @@ fn WbsParser::parse_line(self : WbsParser) -> Unit raise @tokenizer.ParseError {
     @style.is_preprocessor_directive(trimmed) {
     return
   }
-  if lower == "skinparam {" {
-    self.index += 1
-    let closed = @style.consume_skinparam_body(
-      () => {
-        guard self.index < self.lines.length() else { return None }
-        let next = @tokenizer.strip_line_comment(self.lines[self.index])
-        self.index += 1
-        Some(next)
-      },
-      directive => self.style.apply(directive),
-    )
-    guard closed else {
-      raise SyntaxError(self.lines.length(), "unclosed skinparam")
-    }
-    self.index -= 1
-    return
-  }
   if lower == "<style>" {
     self.consume_style_block()
-    return
-  }
-  if lower == "title" ||
-    lower == "caption" ||
-    lower == "header" ||
-    lower == "footer" ||
-    lower == "legend" ||
-    lower == "legend left" ||
-    lower == "legend right" ||
-    lower == "legend top" ||
-    lower == "legend bottom" {
-    let kind = if lower.has_prefix("legend") { "legend" } else { lower }
-    self.consume_text_block(kind)
     return
   }
   if @style.parse_style_directive(trimmed) is Some(directive) {
@@ -712,14 +664,14 @@ fn WbsParser::parse_line(self : WbsParser) -> Unit raise @tokenizer.ParseError {
   if lower.has_prefix("skinparam ") {
     return
   }
-  if parse_item_line(self.lines[self.index]) is Some(item) {
+  if parse_item_line(self.buffer.current()) is Some(item) {
     self.add_item(item)
     return
   }
   if self.parse_link(trimmed) {
     return
   }
-  raise SyntaxError(self.index + 1, "unsupported WBS command")
+  raise SyntaxError(self.buffer.line_number(), "unsupported WBS command")
 }
 
 ///|
@@ -730,12 +682,20 @@ pub fn parse_wbs(
   input : String,
 ) -> @tree.WbsDiagram raise @tokenizer.ParseError {
   let parser = WbsParser::new(input)
-  while parser.index < parser.lines.length() {
+  while !parser.buffer.at_end() {
+    let line = parser.buffer.current().trim().to_owned()
+    if parser.buffer.consume_style_block(
+        line,
+        parser.style,
+        skinparam_error_line=parser.buffer.length(),
+      ) {
+      continue
+    }
     parser.parse_line()
-    parser.index += 1
+    parser.buffer.advance()
   }
   guard !parser.nodes.is_empty() else {
-    raise SyntaxError(parser.lines.length().max(1), "Empty description")
+    raise SyntaxError(parser.buffer.length().max(1), "Empty description")
   }
   {
     nodes: parser.nodes,

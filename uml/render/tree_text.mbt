@@ -148,34 +148,21 @@ pub fn append_tree_text(
   text_metrics : @metrics.FontMetrics,
   class_name : String,
 ) -> Unit {
-  for run in layout_tree_text(x, y, label, line_height, font_size, text_metrics) {
-    output.text(
-      "text",
-      run.text,
-      attributes=[
-        ("x", run.position.x.to_string()),
-        ("y", run.position.y.to_string()),
-        ("text-anchor", anchor),
-        ("fill", fill),
-        ("font-size", font_size.to_string() + "px"),
-        ("class", class_name),
-        ..run.advance.map_or([], advance => {
-          [("textLength", advance.to_string()), ("lengthAdjust", "spacing")]
-        }),
-        ..if run.strike {
-          [("text-decoration", "line-through")]
-        },
-      ],
-    )
+  for
+    run in layout_tree_text(
+      x,
+      y,
+      label,
+      line_height,
+      font_size,
+      text_metrics,
+      Start,
+    ) {
+    output.text_run(run, anchor~, attributes=[
+      ("fill", fill),
+      ("class", class_name),
+    ])
   }
-}
-
-///|
-priv struct TreeLabelRun {
-  text : String
-  position : @graphics.Point
-  advance : Double?
-  strike : Bool
 }
 
 ///|
@@ -188,8 +175,9 @@ fn layout_tree_text(
   line_height : Int,
   font_size : Int,
   text_metrics : @metrics.FontMetrics,
-) -> Array[TreeLabelRun] {
-  let runs = []
+  anchor : @graphics.TextAnchor,
+) -> Array[@graphics.TextRun] {
+  let runs : Array[@graphics.TextRun] = []
   let lines = label.split("\n").to_array()
   let space = plantuml_space_advance(font_size)
   let first_line_extra = if lines.length() > 1 { space } else { 0 }
@@ -217,6 +205,9 @@ fn layout_tree_text(
             None
           },
           strike: span.strike,
+          anchor,
+          font_size: font_size.to_double(),
+          font_family: None,
         })
         cursor_x += measured.advance_width
       }
@@ -243,21 +234,13 @@ fn draw_tree_text(
     ..@graphics.DrawingStyle::default(),
     fill: Color(fill),
   })
-  for run in layout_tree_text(x, y, label, line_height, font_size, text_metrics) {
-    output.draw(
-      Text({
-        text: run.text,
-        position: run.position,
-        advance: run.advance,
-        anchor,
-        font_size: font_size.to_double(),
-        font_family: None,
-        strike: run.strike,
-      }),
-      metadata={
-        ..@graphics.Metadata::default(),
-        class_name: Some(class_name),
-      },
-    )
+  for
+    run in layout_tree_text(
+      x, y, label, line_height, font_size, text_metrics, anchor,
+    ) {
+    output.draw(Text(run), metadata={
+      ..@graphics.Metadata::default(),
+      class_name: Some(class_name),
+    })
   }
 }

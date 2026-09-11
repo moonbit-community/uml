@@ -354,42 +354,8 @@ fn TimingParser::declare_player(
 fn TimingParser::consume_common_directive(
   self : TimingParser,
   line : String,
-) -> Bool raise @tokenizer.ParseError {
+) -> Bool {
   let lower = line.to_lower()
-  if lower == "skinparam {" {
-    self.buffer.advance()
-    let closed = @style.consume_skinparam_body(() => self.buffer.take_next(), directive => {
-      self.diagram.style.apply(directive)
-    })
-    guard closed else {
-      raise @tokenizer.SyntaxError(
-        self.buffer.line_number(),
-        "unclosed skinparam",
-      )
-    }
-    self.buffer.index -= 1
-    return true
-  }
-  if lower == "title" ||
-    lower == "caption" ||
-    lower == "header" ||
-    lower == "footer" ||
-    lower == "legend" ||
-    lower == "legend left" ||
-    lower == "legend right" ||
-    lower == "legend top" ||
-    lower == "legend bottom" ||
-    lower == "mainframe" {
-    let kind = if lower.has_prefix("legend") {
-      "legend"
-    } else if lower == "mainframe" {
-      "mainframe"
-    } else {
-      lower
-    }
-    self.consume_text_block(kind)
-    return true
-  }
   if lower == "hide footbox" || lower == "show footbox" {
     return true
   }
@@ -442,31 +408,6 @@ fn parse_common_scale(line : String) -> String? {
   } else {
     None
   }
-}
-
-///|
-fn TimingParser::consume_text_block(
-  self : TimingParser,
-  kind : String,
-) -> Unit raise @tokenizer.ParseError {
-  let start = self.buffer.index
-  let values = []
-  self.buffer.advance()
-  while !self.buffer.at_end() {
-    let line = @tokenizer.strip_line_comment_preserving_indent(
-        self.buffer.current(),
-      )
-      .trim()
-      .to_owned()
-    if line.equal_ignore_ascii_case("end \{kind}") ||
-      line.equal_ignore_ascii_case("end\{kind}") {
-      self.diagram.style.apply(@style.TextBlock(kind, values.join("\n")))
-      return
-    }
-    values.push(line)
-    self.buffer.advance()
-  }
-  raise @tokenizer.SyntaxError(start + 1, "unclosed \{kind}")
 }
 
 ///|
@@ -523,6 +464,15 @@ pub fn parse_timing(
 ) -> @flow.TimingDiagram raise @tokenizer.ParseError {
   let parser = TimingParser::new(input)
   while !parser.buffer.at_end() {
+    let line = parser.buffer.current().trim().to_owned()
+    if parser.buffer.consume_style_block(
+        line,
+        parser.diagram.style,
+        mainframe=true,
+        skinparam_error_line=parser.buffer.length() + 1,
+      ) {
+      continue
+    }
     parser.parse_line()
     parser.buffer.advance()
   }

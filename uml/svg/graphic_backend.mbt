@@ -275,27 +275,7 @@ fn XmlWriter::draw_command(
           } else {
             run
           }
-          self.text(
-            "text",
-            run.text,
-            attributes=[
-              ("x", (run.position.x + translation.x).to_string()),
-              ("y", (run.position.y + translation.y).to_string()),
-              ("text-anchor", text_anchor_value(run.anchor)),
-              ("font-size", "\{run.font_size}px"),
-              ..run.font_family.map_or([], family => [("font-family", family)]),
-              ..run.advance.map_or([], advance => {
-                [
-                  ("textLength", advance.to_string()),
-                  ("lengthAdjust", "spacing"),
-                ]
-              }),
-              ..if run.strike {
-                [("text-decoration", "line-through")]
-              },
-              ..attributes,
-            ],
-          )
+          self.text_run(run, translation~, attributes~)
         }
       }
     }
@@ -309,4 +289,34 @@ fn text_anchor_value(anchor : @graphics.TextAnchor) -> String {
     Middle => "middle"
     End => "end"
   }
+}
+
+///|
+/// Serialize a measured text run without remeasuring it. The optional raw SVG
+/// anchor supports XML callers; typed drawing uses the run's TextAnchor.
+pub fn XmlWriter::text_run(
+  self : XmlWriter,
+  run : @graphics.TextRun,
+  translation? : @graphics.Point = @graphics.Point::default(),
+  attributes? : Array[(String, String)] = [],
+  anchor? : String,
+) -> Unit {
+  self.text(
+    "text",
+    run.text,
+    attributes=[
+      ("x", (run.position.x + translation.x).to_string()),
+      ("y", (run.position.y + translation.y).to_string()),
+      ("text-anchor", anchor.unwrap_or(text_anchor_value(run.anchor))),
+      ("font-size", "\{run.font_size}px"),
+      ..run.font_family.map_or([], family => [("font-family", family)]),
+      ..run.advance.map_or([], advance => {
+        [("textLength", advance.to_string()), ("lengthAdjust", "spacing")]
+      }),
+      ..if run.strike {
+        [("text-decoration", "line-through")]
+      },
+      ..attributes,
+    ],
+  )
 }

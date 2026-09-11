@@ -309,14 +309,7 @@ pub fn parse_state(
   while !parser.buffer.at_end() {
     let line = parser.buffer.current_clean()
     if line.to_lower() == "skinparam {" {
-      parser.buffer.advance()
-      let closed = @style.consume_skinparam_body(
-        () => parser.buffer.take_next(),
-        directive => parser.style.apply(directive),
-      )
-      guard closed else {
-        raise SyntaxError(parser.buffer.length(), "unclosed skinparam")
-      }
+      parser.buffer.consume_skinparam(parser.style, parser.buffer.length())
       continue
     }
     parser.parse_line(line)

@@ -542,7 +542,7 @@ fn @flow.StateDiagram::layout_scope(
     }
   }
   let note_names : Map[String, Int] = Map([])
-  let note_metrics = note_font_metrics(self.style)
+  let note_metrics = resolve_state_font(self.style, NoteLabel).metrics
   for note_index, note in self.notes {
     guard self.note_scope(note) == scope else { continue }
     guard self.note_region_index(note, scope) == region_index else { continue }
@@ -845,8 +845,8 @@ fn @flow.StateDiagram::layout_composite_state(
 fn @flow.StateDiagram::layout(
   self : @flow.StateDiagram,
 ) -> StateLayout raise @dot_layout.DotLayoutError {
-  let name_metrics = state_font_metrics(self.style)
-  let description_metrics = state_description_font_metrics(self.style)
+  let name_metrics = resolve_state_font(self.style, StateLabel).metrics
+  let description_metrics = resolve_state_font(self.style, StateDescription).metrics
   let fragment = self.layout_scope(None, -1, name_metrics, description_metrics)
   {
     width: fragment.width + STATE_CANVAS_PADDING * 2.0,

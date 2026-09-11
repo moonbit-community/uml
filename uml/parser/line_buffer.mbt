@@ -73,3 +73,66 @@ fn LineBuffer::take_next(self : LineBuffer) -> String? {
   self.index += 1
   Some(line)
 }
+
+///|
+/// Consume a skinparam body after its header, leaving the next command current.
+fn LineBuffer::consume_skinparam(
+  self : LineBuffer,
+  style : @style.DocumentStyle,
+  error_line : Int,
+) -> Unit raise @tokenizer.ParseError {
+  self.advance()
+  guard @style.consume_skinparam_body(() => self.take_next(), directive => {
+    style.apply(directive)
+  }) else {
+    raise @tokenizer.SyntaxError(error_line, "unclosed skinparam")
+  }
+}
+
+///|
+/// Read common presentation blocks. Each caller selects its supported family;
+/// unrecognized lines remain untouched. Diagnostics retain the caller's policy.
+fn LineBuffer::consume_style_block(
+  self : LineBuffer,
+  line : String,
+  style : @style.DocumentStyle,
+  mainframe? : Bool = false,
+  skinparam_error_line~ : Int,
+) -> Bool raise @tokenizer.ParseError {
+  let lower = line.to_lower()
+  if lower == "skinparam {" {
+    self.consume_skinparam(style, skinparam_error_line)
+    return true
+  }
+  let kind = match lower {
+    "title" | "caption" | "header" | "footer" => lower
+    "legend"
+    | "legend left"
+    | "legend right"
+    | "legend top"
+    | "legend bottom" => "legend"
+    "mainframe" if mainframe => "mainframe"
+    _ => return false
+  }
+  let start = self.line_number()
+  self.advance()
+  let lines = @tokenizer.collect_lines_until(
+    () => {
+      guard !self.at_end() else { return None }
+      let line = @tokenizer.strip_line_comment_preserving_indent(self.current())
+        .trim()
+        .to_owned()
+      self.advance()
+      Some(line)
+    },
+    line => {
+      line.equal_ignore_ascii_case("end \{kind}") ||
+      line.equal_ignore_ascii_case("end\{kind}")
+    },
+  )
+  guard lines is Some(lines) else {
+    raise @tokenizer.SyntaxError(start, "unclosed \{kind}")
+  }
+  style.apply(@style.TextBlock(kind, lines.join("\n")))
+  true
+}

@@ -325,3 +325,45 @@ test "inline drawing styles retain explicit overrides and viewport keeps layout 
   @test.assert_eq(attribute(xml, "stroke"), None)
   @test.assert_eq(attribute(xml, "style"), Some("stroke:\{color}"))
 }
+
+///|
+test "XML and typed text entry points preserve the same run properties" {
+  let metrics = @metrics.FontMetrics::from_defaults()
+  let text = "A < B & C"
+  for anchor in [@graphics.Start, @graphics.Middle, @graphics.End] {
+    let run : @graphics.TextRun = {
+      text,
+      position: {
+        x: metrics.font_size.to_double(),
+        y: metrics.ascent.to_double(),
+      },
+      advance: Some(metrics.measure(text).advance_width.to_double()),
+      anchor,
+      font_size: metrics.font_size.to_double(),
+      font_family: Some("Courier New"),
+      strike: true,
+    }
+    let xml = @svg.XmlWriter::new()
+    xml.text_run(run)
+    let typed = @svg.XmlWriter::new()
+    typed.graphic().draw(Text(run))
+    for
+      name in [
+        "x", "y", "text-anchor", "font-size", "font-family", "textLength", "lengthAdjust",
+        "text-decoration",
+      ] {
+      @test.assert_eq(
+        attribute(xml.to_string(), name),
+        attribute(typed.to_string(), name),
+      )
+    }
+    @test.assert_eq(xml.to_string().contains(@svg.xml_escape_text(text)), true)
+    let raw_anchor = "inherit"
+    let overridden = @svg.XmlWriter::new()
+    overridden.text_run(run, anchor=raw_anchor)
+    @test.assert_eq(
+      attribute(overridden.to_string(), "text-anchor"),
+      Some(raw_anchor),
+    )
+  }
+}
