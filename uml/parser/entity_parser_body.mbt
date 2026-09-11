@@ -12,36 +12,26 @@ priv enum ParsedMapEntrySyntax {
 
 ///|
 fn map_value_entry(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
-  let start = cursor.offset()
-  let key = cursor.take_while(_ => !cursor.starts_with_literal("=>"))
-  guard key.length() > 0 else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard cursor.consume_literal("=>") else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let value = cursor.take_rest_trimmed()
-  let key = key.trim().to_owned()
-  Some(ParsedMapValue(key~, value~))
+  cursor.attempt(cursor => {
+    let key = cursor.take_while(_ => !cursor.starts_with_literal("=>"))
+    guard key.length() > 0 else { return None }
+    guard cursor.consume_literal("=>") else { return None }
+    let value = cursor.take_rest_trimmed()
+    let key = key.trim().to_owned()
+    Some(ParsedMapValue(key~, value~))
+  })
 }
 
 ///|
 fn linked_map_arrow(cursor : @tokenizer.Cursor) -> String? {
-  let start = cursor.offset()
-  guard cursor.consume('*') else { return None }
-  let dashes = cursor.take_while(char => char == '-')
-  guard dashes.length() > 0 else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let underscore = cursor.consume('_')
-  guard cursor.consume('>') else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some("*" + dashes + (if underscore { "_" } else { "" }) + ">")
+  cursor.attempt(cursor => {
+    guard cursor.consume('*') else { return None }
+    let dashes = cursor.take_while(char => char == '-')
+    guard dashes.length() > 0 else { return None }
+    let underscore = cursor.consume('_')
+    guard cursor.consume('>') else { return None }
+    Some("*" + dashes + (if underscore { "_" } else { "" }) + ">")
+  })
 }
 
 ///|
@@ -54,43 +44,35 @@ fn starts_linked_arrow(cursor : @tokenizer.Cursor) -> Bool {
 
 ///|
 fn linked_map_arrow_parser(cursor : @tokenizer.Cursor) -> (String, String)? {
-  let start = cursor.offset()
-  let prefix = cursor.take_while(_ => !starts_linked_arrow(cursor))
-  guard linked_map_arrow(cursor) is Some(arrow) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some((prefix, arrow))
+  cursor.attempt(cursor => {
+    let prefix = cursor.take_while(_ => !starts_linked_arrow(cursor))
+    guard linked_map_arrow(cursor) is Some(arrow) else { return None }
+    Some((prefix, arrow))
+  })
 }
 
 ///|
 fn map_link_entry(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
-  let start = cursor.offset()
-  guard linked_map_arrow_parser(cursor) is Some((key, arrow)) else {
-    return None
-  }
-  let key = key.trim().to_owned()
-  guard key.length() > 0 else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let target = @tokenizer.unquote_identifier(cursor.take_rest_trimmed())
-  if target.length() > 0 {
-    Some(ParsedMapLink(key~, arrow~, target~))
-  } else {
-    ignore(cursor.restore(start))
-    None
-  }
+  cursor.attempt(cursor => {
+    guard linked_map_arrow_parser(cursor) is Some((key, arrow)) else {
+      return None
+    }
+    let key = key.trim().to_owned()
+    guard key.length() > 0 else { return None }
+    let target = @tokenizer.unquote_identifier(cursor.take_rest_trimmed())
+    if target.length() > 0 {
+      Some(ParsedMapLink(key~, arrow~, target~))
+    } else {
+      None
+    }
+  })
 }
 
 ///|
 fn map_entry_line(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
-  let start = cursor.offset()
-  if map_value_entry(cursor) is Some(value) {
-    return Some(value)
+  guard map_value_entry(cursor) is Some(value) else {
+    return map_link_entry(cursor)
   }
-  ignore(cursor.restore(start))
-  guard map_link_entry(cursor) is Some(value) else { return None }
   Some(value)
 }
 

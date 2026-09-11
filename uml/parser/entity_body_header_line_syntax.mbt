@@ -2,89 +2,70 @@
 fn json_single_declaration(
   cursor : @tokenizer.Cursor,
 ) -> JsonSingleDeclaration? {
-  let start = cursor.offset()
-  let visibility = declaration_visibility(cursor)
-  guard consume_inline_keyword(cursor, "json") && cursor.skip_inline_space1() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard declaration_name_syntax(cursor) is Some(name) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let suffixes = take_declaration_suffixes(cursor)
-  let metadata = declaration_metadata_from(suffixes)
-  guard cursor.skip_inline_space1() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let data = cursor.take_rest_trimmed()
-  guard data.length() > 0 && valid_json(data) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some({
-    declaration: declaration_from_syntax(
-      Json,
-      visibility,
-      false,
-      name,
-      metadata,
-    ),
-    data,
+  cursor.attempt(cursor => {
+    let visibility = declaration_visibility(cursor)
+    guard consume_inline_keyword(cursor, "json") && cursor.skip_inline_space1() else {
+      return None
+    }
+    guard declaration_name_syntax(cursor) is Some(name) else { return None }
+    let suffixes = take_declaration_suffixes(cursor)
+    let metadata = declaration_metadata_from(suffixes)
+    guard cursor.skip_inline_space1() else { return None }
+    let data = cursor.take_rest_trimmed()
+    guard data.length() > 0 && valid_json(data) else { return None }
+    Some({
+      declaration: declaration_from_syntax(
+        Json,
+        visibility,
+        false,
+        name,
+        metadata,
+      ),
+      data,
+    })
   })
 }
 
 ///|
 fn take_multiline_marker(cursor : @tokenizer.Cursor) -> Char? {
-  let start = cursor.offset()
-  guard cursor.skip_inline_space1() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let after_space = cursor.offset()
-  if consume_inline_keyword(cursor, "as") &&
-    cursor.skip_inline_space1() &&
-    cursor.consume('"') {
-    return Some('"')
-  }
-  ignore(cursor.restore(after_space))
-  if cursor.consume('[') {
-    return Some(']')
-  }
-  ignore(cursor.restore(start))
-  None
+  cursor.attempt(cursor => {
+    guard cursor.skip_inline_space1() else { return None }
+    let after_space = cursor.offset()
+    if consume_inline_keyword(cursor, "as") &&
+      cursor.skip_inline_space1() &&
+      cursor.consume('"') {
+      return Some('"')
+    }
+    ignore(cursor.restore(after_space))
+    if cursor.consume('[') {
+      return Some(']')
+    }
+    None
+  })
 }
 
 ///|
 fn multiline_element_header(
   cursor : @tokenizer.Cursor,
 ) -> MultilineElementHeader? {
-  let start = cursor.offset()
-  let visibility = declaration_visibility(cursor)
-  guard declaration_kind_syntax(cursor) is Some((kind, is_static, _)) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard declaration_name_metadata(cursor) is Some((name, metadata)) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard take_multiline_marker(cursor) is Some(terminator) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let first_line = cursor.take_while(char => char != terminator)
-  guard cursor.is_eof() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some({
-    declaration: declaration_from_syntax(
-      kind, visibility, is_static, name, metadata,
-    ),
-    first_line,
-    terminator,
+  cursor.attempt(cursor => {
+    let visibility = declaration_visibility(cursor)
+    guard declaration_kind_syntax(cursor) is Some((kind, is_static, _)) else {
+      return None
+    }
+    guard declaration_name_metadata(cursor) is Some((name, metadata)) else {
+      return None
+    }
+    guard take_multiline_marker(cursor) is Some(terminator) else { return None }
+    let first_line = cursor.take_while(char => char != terminator)
+    guard cursor.is_eof() else { return None }
+    Some({
+      declaration: declaration_from_syntax(
+        kind, visibility, is_static, name, metadata,
+      ),
+      first_line,
+      terminator,
+    })
   })
 }
 
@@ -92,111 +73,80 @@ fn multiline_element_header(
 fn external_member_line(
   cursor : @tokenizer.Cursor,
 ) -> (String, @entity.Member)? {
-  let start = cursor.offset()
-  let target = StringBuilder()
-  while true {
-    if cursor.consume_literal("::") {
-      target.write_string("::")
-    } else if cursor.peek() is Some(char) && char != ':' {
-      ignore(cursor.advance())
-      target.write_char(char)
-    } else {
-      break
+  cursor.attempt(cursor => {
+    let target = StringBuilder()
+    while true {
+      if cursor.consume_literal("::") {
+        target.write_string("::")
+      } else if cursor.peek() is Some(char) && char != ':' {
+        ignore(cursor.advance())
+        target.write_char(char)
+      } else {
+        break
+      }
     }
-  }
-  guard cursor.consume(':') else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let target = @tokenizer.unquote_identifier(
-    target.to_string().trim().to_owned(),
-  )
-  let body = cursor.take_rest_trimmed()
-  let invalid_target = target.length() == 0 ||
-    body.length() == 0 ||
-    target.to_lower().has_prefix("mix_") ||
-    declaration_kind(target) is Some(_) ||
-    target.contains("-") ||
-    target.contains("<") ||
-    target.contains("[[")
-  if invalid_target {
-    ignore(cursor.restore(start))
-    None
-  } else {
-    Some((target, member_of(body)))
-  }
+    guard cursor.consume(':') else { return None }
+    let target = @tokenizer.unquote_identifier(
+      target.to_string().trim().to_owned(),
+    )
+    let body = cursor.take_rest_trimmed()
+    let invalid_target = target.length() == 0 ||
+      body.length() == 0 ||
+      target.to_lower().has_prefix("mix_") ||
+      declaration_kind(target) is Some(_) ||
+      target.contains("-") ||
+      target.contains("<") ||
+      target.contains("[[")
+    if invalid_target {
+      None
+    } else {
+      Some((target, member_of(body)))
+    }
+  })
 }
 
 ///|
-fn take_alignment(cursor : @tokenizer.Cursor) -> Bool {
-  let start = cursor.offset()
-  guard take_inline_word(cursor) is Some(word) else { return false }
-  let aligned = word.to_lower()
-    is ("top" | "bottom" | "left" | "right" | "center")
-  guard aligned else {
-    ignore(cursor.restore(start))
-    return false
-  }
-  aligned
+fn take_alignment(cursor : @tokenizer.Cursor) -> String? {
+  cursor.attempt(cursor => {
+    guard take_inline_word(cursor) is Some(word) else { return None }
+    let aligned = word.to_lower()
+    guard aligned is ("top" | "bottom" | "left" | "right" | "center") else {
+      return None
+    }
+    Some(aligned)
+  })
+}
+
+///|
+fn aligned_text_block_kind(cursor : @tokenizer.Cursor) -> String? {
+  cursor.attempt(cursor => {
+    guard take_alignment(cursor) is Some(_) && cursor.skip_inline_space1() else {
+      return None
+    }
+    guard take_inline_word(cursor) is Some(word) else { return None }
+    let kind = word.to_lower()
+    guard kind is ("header" | "footer") else { return None }
+    Some(kind)
+  })
 }
 
 ///|
 fn text_block_header(cursor : @tokenizer.Cursor) -> String? {
-  let start = cursor.offset()
-  let legend : String? = if consume_inline_keyword(cursor, "legend") {
-    while true {
-      let segment_start = cursor.offset()
-      guard cursor.skip_inline_space1() && take_alignment(cursor) else {
-        ignore(cursor.restore(segment_start))
-        break
+  cursor.attempt(cursor => {
+    let kind = if consume_inline_keyword(cursor, "legend") {
+      ignore(collect_repeated(cursor, take_alignment))
+      "legend"
+    } else if aligned_text_block_kind(cursor) is Some(kind) {
+      kind
+    } else {
+      guard take_inline_word(cursor) is Some(word) else { return None }
+      let kind = word.to_lower()
+      guard kind is ("title" | "legend" | "header" | "footer" | "caption") else {
+        return None
       }
+      kind
     }
-    Some("legend")
-  } else {
-    ignore(cursor.restore(start))
-    None
-  }
-  let aligned : String? = match legend {
-    Some(value) => Some(value)
-    None =>
-      if take_alignment(cursor) && cursor.skip_inline_space1() {
-        if consume_inline_keyword(cursor, "header") {
-          Some("header")
-        } else if consume_inline_keyword(cursor, "footer") {
-          Some("footer")
-        } else {
-          ignore(cursor.restore(start))
-          None
-        }
-      } else {
-        ignore(cursor.restore(start))
-        None
-      }
-  }
-  let simple : String? = match aligned {
-    Some(value) => Some(value)
-    None =>
-      match take_inline_word(cursor) {
-        Some(word) =>
-          match word.to_lower() {
-            "title" | "legend" | "header" | "footer" | "caption" =>
-              Some(word.to_lower())
-            _ => {
-              ignore(cursor.restore(start))
-              None
-            }
-          }
-        None => {
-          ignore(cursor.restore(start))
-          None
-        }
-      }
-  }
-  match simple {
-    Some(value) if cursor.is_eof() => Some(value)
-    _ => {
-      ignore(cursor.restore(start))
-      None
-    }
-  }
+    guard cursor.is_eof() else { return None }
+    Some(kind)
+  })
 }

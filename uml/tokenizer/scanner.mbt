@@ -65,20 +65,21 @@ pub fn Cursor::take_quoted_text(self : Cursor) -> String? {
 /// `take_quoted_text`, requires a closing quote: an unclosed fragment
 /// consumes nothing and restores the original position.
 pub fn Cursor::take_quoted_value(self : Cursor) -> String? {
-  guard self.peek() == Some('"') else { return None }
-  let start = self.offset
-  ignore(self.advance())
-  while self.advance() is Some(char) {
-    if char == '\\' {
-      ignore(self.advance())
-      continue
+  self.attempt(self => {
+    guard self.peek() == Some('"') else { return None }
+    let start = self.offset
+    ignore(self.advance())
+    while self.advance() is Some(char) {
+      if char == '\\' {
+        ignore(self.advance())
+        continue
+      }
+      if char == '"' {
+        return Some(self.slice(start + 1, self.offset - 1))
+      }
     }
-    if char == '"' {
-      return Some(self.slice(start + 1, self.offset - 1))
-    }
-  }
-  ignore(self.restore(start))
-  None
+    None
+  })
 }
 
 ///|
@@ -105,16 +106,15 @@ pub fn Cursor::take_delimited_text(
 /// Consumes a `<<...>>` stereotype value, including the markers. An unclosed
 /// fragment consumes nothing and restores the original position.
 pub fn Cursor::take_stereotype_value(self : Cursor) -> String? {
-  let start = self.offset()
-  guard self.consume_literal("<<") else { return None }
-  while !self.is_eof() && !self.starts_with_literal(">>") {
-    ignore(self.advance())
-  }
-  guard self.consume_literal(">>") else {
-    ignore(self.restore(start))
-    return None
-  }
-  Some(self.slice(start, self.offset()))
+  self.attempt(self => {
+    let start = self.offset()
+    guard self.consume_literal("<<") else { return None }
+    while !self.is_eof() && !self.starts_with_literal(">>") {
+      ignore(self.advance())
+    }
+    guard self.consume_literal(">>") else { return None }
+    Some(self.slice(start, self.offset()))
+  })
 }
 
 ///|
@@ -122,22 +122,19 @@ pub fn Cursor::take_stereotype_value(self : Cursor) -> String? {
 /// unclosed or invalid fragment consumes nothing and restores the original
 /// position.
 pub fn Cursor::take_url_value(self : Cursor) -> String? {
-  let start = self.offset()
-  guard self.consume_literal("[[") else { return None }
-  let content_start = self.offset()
-  while !self.is_eof() && !self.starts_with_literal("]]") {
-    ignore(self.advance())
-  }
-  guard self.consume_literal("]]") else {
-    ignore(self.restore(start))
-    return None
-  }
-  let content = self.slice(content_start, self.offset() - 2)
-  guard parse_url_target("[[" + content + "]]") is Some(target) else {
-    ignore(self.restore(start))
-    return None
-  }
-  Some(target.target)
+  self.attempt(self => {
+    guard self.consume_literal("[[") else { return None }
+    let content_start = self.offset()
+    while !self.is_eof() && !self.starts_with_literal("]]") {
+      ignore(self.advance())
+    }
+    guard self.consume_literal("]]") else { return None }
+    let content = self.slice(content_start, self.offset() - 2)
+    guard parse_url_target("[[" + content + "]]") is Some(target) else {
+      return None
+    }
+    Some(target.target)
+  })
 }
 
 ///|
@@ -155,26 +152,20 @@ pub fn Cursor::take_color_token(self : Cursor) -> String? {
 /// Consumes a `#`-prefixed color value, returning the token without the
 /// marker. Restores the original position when no token follows the marker.
 pub fn Cursor::take_color_value(self : Cursor) -> String? {
-  let start = self.offset()
-  guard self.consume('#') else { return None }
-  guard self.take_color_token() is Some(value) else {
-    ignore(self.restore(start))
-    return None
-  }
-  Some(value)
+  self.attempt(self => {
+    guard self.consume('#') else { return None }
+    self.take_color_token()
+  })
 }
 
 ///|
 /// Consumes a `$`-prefixed tag value, returning the token without the
 /// marker. Restores the original position when no token follows the marker.
 pub fn Cursor::take_tag_value(self : Cursor) -> String? {
-  let start = self.offset()
-  guard self.consume('$') else { return None }
-  guard self.take_color_token() is Some(value) else {
-    ignore(self.restore(start))
-    return None
-  }
-  Some(value)
+  self.attempt(self => {
+    guard self.consume('$') else { return None }
+    self.take_color_token()
+  })
 }
 
 ///|

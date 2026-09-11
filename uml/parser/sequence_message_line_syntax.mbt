@@ -620,226 +620,159 @@ fn take_exo_tail(
 /// Matches a complete message between two participants, requiring the
 /// full line to be consumed.
 fn message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
-  let start = cursor.offset()
-  ignore(cursor.consume('&'))
-  cursor.skip_inline_spaces()
-  let anchor = match take_anchor(cursor) {
-    Some(anchor) => {
+  cursor.attempt(cursor => {
+    ignore(cursor.consume('&'))
+    cursor.skip_inline_spaces()
+    let anchor = take_anchor(cursor)
+    if anchor is Some(_) {
       cursor.skip_inline_spaces()
-      Some(anchor)
     }
-    None => None
-  }
-  let first = match take_part_ref(cursor) {
-    Some(part) => part
-    None => {
-      ignore(cursor.restore(start))
+    guard take_part_ref(cursor) is Some(first) else { return None }
+    ignore(take_anchor(cursor))
+    guard take_arrow_dressing(cursor) is Some(dressing) else { return None }
+    let (left, body, right) = dressing
+    cursor.skip_inline_spaces()
+    guard take_part_ref(cursor) is Some(second) else { return None }
+    ignore(take_multicast(cursor))
+    ignore(take_anchor(cursor))
+    let (activation_spec, activation_spec2, life_color, stereotype, url, label) = take_message_tail(
+      cursor,
+    )
+    guard @seq.message_direction(left, right) is Some(direction) else {
       return None
     }
-  }
-  ignore(take_anchor(cursor))
-  let dressing = match take_arrow_dressing(cursor) {
-    Some(dressing) => dressing
-    None => {
-      ignore(cursor.restore(start))
-      return None
+    guard cursor.is_eof() else { return None }
+    let (from, to) = match direction {
+      @seq.Reverse => (second.code, first.code)
+      @seq.Forward => (first.code, second.code)
     }
-  }
-  let (left, body, right) = dressing
-  cursor.skip_inline_spaces()
-  let second = match take_part_ref(cursor) {
-    Some(part) => part
-    None => {
-      ignore(cursor.restore(start))
-      return None
-    }
-  }
-  ignore(take_multicast(cursor))
-  ignore(take_anchor(cursor))
-  let (activation_spec, activation_spec2, life_color, stereotype, url, label) = take_message_tail(
-    cursor,
-  )
-  let direction = match @seq.message_direction(left, right) {
-    Some(direction) => direction
-    None => {
-      ignore(cursor.restore(start))
-      return None
-    }
-  }
-  guard cursor.is_eof() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let (from, to) = match direction {
-    @seq.Reverse => (second.code, first.code)
-    @seq.Forward => (first.code, second.code)
-  }
-  Some(
-    @seq.Message({
-      from_code: from,
-      to_code: to,
-      label,
-      arrow_config: @seq.ArrowConfig::from_dressing(
-        left, right, body, direction,
-      ),
-      anchor,
-      activation_spec,
-      activation_spec2,
-      life_color,
-      stereotype,
-      url,
-    }),
-  )
+    Some(
+      @seq.Message({
+        from_code: from,
+        to_code: to,
+        label,
+        arrow_config: @seq.ArrowConfig::from_dressing(
+          left, right, body, direction,
+        ),
+        anchor,
+        activation_spec,
+        activation_spec2,
+        life_color,
+        stereotype,
+        url,
+      }),
+    )
+  })
 }
 
 ///|
 /// Matches an exogenous message arriving from or leaving to the left
 /// border, requiring the full line to be consumed.
 fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
-  let start = cursor.offset()
-  ignore(cursor.consume('&'))
-  cursor.skip_inline_spaces()
-  ignore(take_anchor(cursor))
-  cursor.skip_inline_spaces()
-  let symbol = take_exo_left_symbol(cursor)
-  guard symbol is Some((_, _, _, _)) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let (symbol_char, short_arrow, border_circle, border_cross) = symbol.unwrap()
-  let dressing = match take_exo_arrow_dressing(cursor) {
-    Some(dressing) => dressing
-    None => {
-      ignore(cursor.restore(start))
+  cursor.attempt(cursor => {
+    ignore(cursor.consume('&'))
+    cursor.skip_inline_spaces()
+    ignore(take_anchor(cursor))
+    cursor.skip_inline_spaces()
+    guard take_exo_left_symbol(cursor)
+      is Some((symbol_char, short_arrow, border_circle, border_cross)) else {
       return None
     }
-  }
-  let (left, body, right) = dressing
-  let (participant_circle, participant_cross) = take_o_x_space(cursor).unwrap_or(
-    (false, false),
-  )
-  cursor.skip_inline_spaces()
-  let participant = match take_exo_participant(cursor) {
-    Some(part) => part
-    None => {
-      ignore(cursor.restore(start))
+    guard take_exo_arrow_dressing(cursor) is Some(dressing) else { return None }
+    let (left, body, right) = dressing
+    let (participant_circle, participant_cross) = take_o_x_space(cursor).unwrap_or(
+      (false, false),
+    )
+    cursor.skip_inline_spaces()
+    guard take_exo_participant(cursor) is Some(participant) else { return None }
+    guard @seq.exo_left_type(symbol_char, left, right) is Some(exo_type) else {
       return None
     }
-  }
-  let exo_type = match @seq.exo_left_type(symbol_char, left, right) {
-    Some(exo_type) => exo_type
-    None => {
-      ignore(cursor.restore(start))
-      return None
+    let (activation_spec, life_color, url, label) = take_exo_tail(cursor)
+    guard cursor.is_eof() else { return None }
+    let border = { ..left, circle: border_circle, cross: border_cross, }
+    let participant_side = {
+      ..right,
+      circle: participant_circle,
+      cross: participant_cross,
     }
-  }
-  let (activation_spec, life_color, url, label) = take_exo_tail(cursor)
-  guard cursor.is_eof() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let border = { ..left, circle: border_circle, cross: border_cross, }
-  let participant_side = {
-    ..right,
-    circle: participant_circle,
-    cross: participant_cross,
-  }
-  Some(
-    @seq.MessageExo({
-      participant_code: participant.code,
-      exo_type,
-      label,
-      arrow_config: @seq.ArrowConfig::from_dressing(
-        border,
-        participant_side,
-        body,
-        if border.has_dir {
-          @seq.Reverse
-        } else {
-          @seq.Forward
-        },
-      ),
-      short_arrow,
-      activation_spec,
-      life_color,
-      url,
-    }),
-  )
+    Some(
+      @seq.MessageExo({
+        participant_code: participant.code,
+        exo_type,
+        label,
+        arrow_config: @seq.ArrowConfig::from_dressing(
+          border,
+          participant_side,
+          body,
+          if border.has_dir {
+            @seq.Reverse
+          } else {
+            @seq.Forward
+          },
+        ),
+        short_arrow,
+        activation_spec,
+        life_color,
+        url,
+      }),
+    )
+  })
 }
 
 ///|
 /// Matches an exogenous message arriving from or leaving to the right
 /// border, requiring the full line to be consumed.
 fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
-  let start = cursor.offset()
-  ignore(cursor.consume('&'))
-  cursor.skip_inline_spaces()
-  ignore(take_anchor(cursor))
-  cursor.skip_inline_spaces()
-  let participant = match take_exo_participant(cursor) {
-    Some(part) => part
-    None => {
-      ignore(cursor.restore(start))
+  cursor.attempt(cursor => {
+    ignore(cursor.consume('&'))
+    cursor.skip_inline_spaces()
+    ignore(take_anchor(cursor))
+    cursor.skip_inline_spaces()
+    guard take_exo_participant(cursor) is Some(participant) else { return None }
+    let (participant_circle, participant_cross) = take_space_o_x(cursor).unwrap_or(
+      (false, false),
+    )
+    cursor.skip_inline_spaces()
+    guard take_exo_arrow_dressing(cursor) is Some(dressing) else { return None }
+    let (left, body, right) = dressing
+    guard take_exo_right_symbol(cursor)
+      is Some((symbol_char, short_arrow, border_circle, border_cross)) else {
       return None
     }
-  }
-  let (participant_circle, participant_cross) = take_space_o_x(cursor).unwrap_or(
-    (false, false),
-  )
-  cursor.skip_inline_spaces()
-  let dressing = match take_exo_arrow_dressing(cursor) {
-    Some(dressing) => dressing
-    None => {
-      ignore(cursor.restore(start))
+    guard @seq.exo_right_type(symbol_char, left, right) is Some(exo_type) else {
       return None
     }
-  }
-  let (left, body, right) = dressing
-  let symbol = take_exo_right_symbol(cursor)
-  guard symbol is Some((_, _, _, _)) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let (symbol_char, short_arrow, border_circle, border_cross) = symbol.unwrap()
-  let exo_type = match @seq.exo_right_type(symbol_char, left, right) {
-    Some(exo_type) => exo_type
-    None => {
-      ignore(cursor.restore(start))
-      return None
+    let (activation_spec, life_color, url, label) = take_exo_tail(cursor)
+    guard cursor.is_eof() else { return None }
+    let border = { ..right, circle: border_circle, cross: border_cross, }
+    let participant_side = {
+      ..left,
+      circle: participant_circle,
+      cross: participant_cross,
     }
-  }
-  let (activation_spec, life_color, url, label) = take_exo_tail(cursor)
-  guard cursor.is_eof() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let border = { ..right, circle: border_circle, cross: border_cross, }
-  let participant_side = {
-    ..left,
-    circle: participant_circle,
-    cross: participant_cross,
-  }
-  Some(
-    @seq.MessageExo({
-      participant_code: participant.code,
-      exo_type,
-      label,
-      arrow_config: @seq.ArrowConfig::from_dressing(
-        participant_side,
-        border,
-        body,
-        if participant_side.has_dir {
-          @seq.Reverse
-        } else {
-          @seq.Forward
-        },
-      ),
-      short_arrow,
-      activation_spec,
-      life_color,
-      url,
-    }),
-  )
+    Some(
+      @seq.MessageExo({
+        participant_code: participant.code,
+        exo_type,
+        label,
+        arrow_config: @seq.ArrowConfig::from_dressing(
+          participant_side,
+          border,
+          body,
+          if participant_side.has_dir {
+            @seq.Reverse
+          } else {
+            @seq.Forward
+          },
+        ),
+        short_arrow,
+        activation_spec,
+        life_color,
+        url,
+      }),
+    )
+  })
 }
 
 ///|
@@ -889,14 +822,9 @@ fn take_exo_right_symbol(
 /// mirroring the talc `choice` with the two exo forms wrapped in
 /// `attempt`.
 fn complete_message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
-  let start = cursor.offset()
-  if left_exo_message_syntax(cursor) is Some(event) {
-    return Some(event)
+  match () {
+    _ if left_exo_message_syntax(cursor) is Some(event) => Some(event)
+    _ if right_exo_message_syntax(cursor) is Some(event) => Some(event)
+    _ => message_line_syntax(cursor)
   }
-  ignore(cursor.restore(start))
-  if right_exo_message_syntax(cursor) is Some(event) {
-    return Some(event)
-  }
-  ignore(cursor.restore(start))
-  message_line_syntax(cursor)
 }

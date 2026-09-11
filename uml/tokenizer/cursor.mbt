@@ -190,3 +190,17 @@ pub fn Cursor::raise_parse_error(
   let diagnostic = self.diagnostic(message)
   raise SyntaxError(diagnostic.line_number(), diagnostic.message)
 }
+
+///|
+/// Try a syntax fragment, committing its consumed input only on `Some`.
+/// A `None` result restores the entry offset, including after nested attempts.
+/// The callback must only recognize syntax: changes to external parser state
+/// are not rolled back. Use `restore` explicitly for lookahead or partial commits.
+pub fn[T] Cursor::attempt(self : Cursor, parse : (Cursor) -> T?) -> T? {
+  let start = self.offset
+  let result = parse(self)
+  if result is None {
+    self.offset = start
+  }
+  result
+}

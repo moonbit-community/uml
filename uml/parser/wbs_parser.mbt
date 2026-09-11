@@ -142,17 +142,12 @@ fn wbs_is_word_char(char : Char) -> Bool {
 
 ///|
 fn parse_color(cursor : @tokenizer.Cursor) -> String? {
-  let checkpoint = cursor.offset()
-  guard cursor.consume('[') && cursor.consume('#') else {
-    ignore(cursor.restore(checkpoint))
-    return None
-  }
-  let value = cursor.take_while(wbs_is_word_char)
-  guard value.length() > 0 && cursor.consume(']') else {
-    ignore(cursor.restore(checkpoint))
-    return None
-  }
-  Some("#" + value)
+  cursor.attempt(cursor => {
+    guard cursor.consume('[') && cursor.consume('#') else { return None }
+    let value = cursor.take_while(wbs_is_word_char)
+    guard value.length() > 0 && cursor.consume(']') else { return None }
+    Some("#" + value)
+  })
 }
 
 ///|
@@ -162,14 +157,12 @@ fn valid_code(code : String) -> Bool {
 
 ///|
 fn parse_parenthesized_code(cursor : @tokenizer.Cursor) -> String? {
-  let checkpoint = cursor.offset()
-  guard cursor.consume('(') else { return None }
-  let code = cursor.take_while(char => char != ')')
-  guard cursor.consume(')') && valid_code(code) else {
-    ignore(cursor.restore(checkpoint))
-    return None
-  }
-  Some(code)
+  cursor.attempt(cursor => {
+    guard cursor.consume('(') else { return None }
+    let code = cursor.take_while(char => char != ')')
+    guard cursor.consume(')') && valid_code(code) else { return None }
+    Some(code)
+  })
 }
 
 ///|
@@ -485,40 +478,33 @@ fn WbsParser::add_item(
 
 ///|
 fn parse_link_color(cursor : @tokenizer.Cursor) -> String? {
-  let checkpoint = cursor.offset()
-  guard cursor.consume('#') else { return None }
-  let first = cursor.take_while(wbs_is_word_char)
-  guard first.length() > 0 else {
-    ignore(cursor.restore(checkpoint))
-    return None
-  }
-  if cursor.peek() is Some(char) && (char == '-' || char == '|' || char == '/') {
-    ignore(cursor.advance())
-    let second = cursor.take_while(wbs_is_word_char)
-    guard second.length() > 0 else {
-      ignore(cursor.restore(checkpoint))
-      return None
+  cursor.attempt(cursor => {
+    guard cursor.consume('#') else { return None }
+    let first = cursor.take_while(wbs_is_word_char)
+    guard first.length() > 0 else { return None }
+    if cursor.peek() is Some(char) &&
+      (char == '-' || char == '|' || char == '/') {
+      ignore(cursor.advance())
+      let second = cursor.take_while(wbs_is_word_char)
+      guard second.length() > 0 else { return None }
     }
-  }
-  let rest = StringBuilder()
-  while cursor.peek() == Some(';') {
-    ignore(cursor.advance())
-    let segment = cursor.take_while(char => {
-      wbs_is_word_char(char) ||
-      char == '.' ||
-      char == ':' ||
-      char == '-' ||
-      char == '|' ||
-      char == '/'
-    })
-    guard segment.length() > 0 else {
-      ignore(cursor.restore(checkpoint))
-      return None
+    let rest = StringBuilder()
+    while cursor.peek() == Some(';') {
+      ignore(cursor.advance())
+      let segment = cursor.take_while(char => {
+        wbs_is_word_char(char) ||
+        char == '.' ||
+        char == ':' ||
+        char == '-' ||
+        char == '|' ||
+        char == '/'
+      })
+      guard segment.length() > 0 else { return None }
+      rest.write_char(';')
+      rest.write_string(segment)
     }
-    rest.write_char(';')
-    rest.write_string(segment)
-  }
-  Some("#" + first + rest.to_string())
+    Some("#" + first + rest.to_string())
+  })
 }
 
 ///|

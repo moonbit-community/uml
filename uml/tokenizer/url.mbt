@@ -55,72 +55,57 @@ fn take_url_terminator(cursor : Cursor) -> Bool {
 ///|
 /// Consumes the label of a URL target up to its `]]` terminator.
 fn take_url_label(cursor : Cursor) -> String? {
-  let start = cursor.offset()
-  while !cursor.is_eof() && !cursor.starts_with_literal("]]") {
-    ignore(cursor.advance())
-  }
-  guard cursor.consume_literal("]]") else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some(cursor.slice(start, cursor.offset() - 2))
+  cursor.attempt(cursor => {
+    let start = cursor.offset()
+    while !cursor.is_eof() && !cursor.starts_with_literal("]]") {
+      ignore(cursor.advance())
+    }
+    guard cursor.consume_literal("]]") else { return None }
+    Some(cursor.slice(start, cursor.offset() - 2))
+  })
 }
 
 ///|
 /// Parses a `[[target label]]` prefix, leaving the cursor after the
 /// terminator. On failure the cursor is restored to its original position.
 fn url_target_prefix(cursor : Cursor) -> UrlTarget? {
-  let start = cursor.offset()
-  guard cursor.consume_literal("[[") else { return None }
-  skip_url_spaces(cursor)
-  let target = match cursor.take_quoted_value() {
-    Some(value) => value
-    None => {
+  cursor.attempt(cursor => {
+    guard cursor.consume_literal("[[") else { return None }
+    skip_url_spaces(cursor)
+    let target = if cursor.take_quoted_value() is Some(value) {
+      value
+    } else {
       let value = cursor.take_while(char => !char.is_whitespace() && char != ']')
-      guard value.length() > 0 else {
-        ignore(cursor.restore(start))
-        return None
-      }
+      guard value.length() > 0 else { return None }
       value
     }
-  }
-  let label_start = cursor.offset()
-  let label : String? = if take_url_terminator(cursor) {
-    None
-  } else {
-    ignore(cursor.restore(label_start))
-    guard skip_url_space1(cursor) else {
-      ignore(cursor.restore(start))
-      return None
-    }
-    guard take_url_label(cursor) is Some(raw) else {
-      ignore(cursor.restore(start))
-      return None
-    }
-    let label = raw.trim().to_owned()
-    if label.length() == 0 {
+    let label_start = cursor.offset()
+    let label : String? = if take_url_terminator(cursor) {
       None
     } else {
-      Some(label)
+      ignore(cursor.restore(label_start))
+      guard skip_url_space1(cursor) else { return None }
+      guard take_url_label(cursor) is Some(raw) else { return None }
+      let label = raw.trim().to_owned()
+      if label.length() == 0 {
+        None
+      } else {
+        Some(label)
+      }
     }
-  }
-  Some({ target, label, })
+    Some({ target, label, })
+  })
 }
 
 ///|
 fn url_target_parser(cursor : Cursor) -> UrlTarget? {
-  let start = cursor.offset()
-  skip_url_spaces(cursor)
-  guard url_target_prefix(cursor) is Some(target) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  skip_url_spaces(cursor)
-  guard cursor.is_eof() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some(target)
+  cursor.attempt(cursor => {
+    skip_url_spaces(cursor)
+    guard url_target_prefix(cursor) is Some(target) else { return None }
+    skip_url_spaces(cursor)
+    guard cursor.is_eof() else { return None }
+    Some(target)
+  })
 }
 
 ///|

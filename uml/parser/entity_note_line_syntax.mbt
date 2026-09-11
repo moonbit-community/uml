@@ -51,15 +51,10 @@ priv enum ClassAnnotationLineSyntax {
 
 ///|
 fn note_position_syntax(cursor : @tokenizer.Cursor) -> @entity.NotePosition? {
-  let start = cursor.offset()
-  guard take_inline_word(cursor) is Some(word) else { return None }
-  match entity_note_position(word) {
-    Some(position) => Some(position)
-    None => {
-      ignore(cursor.restore(start))
-      None
-    }
-  }
+  cursor.attempt(cursor => {
+    guard take_inline_word(cursor) is Some(word) else { return None }
+    entity_note_position(word)
+  })
 }
 
 ///|
@@ -85,14 +80,14 @@ fn note_name(cursor : @tokenizer.Cursor) -> String? {
 
 ///|
 fn note_entity_name(cursor : @tokenizer.Cursor) -> String? {
-  let start = cursor.offset()
-  guard note_name(cursor) is Some(name) else { return None }
-  if name.equal_ignore_ascii_case("of") {
-    ignore(cursor.restore(start))
-    None
-  } else {
-    Some(name)
-  }
+  cursor.attempt(cursor => {
+    guard note_name(cursor) is Some(name) else { return None }
+    if name.equal_ignore_ascii_case("of") {
+      None
+    } else {
+      Some(name)
+    }
+  })
 }
 
 ///|
@@ -171,121 +166,88 @@ fn note_content(cursor : @tokenizer.Cursor) -> NoteContentSyntax {
 }
 
 ///|
+/// The shared `as name` suffix. Missing or incomplete aliases consume nothing.
+fn note_alias(cursor : @tokenizer.Cursor) -> String? {
+  cursor.attempt(cursor => {
+    guard consume_inline_keyword(cursor, "as") && cursor.skip_inline_space1() else {
+      return None
+    }
+    note_name(cursor)
+  })
+}
+
+///|
 fn named_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
-  let inline = match cursor.take_quoted_value() {
-    Some(text) => {
-      let as_start = cursor.offset()
-      if cursor.skip_inline_space1() &&
-        consume_inline_keyword(cursor, "as") &&
-        cursor.skip_inline_space1() {
-        match note_name(cursor) {
-          Some(code) => Some((code, NoteInline(text)))
-          None => {
-            ignore(cursor.restore(as_start))
-            None
-          }
-        }
-      } else {
-        ignore(cursor.restore(as_start))
-        None
-      }
-    }
-    None => None
+  // A quoted label remains consumed if its alias fails. The block alternative
+  // starts after that label, as in the existing PlantUML-compatible grammar.
+  let inline = if cursor.take_quoted_value() is Some(text) {
+    cursor.attempt(cursor => {
+      guard cursor.skip_inline_space1() else { return None }
+      note_alias(cursor).map(code => (code, NoteContentSyntax::NoteInline(text)))
+    })
+  } else {
+    None
   }
-  let value = match inline {
-    Some(pair) => Some(pair)
-    None => {
-      let as_start = cursor.offset()
-      if consume_inline_keyword(cursor, "as") && cursor.skip_inline_space1() {
-        match note_name(cursor) {
-          Some(code) => Some((code, NoteBlock))
-          None => {
-            ignore(cursor.restore(as_start))
-            None
-          }
-        }
-      } else {
-        ignore(cursor.restore(as_start))
-        None
-      }
-    }
+  let value = if inline is Some(pair) {
+    Some(pair)
+  } else {
+    note_alias(cursor).map(code => (code, NoteContentSyntax::NoteBlock))
   }
-  match value {
-    Some((code, content)) => {
-      let metadata = note_metadata(cursor)
-      Some({
-        target: NoteFloatingTarget(code),
-        position: Right,
-        content,
-        metadata,
-      })
-    }
-    None => None
-  }
+  guard value is Some((code, content)) else { return None }
+  let metadata = note_metadata(cursor)
+  Some({ target: NoteFloatingTarget(code), position: Right, content, metadata, })
 }
 
 ///|
 fn link_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
-  let start = cursor.offset()
-  let pos_start = cursor.offset()
-  let position = if note_position_syntax(cursor) is Some(value) &&
-    cursor.skip_inline_space1() {
-    Some(value)
-  } else {
-    ignore(cursor.restore(pos_start))
-    None
-  }
-  guard (
-      consume_inline_keyword(cursor, "on") ||
-      consume_inline_keyword(cursor, "of")
-    ) &&
-    cursor.skip_inline_space1() &&
-    consume_inline_keyword(cursor, "link") else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let metadata = note_metadata(cursor)
-  let content = note_content(cursor)
-  Some({
-    target: NoteLinkTarget,
-    position: position.unwrap_or(Bottom),
-    content,
-    metadata,
+  cursor.attempt(cursor => {
+    let pos_start = cursor.offset()
+    let position = if note_position_syntax(cursor) is Some(value) &&
+      cursor.skip_inline_space1() {
+      Some(value)
+    } else {
+      ignore(cursor.restore(pos_start))
+      None
+    }
+    guard (
+        consume_inline_keyword(cursor, "on") ||
+        consume_inline_keyword(cursor, "of")
+      ) &&
+      cursor.skip_inline_space1() &&
+      consume_inline_keyword(cursor, "link") else {
+      return None
+    }
+    let metadata = note_metadata(cursor)
+    let content = note_content(cursor)
+    Some({
+      target: NoteLinkTarget,
+      position: position.unwrap_or(Bottom),
+      content,
+      metadata,
+    })
   })
 }
 
 ///|
 fn member_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
-  let start = cursor.offset()
-  guard note_position_syntax(cursor) is Some(position) else { return None }
-  guard position is Left || position is Right else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard cursor.skip_inline_space1() &&
-    consume_inline_keyword(cursor, "of") &&
-    cursor.skip_inline_space1() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard note_entity_name(cursor) is Some(entity) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard cursor.consume_literal("::") else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  guard note_member_name(cursor) is Some(entry) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let metadata = note_metadata(cursor)
-  Some({
-    target: NoteMemberTarget(entity~, entry~),
-    position,
-    content: NoteBlock,
-    metadata,
+  cursor.attempt(cursor => {
+    guard note_position_syntax(cursor) is Some(position) else { return None }
+    guard position is Left || position is Right else { return None }
+    guard cursor.skip_inline_space1() &&
+      consume_inline_keyword(cursor, "of") &&
+      cursor.skip_inline_space1() else {
+      return None
+    }
+    guard note_entity_name(cursor) is Some(entity) else { return None }
+    guard cursor.consume_literal("::") else { return None }
+    guard note_member_name(cursor) is Some(entry) else { return None }
+    let metadata = note_metadata(cursor)
+    Some({
+      target: NoteMemberTarget(entity~, entry~),
+      position,
+      content: NoteBlock,
+      metadata,
+    })
   })
 }
 
@@ -319,58 +281,49 @@ fn entity_note_tail(cursor : @tokenizer.Cursor) -> EntityNoteLineSyntax? {
 
 ///|
 fn note_line(cursor : @tokenizer.Cursor) -> ClassAnnotationLineSyntax? {
-  let start = cursor.offset()
-  guard consume_inline_keyword(cursor, "note") && cursor.skip_inline_space1() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let tail = if named_note_tail(cursor) is Some(value) {
-    Some(value)
-  } else if link_note_tail(cursor) is Some(value) {
-    Some(value)
-  } else if member_note_tail(cursor) is Some(value) {
-    Some(value)
-  } else {
-    entity_note_tail(cursor)
-  }
-  guard tail is Some(note) else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  cursor.skip_inline_spaces()
-  guard cursor.is_eof() else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some(ParsedClassNote(note))
+  cursor.attempt(cursor => {
+    guard consume_inline_keyword(cursor, "note") && cursor.skip_inline_space1() else {
+      return None
+    }
+    let tail = if named_note_tail(cursor) is Some(value) {
+      Some(value)
+    } else if link_note_tail(cursor) is Some(value) {
+      Some(value)
+    } else if member_note_tail(cursor) is Some(value) {
+      Some(value)
+    } else {
+      entity_note_tail(cursor)
+    }
+    guard tail is Some(note) else { return None }
+    cursor.skip_inline_spaces()
+    guard cursor.is_eof() else { return None }
+    Some(ParsedClassNote(note))
+  })
 }
 
 ///|
 fn link_constraint_line(
   cursor : @tokenizer.Cursor,
 ) -> ClassAnnotationLineSyntax? {
-  let start = cursor.offset()
-  guard consume_inline_keyword(cursor, "constraint") &&
-    cursor.skip_inline_space1() &&
-    consume_inline_keyword(cursor, "on") &&
-    cursor.skip_inline_space1() &&
-    consume_inline_keyword(cursor, "links") else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  let color = if cursor.skip_inline_space1() {
-    cursor.take_color_value()
-  } else {
-    None
-  }
-  cursor.skip_inline_spaces()
-  guard cursor.consume(':') else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  cursor.skip_inline_spaces()
-  let text = cursor.take_rest_trimmed()
-  Some(ParsedLinkConstraint({ text, color, }))
+  cursor.attempt(cursor => {
+    guard consume_inline_keyword(cursor, "constraint") &&
+      cursor.skip_inline_space1() &&
+      consume_inline_keyword(cursor, "on") &&
+      cursor.skip_inline_space1() &&
+      consume_inline_keyword(cursor, "links") else {
+      return None
+    }
+    let color = if cursor.skip_inline_space1() {
+      cursor.take_color_value()
+    } else {
+      None
+    }
+    cursor.skip_inline_spaces()
+    guard cursor.consume(':') else { return None }
+    cursor.skip_inline_spaces()
+    let text = cursor.take_rest_trimmed()
+    Some(ParsedLinkConstraint({ text, color, }))
+  })
 }
 
 ///|
