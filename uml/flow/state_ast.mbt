@@ -1,6 +1,7 @@
 ///|
 pub(all) enum StateKind {
   Normal
+  Frame
   Initial
   Final
   History
@@ -60,6 +61,8 @@ pub(all) struct StateTransition {
   target : String
   label : String?
   direction : TransitionDirection
+  /// PlantUML link queue length, with horizontal directions reduced to one.
+  length : Int
   line_style : String?
   has_cross_start : Bool
   has_circle_end : Bool
@@ -86,6 +89,8 @@ pub extend StateRegionSeparator with Debug::{to_repr}
 ///|
 pub(all) struct StateRegion {
   parent : String
+  /// Effective separator direction of the containing state; None for its
+  /// initial region. All later regions share the container's orientation.
   separator : StateRegionSeparator?
   index : Int
 } derive(Eq, Debug)
@@ -99,6 +104,7 @@ pub extend StateRegion with Debug::{to_repr}
 ///|
 pub(all) enum StateNoteTarget {
   StateNote(String)
+  NoteNote(Int)
   TransitionNote(Int)
 } derive(Eq, Debug)
 
@@ -123,8 +129,25 @@ pub extend StateNotePosition with Eq::{not_equal, equal}
 pub extend StateNotePosition with Debug::{to_repr}
 
 ///|
+pub(all) enum StateNoteTextMode {
+  InlineText
+  BlockText
+} derive(Eq, Debug)
+
+///|
+pub extend StateNoteTextMode with Eq::{not_equal, equal}
+
+///|
+pub extend StateNoteTextMode with Debug::{to_repr}
+
+///|
 pub(all) struct StateNote {
   target : StateNoteTarget
+  /// Notes belong to their declaration scope, which may differ from the target.
+  parent : String?
+  region_index : Int
+  /// Block notes preserve backslash escapes; inline notes decode them for display.
+  text_mode : StateNoteTextMode
   text : String
   color : String?
   position : StateNotePosition?

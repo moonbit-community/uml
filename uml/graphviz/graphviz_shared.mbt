@@ -42,7 +42,7 @@ pub fn set_fixed_node_size(
 }
 
 ///|
-/// Execute dot with the shared rank direction and spline mode.
+/// Execute dot with the shared rank direction and the graph's routing mode.
 pub fn layout_dot(
   graph : @cgraph.Graph,
   style : @style.DocumentStyle,
@@ -53,7 +53,7 @@ pub fn layout_dot(
     rankdir: Some(graphviz_rankdir(style)),
     nodesep: Some(nodesep),
     ranksep: Some(ranksep),
-    splines: Some(@dot_layout.SplinesMode::Spline),
+    splines: None,
   })
 }
 
@@ -190,11 +190,12 @@ pub extend GraphvizEdge with Debug::{to_repr}
 
 ///|
 /// Extract edges whose graphviz ids appear in `names`, mapping each id to
-/// its semantic index.
+/// its semantic index. Orthogonal PlantUML links use the exterior label slot.
 pub fn graphviz_edges(
   laid_out : @dot_layout.DotLayoutGraph,
   names : Map[Int, String],
   bbox : @geom.Rect,
+  external_labels? : Bool = false,
 ) -> Array[GraphvizEdge] {
   laid_out.edges.filter_map(edge_layout => {
     guard names.get(edge_layout.edge.id()) is Some(index_text) else {
@@ -204,9 +205,12 @@ pub fn graphviz_edges(
     let splines = edge_layout.splines.map(spline => {
       graphviz_path_to_svg(spline, bbox)
     })
-    let label = edge_layout.label_pos.map(point => {
-      graphviz_point_to_svg(point, bbox)
-    })
+    let label_position = if external_labels {
+      edge_layout.xlabel_pos
+    } else {
+      edge_layout.label_pos
+    }
+    let label = label_position.map(point => graphviz_point_to_svg(point, bbox))
     let head_label = edge_layout.head_label_pos.map(point => {
       graphviz_point_to_svg(point, bbox)
     })

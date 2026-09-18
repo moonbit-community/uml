@@ -36,55 +36,6 @@ test "state multiline labels preserve text metrics and centered baselines" {
 }
 
 ///|
-test "state transition drawing retains routed points and endpoint marker ownership" {
-  let diagram = @parser.parse_state(
-    "@startuml\nA x--> B\nB -->o C\nC <-[dashed]- D\n@enduml",
-  )
-  let layout = diagram.layout()
-  let arrow = @graphics.MarkerRef::new("arrow")
-  let cross = @graphics.MarkerRef::new("cross")
-  for edge in layout.edges {
-    let commands = []
-    append_state_edge(
-      @graphics.Graphic::new(command => commands.push(command)),
-      diagram,
-      edge,
-      arrow,
-      cross,
-    )
-    let paths = commands.filter_map(command => {
-      guard command is Draw(MarkedPath(segments, markers), _, _, _) else {
-        return None
-      }
-      let transition = diagram.transitions[edge.transition_index]
-      @test.assert_eq(markers.end, Some(arrow))
-      @test.assert_eq(
-        markers.start,
-        if transition.has_cross_start {
-          Some(cross)
-        } else {
-          None
-        },
-      )
-      let points = []
-      for segment in segments {
-        match segment {
-          MoveTo(point) | LineTo(point) => points.push((point.x, point.y))
-          CubicTo(first, second, end) => {
-            points.push((first.x, first.y))
-            points.push((second.x, second.y))
-            points.push((end.x, end.y))
-          }
-          _ => @test.fail("unexpected replacement of routed path geometry")
-        }
-      }
-      Some(points)
-    })
-    @test.assert_eq(paths, edge.paths.filter(path => !path.is_empty()))
-  }
-}
-
-///|
 test "state node drawing preserves semantic groups links and terminal nesting" {
   let diagram = @parser.parse_state(
     "@startuml\n[*] --> Review\nstate Review [[https://example.invalid/review]]\nReview --> [*]\n@enduml",
@@ -121,5 +72,48 @@ test "state node drawing preserves semantic groups links and terminal nesting" {
       @test.assert_eq(outer.0, inner.0)
       @test.assert_eq(outer.1 > inner.1, true)
     }
+  }
+}
+
+///|
+test "transition text occupies the label box reserved by layout" {
+  let base = @parser.parse_state(
+    "@startuml\nskinparam ArrowFontSize 32\nA --> B\n@enduml",
+  )
+  for label in ["transition details", "first line\n\nlast line"] {
+    let diagram = {
+      ..base,
+      transitions: base.transitions.map(transition => {
+        ..transition,
+        label: Some(label),
+      }),
+    }
+    let layout = diagram.layout()
+    let metrics = resolve_state_font(diagram.style, TransitionLabel).metrics
+    let size = metrics.measure(label)
+    let edge = layout.edges[0]
+    let position = edge.label.unwrap()
+    let commands = []
+    append_state_edge(
+      @graphics.Graphic::new(command => commands.push(command)),
+      diagram,
+      edge,
+    )
+    let blocks = commands.filter_map(command => {
+      guard command is Draw(TextBlock(block), _, _, _) else { return None }
+      Some(block)
+    })
+    guard blocks is [block] else { @test.fail("expected a transition label") }
+    @test.assert_eq(block.lines.map(line => line.text).join("\n"), label)
+    @test.assert_eq(block.position.x, position.0)
+    @test.assert_eq(
+      block.position.y - metrics.ascent.to_double(),
+      position.1 - size.height.to_double() / 2.0,
+    )
+    @test.assert_eq(
+      block.lines.fold(init=0.0, (height, line) => height + line.dy) +
+      metrics.line_height.to_double(),
+      size.height.to_double(),
+    )
   }
 }

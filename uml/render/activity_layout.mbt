@@ -17,16 +17,28 @@ pub extend ActivityNodeLayout with Debug::{to_repr}
 ///|
 pub(all) enum ActivityEdgeRoute {
   Forward
+  ForkLane(Int, Int)
+  ForkSequence
+  ForkSequencePorts(Int, Int)
   Horizontal
   Goto
   BackwardLeft
-  BackwardRight
+  BackwardRight(Int, Int)
+  RepeatBackRight(Int)
+  RepeatLaneBack(Int)
+  RepeatForward
   IfDownLeft
   IfDownRight
+  IfSideTerminal
+  IfBypassRight(Int)
+  IfEmptyDown
+  IfChainMerge
   SwitchLeft
   SwitchRight
   SwitchMiddle
-  WhileExitLeft
+  SwitchSideMerge
+  WhileExitLeft(Int)
+  WhileEntry
 } derive(Eq, Debug)
 
 ///|
@@ -98,13 +110,14 @@ pub extend ActivityLayout with Debug::{to_repr}
 ///|
 priv enum Tile {
   Leaf(Int)
-  LabelAnchor(Int)
+  Noted(Tile, Array[Int])
+  FlowAnchor(Int)
   GotoAnchor(Int)
-  Partition(Array[Tile])
+  Partition(Int, Array[Tile], Int)
   Swimlane
   IfChain(Array[BranchTiles], Int)
   WhileLoop(Int, Array[Tile], Int, String?, String?)
-  RepeatLoop(Array[Tile], Int, String?, String?)
+  RepeatLoop(Int, Array[Tile], Int, String?, String?)
   Parallel(Int, Array[BranchTiles], Int)
   Switch(Int, Array[BranchTiles], Int)
 }
@@ -164,6 +177,10 @@ const EDGE_LABEL_GAP : Int = 41
 const EDGE_LABEL_LINE : Int = 13
 
 ///|
+/// Snake places a vertical connector's label beside its flow axis.
+const EDGE_LABEL_OFFSET : Int = 4
+
+///|
 /// Box padding on all four sides (skin `activity { Padding 10 }`).
 const TEXT_PADDING : Int = 10
 
@@ -172,7 +189,7 @@ const TEXT_PADDING : Int = 10
 const BOX_ROUND : Int = 12
 
 ///|
-/// Diamond (decision) height: PlantUML draws a 24px-tall hexagon.
+/// Minimum decision height; taller labels expand the hexagon.
 const DIAMOND_HEIGHT : Int = 24
 
 ///|
@@ -186,6 +203,13 @@ const TERMINAL_SIZE : Int = 20
 ///|
 /// Stop-circle outer diameter (PlantUML `FtileCircleStop` SIZE 22).
 const STOP_SIZE : Int = 22
+
+///|
+/// FtileCircleEndCross.SIZE and its internal cross stroke.
+const END_SIZE : Int = 20
+
+///|
+const END_CROSS_STROKE : Double = 2.5
 
 ///|
 /// Stop-circle inner diameter.
@@ -222,7 +246,11 @@ const BRANCH_DIAMOND_MARGIN : Int = 10
 const WHILE_BACK_MARGIN : Int = 12
 
 ///|
-/// The vertical route line a `BackwardLeft`/`WhileExitLeft` edge loops
+/// Clearance below the loop body before the return edge turns outward.
+const LOOP_BACK_GAP : Int = 10
+
+///|
+/// The vertical route line a `BackwardLeft` edge loops
 /// through, left of both nodes.
 ///
 /// The SVG path, the label extent, and the compression pass all derive this
@@ -235,20 +263,9 @@ fn backward_left_route_x(
 }
 
 ///|
-/// The vertical route line a `BackwardRight` edge loops through, right of
-/// both nodes. Shared by the SVG path, the label extent, and the compression
-/// pass; do not re-derive `(from.x + from.width).max(...)` locally.
-fn backward_right_route_x(
-  from : ActivityNodeLayout,
-  to : ActivityNodeLayout,
-) -> Int {
-  (from.x + from.width).max(to.x + to.width) + WHILE_BACK_MARGIN
-}
-
-///|
-/// While body-to-exit gap: PlantUML stacks 10px to the back-edge line,
-/// 12px to the exit label line, then 20px to the exit node.
-const WHILE_EXIT_GAP : Int = 42
+/// While body-to-port gap: the reference SVG places the return line first,
+/// then the exit turn; the following sequence owns its own vertical gap.
+const WHILE_EXIT_GAP : Int = LOOP_BACK_GAP + WHILE_BACK_MARGIN
 
 ///|
 /// Fork bar height.
@@ -257,10 +274,6 @@ const FORK_BAR_HEIGHT : Int = 6
 ///|
 /// Fork branch column margin (PlantUML `xMargin = 14`).
 const FORK_COLUMN_MARGIN : Int = 14
-
-///|
-/// Gap between the switch entry diamond and the case columns.
-const SWITCH_CASE_GAP : Int = 36
 
 ///|
 /// Font size used for activity labels. PlantUML's skin sets `FontSize 12`
@@ -317,32 +330,64 @@ fn tiles_from_instructions(
         tiles.push(
           Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Action(label))),
         )
-      @flow.ActivityInstruction::Note(label) =>
-        tiles.push(
-          Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Note(label))),
+      @flow.ActivityInstruction::Note(label, side) => {
+        let index = add_layout_node(
+          nodes,
+          @flow.ActivityNode::Note(label, side),
         )
+        attach_activity_note(tiles, nodes, index)
+      }
       @flow.ActivityInstruction::Edge(label) =>
         tiles.push(
           Tile::Leaf(
             add_layout_node(
               nodes,
-              @flow.ActivityNode::Arrow("-> " + label.text.unwrap_or("")),
+              @flow.ActivityNode::Arrow("-> " + label.text.unwrap_or("") + ";"),
             ),
           ),
         )
       @flow.ActivityInstruction::IfChain(chain) => {
         guard chain.branches.length() > 0 else { continue }
-        let branches = chain.branches.map(branch => {
-          let decision = branch.condition.map(condition => {
+        // Conditions and the merge belong to the chain's entry swimlane.
+        // Allocate them before branch-local swimlane changes enter the stream.
+        let decisions = chain.branches.map(branch => {
+          branch.condition.map(condition => {
             add_layout_node(nodes, @flow.ActivityNode::If(condition))
           })
-          {
-            decision,
-            tiles: tiles_from_instructions(branch.instructions, nodes),
-            label: branch.incoming.text,
-          }
         })
         let exit = add_layout_node(nodes, @flow.ActivityNode::EndIf)
+        let is_long = decisions.filter(decision => decision is Some(_)).length() >
+          1
+        let branches = chain.branches.mapi((index, branch) => {
+          let tiles = tiles_from_instructions(branch.instructions, nodes)
+          let label = sequence_incoming_label(tiles, nodes).map_or(
+            branch.incoming.text.map(activity_display_text),
+            label => Some(label),
+          )
+          if is_long && sequence_is_empty(tiles, nodes) {
+            tiles.push(
+              FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndIf)),
+            )
+          }
+          { decision: decisions[index], tiles, label, }
+        })
+        if branches[branches.length() - 1].decision is Some(_) {
+          let tiles = if is_long {
+            [FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndIf))]
+          } else {
+            []
+          }
+          branches.push({ decision: None, tiles, label: None, })
+        }
+        // ConditionalBuilder keeps two empty branches in the two-column layout.
+        if !is_long &&
+          branches.all(branch => sequence_is_empty(branch.tiles, nodes)) {
+          for branch in branches {
+            branch.tiles.push(
+              FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndIf)),
+            )
+          }
+        }
         tiles.push(Tile::IfChain(branches, exit))
       }
       @flow.ActivityInstruction::While(while_instruction) => {
@@ -356,31 +401,47 @@ fn tiles_from_instructions(
             entry,
             tiles_from_instructions(while_instruction.instructions, nodes),
             exit,
-            while_instruction.enter.text,
-            while_instruction.exit.text,
+            while_instruction.enter.text.map(activity_display_text),
+            while_instruction.exit.text.map(activity_display_text),
           ),
         )
       }
       @flow.ActivityInstruction::Repeat(repeat_instruction) => {
+        let entry = add_layout_node(nodes, @flow.ActivityNode::Repeat)
+        let body = tiles_from_instructions(
+          repeat_instruction.instructions,
+          nodes,
+        )
+        // FtileEmpty preserves separate entry and exit links in an empty repeat.
+        if sequence_is_empty(body, nodes) {
+          body.push(
+            FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndWhile(""))),
+          )
+        }
         let exit = add_layout_node(
           nodes,
           @flow.ActivityNode::RepeatWhile(repeat_instruction.condition),
         )
         tiles.push(
           Tile::RepeatLoop(
-            tiles_from_instructions(repeat_instruction.instructions, nodes),
+            entry,
+            body,
             exit,
-            repeat_instruction.retry.text,
-            repeat_instruction.exit.text,
+            repeat_instruction.retry.text.map(activity_display_text),
+            repeat_instruction.exit.text.map(activity_display_text),
           ),
         )
       }
       @flow.ActivityInstruction::Fork(fork) => {
         let entry = add_layout_node(nodes, @flow.ActivityNode::Fork)
         let branches = fork.branches.map(branch => {
-          decision: None,
-          tiles: tiles_from_instructions(branch, nodes),
-          label: None,
+          let tiles = tiles_from_instructions(branch, nodes)
+          if sequence_is_empty(tiles, nodes) {
+            tiles.push(
+              FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::ForkAgain)),
+            )
+          }
+          { decision: None, tiles, label: None, }
         })
         let exit = add_layout_node(nodes, @flow.ActivityNode::EndFork)
         tiles.push(Tile::Parallel(entry, branches, exit))
@@ -390,23 +451,36 @@ fn tiles_from_instructions(
           nodes,
           @flow.ActivityNode::Switch(switch.condition),
         )
-        let branches = switch.branches.map(branch => {
-          decision: None,
-          tiles: tiles_from_instructions(branch.instructions, nodes),
-          label: branch.incoming.text,
-        })
         let exit = add_layout_node(nodes, @flow.ActivityNode::EndSwitch)
+        let branches = switch.branches.map(branch => {
+          let tiles = tiles_from_instructions(branch.instructions, nodes)
+          let label = sequence_incoming_label(tiles, nodes).map_or(
+            branch.incoming.text.map(activity_display_text),
+            label => Some(label),
+          )
+          // InstructionList.createFtile preserves an empty branch as FtileEmpty.
+          if sequence_is_empty(tiles, nodes) {
+            tiles.push(
+              FlowAnchor(
+                add_layout_node(
+                  nodes,
+                  @flow.ActivityNode::Case(label.unwrap_or("")),
+                ),
+              ),
+            )
+          }
+          { decision: None, tiles, label, }
+        })
         tiles.push(Tile::Switch(entry, branches, exit))
       }
       @flow.ActivityInstruction::Partition(partition) => {
-        add_layout_node(nodes, @flow.ActivityNode::Partition(partition.label))
-        |> ignore
-        tiles.push(
-          Tile::Partition(
-            tiles_from_instructions(partition.instructions, nodes),
-          ),
+        let index = add_layout_node(
+          nodes,
+          @flow.ActivityNode::Partition(partition.label),
         )
-        add_layout_node(nodes, @flow.ActivityNode::EndPartition) |> ignore
+        let body = tiles_from_instructions(partition.instructions, nodes)
+        let end = add_layout_node(nodes, @flow.ActivityNode::EndPartition)
+        tiles.push(Tile::Partition(index, body, end))
       }
       @flow.ActivityInstruction::Swimlane(name) => {
         add_layout_node(nodes, @flow.ActivityNode::Swimlane(name)) |> ignore
@@ -414,7 +488,7 @@ fn tiles_from_instructions(
       }
       @flow.ActivityInstruction::Label(name) =>
         tiles.push(
-          Tile::LabelAnchor(
+          Tile::FlowAnchor(
             add_layout_node(nodes, @flow.ActivityNode::Label(name)),
           ),
         )
@@ -430,27 +504,50 @@ fn tiles_from_instructions(
 }
 
 ///|
+/// Arrow and swimlane declarations decorate the flow without adding an instruction.
+fn tile_is_flow_decoration(
+  tile : Tile,
+  nodes : Array[@flow.ActivityNode],
+) -> Bool {
+  match tile {
+    Swimlane => true
+    Leaf(index) => nodes[index] is @flow.ActivityNode::Arrow(_)
+    _ => false
+  }
+}
+
+///|
+fn sequence_is_empty(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> Bool {
+  tiles.all(tile => tile_is_flow_decoration(tile, nodes))
+}
+
+///|
+fn activity_display_text(value : String) -> String {
+  value.replace_all(old="\\n", new="\n")
+}
+
+///|
 fn @flow.ActivityNode::label(self : @flow.ActivityNode) -> String? {
   match self {
-    Action(label) | Note(label) => Some(label)
-    If(label) | ElseIf(label) | Switch(label) =>
-      Some(test_text(label, " then "))
-    While(label) => Some(test_text(label, " is"))
-    RepeatWhile(label) => Some(test_text(label, " is"))
+    Action(label)
+    | Note(label, _)
+    | Partition(label)
+    | Swimlane(label)
+    | If(label)
+    | ElseIf(label)
+    | Switch(label)
+    | While(label)
+    | RepeatWhile(label) => Some(activity_display_text(label))
     _ => None
   }
 }
 
 ///|
-fn test_text(value : String, separator : String) -> String {
-  guard value.to_lower().find(separator) is Some(index) else { return value }
-  value[:index].trim().to_owned()
-}
-
-///|
 fn @flow.ActivityNode::is_decision(self : @flow.ActivityNode) -> Bool {
-  self
-  is (If(_) | While(_) | EndWhile(_) | RepeatWhile(_) | Switch(_) | Case(_))
+  self is (If(_) | While(_) | Repeat | RepeatWhile(_) | Switch(_))
 }
 
 ///|
@@ -460,7 +557,7 @@ fn @flow.ActivityNode::is_fork(self : @flow.ActivityNode) -> Bool {
 
 ///|
 fn @flow.ActivityNode::is_exit(self : @flow.ActivityNode) -> Bool {
-  self is (EndIf | EndWhile(_) | EndSwitch)
+  self is (EndIf | EndSwitch)
 }
 
 ///|
@@ -471,25 +568,25 @@ fn @flow.ActivityNode::size(
 ) -> TileMeasure {
   match self {
     Start => { width: TERMINAL_SIZE, height: TERMINAL_SIZE, }
-    Stop | End | Kill => { width: STOP_SIZE, height: STOP_SIZE, }
+    Stop => { width: STOP_SIZE, height: STOP_SIZE, }
+    End => { width: END_SIZE, height: END_SIZE, }
+    Kill => { width: 0, height: 0, }
     _ if self.is_exit() => { width: EXIT_SIZE, height: EXIT_SIZE, }
-    Repeat => { width: 0, height: 0, }
+    Repeat => { width: EXIT_SIZE, height: EXIT_SIZE, }
     _ if self.is_fork() => { width: 0, height: FORK_BAR_HEIGHT, }
     _ if self.is_decision() => {
-      let label_width = self
-        .label()
-        .map_or(0, label => small_metrics.measure(label).width)
-      { width: label_width + DIAMOND_TEXT_PADDING, height: DIAMOND_HEIGHT, }
-    }
-    Note(label) => {
-      let text = metrics.measure(label)
+      let text = small_metrics.measure(self.label().unwrap_or(""))
       {
-        width: text.width + TEXT_PADDING * 2,
-        height: text.height + TEXT_PADDING * 2,
+        width: if text.width == 0 {
+          DIAMOND_TEXT_PADDING
+        } else {
+          text.width.max(DIAMOND_TEXT_PADDING) + DIAMOND_TEXT_PADDING
+        },
+        height: text.height.max(DIAMOND_HEIGHT),
       }
     }
-    Action(label) => {
-      let text = metrics.measure(label)
+    Note(_, _) | Action(_) => {
+      let text = metrics.measure(self.label().unwrap())
       {
         width: text.width + TEXT_PADDING * 2,
         height: text.height + TEXT_PADDING * 2,
@@ -506,32 +603,114 @@ fn measure_sequence(
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
-  let mut width = 0
+  let mut left = 0
+  let mut right = 0
   let mut height = 0
   let mut found = false
-  let mut pending_label : String? = None
+  let mut pending_label : String?? = None
+  let mut outgoing_label : String? = None
   for tile in tiles {
     match tile {
-      LabelAnchor(_) | GotoAnchor(_) | Swimlane(_) => continue
+      Swimlane(_) => continue
       Leaf(index) if nodes[index] is @flow.ActivityNode::Arrow(value) => {
-        pending_label = @flow.arrow_label(value).text
+        pending_label = Some(
+          @flow.arrow_label(value).text.map(activity_display_text),
+        )
         continue
       }
       _ => ()
     }
     let size = measure_tile(tile, nodes, metrics, small_metrics)
-    guard size.height > 0 else { continue }
-    if found {
-      height += pending_label.map_or(VERTICAL_GAP, label => {
-        EDGE_LABEL_GAP + EDGE_LABEL_LINE * (line_count(label) - 1)
-      })
+    guard size.height > 0 || tile is (FlowAnchor(_) | GotoAnchor(_)) else {
+      continue
     }
-    width = width.max(size.width)
+    let incoming = pending_label.map_or(tile_incoming_override(tile, nodes), label => {
+      Some(label)
+    })
+    let label = incoming.unwrap_or(outgoing_label)
+    if found {
+      height += sequence_gap(incoming.unwrap_or(None))
+      if label is Some(label) {
+        right = right.max(
+          EDGE_LABEL_OFFSET + small_metrics.measure(label).width,
+        )
+      }
+    }
+    let axis = tile_axis(tile, nodes, metrics, small_metrics)
+    left = left.max(axis)
+    right = right.max(size.width - axis)
     height += size.height
     found = true
+    outgoing_label = sequence_outgoing_label([tile], nodes)
     pending_label = None
   }
-  { width, height, }
+  if found && sequence_outgoing_label(tiles, nodes) is Some(label) {
+    right = right.max(EDGE_LABEL_OFFSET + small_metrics.measure(label).width)
+  }
+  { width: left + right, height, }
+}
+
+///|
+/// InstructionList.decorateOut makes the final explicit arrow override the
+/// nested tile's outgoing label; notes and partitions preserve that boundary.
+fn sequence_outgoing_label(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> String? {
+  guard sequence_has_exit(tiles, nodes) else { return None }
+  for index = tiles.length() - 1; index >= 0; index = index - 1 {
+    match tiles[index] {
+      Swimlane(_) => continue
+      Leaf(node) if nodes[node] is @flow.ActivityNode::Arrow(value) =>
+        return @flow.arrow_label(value).text.map(activity_display_text)
+      RepeatLoop(_, _, _, _, label) => return label
+      Partition(_, body, _) => return sequence_outgoing_label(body, nodes)
+      Noted(body, _) => return sequence_outgoing_label([body], nodes)
+      _ => return None
+    }
+  }
+  None
+}
+
+///|
+/// The outer option distinguishes an absent arrow from an explicit empty label.
+fn sequence_incoming_override(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> String?? {
+  let mut pending : String?? = None
+  for tile in tiles {
+    match tile {
+      Swimlane(_) => continue
+      Leaf(index) if nodes[index] is @flow.ActivityNode::Arrow(value) =>
+        pending = Some(@flow.arrow_label(value).text.map(activity_display_text))
+      _ => {
+        guard pending is None else { return pending }
+        return tile_incoming_override(tile, nodes)
+      }
+    }
+  }
+  pending
+}
+
+///|
+fn tile_incoming_override(
+  tile : Tile,
+  nodes : Array[@flow.ActivityNode],
+) -> String?? {
+  match tile {
+    Partition(_, body, _) => sequence_incoming_override(body, nodes)
+    Noted(body, _) => tile_incoming_override(body, nodes)
+    _ => None
+  }
+}
+
+///|
+fn sequence_incoming_label(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> String? {
+  sequence_incoming_override(tiles, nodes).unwrap_or(None)
 }
 
 ///|
@@ -540,23 +719,12 @@ fn line_count(label : String) -> Int {
 }
 
 ///|
-fn measure_branches(
-  branches : Array[BranchTiles],
-  nodes : Array[@flow.ActivityNode],
-  metrics : @metrics.FontMetrics,
-  small_metrics : @metrics.FontMetrics,
-) -> TileMeasure {
-  let mut width = 0
-  let mut height = 0
-  for index, branch in branches {
-    let size = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    if index > 0 {
-      width += BRANCH_GAP
-    }
-    width += size.width
-    height = height.max(size.height)
-  }
-  { width, height, }
+/// Shared by measurement and placement so sequential tiles reserve exactly
+/// the space their connecting label needs, independently of node indices.
+fn sequence_gap(label : String?) -> Int {
+  label.map_or(VERTICAL_GAP, label => {
+    EDGE_LABEL_GAP + EDGE_LABEL_LINE * (line_count(label) - 1)
+  })
 }
 
 ///|
@@ -570,16 +738,18 @@ fn measure_if_down(
   let size = nodes[decision].size(metrics, small_metrics)
   let left = measure_sequence(branches[0].tiles, nodes, metrics, small_metrics)
   let right = measure_sequence(branches[1].tiles, nodes, metrics, small_metrics)
-  let apart = (BRANCH_GAP + left.width / 2 + right.width / 2).max(
-    size.width + BRANCH_DIAMOND_MARGIN * 2,
-  )
+  let (width, _, _, _) = if_columns(branches, nodes, metrics, small_metrics)
   {
-    width: apart + left.width.max(right.width),
-    height: size.height +
+    width,
+    height: if_side_label_padding(branches, size.height, small_metrics) +
+    size.height +
     DIAMOND_BODY_GAP +
     left.height.max(right.height) +
-    BODY_EXIT_GAP +
-    EXIT_SIZE,
+    (if branches.any(branch => sequence_has_exit(branch.tiles, nodes)) {
+      BODY_EXIT_GAP + if_merge_size(branches, nodes).height
+    } else {
+      0
+    }),
   }
 }
 
@@ -602,18 +772,17 @@ fn measure_if_chain(
     if index > 0 {
       width += BRANCH_GAP
     }
-    width += body.width.max(decision.width)
+    let (column_width, _) = if_chain_column(
+      branch, nodes, metrics, small_metrics,
+    )
+    width += column_width
     decision_height = decision_height.max(decision.height)
     body_height = body_height.max(body.height)
   }
   {
     width,
     height: decision_height +
-    (if branches.any(branch => branch.label is Some(_)) {
-      DOWN_LABEL_GAP
-    } else {
-      DIAMOND_BODY_GAP
-    }) +
+    if_chain_body_gap(branches, small_metrics) +
     (if body_height > 0 { body_height } else { 0 }),
   }
 }
@@ -627,80 +796,222 @@ fn measure_tile(
 ) -> TileMeasure {
   match tile {
     Leaf(index) => nodes[index].size(metrics, small_metrics)
-    LabelAnchor(_) | GotoAnchor(_) => { width: 0, height: 0, }
-    Partition(tiles) => measure_sequence(tiles, nodes, metrics, small_metrics)
+    Noted(body, notes) => {
+      let body_size = measure_tile(body, nodes, metrics, small_metrics)
+      let (left, right) = measure_note_columns(
+        notes, nodes, metrics, small_metrics,
+      )
+      {
+        width: body_size.width + left.width + right.width,
+        height: body_size.height.max(left.height).max(right.height),
+      }
+    }
+    FlowAnchor(_) | GotoAnchor(_) => { width: 0, height: 0, }
+    Partition(index, tiles, _) => {
+      let body = measure_sequence(tiles, nodes, metrics, small_metrics)
+      let title = metrics.measure(nodes[index].label().unwrap())
+      {
+        width: body.width.max(title.width) + TEXT_PADDING * 2,
+        height: body.height +
+        partition_header_height(title.height) +
+        REGION_PADDING,
+      }
+    }
     Swimlane(_) => { width: 0, height: 0, }
+    IfChain(branches, _) if if_vertical_body_index(branches, nodes) is Some(_) =>
+      measure_if_vertical(branches, nodes, metrics, small_metrics)
     IfChain(branches, _) if is_if_down(branches) => {
       let branches_size = measure_if_down(
         branches, nodes, metrics, small_metrics,
       )
       branches_size
     }
-    IfChain(branches, exit) => {
+    IfChain(branches, _) => {
       let branches_size = measure_if_chain(
         branches, nodes, metrics, small_metrics,
       )
-      let exit_size = nodes[exit].size(metrics, small_metrics)
       {
-        width: branches_size.width.max(exit_size.width),
-        height: branches_size.height + BODY_EXIT_GAP + exit_size.height,
+        width: branches_size.width,
+        height: branches_size.height +
+        (if branches.any(branch => sequence_has_exit(branch.tiles, nodes)) {
+          BODY_EXIT_GAP
+        } else {
+          0
+        }),
       }
     }
     Switch(entry, branches, exit) => {
       let entry_size = nodes[entry].size(metrics, small_metrics)
-      let branches_size = measure_branches(
-        branches, nodes, metrics, small_metrics,
-      )
       let exit_size = nodes[exit].size(metrics, small_metrics)
+      let (width, _, _, wide_condition) = switch_columns(
+        entry, branches, exit, nodes, metrics, small_metrics,
+      )
+      let (gap, branch_height) = switch_rows(
+        branches,
+        entry_size.height,
+        wide_condition,
+        nodes,
+        metrics,
+        small_metrics,
+      )
       {
-        width: entry_size.width.max(branches_size.width).max(exit_size.width),
+        width,
         height: entry_size.height +
-        SWITCH_CASE_GAP +
-        branches_size.height +
-        VERTICAL_GAP +
-        exit_size.height,
+        gap +
+        branch_height +
+        (if branches.any(branch => sequence_has_exit(branch.tiles, nodes)) {
+          VERTICAL_GAP + exit_size.height
+        } else {
+          0
+        }),
       }
     }
-    WhileLoop(entry, body, exit, enter_label, _) => {
+    WhileLoop(entry, body, exit, enter_label, exit_label) => {
       let entry_size = nodes[entry].size(metrics, small_metrics)
       let body_size = measure_sequence(body, nodes, metrics, small_metrics)
       let exit_size = nodes[exit].size(metrics, small_metrics)
+      let (width, _) = while_columns(
+        entry, body, exit, exit_label, enter_label, nodes, metrics, small_metrics,
+      )
       {
-        width: entry_size.width.max(body_size.width).max(exit_size.width) +
-        WHILE_BACK_MARGIN * 2,
+        width,
         height: entry_size.height +
-        (if enter_label is Some(_) { DOWN_LABEL_GAP } else { DIAMOND_BODY_GAP }) +
+        decision_body_gap(enter_label, small_metrics) +
         body_size.height +
         WHILE_EXIT_GAP +
         exit_size.height,
       }
     }
-    RepeatLoop(body, exit, _, exit_label) => {
+    RepeatLoop(entry, body, exit, retry_label, exit_label) => {
+      let entry_size = nodes[entry].size(metrics, small_metrics)
       let body_size = measure_sequence(body, nodes, metrics, small_metrics)
       let exit_size = nodes[exit].size(metrics, small_metrics)
+      let (width, _) = repeat_columns(
+        entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
+      )
       {
-        width: body_size.width.max(exit_size.width),
-        height: body_size.height +
+        width,
+        height: entry_size.height +
+        VERTICAL_GAP +
+        body_size.height +
         VERTICAL_GAP +
         exit_size.height +
-        (if exit_label is Some(_) { DOWN_LABEL_GAP } else { DIAMOND_BODY_GAP }),
+        repeat_exit_padding(exit_label, small_metrics),
       }
     }
     Parallel(_, branches, _) => {
       let branches_width = measure_fork_columns(
         branches, nodes, metrics, small_metrics,
       )
-      let branches_height = fork_branches_height(
+      let (branches_height, incoming, outgoing) = fork_rows(
         branches, nodes, metrics, small_metrics,
       )
       {
         width: branches_width + FORK_COLUMN_MARGIN * 2,
         height: FORK_BAR_HEIGHT +
         VERTICAL_GAP +
+        incoming +
         branches_height +
         VERTICAL_GAP +
+        outgoing +
         FORK_BAR_HEIGHT,
       }
     }
   }
 }
+
+///|
+fn measure_if_vertical(
+  branches : Array[BranchTiles],
+  nodes : Array[@flow.ActivityNode],
+  metrics : @metrics.FontMetrics,
+  small_metrics : @metrics.FontMetrics,
+) -> TileMeasure {
+  let body_index = if_vertical_body_index(branches, nodes).unwrap()
+  let body = measure_sequence(
+    branches[body_index].tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
+  let decision = nodes[branches[0].decision.unwrap()].size(
+    metrics, small_metrics,
+  )
+  let (width, _) = if_vertical_columns(branches, nodes, metrics, small_metrics)
+  {
+    width,
+    height: decision.height +
+    decision_body_gap(branches[body_index].label, small_metrics) +
+    body.height +
+    BODY_EXIT_GAP +
+    if_vertical_merge_size(branches, nodes).height,
+  }
+}
+
+///|
+fn empty_branch_width(
+  branch : BranchTiles,
+  metrics : @metrics.FontMetrics,
+) -> Int {
+  if branch.tiles.all(tile => tile is Swimlane) {
+    branch.label.map_or(EXIT_SIZE, label => {
+      metrics.measure(label).width.max(EXIT_SIZE)
+    })
+  } else {
+    0
+  }
+}
+
+///|
+/// Match the final child's output geometry when assembling instructions.
+/// Empty branches have a through path; conditional branches retain an output
+/// only when at least one child branch can continue.
+fn sequence_has_exit(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> Bool {
+  for index = tiles.length() - 1; index >= 0; index = index - 1 {
+    match tiles[index] {
+      FlowAnchor(_) => return true
+      GotoAnchor(_) => return false
+      Swimlane => continue
+      Leaf(index) => {
+        if nodes[index] is @flow.ActivityNode::Arrow(_) {
+          continue
+        }
+        return !(nodes[index]
+          is (@flow.ActivityNode::Stop
+          | @flow.ActivityNode::End
+          | @flow.ActivityNode::Kill
+          | @flow.ActivityNode::Note(_)))
+      }
+      Noted(body, _) => return sequence_has_exit([body], nodes)
+      Partition(_, body, _) => return sequence_has_exit(body, nodes)
+      IfChain(branches, _) | Switch(_, branches, _) =>
+        return branches.any(branch => sequence_has_exit(branch.tiles, nodes))
+      WhileLoop(_) | RepeatLoop(_) | Parallel(_) => return true
+    }
+  }
+  true
+}
+
+///|
+/// Reserve the title block before placing the partition's child flow.
+fn partition_header_height(text_height : Int) -> Int {
+  REGION_HEADER_HEIGHT.max(text_height) + REGION_PADDING
+}
+
+///|
+/// Additional lines extend the label block below the condition.
+fn decision_body_gap(label : String?, metrics : @metrics.FontMetrics) -> Int {
+  label.map_or(DIAMOND_BODY_GAP, text => {
+    DOWN_LABEL_GAP + (line_count(text) - 1) * metrics.line_height
+  })
+}
+
+///|
+/// ParallelBuilderFork.ConnectionIn/ConnectionOut translated bend distances.
+const FORK_LANE_OUT_DROP : Int = 4
+
+///|
+const FORK_LANE_IN_RISE : Int = 14

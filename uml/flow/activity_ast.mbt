@@ -1,4 +1,16 @@
 ///|
+pub(all) enum ActivityNoteSide {
+  Left
+  Right
+} derive(Eq, Debug)
+
+///|
+pub extend ActivityNoteSide with Eq::{not_equal, equal}
+
+///|
+pub extend ActivityNoteSide with Debug::{to_repr}
+
+///|
 /// A command recognized by PlantUML's modern activity-diagram parser.
 pub(all) enum ActivityNode {
   Start
@@ -24,7 +36,7 @@ pub(all) enum ActivityNode {
   Swimlane(String)
   Partition(String)
   EndPartition
-  Note(String)
+  Note(String, ActivityNoteSide)
   Label(String)
   Goto(String)
 } derive(Eq, Debug)
@@ -151,7 +163,7 @@ pub(all) enum ActivityInstruction {
   End
   Kill
   Action(String)
-  Note(String)
+  Note(String, ActivityNoteSide)
   Edge(ActivityEdgeLabel)
   IfChain(ActivityIfChain)
   While(ActivityWhile)

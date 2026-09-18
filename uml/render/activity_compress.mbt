@@ -35,54 +35,27 @@ fn edge_x_extent(
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return None }
   let from_source = layout.source_nodes[edge.from_node_index]
   let to_source = layout.source_nodes[edge.to_node_index]
-  guard !from_source.is_fork() && !to_source.is_fork() else { return None }
-  let x = from.x + from.width / 2
-  let target_x = to.x + to.width / 2
-  let from_is_decision = from_source.is_decision()
-  let to_is_switch_exit = to_source is @flow.ActivityNode::EndSwitch
-  let start_end = match edge.route {
-    Forward =>
-      if to_is_switch_exit {
-        // Switch case joins draw like the case edges in PlantUML and do not
-        // block compression. (If/elseif joins still do: their reference gaps
-        // stay open because rows above span them.)
-        return None
-      } else if from_is_decision && target_x != x {
-        let start_x = if target_x < x { from.x } else { from.x + from.width }
-        (start_x.min(target_x), start_x.max(target_x))
-      } else {
-        (x.min(target_x), x.max(target_x))
-      }
-    Horizontal => {
-      let start = (from.x + from.width).min(to.x)
-      (start, (from.x + from.width).max(to.x))
-    }
-    Goto => (from.x.min(to.x), from.x.max(to.x))
-    BackwardLeft => {
-      let route_x = backward_left_route_x(from, to)
-      (route_x, x.max(target_x))
-    }
-    BackwardRight => {
-      let route_x = backward_right_route_x(from, to)
-      (x.min(target_x), route_x)
-    }
-    IfDownLeft => (from.x.min(target_x), from.x.max(target_x))
-    IfDownRight =>
-      ((from.x + from.width).min(target_x), (from.x + from.width).max(target_x))
-    SwitchLeft | SwitchRight | SwitchMiddle => return None
-    WhileExitLeft => {
-      let route_x = backward_left_route_x(from, to)
-      (route_x, from.x.max(target_x))
-    }
+  guard !(edge.route
+    is (ForkLane(_) | SwitchLeft | SwitchRight | SwitchMiddle | SwitchSideMerge)) &&
+    !(edge.route is Forward &&
+    (
+      from_source.is_fork() ||
+      to_source.is_fork() ||
+      to_source is @flow.ActivityNode::EndSwitch
+    )) else {
+    return None
   }
-  Some(start_end)
+  Some(activity_edge_x_bounds(edge, from, to, layout.source_nodes))
 }
 
 ///|
 /// Occupied x-intervals of every drawn element except fork bars and the edges
 /// exempt above. Node labels live inside their node boxes, so node rectangles
 /// cover them.
-fn merge_slots(layout : ActivityLayout) -> Array[Slot] {
+fn merge_slots(
+  layout : ActivityLayout,
+  small_metrics : @metrics.FontMetrics,
+) -> Array[Slot] {
   let ranges = []
   for node in layout.nodes {
     guard !layout.source_nodes[node.node_index].is_fork() else { continue }
@@ -90,6 +63,20 @@ fn merge_slots(layout : ActivityLayout) -> Array[Slot] {
     ranges.push((node.x, node.x + node.width))
   }
   for edge in layout.edges {
+    if edge.label is Some(label) {
+      let from = layout_for(layout, edge.from_node_index).unwrap()
+      let to = layout_for(layout, edge.to_node_index).unwrap()
+      ranges.push(
+        activity_edge_label_bounds(
+          edge,
+          label,
+          from,
+          to,
+          layout.source_nodes,
+          small_metrics,
+        ),
+      )
+    }
     guard edge_x_extent(edge, layout) is Some((start, end)) else { continue }
     ranges.push((start, end))
   }
@@ -173,8 +160,13 @@ fn transform(gaps : Array[Gap], v : Int) -> Int {
 /// Compress empty horizontal strips of the laid-out diagram in place. Edge
 /// routes are position-free; `svg.mbt` regenerates their polylines from the
 /// transformed node boxes, and `layout()` recomputes the canvas width.
-pub fn ActivityLayout::compress_x(self : ActivityLayout) -> ActivityLayout {
-  let merged = merge_slots(self)
+pub fn ActivityLayout::compress_x(
+  self : ActivityLayout,
+  small_metrics? : @metrics.FontMetrics = @metrics.FontMetrics::from_defaults(
+    font_size=SMALL_FONT,
+  ),
+) -> ActivityLayout {
+  let merged = merge_slots(self, small_metrics)
   extend_extreme_slots(merged)
   let mut content_min = 0
   let mut content_max = 0
@@ -198,5 +190,43 @@ pub fn ActivityLayout::compress_x(self : ActivityLayout) -> ActivityLayout {
     let right = transform(gaps, region.x + region.width)
     { ..region, x, width: right - x, }
   })
-  { ..self, nodes, regions, }
+  let compress_offset = (anchor : Int, offset : Int) => {
+    let node = layout_for(self, anchor).unwrap()
+    transform(gaps, node.x + offset) - transform(gaps, node.x)
+  }
+  let edges = self.edges.map(edge => {
+    let route = match edge.route {
+      ForkSequence => {
+        let from = layout_for(self, edge.from_node_index).unwrap()
+        let to = layout_for(self, edge.to_node_index).unwrap()
+        ForkSequencePorts(
+          compress_offset(edge.from_node_index, from.width / 2),
+          compress_offset(edge.to_node_index, to.width / 2),
+        )
+      }
+      ForkSequencePorts(from_offset, to_offset) =>
+        ForkSequencePorts(
+          compress_offset(edge.from_node_index, from_offset),
+          compress_offset(edge.to_node_index, to_offset),
+        )
+      ForkLane(from_offset, to_offset) =>
+        ForkLane(
+          compress_offset(edge.from_node_index, from_offset),
+          compress_offset(edge.to_node_index, to_offset),
+        )
+      IfBypassRight(offset) =>
+        IfBypassRight(compress_offset(edge.from_node_index, offset))
+      WhileExitLeft(offset) =>
+        WhileExitLeft(compress_offset(edge.from_node_index, offset))
+      BackwardRight(offset, drop) =>
+        BackwardRight(compress_offset(edge.to_node_index, offset), drop)
+      RepeatBackRight(offset) =>
+        RepeatBackRight(compress_offset(edge.to_node_index, offset))
+      RepeatLaneBack(offset) =>
+        RepeatLaneBack(compress_offset(edge.from_node_index, offset))
+      route => route
+    }
+    { ..edge, route, }
+  })
+  { ..self, nodes, edges, regions, }
 }

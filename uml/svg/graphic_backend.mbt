@@ -118,7 +118,9 @@ pub fn path_data(
 }
 
 ///|
-fn XmlWriter::draw_command(
+/// Serialize one recorded drawing command. Callers must preserve balanced
+/// group, scale, and link commands when replaying or transforming a stream.
+pub fn XmlWriter::draw_command(
   self : XmlWriter,
   command : @graphics.DrawCommand,
 ) -> Unit {

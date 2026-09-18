@@ -80,11 +80,19 @@ fn LineBuffer::consume_skinparam(
   self : LineBuffer,
   style : @style.DocumentStyle,
   error_line : Int,
+  prefix? : String = "",
+  apply? : ((@style.StyleDirective) -> Unit)? = None,
 ) -> Unit raise @tokenizer.ParseError {
   self.advance()
-  guard @style.consume_skinparam_body(() => self.take_next(), directive => {
-    style.apply(directive)
-  }) else {
+  guard @style.consume_skinparam_body(
+    () => self.take_next(),
+    directive => {
+      apply.map_or_else(() => style.apply(directive), consume => {
+        consume(directive)
+      })
+    },
+    prefix~,
+  ) else {
     raise @tokenizer.SyntaxError(error_line, "unclosed skinparam")
   }
 }

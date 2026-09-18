@@ -1,6 +1,20 @@
 ///|
 /// Measure text with this font profile.
 pub fn FontMetrics::measure(self : FontMetrics, text : String) -> TextMetrics {
+  // Verified 2026-09-16 for zero-size text, whitespace, tabs, CJK, and line
+  // breaks. Atom layout owns minimum line height independently of glyph extent.
+  guard self.font_size > 0 else {
+    return {
+      width: 0,
+      advance_width: 0,
+      height: 0,
+      ascent: 0,
+      descent: 0,
+      baseline: 0,
+      ink_left: 0,
+      ink_right: 0,
+    }
+  }
   let lines = text.split("\n").to_array()
   let measure_line = (line : StringView) => {
     let (_, advance, glyph_count) = line.fold(init=(None, 0.0F, 0), (

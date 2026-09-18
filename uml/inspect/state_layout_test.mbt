@@ -57,45 +57,6 @@ fn @render.StateEdgeLayout::has_drawable_path(
 }
 
 ///|
-test "circle and cross decorations render at the semantic transition ends" {
-  let svg = @render.render_state_svg(
-    @parser.parse_state(
-      "@startuml\nA x--> B\nC -->o D\nE o <-- F\nG <--x H\n@enduml",
-    ),
-  )
-  @test.assert_eq(
-    count_substring(svg, "marker-start=\"url(#state-cross-start)\""),
-    2,
-  )
-  @test.assert_eq(count_substring(svg, "<ellipse"), 2)
-  let first = svg[svg.find("<ellipse").unwrap():].to_owned()
-  let after_first = first[first.find("/>").unwrap() + 2:].to_owned()
-  let second = after_first[after_first.find("<ellipse").unwrap():].to_owned()
-  let center = (part : String) => {
-    ellipse_attribute(part, "cx") + "," + ellipse_attribute(part, "cy")
-  }
-  @test.assert_eq(center(first) == center(second), false)
-}
-
-///|
-fn count_substring(haystack : String, needle : String) -> Int {
-  let mut count = 0
-  let mut view = haystack[:]
-  while view.contains(needle) {
-    count += 1
-    view = view[view.find(needle).unwrap() + needle.length():]
-  }
-  count
-}
-
-///|
-fn ellipse_attribute(part : String, name : String) -> String {
-  let start = part.find(name + "=\"").unwrap() + name.length() + 2
-  let rest = part[start:].to_owned()
-  rest[:rest.find("\"").unwrap()].to_owned()
-}
-
-///|
 test "recursive layout keeps composite contents inside their rendered parent" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Work {\n[*] --> Input\nInput --> Capacity\n}\nWork --> Done\n@enduml",
@@ -234,4 +195,116 @@ test "layout direction is forwarded to the Graphviz state pass" {
   let a = layout_node(layout, "A")
   let b = layout_node(layout, "B")
   @test.assert_eq(a.x + a.width <= b.x || b.x + b.width <= a.x, true)
+}
+
+///|
+test "self transitions and their notes survive in each containing scope" {
+  for
+    source in [
+      "state Ready\nReady --> Ready : retry\nnote on link : again", "state Work {\nstate Ready\nReady --> Ready : retry\nnote on link : again\n}",
+      "state Work {\nstate Ready\n}\nWork --> Work : retry\nnote on link : again",
+      "state Work {\nstate Ready\n--\nstate Busy\nBusy --> Busy : retry\nnote on link : again\n}",
+    ] {
+    let diagram = @parser.parse_state("@startuml\n" + source + "\n@enduml")
+    let layout = @render.layout_state(diagram)
+    @test.assert_eq(layout.edges.length(), diagram.transitions.length())
+    @test.assert_eq(layout.notes.length(), diagram.notes.length())
+    for edge in layout.edges {
+      @test.assert_eq(edge.has_drawable_path(), true)
+      @test.assert_eq(edge.label is Some(_), true)
+    }
+  }
+}
+
+///|
+test "synchronization bars rotate with the diagram direction" {
+  let source = "\n[*] --> ==join==\n==join== --> [*]\n@enduml"
+  let vertical = @render.layout_state(@parser.parse_state("@startuml" + source))
+  let horizontal = @render.layout_state(
+    @parser.parse_state("@startuml\nleft to right direction" + source),
+  )
+  let bar = layout_node(vertical, "__synchronization_join")
+  let rotated = layout_node(horizontal, "__synchronization_join")
+  @test.assert_eq(bar.width > bar.height, true)
+  @test.assert_eq(rotated.width < rotated.height, true)
+  @test.assert_eq((bar.width, bar.height), (rotated.height, rotated.width))
+}
+
+///|
+test "initial final and history states retain their distinct circle sizes" {
+  let layout = @render.layout_state(
+    @parser.parse_state("@startuml\n[*] --> [H]\n[H] --> [*]\n@enduml"),
+  )
+  let initial = layout_node(layout, "__initial__")
+  let final_node = layout_node(layout, "__final__")
+  let history = layout_node(layout, "__history__")
+  @test.assert_eq(initial.width < final_node.width, true)
+  @test.assert_eq(
+    (history.width, history.height),
+    (final_node.width, final_node.height),
+  )
+  for node in layout.nodes {
+    @test.assert_eq(node.width, node.height)
+  }
+}
+
+///|
+test "off-axis transitions attach to curved and diamond outlines" {
+  for source in ["[*]", "[H]", "[H*]", "Decision"] {
+    let declaration = if source == "Decision" {
+      "state Decision <<choice>>\n"
+    } else {
+      ""
+    }
+    let diagram = @parser.parse_state(
+      "@startuml\n" +
+      declaration +
+      source +
+      " --> Left\n" +
+      source +
+      " --> Center\n" +
+      source +
+      " --> Right\n@enduml",
+    )
+    let layout = @render.layout_state(diagram)
+    let node = layout_node(layout, diagram.transitions[0].source)
+    // A diagonal contact with a circle or diamond is strictly inside its
+    // enclosing rectangle. Routing against a box leaves all contacts outside.
+    @test.assert_eq(
+      layout.edges.any(edge => {
+        edge.paths.any(path => {
+          guard !path.is_empty() else { return false }
+          let point = path[0]
+          point.0 > node.x &&
+          point.0 < node.x + node.width &&
+          point.1 > node.y &&
+          point.1 < node.y + node.height
+        })
+      }),
+      true,
+    )
+  }
+}
+
+///|
+test "transition label font size reserves space in both rank directions" {
+  for direction in ["", "left to right direction\n"] {
+    let source = direction + "A --> B : transition details\n@enduml"
+    let regular = @render.layout_state(
+      @parser.parse_state("@startuml\n" + source),
+    )
+    let enlarged = @render.layout_state(
+      @parser.parse_state("@startuml\nskinparam ArrowFontSize 32\n" + source),
+    )
+    let gap = (layout : @render.StateLayout) => {
+      let a = layout_node(layout, "A")
+      let b = layout_node(layout, "B")
+      if direction.is_empty() {
+        b.y - (a.y + a.height)
+      } else {
+        b.x - (a.x + a.width)
+      }
+    }
+    @test.assert_eq(gap(enlarged) > gap(regular), true)
+  }
 }

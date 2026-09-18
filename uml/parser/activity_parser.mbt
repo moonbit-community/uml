@@ -117,9 +117,15 @@ pub fn parse_activity(
       buffer.advance()
       continue
     }
-    if lower.has_prefix("note ") && !line.contains(":") {
+    if (lower.has_prefix("note left") || lower.has_prefix("note right")) &&
+      !line.contains(":") {
       let (text, end) = parse_note(buffer, buffer.index)
-      nodes.push(@flow.ActivityNode::Note(text))
+      let side : @flow.ActivityNoteSide = if lower.has_prefix("note left") {
+        Left
+      } else {
+        Right
+      }
+      nodes.push(@flow.ActivityNode::Note(text, side))
       buffer.index = end + 1
       continue
     }

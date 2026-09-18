@@ -299,27 +299,16 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
 ///|
 /// Parse a property inside a `skinparam { ... }` block.
 pub fn parse_style_property(line : String) -> StyleDirective? {
-  let words = line
-    .trim()
-    .split(" ")
-    .map(part => part.trim().to_owned())
-    .filter(part => part.length() > 0)
-    .to_array()
-  if words.length() >= 2 && words[0].equal_ignore_ascii_case("DefaultFontName") {
-    return Some(FontFamily(words[1:].to_owned().join(" ")))
-  }
-  if words.length() >= 2 && words[0].to_lower().has_suffix("fontname") {
-    return Some(Property(words[0], words[1:].to_owned().join(" ")))
-  }
-  match words {
-    [key, color, ..] if key.equal_ignore_ascii_case("BackgroundColor") =>
-      Some(BackgroundColor(color))
-    [key, size, ..] if key.equal_ignore_ascii_case("DefaultFontSize") =>
-      Some(FontSize(size))
-    [key, color, ..] if key.equal_ignore_ascii_case("ArrowColor") =>
-      Some(LineColor(color))
-    [key, value, ..] => Some(Property(key, value))
-    _ => None
+  let cursor = @tokenizer.Cursor::new(line.trim().to_owned())
+  let key = cursor.take_while(char => !char.is_whitespace())
+  let value = cursor.take_rest_trimmed()
+  guard !key.is_empty() && !value.is_empty() else { return None }
+  match key.to_lower() {
+    "defaultfontname" => Some(FontFamily(value))
+    "backgroundcolor" => Some(BackgroundColor(value))
+    "defaultfontsize" => Some(FontSize(value))
+    "arrowcolor" => Some(LineColor(value))
+    _ => Some(Property(key, value))
   }
 }
 
@@ -330,11 +319,32 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
 pub fn consume_skinparam_body(
   next_line : () -> String?,
   apply : (StyleDirective) -> Unit,
+  prefix? : String = "",
 ) -> Bool {
-  @tokenizer.consume_lines_until(next_line, line => line.trim() == "}", line => {
-    guard parse_style_property(line) is Some(directive) else { return }
-    apply(directive)
-  })
+  let context = [prefix]
+  while next_line() is Some(raw) {
+    let line = raw.trim().to_owned()
+    guard !line.is_empty() else { continue }
+    if line == "}" {
+      ignore(context.pop())
+      guard !context.is_empty() else { return true }
+      continue
+    }
+    let cursor = @tokenizer.Cursor::new(line)
+    let key = cursor.take_while(char => !char.is_whitespace())
+    let value = cursor.take_rest_trimmed()
+    guard !value.is_empty() else { return false }
+    if value == "{" {
+      context.push(key)
+    } else {
+      guard parse_style_property(context.join("") + key + " " + value)
+        is Some(directive) else {
+        return false
+      }
+      apply(directive)
+    }
+  }
+  false
 }
 
 ///|

@@ -54,21 +54,70 @@ fn append_edge(
   let from_center_y = from.y + from.height / 2
   let from_is_decision = layout.source_nodes[edge.from_node_index].is_decision()
   let from_is_fork = layout.source_nodes[edge.from_node_index].is_fork()
+  let to_is_continuation = layout.source_nodes[edge.to_node_index]
+    is @flow.ActivityNode::EndIf &&
+    to.width == 0
+  let to_is_switch_exit = layout.source_nodes[edge.to_node_index]
+    is @flow.ActivityNode::EndSwitch
   let to_is_fork = layout.source_nodes[edge.to_node_index].is_fork()
-  let path : Array[@graphics.PathSegment] = if from_is_fork || to_is_fork {
-    let drop_x = if from_is_fork { target_x } else { x }
+  let path : Array[@graphics.PathSegment] = if (from_is_fork || to_is_fork) &&
+    edge.route is Forward {
+    let drop_x = if layout.source_nodes[edge.from_node_index]
+      is @flow.ActivityNode::Fork {
+      target_x
+    } else {
+      x
+    }
     [MoveTo(activity_point(drop_x, y1)), LineTo(activity_point(drop_x, y2))]
   } else {
     match edge.route {
+      IfChainMerge =>
+        [MoveTo(activity_point(x, y2)), LineTo(activity_point(target_x, y2))]
+      ForkSequence | WhileEntry | RepeatForward => {
+        let middle_y = (y1 + y2) / 2
+        [
+          MoveTo(activity_point(x, y1)),
+          LineTo(activity_point(x, middle_y)),
+          LineTo(activity_point(target_x, middle_y)),
+          LineTo(activity_point(target_x, y2)),
+        ]
+      }
+      ForkSequencePorts(from_offset, to_offset) => {
+        let from_x = from.x + from_offset
+        let to_x = to.x + to_offset
+        let middle_y = (y1 + y2) / 2
+        [
+          MoveTo(activity_point(from_x, y1)),
+          LineTo(activity_point(from_x, middle_y)),
+          LineTo(activity_point(to_x, middle_y)),
+          LineTo(activity_point(to_x, y2)),
+        ]
+      }
+      ForkLane(from_offset, to_offset) => {
+        let from_x = from.x + from_offset
+        let to_x = to.x + to_offset
+        let middle_y = if layout.source_nodes[edge.from_node_index]
+          is @flow.ActivityNode::Fork {
+          y1 + FORK_LANE_OUT_DROP
+        } else {
+          y2 - FORK_LANE_IN_RISE
+        }
+        [
+          MoveTo(activity_point(from_x, y1)),
+          LineTo(activity_point(from_x, middle_y)),
+          LineTo(activity_point(to_x, middle_y)),
+          LineTo(activity_point(to_x, y2)),
+        ]
+      }
       Forward =>
-        if from_is_decision && target_x != x {
+        if from_is_decision && !to_is_switch_exit && target_x != x {
           let start_x = if target_x < x { from.x } else { from.x + from.width }
           [
             MoveTo(activity_point(start_x, from_center_y)),
             LineTo(activity_point(target_x, from_center_y)),
             LineTo(activity_point(target_x, y2)),
           ]
-        } else if from_is_decision {
+        } else if from_is_decision && !to_is_switch_exit {
           [
             MoveTo(activity_point(x, y1)),
             LineTo(activity_point(x, y1 + 12)),
@@ -84,7 +133,7 @@ fn append_edge(
             LineTo(activity_point(target_x, y2)),
           ]
         }
-      Horizontal =>
+      Horizontal | IfSideTerminal =>
         [
           MoveTo(activity_point(from.x + from.width, from.y + from.height / 2)),
           LineTo(activity_point(to.x, from.y + from.height / 2)),
@@ -105,21 +154,67 @@ fn append_edge(
           LineTo(activity_point(target_x, y2)),
         ]
       }
-      BackwardRight => {
-        let route_x = backward_right_route_x(from, to)
-        if from_is_decision {
-          [
-            MoveTo(activity_point(from.x + from.width, from_center_y)),
-            LineTo(activity_point(route_x, from_center_y)),
-            LineTo(activity_point(route_x, to.y + to.height / 2)),
-          ]
+      BackwardRight(offset, drop) => {
+        let route_x = to.x + offset
+        let target_center_y = to.y + to.height / 2
+        [
+          MoveTo(activity_point(x, y1)),
+          LineTo(activity_point(x, y1 + drop)),
+          LineTo(activity_point(route_x, y1 + drop)),
+          LineTo(activity_point(route_x, target_center_y)),
+          LineTo(activity_point(to.x + to.width, target_center_y)),
+        ]
+      }
+      RepeatLaneBack(offset) => {
+        let (route_x, landing_x) = repeat_lane_return(from, to, offset)
+        let target_center_y = to.y + to.height / 2
+        [
+          MoveTo(activity_point(from.x + from.width, from_center_y)),
+          LineTo(activity_point(route_x, from_center_y)),
+          LineTo(activity_point(route_x, target_center_y)),
+          LineTo(activity_point(landing_x, target_center_y)),
+        ]
+      }
+      RepeatBackRight(offset) => {
+        let route_x = to.x + offset
+        let target_center_y = to.y + to.height / 2
+        [
+          MoveTo(activity_point(from.x + from.width, from_center_y)),
+          LineTo(activity_point(route_x, from_center_y)),
+          LineTo(activity_point(route_x, target_center_y)),
+          LineTo(activity_point(to.x + to.width, target_center_y)),
+        ]
+      }
+      IfBypassRight(offset) => {
+        let bypass_x = from.x + offset
+        let merge_y = if to.width == 0 {
+          to.y + to.height
         } else {
+          to.y + to.height / 2
+        }
+        [
+          MoveTo(activity_point(from.x + from.width, from_center_y)),
+          LineTo(activity_point(bypass_x, from_center_y)),
+          LineTo(activity_point(bypass_x, merge_y)),
+          LineTo(activity_point(to.x + to.width, merge_y)),
+        ]
+      }
+      IfEmptyDown => {
+        let merge_y = if to_is_continuation {
+          to.y + to.height
+        } else if x == target_x {
+          y2
+        } else {
+          to.y + to.height / 2
+        }
+        if x == target_x {
+          [MoveTo(activity_point(x, y1)), LineTo(activity_point(x, merge_y))]
+        } else {
+          let merge_x = if x < target_x { to.x } else { to.x + to.width }
           [
             MoveTo(activity_point(x, y1)),
-            LineTo(activity_point(x, y1 + 10)),
-            LineTo(activity_point(route_x, y1 + 10)),
-            LineTo(activity_point(route_x, from_center_y)),
-            LineTo(activity_point(from.x + from.width, from_center_y)),
+            LineTo(activity_point(x, merge_y)),
+            LineTo(activity_point(merge_x, merge_y)),
           ]
         }
       }
@@ -141,12 +236,21 @@ fn append_edge(
           LineTo(activity_point(target_x, from_center_y)),
           LineTo(activity_point(target_x, y2)),
         ]
-      SwitchRight =>
-        [
-          MoveTo(activity_point(from.x + from.width, from_center_y)),
-          LineTo(activity_point(target_x, from_center_y)),
-          LineTo(activity_point(target_x, y2)),
+      SwitchRight => {
+        let right = from.x + from.width
+        let path : Array[@graphics.PathSegment] = [
+          MoveTo(activity_point(right, from_center_y)),
         ]
+        let route_x = switch_right_route_x(from, target_x)
+        path.push(LineTo(activity_point(route_x, from_center_y)))
+        if target_x < right {
+          let turn_y = from_center_y + from.height
+          path.push(LineTo(activity_point(route_x, turn_y)))
+          path.push(LineTo(activity_point(target_x, turn_y)))
+        }
+        path.push(LineTo(activity_point(target_x, y2)))
+        path
+      }
       SwitchMiddle =>
         [
           MoveTo(activity_point(x, y1)),
@@ -154,81 +258,123 @@ fn append_edge(
           LineTo(activity_point(target_x, y1 + 12)),
           LineTo(activity_point(target_x, y2)),
         ]
-      WhileExitLeft => {
-        let route_x = backward_left_route_x(from, to)
+      SwitchSideMerge => {
+        let right = to.x + to.width
+        let merge_y = if x < to.x || x > right {
+          to.y + to.height / 2
+        } else {
+          to.y
+        }
+        let merge_x = if x < to.x {
+          to.x
+        } else if x > right {
+          right
+        } else {
+          target_x
+        }
+        let path : Array[@graphics.PathSegment] = [
+          MoveTo(activity_point(x, y1)),
+        ]
+        if x > right && x - right < SWITCH_MERGE_APPROACH {
+          path.push(LineTo(activity_point(x, merge_y - SWITCH_MERGE_CLEARANCE)))
+          path.push(
+            LineTo(
+              activity_point(
+                x + SWITCH_MERGE_DETOUR,
+                merge_y - SWITCH_MERGE_CLEARANCE,
+              ),
+            ),
+          )
+          path.push(LineTo(activity_point(x + SWITCH_MERGE_DETOUR, merge_y)))
+        } else {
+          path.push(LineTo(activity_point(x, merge_y)))
+        }
+        path.push(LineTo(activity_point(merge_x, merge_y)))
+        path
+      }
+      WhileExitLeft(offset) => {
+        let route_x = from.x + offset
         [
           MoveTo(activity_point(from.x, from_center_y)),
           LineTo(activity_point(route_x, from_center_y)),
-          LineTo(activity_point(route_x, to.y - VERTICAL_GAP)),
-          LineTo(activity_point(target_x, to.y - VERTICAL_GAP)),
+          LineTo(activity_point(route_x, to.y)),
           LineTo(activity_point(target_x, to.y)),
         ]
       }
     }
   }
-  output.draw(MarkedPath(path, { start: None, end: Some(arrow), }), metadata={
+  if edge.route is IfChainMerge {
+    output.draw(
+      MarkedPath(
+        [MoveTo(activity_point(x, y1)), LineTo(activity_point(x, y2))],
+        { start: None, end: Some(arrow), },
+      ),
+      metadata=activity_class("activity-edge"),
+    )
+  }
+  let end_marker = if edge.route is (WhileExitLeft(_) | IfChainMerge) ||
+    (edge.route is IfEmptyDown && to_is_continuation) {
+    None
+  } else {
+    Some(arrow)
+  }
+  output.draw(MarkedPath(path, { start: None, end: end_marker, }), metadata={
     ..activity_class("activity-edge"),
     data: [
       (
         "route",
         match edge.route {
           Forward => "forward"
+          ForkSequence | ForkSequencePorts(_) => "fork-sequence"
+          ForkLane(_, _) => "fork-lane"
           Horizontal => "horizontal"
+          IfSideTerminal => "if-side-terminal"
           Goto => "goto"
           BackwardLeft => "backward-left"
-          BackwardRight => "backward-right"
+          BackwardRight(_) => "backward-right"
+          RepeatBackRight(_) => "repeat-back-right"
+          RepeatLaneBack(_) => "repeat-lane-back"
+          RepeatForward => "repeat-forward"
+          IfBypassRight(_) => "if-bypass-right"
+          IfEmptyDown => "if-empty-down"
+          IfChainMerge => "if-chain-merge"
           IfDownLeft => "if-down-left"
           IfDownRight => "if-down-right"
           SwitchLeft => "switch-left"
           SwitchRight => "switch-right"
           SwitchMiddle => "switch-middle"
-          WhileExitLeft => "while-exit-left"
+          SwitchSideMerge => "switch-side-merge"
+          WhileExitLeft(_) => "while-exit-left"
+          WhileEntry => "while-entry"
         },
       ),
     ],
   })
+  if edge.route is BackwardRight(offset, drop) &&
+    swimlane_for_node(layout.source_nodes, edge.from_node_index) !=
+    swimlane_for_node(layout.source_nodes, edge.to_node_index) {
+    let route_x = to.x + offset
+    let middle_y = (y1 + to.y + to.height / 2) / 2
+    output.draw(
+      MarkedPath(
+        [
+          MoveTo(activity_point(route_x, y1 + drop)),
+          LineTo(activity_point(route_x, middle_y)),
+        ],
+        { start: None, end: Some(arrow), },
+      ),
+      metadata=activity_class("activity-edge"),
+    )
+  }
   if edge.label is Some(label) {
-    let (label_x, label_y, anchor) = match edge.route {
-      Forward =>
-        if from_is_decision && target_x != x {
-          (target_x + 4, y1 + 11, @graphics.TextAnchor::Start)
-        } else if from_is_decision {
-          (target_x + 4, y1 + 11, @graphics.TextAnchor::Start)
-        } else {
-          (x + 4, y1 + 21, @graphics.TextAnchor::Start)
-        }
-      Horizontal =>
-        (
-          (from.x + from.width + to.x) / 2,
-          from.y + from.height / 2 - 4,
-          @graphics.TextAnchor::Middle,
-        )
-      Goto =>
-        ((from.x + to.x) / 2, (from.y + to.y) / 2, @graphics.TextAnchor::Middle)
-      BackwardLeft =>
-        (
-          from.x.min(to.x) - WHILE_BACK_MARGIN,
-          (y1 + y2) / 2,
-          @graphics.TextAnchor::Middle,
-        )
-      BackwardRight => {
-        let route_x = (from.x + from.width).max(to.x + to.width) +
-          WHILE_BACK_MARGIN
-        (route_x, (y1 + y2) / 2, @graphics.TextAnchor::Middle)
-      }
-      IfDownLeft => {
-        let width = small_metrics.measure(label).width
-        (from.x - width, from_center_y - 2, @graphics.TextAnchor::End)
-      }
-      IfDownRight =>
-        (from.x + from.width, from_center_y - 2, @graphics.TextAnchor::Start)
-      SwitchLeft | SwitchRight | SwitchMiddle =>
-        (target_x, y2 - 20, @graphics.TextAnchor::Start)
-      WhileExitLeft => {
-        let width = small_metrics.measure(label).width
-        (from.x - width, from_center_y - 2, @graphics.TextAnchor::End)
-      }
-    }
+    let (label_x, label_y, anchor) = activity_edge_label_position(
+      edge,
+      label,
+      from,
+      to,
+      layout.source_nodes,
+      small_metrics,
+    )
     append_label(
       output,
       label_x,
@@ -264,7 +410,9 @@ fn append_region(
   append_label(
     output,
     region.x + region.width / 2,
-    region.y + REGION_HEADER_HEIGHT / 2 + 4,
+    region.y +
+    REGION_HEADER_HEIGHT.max(font_metrics.measure(region.label).height) / 2 +
+    4,
     region.label,
     font_metrics,
   )
@@ -289,6 +437,10 @@ fn activity_append_node(
   small_metrics : @metrics.FontMetrics,
 ) -> Unit {
   let node = layout.source_nodes[node_layout.node_index]
+  // Chains and conditionals with only one continuing branch use flow anchors.
+  guard !(node is @flow.ActivityNode::EndIf && node_layout.width == 0) else {
+    return
+  }
   let x = node_layout.x
   let y = node_layout.y
   let width = node_layout.width
@@ -308,7 +460,26 @@ fn activity_append_node(
             Circle(center~, radius=(height / 2).to_double()),
             metadata=activity_class("activity-start"),
           )
-        Stop | End | Kill => {
+        End => {
+          output.draw(
+            Circle(center~, radius=height.to_double() / 2.0),
+            metadata=activity_class("activity-end-circle"),
+          )
+          let span = (height.to_double() - END_CROSS_STROKE) / 2.0.sqrt()
+          let inset = (height.to_double() - span) / 2.0
+          let left = x.to_double() + inset
+          let top = y.to_double() + inset
+          output.draw(
+            Path([
+              MoveTo({ x: left, y: top, }),
+              LineTo({ x: left + span, y: top + span, }),
+              MoveTo({ x: left, y: top + span, }),
+              LineTo({ x: left + span, y: top, }),
+            ]),
+            metadata=activity_class("activity-end-cross"),
+          )
+        }
+        Stop => {
           output.draw(
             Circle(center~, radius=(height / 2).to_double()),
             metadata=activity_class("activity-stop-outer"),
@@ -331,13 +502,28 @@ fn activity_append_node(
           )
         _ if node.is_exit() || node.is_decision() => {
           output.draw(
-            Path([
-              MoveTo(activity_point(center_x, y)),
-              LineTo(activity_point(x + width, center_y)),
-              LineTo(activity_point(center_x, y + height)),
-              LineTo(activity_point(x, center_y)),
-              Close,
-            ]),
+            Path(
+              if node.label() is Some(label) && label.length() > 0 {
+                let side = DIAMOND_TEXT_PADDING / 2
+                [
+                  MoveTo(activity_point(x + side, y)),
+                  LineTo(activity_point(x + width - side, y)),
+                  LineTo(activity_point(x + width, center_y)),
+                  LineTo(activity_point(x + width - side, y + height)),
+                  LineTo(activity_point(x + side, y + height)),
+                  LineTo(activity_point(x, center_y)),
+                  Close,
+                ]
+              } else {
+                [
+                  MoveTo(activity_point(center_x, y)),
+                  LineTo(activity_point(x + width, center_y)),
+                  LineTo(activity_point(center_x, y + height)),
+                  LineTo(activity_point(x, center_y)),
+                  Close,
+                ]
+              },
+            ),
             metadata=activity_class(
               if node.is_exit() {
                 "activity-exit"
@@ -350,7 +536,7 @@ fn activity_append_node(
             append_label(output, center_x, center_y + 4, label, small_metrics)
           }
         }
-        Note(label) => {
+        Note(_, _) => {
           output.draw(
             Path([
               MoveTo(activity_point(x, y)),
@@ -362,9 +548,15 @@ fn activity_append_node(
             ]),
             metadata=activity_class("activity-note"),
           )
-          append_label(output, center_x, center_y + 4, label, font_metrics)
+          append_label(
+            output,
+            center_x,
+            center_y + 4,
+            node.label().unwrap(),
+            font_metrics,
+          )
         }
-        Action(label) => {
+        Action(_) => {
           output.draw(
             Rectangle(
               origin=activity_point(x, y),
@@ -375,10 +567,20 @@ fn activity_append_node(
             ),
             metadata=activity_class("activity-action"),
           )
-          append_label(output, center_x, center_y + 4, label, font_metrics)
+          append_label(
+            output,
+            center_x,
+            center_y + 4,
+            node.label().unwrap(),
+            font_metrics,
+          )
         }
-        Arrow(_)
+        Kill
+        | ForkAgain
+        | EndWhile(_)
+        | Arrow(_)
         | Label(_)
+        | Case(_)
         | Goto(_)
         | Swimlane(_)
         | Partition(_)
@@ -463,6 +665,8 @@ fn @flow.ActivityDiagram::render_svg(
       $|.activity-swimlane{stroke-dasharray:\{@svg.separator_dash_pattern()}}
       $|.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:\{line}}
       $|.activity-stop-outer,.activity-action,.activity-decision,.activity-exit{fill:\{defaults.node};stroke:\{line};stroke-width:\{emphasized_width}}
+      $|.activity-end-circle{fill:none;stroke:\{line};stroke-width:\{emphasized_width}}
+      $|.activity-end-cross{fill:none;stroke:\{line};stroke-width:\{END_CROSS_STROKE}}
       $|.activity-note{fill:\{defaults.note};stroke:\{line};stroke-width:\{emphasized_width}},
     ),
   )

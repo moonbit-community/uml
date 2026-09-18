@@ -43,9 +43,14 @@ fn FontMetrics::scaled_advance(
 ///|
 /// Return the deterministic PlantUML table advance in fixed-point units.
 /// The Java width table is generated at size 16 and stores tenths of a point.
+/// Previously verified: spaces have positive advance equal to NBSP; inserting
+/// spaces increases text width and tab stops remain wider than spaces.
 fn FontMetrics::table_advance(self : FontMetrics, char : Char) -> Float? {
   guard self.profile == Sans else { None }
-  let code_point = char.to_int()
+  // The copied table has a zero entry for U+0020. Whitespace still consumes
+  // advance in SVG text; use its nonbreaking counterpart from the same font
+  // table so spaces and tab stops do not collapse to zero width.
+  let code_point = if char == ' ' { '\u{00a0}'.to_int() } else { char.to_int() }
   guard code_point < 0xFFFF else { Some(160.0F) }
   let block = code_point >> 8
   guard block < plantuml_sans_serif_widths.length() else { Some(130.0F) }

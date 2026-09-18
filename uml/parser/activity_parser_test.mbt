@@ -62,7 +62,7 @@ test "parses swimlanes partitions notes and named flow targets" {
   @test.assert_eq(
     diagram.nodes.any(node => {
       match node {
-        Note(text) => text == "Helpful text"
+        Note(text, Right) => text == "Helpful text"
         _ => false
       }
     }),

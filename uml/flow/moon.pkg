@@ -1,4 +1,3 @@
 import {
-  "kokic/uml/tokenizer",
   "kokic/uml/style",
 }

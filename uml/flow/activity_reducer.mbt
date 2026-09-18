@@ -23,27 +23,44 @@ pub fn edge_label(value : String) -> ActivityEdgeLabel {
 }
 
 ///|
+/// Branch keywords delimit labels only outside the parenthesized text.
+fn activity_label_separator(value : String, separator : String) -> Int? {
+  let lower = value.to_lower()
+  let mut depth = 0
+  for index = 0; index < lower.length(); index = index + 1 {
+    let unit = lower[index:index + 1]
+    if unit == "(" {
+      depth += 1
+    } else if unit == ")" {
+      depth -= 1
+    } else if depth == 0 && lower[index:].has_prefix(separator[:]) {
+      return Some(index)
+    }
+  }
+  None
+}
+
+///|
 fn split_test_and_label(
   value : String,
   separator : String,
 ) -> (String, ActivityEdgeLabel) {
-  let lower = value.to_lower()
-  lower
-  .find(separator)
-  .map_or((edge_label(value).text.unwrap_or(""), { text: None, }), index => {
-    (
-      edge_label(value[:index].to_owned()).text.unwrap_or(""),
-      edge_label(value[index + separator.length():].to_owned()),
-    )
-  })
+  activity_label_separator(value, separator).map_or(
+    (edge_label(value).text.unwrap_or(""), { text: None, }),
+    index => {
+      (
+        edge_label(value[:index].to_owned()).text.unwrap_or(""),
+        edge_label(value[index + separator.length():].to_owned()),
+      )
+    },
+  )
 }
 
 ///|
 fn repeat_labels(
   value : String,
 ) -> (String, ActivityEdgeLabel, ActivityEdgeLabel) {
-  let lower = value.to_lower()
-  guard lower.find(" is ") is Some(is_index) else {
+  guard activity_label_separator(value, " is ") is Some(is_index) else {
     return (
       edge_label(value).text.unwrap_or(""),
       { text: None, },
@@ -55,23 +72,27 @@ fn repeat_labels(
   guard rest.length() > 0 else {
     return (condition, { text: None, }, { text: None, })
   }
-  rest
-  .to_lower()
-  .find(" not ")
-  .map_or((condition, edge_label(rest), { text: None, }), index => {
-    (
-      condition,
-      edge_label(rest[:index].to_owned()),
-      edge_label(rest[index + 5:].to_owned()),
-    )
-  })
+  activity_label_separator(rest, " not ").map_or(
+    (condition, edge_label(rest), { text: None, }),
+    index => {
+      (
+        condition,
+        edge_label(rest[:index].to_owned()),
+        edge_label(rest[index + 5:].to_owned()),
+      )
+    },
+  )
 }
 
 ///|
 pub fn arrow_label(value : String) -> ActivityEdgeLabel {
-  let words = @tokenizer.syntax_words(value)
-  guard words.length() > 1 else { return { text: None, } }
-  let text = words[1:].to_owned().join(" ").trim_end(chars=";").to_owned()
+  guard value.find(">") is Some(arrow_end) else { return { text: None, } }
+  let text = value[arrow_end + 1:].trim().to_owned()
+  let text = if text.has_suffix(";") {
+    text[:text.length() - 1].to_owned()
+  } else {
+    text
+  }
   { text: if text.length() == 0 { None } else { Some(text) }, }
 }
 
@@ -298,8 +319,12 @@ fn reduce_flow(
         index = emit(instructions, ActivityInstruction::Kill, index)
       ActivityNode::Action(label) =>
         index = emit(instructions, ActivityInstruction::Action(label), index)
-      ActivityNode::Note(label) =>
-        index = emit(instructions, ActivityInstruction::Note(label), index)
+      ActivityNode::Note(label, side) =>
+        index = emit(
+          instructions,
+          ActivityInstruction::Note(label, side),
+          index,
+        )
       ActivityNode::Arrow(value) =>
         index = emit(
           instructions,

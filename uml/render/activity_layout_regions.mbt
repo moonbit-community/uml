@@ -56,59 +56,6 @@ fn layout_for_node(
 }
 
 ///|
-fn region_for(
-  layouts : Array[ActivityNodeLayout],
-  kind : ActivityRegionKind,
-  label : String,
-  select : (ActivityNodeLayout) -> Bool,
-) -> ActivityRegionLayout? {
-  let mut min_x : Int? = None
-  let mut min_y : Int? = None
-  let mut max_x : Int? = None
-  let mut max_y : Int? = None
-  for layout in layouts {
-    guard select(layout) else { continue }
-    min_x = Some(min_x.map_or(layout.x, value => value.min(layout.x)))
-    min_y = Some(min_y.map_or(layout.y, value => value.min(layout.y)))
-    max_x = Some(
-      max_x.map_or(layout.x + layout.width, value => {
-        value.max(layout.x + layout.width)
-      }),
-    )
-    max_y = Some(
-      max_y.map_or(layout.y + layout.height, value => {
-        value.max(layout.y + layout.height)
-      }),
-    )
-  }
-  match (min_x, min_y, max_x, max_y) {
-    (Some(min_x), Some(min_y), Some(max_x), Some(max_y)) =>
-      Some({
-        kind,
-        label,
-        x: min_x - REGION_PADDING,
-        y: min_y - REGION_HEADER_HEIGHT - REGION_PADDING,
-        width: max_x - min_x + REGION_PADDING * 2,
-        height: max_y - min_y + REGION_HEADER_HEIGHT + REGION_PADDING * 2,
-      })
-    _ => None
-  }
-}
-
-///|
-fn region_for_range(
-  layouts : Array[ActivityNodeLayout],
-  start : Int,
-  end : Int,
-  kind : ActivityRegionKind,
-  label : String,
-) -> ActivityRegionLayout? {
-  region_for(layouts, kind, label, layout => {
-    layout.node_index > start && layout.node_index < end
-  })
-}
-
-///|
 fn swimlane_for_node(
   nodes : Array[@flow.ActivityNode],
   node_index : Int,
@@ -141,19 +88,64 @@ fn swimlane_index(names : Array[String], name : String) -> Int? {
 }
 
 ///|
+/// Like Swimlanes.computeSizeInternal, translate each lane from its complete
+/// horizontal extent. Centering individual nodes would collapse branches.
 fn reposition_swimlanes(
   nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
-) -> Int {
+  edges : Array[ActivityEdgeLayout],
+  metrics : @metrics.FontMetrics,
+  small_metrics : @metrics.FontMetrics,
+  height : Int,
+) -> Array[ActivityRegionLayout] {
   let names = swimlane_names(nodes)
-  guard !names.is_empty() else { return 0 }
-  let widths = names.map(_ => REGION_PADDING * 2)
+  // Swimlanes.drawU uses the ordinary layout for zero or one named lane.
+  guard names.length() > 1 else { return [] }
+  preserve_fork_lane_ports(nodes, layouts, edges)
+  let bounds : Array[(Int, Int)?] = names.map(_ => None)
   for layout in layouts {
     guard swimlane_for_node(nodes, layout.node_index) is Some(name) else {
       continue
     }
-    guard swimlane_index(names, name) is Some(index) else { continue }
-    widths[index] = widths[index].max(layout.width + REGION_PADDING * 2)
+    let index = swimlane_index(names, name).unwrap()
+    bounds[index] = Some(
+      bounds[index].map_or((layout.x, layout.x + layout.width), extent => {
+        (extent.0.min(layout.x), extent.1.max(layout.x + layout.width))
+      }),
+    )
+  }
+  // UGraphicInterceptorOneSwimlane draws links whose endpoints share the lane.
+  // Their text participates in the same min/max bounds as the node shapes.
+  for edge in edges {
+    guard swimlane_for_node(nodes, edge.from_node_index) is Some(name) &&
+      swimlane_for_node(nodes, edge.to_node_index) == Some(name) else {
+      continue
+    }
+    let from = layouts[layouts
+      .search_by(node => node.node_index == edge.from_node_index)
+      .unwrap()]
+    let to = layouts[layouts
+      .search_by(node => node.node_index == edge.to_node_index)
+      .unwrap()]
+    let (path_left, path_right) = activity_edge_x_bounds(edge, from, to, nodes)
+    let (left, right) = edge.label.map_or((path_left, path_right), label => {
+      let (left, right) = activity_edge_label_bounds(
+        edge, label, from, to, nodes, small_metrics,
+      )
+      (path_left.min(left), path_right.max(right))
+    })
+    let index = swimlane_index(names, name).unwrap()
+    let extent = bounds[index].unwrap()
+    bounds[index] = Some((extent.0.min(left), extent.1.max(right)))
+  }
+  let titles = names.map(activity_display_text)
+  let widths = []
+  for index, _ in names {
+    let content_width = bounds[index].map_or(0, extent => extent.1 - extent.0)
+    widths.push(
+      content_width.max(metrics.measure(titles[index]).width) +
+      REGION_PADDING * 2,
+    )
   }
   let positions = []
   let mut cursor_x = CANVAS_LEFT
@@ -161,64 +153,77 @@ fn reposition_swimlanes(
     positions.push(cursor_x)
     cursor_x += width + SWIMLANE_GAP
   }
+  let shifts = nodes.map(_ => 0)
   for index, layout in layouts {
     guard swimlane_for_node(nodes, layout.node_index) is Some(name) else {
       continue
     }
     guard swimlane_index(names, name) is Some(lane_index) else { continue }
+    let (left, right) = bounds[lane_index].unwrap()
+    let shift = positions[lane_index] +
+      (widths[lane_index] - (right - left)) / 2 -
+      left
+    shifts[layout.node_index] = shift
     layouts[index] = {
       node_index: layout.node_index,
-      x: positions[lane_index] + (widths[lane_index] - layout.width) / 2,
+      x: layout.x + shift,
       y: layout.y,
       width: layout.width,
       height: layout.height,
     }
   }
-  cursor_x - SWIMLANE_GAP + CANVAS_LEFT
+  // FtileWhile.ConnectionBackSimple translates the outer corridor by the
+  // larger endpoint shift, so the return stays outside both lane contents.
+  for index, edge in edges {
+    guard edge.route is BackwardRight(offset, _) &&
+      swimlane_for_node(nodes, edge.from_node_index) !=
+      swimlane_for_node(nodes, edge.to_node_index) else {
+      continue
+    }
+    let from_shift = shifts[edge.from_node_index]
+    let to_shift = shifts[edge.to_node_index]
+    edges[index] = {
+      ..edge,
+      route: BackwardRight(
+        offset + from_shift.max(to_shift) - to_shift,
+        DIAMOND_TEXT_PADDING / 2,
+      ),
+    }
+  }
+  let regions = []
+  for index, title in titles {
+    regions.push({
+      kind: Swimlane,
+      label: title,
+      x: positions[index],
+      y: CANVAS_TOP,
+      width: widths[index],
+      height,
+    })
+  }
+  regions
 }
 
 ///|
-fn region_for_swimlane(
-  nodes : Array[@flow.ActivityNode],
-  layouts : Array[ActivityNodeLayout],
-  label : String,
-) -> ActivityRegionLayout? {
-  region_for(layouts, ActivityRegionKind::Swimlane, label, layout => {
-    swimlane_for_node(nodes, layout.node_index) is Some(name) && name == label
-  })
-}
-
-///|
-fn regions_from_nodes(
+fn partition_regions(
   nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
 ) -> Array[ActivityRegionLayout] {
   let regions = []
-  let seen_swimlanes = []
   for index, node in nodes {
     match node {
-      Swimlane(label) => {
-        guard !seen_swimlanes.contains(label) else { continue }
-        seen_swimlanes.push(label)
-        guard region_for_swimlane(nodes, layouts, label) is Some(region) else {
-          continue
+      Partition(_) =>
+        for layout in layouts {
+          guard layout.node_index == index else { continue }
+          regions.push({
+            kind: Partition,
+            label: node.label().unwrap(),
+            x: layout.x,
+            y: layout.y,
+            width: layout.width,
+            height: layout.height,
+          })
         }
-        regions.push(region)
-      }
-      Partition(label) => {
-        let end = partition_end(nodes, index)
-        guard region_for_range(
-            layouts,
-            index,
-            end,
-            ActivityRegionKind::Partition,
-            label,
-          )
-          is Some(region) else {
-          continue
-        }
-        regions.push(region)
-      }
       _ => ()
     }
   }
@@ -226,10 +231,32 @@ fn regions_from_nodes(
 }
 
 ///|
-fn partition_end(nodes : Array[@flow.ActivityNode], index : Int) -> Int {
-  for next = index + 1; next < nodes.length(); next = next + 1 {
-    guard nodes[next] is EndPartition else { continue }
-    return next
+/// Keep each port relative to its own node before lanes translate independently.
+fn preserve_fork_lane_ports(
+  nodes : Array[@flow.ActivityNode],
+  layouts : Array[ActivityNodeLayout],
+  edges : Array[ActivityEdgeLayout],
+) -> Unit {
+  for index, edge in edges {
+    guard edge.route is Forward else { continue }
+    let from_fork = nodes[edge.from_node_index].is_fork()
+    let to_fork = nodes[edge.to_node_index].is_fork()
+    guard from_fork || to_fork else { continue }
+    guard swimlane_for_node(nodes, edge.from_node_index) !=
+      swimlane_for_node(nodes, edge.to_node_index) else {
+      continue
+    }
+    let from = layouts[layouts
+      .search_by(node => node.node_index == edge.from_node_index)
+      .unwrap()]
+    let to = layouts[layouts
+      .search_by(node => node.node_index == edge.to_node_index)
+      .unwrap()]
+    let port_x = if nodes[edge.from_node_index] is @flow.ActivityNode::Fork {
+      to.x + to.width / 2
+    } else {
+      from.x + from.width / 2
+    }
+    edges[index] = { ..edge, route: ForkLane(port_x - from.x, port_x - to.x), }
   }
-  nodes.length()
 }
