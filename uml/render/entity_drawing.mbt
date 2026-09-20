@@ -34,7 +34,16 @@ fn draw_entity_text(
   font_family? : String = "",
   font_size? : Int = 0,
   anchor? : @graphics.TextAnchor = Start,
+  text_style? : @graphics.TextStyle? = None,
 ) -> Unit {
+  let run = entity_text_run(
+    text,
+    { x, y, },
+    metrics,
+    font_family~,
+    font_size~,
+    anchor~,
+  )
   graphic
   .with_style({
     ..Default::default(),
@@ -44,17 +53,37 @@ fn draw_entity_text(
       Color(fill)
     },
   })
-  .draw(
-    Text(
-      entity_text_run(
-        text,
-        { x, y, },
-        metrics,
-        font_family~,
-        font_size~,
-        anchor~,
-      ),
-    ),
-    metadata={ ..Default::default(), class_name, },
-  )
+  .draw(text_style.map_or(Text(run), style => StyledText(run, style)), metadata={
+    ..Default::default(),
+    class_name,
+  })
+}
+
+///|
+fn entity_text_run(
+  text : String,
+  position : @graphics.Point,
+  metrics : @metrics.FontMetrics,
+  anchor? : @graphics.TextAnchor = Start,
+  font_family? : String = "",
+  font_size? : Int = 0,
+) -> @graphics.TextRun {
+  let measured = metrics.measure(text)
+  {
+    text,
+    position,
+    advance: if text.length() > 1 && measured.advance_width > 0 {
+      Some(measured.advance_width.to_double())
+    } else {
+      None
+    },
+    anchor,
+    font_size: (if font_size > 0 { font_size } else { metrics.font_size }).to_double(),
+    font_family: if font_family.is_empty() {
+      None
+    } else {
+      Some(font_family)
+    },
+    strike: false,
+  }
 }

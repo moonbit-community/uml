@@ -19,27 +19,19 @@ fn draw_class_text(
   italic? : Bool? = None,
   anchor? : @graphics.TextAnchor = Start,
 ) -> Unit {
-  let run = entity_text_run(
+  draw_entity_text(
+    output,
+    x.to_double(),
+    y.to_double(),
     text,
-    class_point(x, y),
     metrics,
-    anchor~,
+    class_name~,
+    fill~,
     font_family~,
     font_size~,
+    anchor~,
+    text_style=Some({ ..Default::default(), italic, }),
   )
-  output
-  .with_style({
-    ..Default::default(),
-    fill: if fill.is_empty() {
-      Inherit
-    } else {
-      Color(fill)
-    },
-  })
-  .draw(StyledText(run, { ..Default::default(), italic, }), metadata={
-    ..Default::default(),
-    class_name: Some(class_name),
-  })
 }
 
 ///|
@@ -365,33 +357,4 @@ fn append_member_section(
 ///|
 fn class_point(x : Int, y : Int) -> @graphics.Point {
   { x: x.to_double(), y: y.to_double(), }
-}
-
-///|
-fn entity_text_run(
-  text : String,
-  position : @graphics.Point,
-  metrics : @metrics.FontMetrics,
-  anchor? : @graphics.TextAnchor = Start,
-  font_family? : String = "",
-  font_size? : Int = 0,
-) -> @graphics.TextRun {
-  let measured = metrics.measure(text)
-  {
-    text,
-    position,
-    advance: if text.length() > 1 && measured.advance_width > 0 {
-      Some(measured.advance_width.to_double())
-    } else {
-      None
-    },
-    anchor,
-    font_size: (if font_size > 0 { font_size } else { metrics.font_size }).to_double(),
-    font_family: if font_family.is_empty() {
-      None
-    } else {
-      Some(font_family)
-    },
-    strike: false,
-  }
 }

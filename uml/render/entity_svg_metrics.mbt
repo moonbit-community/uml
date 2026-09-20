@@ -1493,7 +1493,7 @@ fn @entity.Entity::node_geometry(
     (DescriptionHeader, NoBody, ComponentRenderer) =>
       self.component_geometry(text_metrics)
     (DescriptionHeader, NoBody, DescriptionRenderer) => {
-      let (width, height) = self.description_geometry(text_metrics)
+      let (width, height) = self.description_layout(text_metrics).dimension()
       {
         width,
         height,

@@ -282,6 +282,26 @@ fn relation_decoration_circle(
 }
 
 ///|
+// Circle and line crowfeet share their fork; the plain crowfoot has separate
+// aperture and contact-side adjustments and retains its own geometry.
+fn RelationDecorationFrame::composite_crowfoot(
+  self : RelationDecorationFrame,
+) -> Array[RelationDecorationPrimitive] {
+  let base = self.point(CROWFOOT_DECORATION_LENGTH, 0.0)
+  [
+    relation_decoration_segment(
+      base,
+      self.point(0.0, -CROWFOOT_COMPOSITE_APERTURE),
+    ),
+    relation_decoration_segment(
+      base,
+      self.point(0.0, CROWFOOT_COMPOSITE_APERTURE),
+    ),
+    relation_decoration_segment(base, self.endpoint),
+  ]
+}
+
+///|
 fn relation_decoration_geometry(
   primitives : Array[RelationDecorationPrimitive],
 ) -> RelationDecorationGeometry {
@@ -454,49 +474,33 @@ fn @entity.RelationEnd::decoration_geometry(
         ]),
       )
     }
-    CircleCrowfoot => {
-      let base = frame.point(CROWFOOT_DECORATION_LENGTH, 0.0)
+    CircleCrowfoot =>
       Some(
-        relation_decoration_geometry([
-          relation_decoration_segment(
-            base,
-            frame.point(0.0, -CROWFOOT_COMPOSITE_APERTURE),
-          ),
-          relation_decoration_segment(
-            base,
-            frame.point(0.0, CROWFOOT_COMPOSITE_APERTURE),
-          ),
-          relation_decoration_segment(base, endpoint),
-          relation_decoration_circle(
-            frame.point(CIRCLE_CROWFOOT_CENTER_LENGTH, 0.0),
-            CIRCLE_CROWFOOT_RADIUS,
-            NoDecorationFill,
-          ),
-        ]),
+        relation_decoration_geometry(
+          [
+            ..frame.composite_crowfoot(),
+            relation_decoration_circle(
+              frame.point(CIRCLE_CROWFOOT_CENTER_LENGTH, 0.0),
+              CIRCLE_CROWFOOT_RADIUS,
+              NoDecorationFill,
+            ),
+          ],
+        ),
       )
-    }
-    LineCrowfoot => {
-      let base = frame.point(CROWFOOT_DECORATION_LENGTH, 0.0)
+    LineCrowfoot =>
       Some(
-        relation_decoration_geometry([
-          relation_decoration_segment(
-            base,
-            frame.point(0.0, -CROWFOOT_COMPOSITE_APERTURE),
-          ),
-          relation_decoration_segment(
-            base,
-            frame.point(0.0, CROWFOOT_COMPOSITE_APERTURE),
-          ),
-          relation_decoration_segment(base, endpoint),
-          segment(
-            LINE_CROWFOOT_BAR_LENGTH,
-            -END_LINE_HALF_HEIGHT,
-            LINE_CROWFOOT_BAR_LENGTH,
-            END_LINE_HALF_HEIGHT,
-          ),
-        ]),
+        relation_decoration_geometry(
+          [
+            ..frame.composite_crowfoot(),
+            segment(
+              LINE_CROWFOOT_BAR_LENGTH,
+              -END_LINE_HALF_HEIGHT,
+              LINE_CROWFOOT_BAR_LENGTH,
+              END_LINE_HALF_HEIGHT,
+            ),
+          ],
+        ),
       )
-    }
     CircleLine =>
       Some(
         relation_decoration_geometry([
