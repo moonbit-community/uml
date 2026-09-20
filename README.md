@@ -52,7 +52,7 @@ PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 | Diagram | Status |
 |---|---|
 | Mindmap | done |
-| WBS | parsed, renderer pending |
+| WBS | main SVG pipeline implemented |
 | JSON | done |
 | YAML | done |
 | DOT | done |
@@ -74,3 +74,11 @@ PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 | Flow | planned |
 | Ditaa | planned |
 | JCCKit | planned |
+
+WBS sources use `@startwbs` / `@endwbs` and render through
+`kokic/uml/api.render_svg`. The main SVG pipeline includes the root fork,
+left/right subtrees, boxed and boxless nodes, pseudo nodes, multiline labels,
+sibling auto width, cross links, and document text. Its layout follows
+PlantUML's `Fork`, `ITFComposed`, and `ITFLeaf`; this status does not claim full
+PlantUML syntax or style compatibility. Runnable sources are in
+[`live/public/examples/wbs/`](./live/public/examples/wbs/).

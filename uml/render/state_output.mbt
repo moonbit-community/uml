@@ -54,7 +54,7 @@ fn append_state_output(
       note_connections=drawing.note_connections,
       cluster_titles=drawing.cluster_titles,
     )
-    append_state_document(output, diagram, drawing.document)
+    draw_document_text(output, diagram.style, "state", drawing.document)
   }
   if size.scale == 1.0 {
     paint(output)

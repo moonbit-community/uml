@@ -1,0 +1,13 @@
+@startwbs
+* Work packages
+**[#LightBlue] Delivery
+***_ Unboxed milestone
+***: First line
+Second line;
+**_(group)
+*** Documentation
+*** Training
+** Quality
+*** <s>Manual checks</s>
+*** Automated checks\nContinuous feedback
+@endwbs

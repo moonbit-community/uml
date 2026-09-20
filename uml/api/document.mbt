@@ -6,6 +6,7 @@ pub enum Diagram {
   Entity(@entity.EntityDiagram)
   State(@flow.StateDiagram)
   Mindmap(@tree.MindmapDiagram)
+  Wbs(@tree.WbsDiagram)
   Mbti(@entity.MbtiDiagram)
   Json(@structured.StructuredDiagram)
   Yaml(@structured.StructuredDiagram)
@@ -30,6 +31,7 @@ pub(all) enum DiagramKind {
   Object
   UseCase
   Mindmap
+  Wbs
   Mbti
   Json
   Yaml
@@ -108,6 +110,7 @@ pub fn Diagram::render_svg(
       )
     State(diagram) => @render.render_state_svg(diagram, color_scheme~)
     Mindmap(diagram) => @render.render_mindmap_svg(diagram, color_scheme~)
+    Wbs(diagram) => @render.render_wbs_svg(diagram, color_scheme~)
     Mbti(diagram) =>
       @render.render_mbti_svg(
         diagram,
@@ -138,6 +141,7 @@ pub fn Document::kind(self : Document) -> DiagramKind {
       }
     State(_) => State
     Mindmap(_) => Mindmap
+    Wbs(_) => Wbs
     Mbti(_) => Mbti
     Json(_) => Json
     Yaml(_) => Yaml
@@ -165,6 +169,7 @@ pub fn parse(source : String) -> Document raise {
     _ if is_dot_source(source) => { diagram: Dot(parse_dot_source(source)), }
     _ if is_mindmap_source(source) =>
       { diagram: Mindmap(@parser.parse_mindmap(source)), }
+    _ if is_wbs_source(source) => { diagram: Wbs(@parser.parse_wbs(source)), }
     _ if is_sequence_source(source) =>
       { diagram: Sequence(@parser.parse_sequence(source)), }
     _ if is_activity_source(source) =>

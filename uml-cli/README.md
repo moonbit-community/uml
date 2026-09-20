@@ -31,8 +31,9 @@ failure, `2` on usage errors.
 
 Diagram families are detected from the source with the same per-line
 heuristics PlantUML uses to pick a diagram factory: sequence, class, object,
-use case, mindmap, JSON, YAML, and TOML today, with state, component, and
-activity under construction. `check` names the detected family:
+use case, mindmap, WBS, JSON, YAML, and TOML, as well as state, component,
+deployment, activity, MBTI, and DOT. WBS sources use `@startwbs` / `@endwbs`.
+`check` names the detected family:
 
 ```console
 $ uml check hello.puml

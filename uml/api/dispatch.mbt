@@ -357,6 +357,14 @@ pub fn is_mindmap_source(input : String) -> Bool {
 }
 
 ///|
+/// Whether the document explicitly selects PlantUML's WBS factory.
+pub fn is_wbs_source(input : String) -> Bool {
+  input
+  .split("\n")
+  .any(line => line.trim().equal_ignore_ascii_case("@startwbs"))
+}
+
+///|
 /// Returns whether the source selects PlantUML's activity-diagram parser.
 pub fn is_activity_source(input : String) -> Bool {
   let lines = meaningful_source_lines(input)

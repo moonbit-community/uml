@@ -297,8 +297,8 @@ fn resolve_state_font(
     NoteLabel => ("Note", STATE_NOTE_FONT_SIZE)
     TitleLabel => ("Title", STATE_LABEL_FONT_SIZE)
     CaptionLabel => ("Caption", STATE_LABEL_FONT_SIZE)
-    HeaderLabel => ("Header", STATE_DOCUMENT_SMALL_FONT_SIZE)
-    FooterLabel => ("Footer", STATE_DOCUMENT_SMALL_FONT_SIZE)
+    HeaderLabel => ("Header", DOCUMENT_TEXT_SMALL_FONT_SIZE)
+    FooterLabel => ("Footer", DOCUMENT_TEXT_SMALL_FONT_SIZE)
     LegendLabel => ("Legend", STATE_LABEL_FONT_SIZE)
   }
   // EntityImageStateCommon resolves each state's name/body style with its

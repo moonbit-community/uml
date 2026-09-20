@@ -37,6 +37,13 @@
     "05-org-mode.uml",
     "06-explicit-root.uml"
   ],
+  "wbs": [
+    "01-basic.uml",
+    "02-directions.uml",
+    "03-node-shapes.uml",
+    "04-styles.uml",
+    "05-links-and-document.uml"
+  ],
   "yaml": [
     "01-scalars.uml",
     "02-nested-collections.uml",

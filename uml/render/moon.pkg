@@ -17,8 +17,3 @@ import {
   "moonbit-community/graphviz/geom",
   "moonbit-community/graphviz/layout/dot" @dot_layout,
 }
-
-import {
-  "kokic/uml/parser",
-  "moonbitlang/core/test",
-} for "wbtest"

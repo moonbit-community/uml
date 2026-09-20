@@ -4,7 +4,7 @@ priv struct StateDrawingLayout {
   layout : StateLayout
   note_connections : Array[StateNoteConnection]
   cluster_titles : Map[String, Double]
-  document : Array[StateDocumentBlock]
+  document : Array[DocumentTextBlock]
 }
 
 ///|
