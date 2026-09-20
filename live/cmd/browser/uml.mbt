@@ -5,7 +5,7 @@
 ///|
 /// Fetch the example manifest and schedule a load for every listed source.
 fn fetch_manifest_cmd(emit : @rabbita.Emit[Msg]) -> @cmd.Cmd {
-  @http.get("examples-manifest.json").expect_json(result => {
+  @http.get("./examples-manifest.json").expect_json(result => {
     emit(ManifestLoaded(result.map_err(error => "\{error}")))
   })
 }
@@ -20,7 +20,7 @@ fn fetch_sources_cmd(
     for file in files {
       let path = "\{cat}/\{file}"
       cmds.push(
-        @http.get("examples/\{path}").expect_text(result => {
+        @http.get("./examples/\{path}").expect_text(result => {
           emit(SourceLoaded(path, result.map_err(error => "\{error}")))
         }),
       )

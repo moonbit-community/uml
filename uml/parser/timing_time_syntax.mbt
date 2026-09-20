@@ -190,7 +190,7 @@ fn resolve_time_expr(
               @flow.TimingFormat::Hour,
             ),
           )
-        TimeExpr::Date(day, month, year) =>
+        TimeExpr::Date(year, month, day) =>
           Some(
             tick(
               @flow.Decimal::parse(epoch_seconds(year, month, day).to_string()).unwrap(),

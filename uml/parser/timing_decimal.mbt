@@ -130,7 +130,7 @@ fn parse_digits(cursor : @tokenizer.Cursor) -> String? {
   if digits.length() == 0 {
     None
   } else {
-    Some(normalize_digits(digits))
+    Some(digits)
   }
 }
 
@@ -180,7 +180,7 @@ fn decimal(
   let scale = if trailing_dot { 1 } else { fraction.length() }
   let tail = if trailing_dot { "0" } else { "" }
   let coeff = normalize_digits(whole + fraction + tail)
-  { sign, coeff: if coeff == "0" { "0" } else { coeff }, scale, }
+  { sign: if coeff == "0" { 1 } else { sign }, coeff, scale, }
 }
 
 ///|
@@ -209,7 +209,8 @@ fn @flow.Decimal::add(
   } else {
     (other.sign, sub_digits(b, a))
   }
-  { sign, coeff: normalize_digits(coeff), scale, }
+  let coeff = normalize_digits(coeff)
+  { sign: if coeff == "0" { 1 } else { sign }, coeff, scale, }
 }
 
 ///|
@@ -223,25 +224,25 @@ fn @flow.Decimal::mul_int(self : @flow.Decimal, factor : Int) -> @flow.Decimal {
 /// Value comparison, mirroring `BigDecimal.compareTo`: equal values with
 /// different scales compare equal.
 fn @flow.Decimal::compare(self : @flow.Decimal, other : @flow.Decimal) -> Int {
-  if self.sign != other.sign {
+  guard self.sign == other.sign else {
     return compare_int(self.sign, other.sign)
-  }
-  if self.sign < 0 {
-    return other.compare(self)
   }
   let scale = self.scale.max(other.scale)
   let a = self.scaled(scale)
   let b = other.scaled(scale)
-  if a.length() != b.length() {
-    return if a.length() > b.length() { 1 } else { -1 }
-  }
-  if a == b {
-    return 0
-  }
-  if a > b {
+  let magnitude = if a.length() != b.length() {
+    compare_int(a.length(), b.length())
+  } else if a == b {
+    0
+  } else if a > b {
     1
   } else {
     -1
+  }
+  if self.sign < 0 {
+    -magnitude
+  } else {
+    magnitude
   }
 }
 

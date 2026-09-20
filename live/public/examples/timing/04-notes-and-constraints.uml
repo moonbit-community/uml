@@ -1,0 +1,29 @@
+@startuml
+title Request and response
+concise "Client" as Client
+robust "Server" as Server
+binary "Ready" as Ready
+@0
+Client is Idle
+Server is Idle
+Ready is low
+@20
+Client is Request
+Server is Busy
+note top of Client : Request queued
+@50
+Server is Complete
+Ready is high
+@60
+Client is Response
+note bottom of Ready : Result available
+@80
+Client is Done
+Client@20 --> Server@25 : dispatch
+Server@50 --> Client@60 : reply
+Client@20 <--> @60 : request latency
+highlight 20 to 60 #LightYellow : processing
+legend
+Arrows connect times on different tracks.
+endlegend
+@enduml

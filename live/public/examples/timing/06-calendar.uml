@@ -1,0 +1,13 @@
+@startuml
+title Calendar timeline
+use date format "yyyy-MM-dd"
+concise "Milestone" as M
+@2026/09/20
+M is Design
+@2026/09/22
+M is Implementation
+@2026/09/25
+M is Review
+@2026/09/28
+M is Release
+@enduml

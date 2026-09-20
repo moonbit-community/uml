@@ -64,6 +64,14 @@
     "05-complex-object.uml",
     "06-font-metrics.uml"
   ],
+  "timing": [
+    "01-states-and-bus.uml",
+    "02-clock-binary-analog.uml",
+    "03-rectangle-and-compact.uml",
+    "04-notes-and-constraints.uml",
+    "05-manual-axis.uml",
+    "06-calendar.uml"
+  ],
   "activity": [
     "01-basic-flow.uml",
     "02-conditional-paths.uml",

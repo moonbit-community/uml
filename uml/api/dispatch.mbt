@@ -325,6 +325,30 @@ fn has_start_marker(input : String, marker : String) -> Bool {
 }
 
 ///|
+/// Timing declarations select the dedicated player grammar before message arrows.
+pub fn is_timing_source(input : String) -> Bool {
+  let lines = meaningful_source_lines(input)
+  lines.any(line => {
+    let line = line.to_lower()
+    let compact_rectangle = line.has_prefix("compact rectangle ")
+    let line = if line.has_prefix("compact ") {
+      line[8:].trim().to_owned()
+    } else {
+      line
+    }
+    compact_rectangle ||
+    starts_with_keyword(line, ["robust", "concise", "binary", "clock", "analog"])
+  }) ||
+  (
+    lines.any(line => starts_with_keyword(line, ["rectangle"])) &&
+    lines.any(line => {
+      let words = @tokenizer.syntax_words(line)
+      words is [_, "is", ..] || words is [_, "has", ..] || line.has_prefix("@")
+    })
+  )
+}
+
+///|
 /// Returns whether the source uses PlantUML's JSON diagram delimiters.
 pub fn is_json_source(input : String) -> Bool {
   has_start_marker(input, "@startjson")

@@ -1,0 +1,20 @@
+@startuml
+mode compact
+rectangle "Release phase" as Phase
+concise "State" as State
+@0
+Phase is Plan
+State is Draft
+@20
+Phase is Build
+State is Active
+@50
+Phase is Review
+State is {...}
+@70
+Phase is Ship
+State is {-}
+@90
+State is {hidden}
+@100
+@enduml

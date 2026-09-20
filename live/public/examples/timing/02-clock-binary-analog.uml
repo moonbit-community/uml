@@ -1,0 +1,22 @@
+@startuml
+clock "Sample clock" as CLK with period 20 pulse 8 offset 4
+binary "Enable" as EN
+analog "Voltage" from 0 to 5 as V
+V ticks every 1
+@0
+EN is low
+V is 0
+@20
+EN is high
+V is 1
+@40
+V is 4
+@60
+EN is low
+V is 2
+@80
+V is 0
+@100
+CLK@24 --> EN@24 : sample
+V@30 --> EN@40 : threshold
+@enduml

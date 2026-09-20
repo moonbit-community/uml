@@ -38,7 +38,7 @@ PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 | Activity | behavior | done |
 | State Machine | behavior | done |
 | Sequence | interaction | done |
-| Timing | interaction | parsed, renderer pending |
+| Timing | interaction | main SVG pipeline implemented |
 
 ### Project extensions
 
@@ -82,3 +82,11 @@ sibling auto width, cross links, and document text. Its layout follows
 PlantUML's `Fork`, `ITFComposed`, and `ITFLeaf`; this status does not claim full
 PlantUML syntax or style compatibility. Runnable sources are in
 [`live/public/examples/wbs/`](./live/public/examples/wbs/).
+
+Timing diagrams render through the same API using `@startuml` with `robust`,
+`concise`, `rectangle`, `binary`, `clock`, or `analog` player declarations.
+The main SVG pipeline follows PlantUML's `TimingRuler`, player frames, and
+individual panel algorithms, including constraints, message projections,
+notes, highlights, compact mode, and manual/hidden time axes. This status
+does not claim full PlantUML syntax or style compatibility. Sources are in
+[`live/public/examples/timing/`](./live/public/examples/timing/).

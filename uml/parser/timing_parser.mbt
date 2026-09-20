@@ -141,7 +141,7 @@ fn insert_change(
       }
       return
     }
-    if compared > 0 {
+    if compared < 0 {
       break
     }
     index += 1

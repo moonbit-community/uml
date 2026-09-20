@@ -8,4 +8,6 @@ import {
   "kokic/uml/tree",
   "kokic/uml/parser",
   "kokic/uml/render",
+  "kokic/uml/api",
+  "kokic/uml/style",
 } for "test"

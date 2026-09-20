@@ -32,7 +32,8 @@ failure, `2` on usage errors.
 Diagram families are detected from the source with the same per-line
 heuristics PlantUML uses to pick a diagram factory: sequence, class, object,
 use case, mindmap, WBS, JSON, YAML, and TOML, as well as state, component,
-deployment, activity, MBTI, and DOT. WBS sources use `@startwbs` / `@endwbs`.
+deployment, activity, timing, MBTI, and DOT. WBS sources use `@startwbs` / `@endwbs`.
+Timing sources use `@startuml` with timing player declarations.
 `check` names the detected family:
 
 ```console

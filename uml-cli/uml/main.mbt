@@ -312,6 +312,7 @@ fn kind_name(kind : @api.DiagramKind) -> String {
     UseCase => "use case"
     Mindmap => "mindmap"
     Wbs => "wbs"
+    Timing => "timing"
     Mbti => "mbti"
     Json => "json"
     Yaml => "yaml"

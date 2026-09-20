@@ -68,6 +68,46 @@ test "time marks stay sorted and deduplicated" {
 }
 
 ///|
+test "timed changes share the ascending order of the ruler including negative times" {
+  for kind in ["robust", "concise", "rectangle", "binary", "analog \"A\" as"] {
+    let diagram = parse_timing(
+      kind + " P\n@-2\nP is 1\n@-5\nP is 0\n@3\nP is 1",
+    )
+    let changes = diagram.player("P").unwrap().changes
+    @test.assert_eq(
+      changes.map(change => change.when.unwrap()),
+      diagram.time_marks,
+    )
+  }
+}
+
+///|
+test "fractional time retains leading zeroes and relative changes cancel exactly" {
+  let diagram = parse_timing(
+    "binary B\n@0.05 as :a\n@+0.05 as :b\n@0.1 as :c\n@-0.1\n@+0.1 as :zero\n@-0.0 as :negativezero",
+  )
+  let value = code => {
+    @string.parse_double(
+      decimal_to_plain_string(diagram.code_value(code).unwrap().time),
+    )
+  }
+  @test.assert_eq(value("b"), value("c"))
+  @test.assert_eq(value("zero"), value("negativezero"))
+  @test.assert_eq(value("a") < value("b"), true)
+}
+
+///|
+test "calendar dates and relative seconds describe the same next day" {
+  let diagram = parse_timing(
+    "robust R\n@2020/05/12\n@+86400 as :relative\n@2020/05/13 as :calendar",
+  )
+  @test.assert_eq(
+    diagram.code_value("relative").unwrap().time,
+    diagram.code_value("calendar").unwrap().time,
+  )
+}
+
+///|
 test "time codes, messages, constraints, highlights and notes keep their targets" {
   let diagram = parse_timing(
     "@startuml\nrobust A\nbinary B\nA has \"Waiting\" as wait\n@5 as :start\nA is wait\nA@:start-->B\nA@:start<--->@8 : setup\nhighlight 0 to 10 : warmup\nnote top of A : single\nnote bottom of B\nmulti\nline\nend note\n@enduml",
