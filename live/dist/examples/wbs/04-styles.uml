@@ -1,0 +1,32 @@
+@startwbs
+<style>
+wbsDiagram {
+  node {
+    Width auto
+  }
+  rootNode {
+    BackgroundColor LightBlue
+  }
+  leafNode {
+    BackgroundColor HoneyDew
+  }
+  .important {
+    FontSize 18
+    LineColor DarkRed
+    BackgroundColor MistyRose
+  }
+  arrow {
+    LineColor SteelBlue
+    LineThickness 2
+  }
+}
+</style>
+* Release plan
+** Application
+*** Core
+*** A longer feature name
+** Documentation <<important>>
+*** Guide
+*** Reference manual
+**_ Review
+@endwbs

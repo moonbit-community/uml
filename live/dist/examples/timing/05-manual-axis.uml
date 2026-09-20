@@ -1,0 +1,14 @@
+@startuml
+manual time axis
+scale 10 as 50 pixels
+robust "Lifecycle" as R
+@-20 as :prepare
+R is Preparing
+@0 as :start
+R is Running
+@15.5 as :checkpoint
+R is Checking
+@30 as :finish
+R is Finished
+R@0 <--> @30 : execution
+@enduml

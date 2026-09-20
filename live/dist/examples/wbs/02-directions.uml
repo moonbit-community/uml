@@ -1,0 +1,18 @@
+@startwbs
+* Project
+** Build
+***< Research
+****< Interviews
+****> Findings
+***< Design review
+***> Prototype
+****> Implementation
+****< Verification
+-- Discovery
+--- Scope
+--- Constraints
+-- Preparation
+** Release
+***> Launch
+***> Support
+@endwbs

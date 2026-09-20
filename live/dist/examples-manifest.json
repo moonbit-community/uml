@@ -37,6 +37,13 @@
     "05-org-mode.uml",
     "06-explicit-root.uml"
   ],
+  "wbs": [
+    "01-basic.uml",
+    "02-directions.uml",
+    "03-node-shapes.uml",
+    "04-styles.uml",
+    "05-links-and-document.uml"
+  ],
   "yaml": [
     "01-scalars.uml",
     "02-nested-collections.uml",
@@ -56,6 +63,14 @@
     "04-escaped-values.uml",
     "05-complex-object.uml",
     "06-font-metrics.uml"
+  ],
+  "timing": [
+    "01-states-and-bus.uml",
+    "02-clock-binary-analog.uml",
+    "03-rectangle-and-compact.uml",
+    "04-notes-and-constraints.uml",
+    "05-manual-axis.uml",
+    "06-calendar.uml"
   ],
   "activity": [
     "01-basic-flow.uml",

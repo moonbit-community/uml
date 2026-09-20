@@ -1,0 +1,14 @@
+@startwbs
+* Product release
+** Planning
+*** Requirements
+*** Schedule
+** Implementation
+*** Application
+**** Interface
+**** Services
+*** Tests
+** Delivery
+*** Documentation
+*** Rollout
+@endwbs

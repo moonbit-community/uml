@@ -1,0 +1,19 @@
+@startwbs
+title Work breakdown and dependencies
+header Project office
+caption Release preparation
+legend left
+Arrows show dependencies between work packages.
+endlegend
+footer Internal planning
+* Release
+** Engineering
+***(implementation) Implementation
+***(testing) Testing
+** Documentation
+***(guide) User guide
+***(reference) Reference
+implementation -> testing #SteelBlue
+testing -> guide #DarkGreen
+guide -> reference
+@endwbs

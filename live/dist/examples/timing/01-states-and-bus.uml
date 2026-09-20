@@ -1,0 +1,19 @@
+@startuml
+robust "Controller" as Controller
+concise "Data bus" as Bus
+Controller has Idle,Working,Done
+Controller is Idle
+Bus is {-}
+@0
+Controller is Idle
+Bus is Waiting
+@20
+Controller is Working
+Bus is Payload
+@60
+Controller is Done
+Bus is Result
+@80
+Bus is {-}
+@100
+@enduml
