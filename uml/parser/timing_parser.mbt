@@ -96,7 +96,7 @@ fn upsert_code(
 fn add_time_mark(diagram : @flow.TimingDiagram, tick : @flow.TimeTick) -> Unit {
   let mut index = 0
   while index < diagram.time_marks.length() {
-    let compared = diagram.time_marks[index].compare(tick)
+    let compared = Compare::compare(diagram.time_marks[index].time, tick.time)
     if compared == 0 {
       return
     }
@@ -132,9 +132,10 @@ fn insert_change(
 ) -> Unit {
   let mut index = 0
   while index < player.changes.length() {
-    let compared = change.when
-      .unwrap()
-      .compare(player.changes[index].when.unwrap())
+    let compared = Compare::compare(
+      change.when.unwrap().time,
+      player.changes[index].when.unwrap().time,
+    )
     if compared == 0 {
       if replace_duplicates {
         player.changes[index] = change
@@ -172,8 +173,8 @@ fn convert_binary_state(value : String) -> String {
 /// Parses a state value for an analog player, mirroring `Double.parseDouble`
 /// with a fallback of `0` on failure.
 fn parse_analog_value(value : String) -> String {
-  match @flow.Decimal::parse(value) {
-    Some(decimal) => decimal.to_plain_string()
+  match @decimal.Decimal::from_string(value) {
+    Some(decimal) => decimal.to_string()
     None =>
       (@string.parse_double(value.to_string()) catch { _ => 0.0 }).to_string()
   }

@@ -11,7 +11,7 @@ test "parses class declarations, members, packages, and relations" {
     #|  U <|.. Auth : implements
     #|}
     #|@enduml
-  let diagram = parse_entity(source)
+  let diagram = @parser.parse_entity(source)
   @test.assert_eq(diagram.entities.length(), 2)
   @test.assert_eq(diagram.entity("U").unwrap().display, "User")
   @test.assert_eq(diagram.entity("U").unwrap().members.length(), 2)
@@ -22,7 +22,7 @@ test "parses class declarations, members, packages, and relations" {
 
 ///|
 test "reports malformed class input with a source line" {
-  try parse_entity("@startuml\nclass A {\n@enduml") catch {
+  try @parser.parse_entity("@startuml\nclass A {\n@enduml") catch {
     SyntaxError(line, _) => @test.assert_eq(line, 4)
   } noraise {
     _ => @test.fail("expected syntax error")
@@ -31,7 +31,7 @@ test "reports malformed class input with a source line" {
 
 ///|
 test "creates relation endpoints and preserves cardinalities" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage model\nOrder \"1\" *-- \"many\" Item : items\nend package\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 2)
@@ -43,7 +43,7 @@ test "creates relation endpoints and preserves cardinalities" {
 
 ///|
 test "distinguishes quoted relation endpoints from cardinalities" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n\"Order Item\" --> \"Line Item\"\nA \"1\" -- \"many\" B\n\"Quoted A\" \"0..1\" -- \"*\" \"Quoted B\"\n@enduml",
   )
   @test.assert_eq(diagram.relations[0].left, "Order Item")
@@ -59,7 +59,7 @@ test "distinguishes quoted relation endpoints from cardinalities" {
 
 ///|
 test "parses declaration modifiers and derived relations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n+ static class Repository<T> <<storage>> extends BaseRepository\ninterface Cache\nclass RedisCache implements Cache\n@enduml",
   )
   let repository = diagram.entity("Repository").unwrap()
@@ -75,7 +75,7 @@ test "parses declaration modifiers and derived relations" {
 ///|
 test "rejects unsupported declaration modifier combinations" {
   for declaration in ["static object Value", "abstract interface Api"] {
-    try parse_entity("@startuml\n" + declaration + "\n@enduml") catch {
+    try @parser.parse_entity("@startuml\n" + declaration + "\n@enduml") catch {
       SyntaxError(_, _) => ()
     } noraise {
       _ => @test.fail("expected invalid modifier error")
@@ -85,7 +85,7 @@ test "rejects unsupported declaration modifier combinations" {
 
 ///|
 test "preserves nested generic declarations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Cache<Map<String,List<Int>>>\n@enduml",
   )
   @test.assert_eq(
@@ -96,7 +96,7 @@ test "preserves nested generic declarations" {
 
 ///|
 test "preserves aliases combined with generic declarations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Service<T> as \"Service API\"\nclass \"Repository\" as Repo<Map<String,Int>>\n@enduml",
   )
   let service = diagram.entity("Service").unwrap()
@@ -109,7 +109,7 @@ test "preserves aliases combined with generic declarations" {
 
 ///|
 test "does not parse inheritance keywords inside display names" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass \"Extends Service\" as Service\nclass \"Implements API\" as API\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 2)
@@ -119,7 +119,7 @@ test "does not parse inheritance keywords inside display names" {
 
 ///|
 test "does not parse metadata markers inside display names" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass \"Value # raw <<text>> [[literal]]\" as Value\n@enduml",
   )
   let value = diagram.entity("Value").unwrap()
@@ -131,7 +131,7 @@ test "does not parse metadata markers inside display names" {
 
 ///|
 test "parses entity notes" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nnote right of User : authenticated user\n@enduml",
   )
   @test.assert_eq(diagram.notes.length(), 1)
@@ -142,7 +142,7 @@ test "parses entity notes" {
 
 ///|
 test "parses multiline entity notes" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nnote bottom of User\nfirst\nsecond\nend note\n@enduml",
   )
   @test.assert_eq(diagram.notes.length(), 1)
@@ -152,7 +152,7 @@ test "parses multiline entity notes" {
 
 ///|
 test "normalizes block note indentation" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nnote right of User\n  first\n  second\nend note\n@enduml",
   )
   @test.assert_eq(diagram.notes[0].text, "first\nsecond")
@@ -160,7 +160,9 @@ test "normalizes block note indentation" {
 
 ///|
 test "parses relationship roles" {
-  let diagram = parse_entity("@startuml\nUser /author -- /books Book\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nUser /author -- /books Book\n@enduml",
+  )
   @test.assert_eq(diagram.relations[0].left, "User")
   @test.assert_eq(diagram.relations[0].right, "Book")
   @test.assert_eq(diagram.relations[0].left_role, Some("author"))
@@ -169,7 +171,9 @@ test "parses relationship roles" {
 
 ///|
 test "parses relationship qualifiers" {
-  let diagram = parse_entity("@startuml\nOrder [id] -- [sku] Item\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nOrder [id] -- [sku] Item\n@enduml",
+  )
   @test.assert_eq(diagram.relations[0].left, "Order")
   @test.assert_eq(diagram.relations[0].right, "Item")
   @test.assert_eq(diagram.relations[0].left_qualifier, Some("id"))
@@ -178,7 +182,7 @@ test "parses relationship qualifiers" {
 
 ///|
 test "applies hide and show commands before or after declarations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nhide Secret\nclass Secret\nhide Secret\nshow Secret\n@enduml",
   )
   @test.assert_eq(diagram.entity("Secret").unwrap().is_hidden, false)
@@ -186,14 +190,14 @@ test "applies hide and show commands before or after declarations" {
 
 ///|
 test "parses empty class bodies without changing the entity code" {
-  let diagram = parse_entity("@startuml\nclass Empty {}\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\nclass Empty {}\n@enduml")
   @test.assert_eq(diagram.has_entity("Empty"), true)
   @test.assert_eq(diagram.entities.length(), 1)
 }
 
 ///|
 test "keeps class-body separators distinct from members" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User {\n+ id : Int\n--\n+ login()\n}\n@enduml",
   )
   let members = diagram.entity("User").unwrap().members
@@ -203,7 +207,7 @@ test "keeps class-body separators distinct from members" {
 
 ///|
 test "accepts directional association arrows" {
-  let diagram = parse_entity("@startuml\nUser -left-> Account\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\nUser -left-> Account\n@enduml")
   @test.assert_eq(diagram.relations.length(), 1)
   @test.assert_eq(diagram.relations[0].left, "User")
   @test.assert_eq(diagram.relations[0].right, "Account")
@@ -211,7 +215,9 @@ test "accepts directional association arrows" {
 
 ///|
 test "accepts PlantUML single-stroke relation bodies" {
-  let diagram = parse_entity("@startuml\nA .> B\nC -> D\nE - F\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nA .> B\nC -> D\nE - F\n@enduml",
+  )
   @test.assert_eq(diagram.relations.length(), 3)
   @test.assert_eq(diagram.relations[0].kind, Dependency)
   @test.assert_eq(diagram.relations[1].right_end, Arrow)
@@ -220,7 +226,7 @@ test "accepts PlantUML single-stroke relation bodies" {
 
 ///|
 test "relation grammar skips protected punctuation" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass order-item\nclass target\norder-item --> target [[https://host:8443/item]] <<phase:value>> : \"sync: now\"\n@enduml",
   )
   @test.assert_eq(diagram.relations.length(), 1)
@@ -234,7 +240,7 @@ test "relation grammar skips protected punctuation" {
 
 ///|
 test "parses members declared outside a class body" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nUser : + id : Int\nUser : + login()\n@enduml",
   )
   let user = diagram.entity("User").unwrap()
@@ -245,7 +251,7 @@ test "parses members declared outside a class body" {
 
 ///|
 test "accepts both PlantUML alias directions" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass \"Display as A\" as A\nclass B as \"Display as B\"\n@enduml",
   )
   @test.assert_eq(diagram.entity("A").unwrap().display, "Display as A")
@@ -254,7 +260,7 @@ test "accepts both PlantUML alias directions" {
 
 ///|
 test "does not split alias keywords inside quoted names" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass \"A as B\"\npackage \"Domain as Model\" {}\n@enduml",
   )
   @test.assert_eq(diagram.entity("A as B").unwrap().display, "A as B")
@@ -263,7 +269,7 @@ test "does not split alias keywords inside quoted names" {
 
 ///|
 test "accepts common mixed-diagram element declarations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nallowmixing\ncomponent Web\ndatabase Store\nqueue Jobs\nWeb --> Store\n@enduml",
   )
   @test.assert_eq(
@@ -282,7 +288,7 @@ test "accepts common mixed-diagram element declarations" {
 
 ///|
 test "decodes PlantUML shape-encoded element names" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nallowmixing\nusecase (Login)\nactor :User:\ncomponent [API] as Api\n@enduml",
   )
   @test.assert_eq(
@@ -302,7 +308,7 @@ test "decodes PlantUML shape-encoded element names" {
 
 ///|
 test "accepts mix-prefixed element declarations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nmix_component [API]\nmix_actor :User:\n@enduml",
   )
   @test.assert_eq(
@@ -317,7 +323,7 @@ test "accepts mix-prefixed element declarations" {
 
 ///|
 test "accepts PlantUML's registered element keywords" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nallowmixing\nperson Person\nartifact Artifact\nactor/ ActorSlash\nfolder Folder\ncard Card\nfile File\nrectangle Rectangle\nhexagon Hexagon\nlabel Label\nnode Node\nframe Frame\ncloud Cloud\naction Action\nprocess Process\ndatabase @entity.EntityKind::Database\nqueue @entity.EntityKind::Queue\nstack Stack\nstorage Storage\nagent Agent\nusecase/ UsecaseSlash\nusecase @entity.EntityKind::Usecase\ncomponent @entity.EntityKind::Component\nboundary @entity.EntityKind::Boundary\ncontrol @entity.EntityKind::Control\nentity @entity.Entity\ninterface @entity.EntityKind::Interface\ncircle Circle\ncollections @entity.EntityKind::Collections\nport Port\nportin PortIn\nportout PortOut\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 31)
@@ -332,7 +338,7 @@ test "accepts PlantUML's registered element keywords" {
 
 ///|
 test "parses multiline quoted and bracketed element descriptions" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nallowmixing\ncomponent Service <<backend>> as \"Service\nAPI\"\nactor User [Human\nOperator]\n@enduml",
   )
   let service = diagram.entity("Service").unwrap()
@@ -343,7 +349,7 @@ test "parses multiline quoted and bracketed element descriptions" {
 
 ///|
 test "adds members to qualified and quoted entity names" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage pkg {\nclass A\n}\nclass \"Display B\" as B\npkg.A : +field\nB : -method()\n@enduml",
   )
   @test.assert_eq(diagram.entity("pkg.A").unwrap().members.length(), 1)
@@ -352,7 +358,7 @@ test "adds members to qualified and quoted entity names" {
 
 ///|
 test "preserves interface declaration metadata" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n() Api <<service>> [[https://example.com/api]] #lightblue\n@enduml",
   )
   let api = diagram.entity("Api").unwrap()
@@ -364,7 +370,7 @@ test "preserves interface declaration metadata" {
 
 ///|
 test "rejects duplicate parenthesized interface declarations" {
-  try parse_entity("@startuml\n() Api\n() Api\n@enduml") catch {
+  try @parser.parse_entity("@startuml\n() Api\n() Api\n@enduml") catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected duplicate interface error")
@@ -373,7 +379,7 @@ test "rejects duplicate parenthesized interface declarations" {
 
 ///|
 test "accepts the ignored leading color on parenthesized interfaces" {
-  let diagram = parse_entity("@startuml\n() #red Api #blue\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\n() #red Api #blue\n@enduml")
   let api = diagram.entity("Api").unwrap()
   @test.assert_eq(api.kind, @entity.EntityKind::Interface)
   @test.assert_eq(api.color, Some("blue"))
@@ -381,7 +387,7 @@ test "accepts the ignored leading color on parenthesized interfaces" {
 
 ///|
 test "preserves class border styling and stereotype tags" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Service $backend $critical #lightblue ##[dashed]red\n@enduml",
   )
   let service = diagram.entity("Service").unwrap()
@@ -393,7 +399,7 @@ test "preserves class border styling and stereotype tags" {
 
 ///|
 test "parses relation ports without breaking qualified names" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass A\nclass B\nA::out --> B::in\n@enduml",
   )
   let relation = diagram.relations[0]
@@ -405,13 +411,13 @@ test "parses relation ports without breaking qualified names" {
 
 ///|
 test "accepts relation labels without surrounding spaces" {
-  let diagram = parse_entity("@startuml\nA --> B:uses\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\nA --> B:uses\n@enduml")
   @test.assert_eq(diagram.relations[0].label, Some("uses"))
 }
 
 ///|
 test "accepts the allowmixing directive" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nallowmixing\nclass Domain\ncomponent Adapter\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 2)
@@ -419,7 +425,7 @@ test "accepts the allowmixing directive" {
 
 ///|
 test "component parser accepts description symbols without allowmixing" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage platform {\ncomponent \"Public gateway\" as Gateway\ncomponent \"Identity service\" as Identity\n}\nGateway --> Identity : validates\n@enduml",
     family=ComponentDiagram,
   )
@@ -436,7 +442,7 @@ test "component parser accepts description symbols without allowmixing" {
 
 ///|
 test "component parser preserves bracket shorthand names with spaces" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n[Web client] --> [Gateway API] : HTTPS\n@enduml",
     family=ComponentDiagram,
   )
@@ -453,12 +459,14 @@ test "component parser preserves bracket shorthand names with spaces" {
 
 ///|
 test "requires allowmixing for non-class element keywords" {
-  try parse_entity("@startuml\ncomponent Adapter\n@enduml") catch {
+  try @parser.parse_entity("@startuml\ncomponent Adapter\n@enduml") catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected allowmixing error")
   }
-  let diagram = parse_entity("@startuml\nmix_component Adapter\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nmix_component Adapter\n@enduml",
+  )
   @test.assert_eq(
     diagram.entity("Adapter").unwrap().kind,
     @entity.EntityKind::Component,
@@ -467,7 +475,7 @@ test "requires allowmixing for non-class element keywords" {
 
 ///|
 test "accepts the underscore spelling of allow mixing" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nallow_mixing\ncomponent Adapter\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("Adapter"), true)
@@ -475,7 +483,7 @@ test "accepts the underscore spelling of allow mixing" {
 
 ///|
 test "deployment parser nests symbol groups and parses leaves without allowmixing" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nnode \"Web Server\" as web {\ndatabase \"DB\" as db\n}\nnode \"App\" as app\napp --> web\n@enduml",
     family=DeploymentDiagram,
   )
@@ -493,7 +501,7 @@ test "deployment parser nests symbol groups and parses leaves without allowmixin
 ///|
 test "deployment parser rejects class-only declarations and body openings" {
   try
-    parse_entity(
+    @parser.parse_entity(
       "@startuml\nnode X\nclass A\n@enduml",
       family=DeploymentDiagram,
     )
@@ -503,14 +511,20 @@ test "deployment parser rejects class-only declarations and body openings" {
     _ => @test.fail("expected description grammar error")
   }
   try
-    parse_entity("@startuml\nusecase X {\n@enduml", family=DeploymentDiagram)
+    @parser.parse_entity(
+      "@startuml\nusecase X {\n@enduml",
+      family=DeploymentDiagram,
+    )
   catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected body opening error")
   }
   try
-    parse_entity("@startuml\nnode X {}\n@enduml", family=DeploymentDiagram)
+    @parser.parse_entity(
+      "@startuml\nnode X {}\n@enduml",
+      family=DeploymentDiagram,
+    )
   catch {
     SyntaxError(_, _) => ()
   } noraise {
@@ -520,12 +534,12 @@ test "deployment parser rejects class-only declarations and body openings" {
 
 ///|
 test "accepts namespace separator directives" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nset namespaceSeparator none\nclass A.B\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("A.B"), true)
   @test.assert_eq(diagram.packages.length(), 0)
-  let custom = parse_entity(
+  let custom = @parser.parse_entity(
     "@startuml\nset namespaceSeparator ::\nclass domain::model::User\n@enduml",
   )
   @test.assert_eq(custom.packages.length(), 2)
@@ -538,7 +552,9 @@ test "accepts namespace separator directives" {
 
 ///|
 test "creates implicit namespaces with the default separator" {
-  let diagram = parse_entity("@startuml\nclass domain.model.User\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nclass domain.model.User\n@enduml",
+  )
   @test.assert_eq(diagram.packages.length(), 2)
   @test.assert_eq(diagram.packages[1].qualified_name, "domain.model")
   @test.assert_eq(
@@ -549,7 +565,7 @@ test "creates implicit namespaces with the default separator" {
 
 ///|
 test "parses declarations and relations inside together blocks" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\ntogether {\nclass A\npackage nested {\nclass B\n}\nA --> nested.B\n}\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("A"), true)
@@ -559,7 +575,7 @@ test "parses declarations and relations inside together blocks" {
 
 ///|
 test "accepts remove and restore entity commands" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nremove User\nrestore User\n@enduml",
   )
   @test.assert_eq(diagram.entity("User").unwrap().is_hidden, false)
@@ -567,7 +583,7 @@ test "accepts remove and restore entity commands" {
 
 ///|
 test "skips multiline diagram text blocks" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\ntitle\nA title\nend title\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("User"), true)
@@ -575,7 +591,7 @@ test "skips multiline diagram text blocks" {
 
 ///|
 test "parses aligned legends and compact text block terminators" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nlegend top left\nKey\nendlegend\ntitle\nDiagram\nendtitle\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.style.legend, Some("Key"))
@@ -584,7 +600,7 @@ test "parses aligned legends and compact text block terminators" {
 
 ///|
 test "accepts common page style and sprite commands" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nminwidth 300\npage 2x3\nrotate\nmainframe Report\nsprite $icon {\n00\n}\n<style>\nclass { BackgroundColor red }\n</style>\ncenter header\nHeader\nendheader\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("User"), true)
@@ -594,7 +610,7 @@ test "accepts common page style and sprite commands" {
 
 ///|
 test "accepts preprocessing directives" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n!theme plain\n!define MODEL User\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("User"), true)
@@ -602,7 +618,7 @@ test "accepts preprocessing directives" {
 
 ///|
 test "expands shared object-like preprocessor macros" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n!define MODEL User\nclass MODEL\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("User"), true)
@@ -610,7 +626,7 @@ test "expands shared object-like preprocessor macros" {
 
 ///|
 test "skips braced skinparam blocks" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nskinparam {\n  BackgroundColor white\n}\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("User"), true)
@@ -618,7 +634,7 @@ test "skips braced skinparam blocks" {
 
 ///|
 test "skips together layout blocks" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass A\nclass B\ntogether {\nA\nB\n}\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 2)
@@ -626,7 +642,9 @@ test "skips together layout blocks" {
 
 ///|
 test "parses lollipop interface declarations" {
-  let diagram = parse_entity("@startuml\n() \"Service\" as IService\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\n() \"Service\" as IService\n@enduml",
+  )
   let service = diagram.entity("IService").unwrap()
   @test.assert_eq(service.kind, @entity.EntityKind::Interface)
   @test.assert_eq(service.display, "Service")
@@ -634,7 +652,7 @@ test "parses lollipop interface declarations" {
 
 ///|
 test "parses abstract shorthand declarations" {
-  let diagram = parse_entity("@startuml\nabstract Base\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\nabstract Base\n@enduml")
   @test.assert_eq(
     diagram.entity("Base").unwrap().kind,
     @entity.EntityKind::AbstractClass,
@@ -643,13 +661,15 @@ test "parses abstract shorthand declarations" {
 
 ///|
 test "accepts state declarations in mixed diagrams" {
-  let diagram = parse_entity("@startuml\nallowmixing\nstate Ready\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nallowmixing\nstate Ready\n@enduml",
+  )
   @test.assert_eq(diagram.entity("Ready").unwrap().kind, State)
 }
 
 ///|
 test "keeps declaration URLs out of the entity code" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User [[https://example.com/user]]\n@enduml",
   )
   let user = diagram.entity("User").unwrap()
@@ -658,7 +678,7 @@ test "keeps declaration URLs out of the entity code" {
 
 ///|
 test "keeps a shared URL target when a label is present" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User [[https://example.com profile]]\n@enduml",
   )
   @test.assert_eq(
@@ -669,13 +689,17 @@ test "keeps a shared URL target when a label is present" {
 
 ///|
 test "keeps declaration background colors" {
-  let diagram = parse_entity("@startuml\nclass User #lightblue\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nclass User #lightblue\n@enduml",
+  )
   @test.assert_eq(diagram.entity("User").unwrap().color, Some("lightblue"))
 }
 
 ///|
 test "applies standalone stereotypes" {
-  let diagram = parse_entity("@startuml\nclass User\nUser <<entity>>\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nclass User\nUser <<entity>>\n@enduml",
+  )
   @test.assert_eq(
     diagram.entity("User").unwrap().stereotype,
     Some("<<entity>>"),
@@ -684,7 +708,7 @@ test "applies standalone stereotypes" {
 
 ///|
 test "rejects standalone stereotypes for unknown entities" {
-  try parse_entity("@startuml\nMissing <<entity>>\n@enduml") catch {
+  try @parser.parse_entity("@startuml\nMissing <<entity>>\n@enduml") catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected unknown stereotype target error")
@@ -693,7 +717,7 @@ test "rejects standalone stereotypes for unknown entities" {
 
 ///|
 test "parses shared document background style" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nskinparam BackgroundColor #102030\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.style.background_color, Some("#102030"))
@@ -701,7 +725,7 @@ test "parses shared document background style" {
 
 ///|
 test "parses shared braced skinparam background style" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nskinparam {\nBackgroundColor #203040\n}\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.style.background_color, Some("#203040"))
@@ -709,7 +733,7 @@ test "parses shared braced skinparam background style" {
 
 ///|
 test "parses shared default font style" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nskinparam DefaultFontName Courier\nskinparam DefaultFontSize 16\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.style.font_family, Some("Courier"))
@@ -718,7 +742,7 @@ test "parses shared default font style" {
 
 ///|
 test "parses shared arrow color style" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nskinparam ArrowColor #ff0000\nclass A\nA --> B\n@enduml",
   )
   @test.assert_eq(diagram.style.line_color, Some("#ff0000"))
@@ -726,7 +750,7 @@ test "parses shared arrow color style" {
 
 ///|
 test "keeps same-named classes distinct across packages" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage first {\nclass User\n}\npackage second {\nclass User\n}\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 2)
@@ -736,7 +760,7 @@ test "keeps same-named classes distinct across packages" {
 
 ///|
 test "resolves relation endpoints in their package context" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage first {\nclass User\nUser --> Account\n}\npackage second {\nclass User\nUser --> Account\n}\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 4)
@@ -748,7 +772,7 @@ test "resolves relation endpoints in their package context" {
 
 ///|
 test "parses multiple extends and implements targets" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Child extends BaseA, BaseB implements APIA, APIB\n@enduml",
   )
   @test.assert_eq(diagram.relations.length(), 4)
@@ -765,7 +789,7 @@ test "parses multiple extends and implements targets" {
 
 ///|
 test "keeps explicit inheritance orientation separate from declaration links" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Customer extends Account\nCustomer ..|> Auditable\n@enduml",
   )
   @test.assert_eq(diagram.relations[0].left, "Account")
@@ -778,7 +802,7 @@ test "keeps explicit inheritance orientation separate from declaration links" {
 
 ///|
 test "accepts empty packages and namespaces" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage empty {}\nnamespace nested.empty {}\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.packages.length(), 3)
@@ -787,7 +811,7 @@ test "accepts empty packages and namespaces" {
 
 ///|
 test "preserves relation endpoint decorations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nParent <|-- Child\nOwner --* Part\nClient --[dashed]--> Service\n@enduml",
   )
   @test.assert_eq(diagram.relations[0].left_end, Extension)
@@ -800,21 +824,23 @@ test "preserves relation endpoint decorations" {
 
 ///|
 test "accepts underscored arrow decorators" {
-  let diagram = parse_entity("@startuml\nA <_-- B\nC --_> D\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\nA <_-- B\nC --_> D\n@enduml")
   @test.assert_eq(diagram.relations[0].left_end, Arrow)
   @test.assert_eq(diagram.relations[1].right_end, Arrow)
 }
 
 ///|
 test "preserves relation directions and weights" {
-  let diagram = parse_entity("@startuml\n@2 User -left-> Account\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\n@2 User -left-> Account\n@enduml",
+  )
   @test.assert_eq(diagram.relations[0].direction, Leftward)
   @test.assert_eq(diagram.relations[0].weight, Some("2"))
 }
 
 ///|
 test "relation choices backtrack across shared prefixes" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nA -r-> B\nC <||-- D\nE --||> F\nG <|:-- H\nI --:|> J\n@enduml",
   )
   @test.assert_eq(diagram.relations[0].direction, Rightward)
@@ -826,7 +852,7 @@ test "relation choices backtrack across shared prefixes" {
 
 ///|
 test "creates interface targets for implements and lollipop links" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Service implements API\nService --( Port\n@enduml",
   )
   @test.assert_eq(
@@ -842,7 +868,7 @@ test "creates interface targets for implements and lollipop links" {
 
 ///|
 test "parses full and half lollipop decorators on either side" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nobject Port\nobject Service\nobject Client\nobject Api\nobject Half\nobject Core\nobject Edge\nobject Socket\nPort ()-- Service\nClient --() Api\nHalf ))-- Core\nEdge --(( Socket\n@enduml",
   )
   @test.assert_eq(diagram.relations.length(), 4)
@@ -868,12 +894,12 @@ test "parses full and half lollipop decorators on either side" {
 
 ///|
 test "lollipop links require the circle-side endpoint but auto-create the class side" {
-  try parse_entity("@startuml\nPort ()-- Service\n@enduml") catch {
+  try @parser.parse_entity("@startuml\nPort ()-- Service\n@enduml") catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected missing lollipop target error")
   }
-  let diagram = parse_entity("@startuml\nClient --() Api\n@enduml")
+  let diagram = @parser.parse_entity("@startuml\nClient --() Api\n@enduml")
   @test.assert_eq(diagram.entity("Client").unwrap().kind, Class)
   let circle = diagram.entity("Clientlol0").unwrap()
   @test.assert_eq(circle.kind, LollipopFull)
@@ -884,7 +910,7 @@ test "lollipop links require the circle-side endpoint but auto-create the class 
 
 ///|
 test "parses shaped relation endpoints" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n(Login) --> User\n:Admin: --> [Gateway]\n() API --> Service\n@enduml",
   )
   @test.assert_eq(
@@ -907,7 +933,9 @@ test "parses shaped relation endpoints" {
 
 ///|
 test "parses standalone use case and actor symbols" {
-  let diagram = parse_entity("@startuml\n:Customer:\n(Place order)\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\n:Customer:\n(Place order)\n@enduml",
+  )
   @test.assert_eq(
     diagram.entity("Customer").unwrap().kind,
     @entity.EntityKind::Actor,
@@ -920,7 +948,7 @@ test "parses standalone use case and actor symbols" {
 
 ///|
 test "preserves business use case and actor syntax" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nusecase/ (Place order)\nactor/ :Sales representative:\n:Partner:/ --> (Approve order)/\n@enduml",
   )
   @test.assert_eq(
@@ -945,14 +973,16 @@ test "preserves business use case and actor syntax" {
 
 ///|
 test "map links require declared targets" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nobject Customer\nmap Values {\ncustomer *--> Customer\n}\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("Customer"), true)
   @test.assert_eq(diagram.relations.length(), 1)
 
   try
-    parse_entity("@startuml\nmap Values {\nkey *--> Missing\n}\n@enduml")
+    @parser.parse_entity(
+      "@startuml\nmap Values {\nkey *--> Missing\n}\n@enduml",
+    )
   catch {
     SyntaxError(_, _) => ()
   } noraise {
@@ -962,7 +992,7 @@ test "map links require declared targets" {
 
 ///|
 test "parses standalone urls and association diamonds" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nurl of User is [[https://example.com/user]]\n<> membership\n@enduml",
   )
   @test.assert_eq(
@@ -974,7 +1004,7 @@ test "parses standalone urls and association diamonds" {
 
 ///|
 test "preserves relation metadata" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nA --[dashed,#red]--> B #blue [[https://example.com]] <<critical>> : calls\n@enduml",
   )
   let relation = diagram.relations[0]
@@ -987,7 +1017,7 @@ test "preserves relation metadata" {
 
 ///|
 test "distinguishes slash-qualified names from relation roles" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\ndomain/User /\"owner role\" -- /\"account role\" domain/Account\n@enduml",
   )
   let relation = diagram.relations[0]
@@ -999,7 +1029,7 @@ test "distinguishes slash-qualified names from relation roles" {
 
 ///|
 test "preserves package and namespace metadata" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\n+ package \"Domain Model\" as domain <<Layer>> [[https://example.com/domain]] #lightblue {\nclass User\n}\nnamespace \"External API\" as external.api {}\n@enduml",
   )
   let domain = diagram.packages[0]
@@ -1018,7 +1048,7 @@ test "preserves package and namespace metadata" {
 
 ///|
 test "accepts package aliases in either display/code order" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage domain as \"Domain Model\" {}\npackage \"External API\" as external {}\n@enduml",
   )
   @test.assert_eq(diagram.packages[0].name, "domain")
@@ -1029,7 +1059,7 @@ test "accepts package aliases in either display/code order" {
 
 ///|
 test "reuses repeated package declarations" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\npackage domain {}\npackage \"Domain Model\" as domain #lightblue {}\n@enduml",
   )
   @test.assert_eq(diagram.packages.length(), 1)
@@ -1039,7 +1069,7 @@ test "reuses repeated package declarations" {
 
 ///|
 test "preserves declaration URL after stereotype" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User <<entity>> [[https://example.com/user]] #lightblue\n@enduml",
   )
   let user = diagram.entity("User").unwrap()
@@ -1050,7 +1080,7 @@ test "preserves declaration URL after stereotype" {
 
 ///|
 test "applies entity hide and remove selectors in command order" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nhide <<service>>\nclass API <<service>>\nclass Internal <<service>>\nshow API\nremove Internal\nrestore Internal\nhide-class Missing\nclass Missing\n@enduml",
   )
   @test.assert_eq(diagram.entity("API").unwrap().is_hidden, false)
@@ -1061,7 +1091,9 @@ test "applies entity hide and remove selectors in command order" {
 
 ///|
 test "keeps remove state distinct from hide state" {
-  let diagram = parse_entity("@startuml\nclass User\nremove User\n@enduml")
+  let diagram = @parser.parse_entity(
+    "@startuml\nclass User\nremove User\n@enduml",
+  )
   let user = diagram.entity("User").unwrap()
   @test.assert_eq(user.is_hidden, false)
   @test.assert_eq(user.is_removed, true)
@@ -1069,7 +1101,7 @@ test "keeps remove state distinct from hide state" {
 
 ///|
 test "filters members by visibility and portion" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User {\n+ id : Int\n- secret : String\n+ login()\n- reset()\n}\nhide private members\nhide public methods\n@enduml",
   )
   let members = diagram.entity("User").unwrap().members
@@ -1081,7 +1113,7 @@ test "filters members by visibility and portion" {
 
 ///|
 test "supports visibility-only member filters" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User {\n+ publicField\n- privateField\n}\nhide private\n@enduml",
   )
   let members = diagram.entity("User").unwrap().members
@@ -1091,7 +1123,7 @@ test "supports visibility-only member filters" {
 
 ///|
 test "filters portions by kind name stereotype and package" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Root {\n+ root()\n}\npackage domain {\nclass Empty\nhide empty fields\nclass Service <<service>> {\n+ run()\n}\nhide <<service>> methods\n}\ninterface API {\n+ call()\n}\nhide interface methods\n@enduml",
   )
   @test.assert_eq(diagram.entity("domain.Empty").unwrap().fields_hidden, true)
@@ -1105,7 +1137,7 @@ test "filters portions by kind name stereotype and package" {
 
 ///|
 test "supports union selectors in hide and show commands" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass A {\n+ run()\n}\nobject B {\n+ call()\n}\ninterface C {\n+ use()\n}\nhide class object methods\n@enduml",
   )
   @test.assert_eq(diagram.entity("A").unwrap().methods_hidden, true)
@@ -1115,7 +1147,7 @@ test "supports union selectors in hide and show commands" {
 
 ///|
 test "attaches single and multiline notes to the last link" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nA --> B\nnote right on link #yellow : sync\nB --> C\nnote of link\nasync\nretry\nend note\n@enduml",
   )
   @test.assert_eq(diagram.notes.length(), 2)
@@ -1129,7 +1161,7 @@ test "attaches single and multiline notes to the last link" {
 
 ///|
 test "parses member tips and named notes" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User {\n+ login()\n}\nnote left of User::login() #lightblue\nchecks credentials\nend note\nnote \"shared note\" as N1 $shared <<info>> #yellow\nN1 .. User\n@enduml",
   )
   @test.assert_eq(diagram.notes.length(), 2)
@@ -1145,7 +1177,7 @@ test "parses member tips and named notes" {
 
 ///|
 test "parses constraints on the two previous links" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nA --> B\nA --> C\nconstraint on links #pink : {xor}\n@enduml",
   )
   @test.assert_eq(diagram.constraints.length(), 1)
@@ -1157,7 +1189,7 @@ test "parses constraints on the two previous links" {
 
 ///|
 test "parses map entries and linked map ports" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Customer\nmap \"Order index\" as Orders {\nid => 42\ncustomer *--> Customer\n}\n@enduml",
   )
   let map = diagram.entity("Orders").unwrap()
@@ -1174,7 +1206,7 @@ test "parses map entries and linked map ports" {
 
 ///|
 test "map entries replace duplicate keys without changing row order" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nmap Values {\nfirst => old\nsecond => kept\nfirst => new\n}\n@enduml",
   )
   let entries = diagram.entity("Values").unwrap().map_entries
@@ -1187,7 +1219,7 @@ test "map entries replace duplicate keys without changing row order" {
 
 ///|
 test "parses multiline and single-line JSON entities" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\njson Profile {\n\"name\": \"Ada\",\n\"settings\": {\n  \"active\": true\n}\n}\njson Count 42\njson Flags [true, false]\n@enduml",
   )
   @test.assert_eq(diagram.entity("Profile").unwrap().kind, Json)
@@ -1204,7 +1236,7 @@ test "parses multiline and single-line JSON entities" {
 
 ///|
 test "builds the ordered JSON tree beside the source text" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\njson Profile {\n\"name\": \"Ada\",\n\"active\": true,\n\"preferences\": {\n  \"locale\": \"en-GB\"\n}\n}\njson Count 3\njson Tags [\"priority\", \"export\"]\njson Empty null\n@enduml",
   )
   let profile = diagram.entity("Profile").unwrap().json_tree
@@ -1233,7 +1265,7 @@ test "builds the ordered JSON tree beside the source text" {
 
 ///|
 test "shared brace scanner ignores braces inside JSON strings" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\njson Template {\n\"pattern\": \"{user}/{id}\"\n}\n@enduml",
   )
   @test.assert_eq(
@@ -1249,12 +1281,16 @@ test "shared brace scanner ignores braces inside JSON strings" {
 
 ///|
 test "reports malformed map and JSON bodies" {
-  try parse_entity("@startuml\nmap Broken {\nnot an entry\n}\n@enduml") catch {
+  try
+    @parser.parse_entity("@startuml\nmap Broken {\nnot an entry\n}\n@enduml")
+  catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected malformed map error")
   }
-  try parse_entity("@startuml\njson Broken {\n\"missing\":\n}\n@enduml") catch {
+  try
+    @parser.parse_entity("@startuml\njson Broken {\n\"missing\":\n}\n@enduml")
+  catch {
     SyntaxError(_, _) => ()
   } noraise {
     _ => @test.fail("expected malformed JSON error")
@@ -1268,13 +1304,13 @@ test "enforces PlantUML duplicate rules for object-like elements" {
       "object Item\nobject Item", "map Index {}\nmap Index {}", "json Data 1\njson Data 2",
       "<> association\n<> association",
     ] {
-    try parse_entity("@startuml\n" + source + "\n@enduml") catch {
+    try @parser.parse_entity("@startuml\n" + source + "\n@enduml") catch {
       SyntaxError(_, _) => ()
     } noraise {
       _ => @test.fail("expected duplicate declaration error")
     }
   }
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass Item\nobject Item {\n+ value\n}\n@enduml",
   )
   @test.assert_eq(diagram.entity("Item").unwrap().members.length(), 1)
@@ -1283,7 +1319,7 @@ test "enforces PlantUML duplicate rules for object-like elements" {
 
 ///|
 test "stores shared layout, scale, text blocks, and custom skinparams" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nleft to right direction\nscale 2/3\ntitle\nDomain model\nend title\nskinparam ClassBorderColor #123456\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.style.layout_direction, Some(LeftToRight))
@@ -1294,7 +1330,7 @@ test "stores shared layout, scale, text blocks, and custom skinparams" {
 
 ///|
 test "accepts common class-diagram command directives" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nfootbox\nnewpage Chapter 2\nlayout newLine\nhide empty description\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.has_entity("User"), true)
@@ -1304,7 +1340,7 @@ test "accepts common class-diagram command directives" {
 
 ///|
 test "preserves multiline entity note metadata and braced termination" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nnote bottom of User <<warning>> [[https://example.com/note]] #pink {\ncheck account\n}\n@enduml",
   )
   let note = diagram.notes[0]
@@ -1318,7 +1354,7 @@ test "preserves multiline entity note metadata and braced termination" {
 
 ///|
 test "attaches targetless notes to the last declared entity" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass User\nnote right : single line\nnote bottom #pink\nmultiline\nend note\nnote left {\nbraced\n}\n@enduml",
   )
   @test.assert_eq(diagram.notes.length(), 3)
@@ -1333,7 +1369,7 @@ test "attaches targetless notes to the last declared entity" {
 ///|
 test "rejects duplicate named notes" {
   try
-    parse_entity(
+    @parser.parse_entity(
       "@startuml\nnote \"first\" as N\nnote \"second\" as N\n@enduml",
     )
   catch {
@@ -1345,7 +1381,7 @@ test "rejects duplicate named notes" {
 
 ///|
 test "preserves association-class couple endpoints" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass A\nclass B\nclass Label\n(A, B) -- Label : association\n@enduml",
   )
   @test.assert_eq(diagram.entities.length(), 4)
@@ -1368,7 +1404,7 @@ test "preserves association-class couple endpoints" {
 
 ///|
 test "routes couple relations through the association point with arrows" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nclass A\nclass B\nclass Label\n(A, B) --> Label : association\nLabel --> (C, D)\nclass C\nclass D\n@enduml",
   )
   let points = diagram.entities.filter(entity => entity.kind is Point)
@@ -1387,7 +1423,7 @@ test "routes couple relations through the association point with arrows" {
 
 ///|
 test "accepts relation arrows without surrounding spaces" {
-  let diagram = parse_entity(
+  let diagram = @parser.parse_entity(
     "@startuml\nA-->B\norder-item-->target-item\n@enduml",
   )
   @test.assert_eq(diagram.relations.length(), 2)
@@ -1404,7 +1440,9 @@ test "rejects malformed note annotations" {
       "note right of", "note sideways of User", "note left of User::", "constraint on links #pink",
       "note right of User unexpected metadata",
     ] {
-    try parse_entity("@startuml\nclass User\n" + source + "\n@enduml") catch {
+    try
+      @parser.parse_entity("@startuml\nclass User\n" + source + "\n@enduml")
+    catch {
       SyntaxError(_, _) => ()
     } noraise {
       _ => @test.fail("expected annotation error: " + source)

@@ -14,7 +14,7 @@ fn unsupported_layout_for_test() -> TestLayoutPath raise @dot_layout.DotLayoutEr
 ///|
 test "Graphviz success does not evaluate the fallback" {
   let mut fallback_called = false
-  let layout = layout_or_fallback(
+  let layout = @graphviz.layout_or_fallback(
     () => GraphvizPath,
     Some(() => {
       fallback_called = true
@@ -27,7 +27,7 @@ test "Graphviz success does not evaluate the fallback" {
 
 ///|
 test "unsupported Graphviz features use an available fallback" {
-  let layout = layout_or_fallback(
+  let layout = @graphviz.layout_or_fallback(
     () => {
       raise @dot_layout.DotLayoutError::UnsupportedFeature(
         message="unsupported test feature",
@@ -41,7 +41,7 @@ test "unsupported Graphviz features use an available fallback" {
 ///|
 test "invalid Graphviz input remains a rendering failure" {
   let error = @test.expect_error(() => {
-    layout_or_fallback(
+    @graphviz.layout_or_fallback(
       () => {
         raise @dot_layout.DotLayoutError::InvalidGraph(
           message="invalid test graph",
@@ -59,7 +59,7 @@ test "invalid Graphviz input remains a rendering failure" {
 ///|
 test "unsupported Graphviz features fail when no fallback exists" {
   let error = @test.expect_error(() => {
-    layout_or_fallback(unsupported_layout_for_test, None)
+    @graphviz.layout_or_fallback(unsupported_layout_for_test, None)
   })
   match error {
     @dot_layout.DotLayoutError::UnsupportedFeature(_) => ()

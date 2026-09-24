@@ -135,7 +135,7 @@ fn parse_clock(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   parser.diagram.clocks.push(code)
   parser.diagram.last_player = Some(code)
   let time = tick(
-    @flow.Decimal::parse(period).unwrap(),
+    @decimal.Decimal::from_string(period).unwrap(),
     @flow.TimingFormat::Decimal,
   )
   // The period becomes a ruler mark but, unlike `@time`, does not move the

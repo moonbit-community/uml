@@ -10,6 +10,7 @@ import {
   "moonbit-community/graphviz@0.1.10",
   "moonbitlang/lexer@0.3.16",
   "moonbitlang/parser@0.3.19",
+  "moonbitlang/x@0.5.1",
 }
 
 readme = "README.md"

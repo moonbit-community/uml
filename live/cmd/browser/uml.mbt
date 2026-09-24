@@ -1,7 +1,6 @@
 ///|
 /// Network and rendering access for the app: fetching the example manifest
 /// and sources, and turning a source into a theme-aware SVG.
-
 let base_url : String = "" // "/uml"
 
 ///|

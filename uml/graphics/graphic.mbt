@@ -8,6 +8,15 @@ pub(all) enum Paint {
 } derive(Eq, Debug)
 
 ///|
+pub extend Paint with Eq::{not_equal, equal}
+
+///|
+pub extend Paint with Debug::{to_repr}
+
+///|
+pub extend Paint with Default::{default}
+
+///|
 pub impl Default for Paint with fn default() -> Paint {
   Inherit
 }
@@ -26,6 +35,15 @@ pub(all) struct DrawingStyle {
 } derive(Eq, Debug, Default)
 
 ///|
+pub extend DrawingStyle with Eq::{not_equal, equal}
+
+///|
+pub extend DrawingStyle with Debug::{to_repr}
+
+///|
+pub extend DrawingStyle with Default::{default}
+
+///|
 /// Semantic element identity. Data names are trusted renderer constants,
 /// without the `data-` prefix; values are unescaped application text.
 pub(all) struct Metadata {
@@ -33,6 +51,15 @@ pub(all) struct Metadata {
   class_name : String?
   data : Array[(String, String)]
 } derive(Eq, Debug, Default)
+
+///|
+pub extend Metadata with Eq::{not_equal, equal}
+
+///|
+pub extend Metadata with Debug::{to_repr}
+
+///|
+pub extend Metadata with Default::{default}
 
 ///|
 /// Ordered drawing events consumed immediately by a backend. Translation
@@ -47,6 +74,12 @@ pub(all) enum DrawCommand {
   EndLink
   Annotation(Metadata)
 } derive(Eq, Debug)
+
+///|
+pub extend DrawCommand with Eq::{not_equal, equal}
+
+///|
+pub extend DrawCommand with Debug::{to_repr}
 
 ///|
 /// A small UGraphic-like drawing context. Derived contexts share the output

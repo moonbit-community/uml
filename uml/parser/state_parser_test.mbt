@@ -1,6 +1,8 @@
 ///|
 test "parses initial and final pseudo-states as distinct state nodes" {
-  let diagram = parse_state("@startuml\n[*] --> Idle\nIdle --> [*]\n@enduml")
+  let diagram = @parser.parse_state(
+    "@startuml\n[*] --> Idle\nIdle --> [*]\n@enduml",
+  )
   @test.assert_eq(
     diagram.state("__initial__").unwrap().kind,
     @flow.StateKind::Initial,
@@ -14,7 +16,7 @@ test "parses initial and final pseudo-states as distinct state nodes" {
 
 ///|
 test "declaration completes a transition-created state instead of duplicating it" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\n[*] --> Active\nstate \"Active session\" as Active : connected\n@enduml",
   )
   @test.assert_eq(
@@ -28,7 +30,7 @@ test "declaration completes a transition-created state instead of duplicating it
 
 ///|
 test "keeps composite ownership and concurrent region separators" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nstate Work {\nstate Input\n--\nstate Capacity\n}\n@enduml",
   )
   @test.assert_eq(diagram.state("Input").unwrap().parent, Some("Work"))
@@ -38,7 +40,7 @@ test "keeps composite ownership and concurrent region separators" {
 
 ///|
 test "preserves history synchronization transition metadata and notes" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nstate A\nstate B\nA -right-> B : next\nB --> [H]\n[H] --> ==join==\nnote right of A\nremember\nend note\nnote on link : transition note\n@enduml",
   )
   @test.assert_eq(
@@ -62,7 +64,7 @@ test "preserves history synchronization transition metadata and notes" {
 
 ///|
 test "preserves declaration stereotypes and frame aliases in scope" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nstate Decision <<choice>>\nframe \"Order flow\" as Flow {\nstate Paid\n}\n@enduml",
   )
   @test.assert_eq(
@@ -79,7 +81,7 @@ test "preserves declaration stereotypes and frame aliases in scope" {
 
 ///|
 test "preserves URL metadata declared on a state" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nstate Review [[https://example.com/review]] #lightyellow\n@enduml",
   )
   @test.assert_eq(
@@ -90,7 +92,7 @@ test "preserves URL metadata declared on a state" {
 
 ///|
 test "preserves inline colors on state and link notes" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nA --> B\nnote right of A #pink\nentity note\nend note\nnote on link #lightblue : link note\n@enduml",
   )
   @test.assert_eq(diagram.notes[0].color, Some("pink"))
@@ -99,7 +101,7 @@ test "preserves inline colors on state and link notes" {
 
 ///|
 test "parsec transition grammar preserves reverse endpoints and line styles" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nArchived <-[bold]- Closed : archive\n@enduml",
   )
   let transition = diagram.transitions[0]
@@ -111,7 +113,7 @@ test "parsec transition grammar preserves reverse endpoints and line styles" {
 
 ///|
 test "transition arrow splits hyphens and styles around the direction" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nA -[dashed]left-> B\nC -up-> D\nE x-[bold]-> F\n@enduml",
   )
   let transitions = diagram.transitions
@@ -124,7 +126,7 @@ test "transition arrow splits hyphens and styles around the direction" {
 
 ///|
 test "reverse arrow keeps reversed endpoints and a bare cross marker" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nA <-left- B\nC <-x D\nE o<-- F\nG o <-- H\nI -->o J\n@enduml",
   )
   let transitions = diagram.transitions
@@ -150,7 +152,7 @@ test "reverse arrow keeps reversed endpoints and a bare cross marker" {
 
 ///|
 test "compact group openers and the begin keyword open composite states" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nstate Work{\nstate A\n}\nstate Flow begin\nstate B\nend state\n@enduml",
   )
   @test.assert_eq(diagram.state("A").unwrap().parent, Some("Work"))
@@ -159,7 +161,7 @@ test "compact group openers and the begin keyword open composite states" {
 
 ///|
 test "synchronization endpoints consume surrounding spaces in transitions" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\n[*] --> ==join==\n==join== --> Done\n@enduml",
   )
   @test.assert_eq(diagram.transitions.length(), 2)
@@ -171,7 +173,7 @@ test "synchronization endpoints consume surrounding spaces in transitions" {
 
 ///|
 test "quoted identifiers and escaped quotes stay single tokens" {
-  let diagram = parse_state(
+  let diagram = @parser.parse_state(
     "@startuml\nstate \"A \\\"quoted\\\"\" as Q\n\"A \\\"quoted\\\"\" --> Q\n@enduml",
   )
   let state = diagram.state("Q").unwrap()

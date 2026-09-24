@@ -6,6 +6,15 @@ pub(all) struct Point {
 } derive(Eq, Debug, Default)
 
 ///|
+pub extend Point with Eq::{not_equal, equal}
+
+///|
+pub extend Point with Debug::{to_repr}
+
+///|
+pub extend Point with Default::{default}
+
+///|
 /// Absolute path operations, including curves and arcs without flattening.
 pub(all) enum PathSegment {
   MoveTo(Point)
@@ -22,6 +31,12 @@ pub(all) enum PathSegment {
   )
   Close
 } derive(Eq, Debug)
+
+///|
+pub extend PathSegment with Eq::{not_equal, equal}
+
+///|
+pub extend PathSegment with Debug::{to_repr}
 
 ///|
 /// Graphviz's 3n+1 spline becomes cubic segments; other point lists are
@@ -51,6 +66,12 @@ pub(all) enum TextAnchor {
 } derive(Eq, Debug)
 
 ///|
+pub extend TextAnchor with Eq::{not_equal, equal}
+
+///|
+pub extend TextAnchor with Debug::{to_repr}
+
+///|
 /// An already laid-out text run. `advance` comes from the same measurement
 /// used by layout; the backend must not measure it again. None leaves the
 /// browser's natural spacing intact.
@@ -63,6 +84,12 @@ pub(all) struct TextRun {
   font_family : String?
   strike : Bool
 } derive(Eq, Debug)
+
+///|
+pub extend TextRun with Eq::{not_equal, equal}
+
+///|
+pub extend TextRun with Debug::{to_repr}
 
 ///|
 /// Drawing primitives in layout coordinates. Composite UML symbols remain
@@ -95,6 +122,12 @@ pub(all) enum Shape {
 } derive(Eq, Debug)
 
 ///|
+pub extend Shape with Eq::{not_equal, equal}
+
+///|
+pub extend Shape with Debug::{to_repr}
+
+///|
 /// Explicit font presentation for text runs and blocks. Missing values inherit
 /// the document font; layout still owns line spacing and measured advances.
 pub(all) struct TextStyle {
@@ -105,12 +138,27 @@ pub(all) struct TextStyle {
 } derive(Eq, Debug, Default)
 
 ///|
+pub extend TextStyle with Eq::{not_equal, equal}
+
+///|
+pub extend TextStyle with Debug::{to_repr}
+
+///|
+pub extend TextStyle with Default::{default}
+
+///|
 /// A measured line with a baseline offset from the previous line.
 pub(all) struct TextLine {
   text : String
   dy : Double
   advance : Double?
 } derive(Eq, Debug)
+
+///|
+pub extend TextLine with Eq::{not_equal, equal}
+
+///|
+pub extend TextLine with Debug::{to_repr}
 
 ///|
 /// Lines sharing a horizontal anchor. Font presentation is inherited from
@@ -122,8 +170,20 @@ pub(all) struct MultilineText {
 } derive(Eq, Debug)
 
 ///|
+pub extend MultilineText with Eq::{not_equal, equal}
+
+///|
+pub extend MultilineText with Debug::{to_repr}
+
+///|
 /// Untranslated dimensions of a viewport or drawing resource.
 pub(all) struct Size {
   width : Double
   height : Double
 } derive(Eq, Debug)
+
+///|
+pub extend Size with Eq::{not_equal, equal}
+
+///|
+pub extend Size with Debug::{to_repr}

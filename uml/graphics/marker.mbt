@@ -5,6 +5,12 @@ pub struct MarkerRef {
 } derive(Eq, Debug)
 
 ///|
+pub extend MarkerRef with Eq::{not_equal, equal}
+
+///|
+pub extend MarkerRef with Debug::{to_repr}
+
+///|
 /// Backend constructor; callers obtain handles by defining document markers.
 pub fn MarkerRef::new(id : String) -> MarkerRef {
   { id, }
@@ -18,6 +24,15 @@ pub(all) struct PathMarkers {
 } derive(Eq, Debug, Default)
 
 ///|
+pub extend PathMarkers with Eq::{not_equal, equal}
+
+///|
+pub extend PathMarkers with Debug::{to_repr}
+
+///|
+pub extend PathMarkers with Default::{default}
+
+///|
 /// Marker orientation relative to the path tangent.
 pub(all) enum MarkerOrientation {
   Auto
@@ -25,11 +40,23 @@ pub(all) enum MarkerOrientation {
 } derive(Eq, Debug)
 
 ///|
+pub extend MarkerOrientation with Eq::{not_equal, equal}
+
+///|
+pub extend MarkerOrientation with Debug::{to_repr}
+
+///|
 /// Whether marker dimensions scale with the referencing stroke width.
 pub(all) enum MarkerUnits {
   StrokeWidth
   UserSpace
 } derive(Eq, Debug)
+
+///|
+pub extend MarkerUnits with Eq::{not_equal, equal}
+
+///|
+pub extend MarkerUnits with Debug::{to_repr}
 
 ///|
 /// Marker viewport and reference point, independent of SVG syntax.
@@ -41,3 +68,9 @@ pub(all) struct MarkerSpec {
   orientation : MarkerOrientation
   units : MarkerUnits
 } derive(Eq, Debug)
+
+///|
+pub extend MarkerSpec with Eq::{not_equal, equal}
+
+///|
+pub extend MarkerSpec with Debug::{to_repr}

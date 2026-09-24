@@ -15,6 +15,7 @@ import {
   // "moonbitlang/lexer/basic",
   "moonbitlang/parser/mbti_ast",
   "moonbitlang/parser/mbti_parser",
+  "moonbitlang/x/decimal",
 }
 
 import {

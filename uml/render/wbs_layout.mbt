@@ -22,12 +22,24 @@ pub(all) struct WbsNodeLayout {
 } derive(Eq, Debug)
 
 ///|
+pub extend WbsNodeLayout with Eq::{not_equal, equal}
+
+///|
+pub extend WbsNodeLayout with Debug::{to_repr}
+
+///|
 /// One shared bus or branch segment, styled by its owning parent.
 pub(all) struct WbsLineLayout {
   owner : Int
   start : @graphics.Point
   end : @graphics.Point
 } derive(Eq, Debug)
+
+///|
+pub extend WbsLineLayout with Eq::{not_equal, equal}
+
+///|
+pub extend WbsLineLayout with Debug::{to_repr}
 
 ///|
 /// The Fork/ITF layout, before document title, legend, and scale wrappers.
@@ -37,6 +49,12 @@ pub(all) struct WbsLayout {
   width : Double
   height : Double
 } derive(Eq, Debug)
+
+///|
+pub extend WbsLayout with Eq::{not_equal, equal}
+
+///|
+pub extend WbsLayout with Debug::{to_repr}
 
 ///|
 priv struct WbsItem {

@@ -1,49 +1,49 @@
 ///|
 test "document font settings select metrics profile and size" {
-  let monospace = DocumentStyle::empty()
+  let monospace = @style.DocumentStyle::empty()
   monospace.apply(FontFamily("Courier"))
   monospace.apply(FontSize("16px"))
-  @test.assert_eq(font_profile(monospace), Monospace)
-  @test.assert_eq(font_size_value(monospace), 16)
+  @test.assert_eq(@style.font_profile(monospace), Monospace)
+  @test.assert_eq(@style.font_size_value(monospace), 16)
   @test.assert_eq(monospace.font_metrics().font_size, 16)
 
-  let points = DocumentStyle::empty()
+  let points = @style.DocumentStyle::empty()
   points.apply(FontSize("12pt"))
-  @test.assert_eq(font_size_value(points), 16)
+  @test.assert_eq(@style.font_size_value(points), 16)
 
-  let serif = DocumentStyle::empty()
+  let serif = @style.DocumentStyle::empty()
   serif.apply(FontFamily("Times New Roman, serif"))
-  @test.assert_eq(font_profile(serif), Serif)
+  @test.assert_eq(@style.font_profile(serif), Serif)
 
-  let sans = DocumentStyle::empty()
+  let sans = @style.DocumentStyle::empty()
   sans.apply(FontFamily("Arial, sans-serif"))
-  @test.assert_eq(font_profile(sans), Sans)
+  @test.assert_eq(@style.font_profile(sans), Sans)
 }
 
 ///|
 test "font name skinparams preserve families with spaces" {
   @test.assert_eq(
-    parse_style_property("UsecaseFontName Times New Roman"),
+    @style.parse_style_property("UsecaseFontName Times New Roman"),
     Some(Property("UsecaseFontName", "Times New Roman")),
   )
   @test.assert_eq(
-    parse_style_property("ActorFontName Courier New"),
+    @style.parse_style_property("ActorFontName Courier New"),
     Some(Property("ActorFontName", "Courier New")),
   )
   @test.assert_eq(
-    parse_style_property("ClassStereotypeFontName Times New Roman"),
+    @style.parse_style_property("ClassStereotypeFontName Times New Roman"),
     Some(Property("ClassStereotypeFontName", "Times New Roman")),
   )
   @test.assert_eq(
-    parse_style_property("StateFontName Courier New"),
+    @style.parse_style_property("StateFontName Courier New"),
     Some(Property("StateFontName", "Courier New")),
   )
 }
 
 ///|
 test "document color resolution uses shared render defaults and skinparams" {
-  let style = DocumentStyle::empty()
-  let defaults = ColorScheme::default()
+  let style = @style.DocumentStyle::empty()
+  let defaults = @style.ColorScheme::default()
   @test.assert_eq(style.canvas_color(), defaults.canvas)
   @test.assert_eq(style.diagram_line_color(), defaults.line)
 
@@ -55,8 +55,8 @@ test "document color resolution uses shared render defaults and skinparams" {
 
 ///|
 test "generic skinparam resolvers use shared defaults and fallbacks" {
-  let style = DocumentStyle::empty()
-  let defaults = ColorScheme::default()
+  let style = @style.DocumentStyle::empty()
+  let defaults = @style.ColorScheme::default()
   @test.assert_eq(
     style.property_color("ClassBackgroundColor", defaults.node),
     defaults.node,
@@ -87,7 +87,7 @@ test "generic skinparam resolvers use shared defaults and fallbacks" {
 
 ///|
 test "skinparam properties resolve without regard to property-key casing" {
-  let style = DocumentStyle::empty()
+  let style = @style.DocumentStyle::empty()
   style.apply(Property("stateBackgroundColor", "#123456"))
   style.apply(Property("STATEBORDERCOLOR", "#654321"))
   @test.assert_eq(style.property("StateBackgroundColor"), Some("#123456"))
@@ -96,7 +96,7 @@ test "skinparam properties resolve without regard to property-key casing" {
 
 ///|
 test "theme projections keep family roles outside document style" {
-  let scheme = ColorScheme::ColorScheme(
+  let scheme = @style.ColorScheme::ColorScheme(
     "theme-text",
     "theme-line",
     participant="theme-participant",
@@ -116,8 +116,8 @@ test "theme projections keep family roles outside document style" {
 
 ///|
 test "dark scheme inverts ink roles and keeps family projections" {
-  let light = ColorScheme::default()
-  let dark = ColorScheme::dark()
+  let light = @style.ColorScheme::default()
+  let dark = @style.ColorScheme::dark()
   @test.assert_eq(dark.text == light.text, false)
   @test.assert_eq(dark.line == light.line, false)
   @test.assert_eq(dark.sequence_colors().text, dark.text)
@@ -127,13 +127,13 @@ test "dark scheme inverts ink roles and keeps family projections" {
 
 ///|
 test "distinguishes legend alignment headers from single-line legends" {
-  @test.assert_eq(parse_style_directive("legend top left"), None)
+  @test.assert_eq(@style.parse_style_directive("legend top left"), None)
   @test.assert_eq(
-    parse_style_directive("legend: Key"),
+    @style.parse_style_directive("legend: Key"),
     Some(TextBlock("legend", "Key")),
   )
   @test.assert_eq(
-    parse_style_directive("center header Report"),
+    @style.parse_style_directive("center header Report"),
     Some(TextBlock("header", "Report")),
   )
 }
@@ -141,14 +141,14 @@ test "distinguishes legend alignment headers from single-line legends" {
 ///|
 test "empty description visibility directives preserve their latest value" {
   @test.assert_eq(
-    parse_style_directive("hide empty description"),
+    @style.parse_style_directive("hide empty description"),
     Some(Property("hide empty description", "true")),
   )
   @test.assert_eq(
-    parse_style_directive("show empty description"),
+    @style.parse_style_directive("show empty description"),
     Some(Property("hide empty description", "false")),
   )
-  let style = DocumentStyle::empty()
+  let style = @style.DocumentStyle::empty()
   style.apply(Property("hide empty description", "true"))
   style.apply(Property("hide empty description", "false"))
   @test.assert_eq(style.property("hide empty description"), Some("false"))

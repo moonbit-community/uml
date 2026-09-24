@@ -11,8 +11,7 @@ pub(all) struct TimingRulerLayout {
 
 ///|
 fn timing_decimal(value : @flow.Decimal) -> Double {
-  timing_number(value.coeff + "e" + (-value.scale).to_string(), 0.0) *
-  value.sign.to_double()
+  value.to_double()
 }
 
 ///|

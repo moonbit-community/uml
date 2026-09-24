@@ -4,10 +4,10 @@
 /// The variant order mirrors the regex alternation order; resolution follows
 /// `TimeTickBuilder.parseTimeTick`.
 priv enum TimeExpr {
-  Code(String, @flow.Decimal?)
+  Code(String, @decimal.Decimal?)
   Date(Int, Int, Int)
   Hour(Int, Int, Int)
-  Digit(Bool, @flow.Decimal)
+  Digit(Bool, @decimal.Decimal)
   Clock(String, Int)
 }
 
@@ -60,7 +60,9 @@ fn match_code_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
     _ => ""
   }
   let delta = if delta.length() > 0 {
-    guard @flow.Decimal::parse(delta) is Some(value) else { return None }
+    guard @decimal.Decimal::from_string(delta) is Some(value) else {
+      return None
+    }
     Some(value)
   } else {
     None
@@ -105,7 +107,9 @@ fn match_digit_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
   ignore(cursor.consume('.'))
   ignore(cursor.skip_while(char => char >= '0' && char <= '9'))
   let literal = cursor.slice(start, cursor.offset())
-  guard @flow.Decimal::parse(literal) is Some(value) else { return None }
+  guard @decimal.Decimal::from_string(literal) is Some(value) else {
+    return None
+  }
   Some(TimeExpr::Digit(relative, value))
 }
 
@@ -173,18 +177,19 @@ fn resolve_time_expr(
           guard parser.diagram.code_value(code) is Some(base) else {
             return None
           }
-          Some(tick(base.time.add(delta), @flow.TimingFormat::Decimal))
+          Some(tick(base.time + delta, @flow.TimingFormat::Decimal))
         }
         TimeExpr::Clock(name, number) => {
           guard parser.diagram.clock(name) is Some(clock) else { return None }
           let period = clock.period.unwrap()
-          let time = @flow.Decimal::parse(period).unwrap().mul_int(number)
+          let time = @decimal.Decimal::from_string(period).unwrap() *
+            @decimal.Decimal::from_int(number)
           Some(tick(time, @flow.TimingFormat::Decimal))
         }
         TimeExpr::Hour(hour, minute, second) =>
           Some(
             tick(
-              @flow.Decimal::parse(
+              @decimal.Decimal::from_string(
                 (3600 * hour + 60 * minute + second).to_string(),
               ).unwrap(),
               @flow.TimingFormat::Hour,
@@ -193,14 +198,16 @@ fn resolve_time_expr(
         TimeExpr::Date(year, month, day) =>
           Some(
             tick(
-              @flow.Decimal::parse(epoch_seconds(year, month, day).to_string()).unwrap(),
+              @decimal.Decimal::from_string(
+                epoch_seconds(year, month, day).to_string(),
+              ).unwrap(),
               @flow.TimingFormat::Date,
             ),
           )
         TimeExpr::Digit(relative, value) => {
           let time = if relative {
             guard parser.diagram.now is Some(current) else { value }
-            current.time.add(value)
+            current.time + value
           } else {
             value
           }
@@ -211,6 +218,6 @@ fn resolve_time_expr(
 }
 
 ///|
-fn tick(time : @flow.Decimal, format : @flow.TimingFormat) -> @flow.TimeTick {
+fn tick(time : @decimal.Decimal, format : @flow.TimingFormat) -> @flow.TimeTick {
   { time, format, }
 }

@@ -1,6 +1,6 @@
 ///|
 test "preserves mindmap hierarchy and sibling parentage" {
-  let diagram = parse_mindmap(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n* Root\n** First\n*** Leaf\n** Second\n@endmindmap",
   )
   @test.assert_eq(diagram.ideas.length(), 4)
@@ -12,7 +12,7 @@ test "preserves mindmap hierarchy and sibling parentage" {
 
 ///|
 test "accepts PlantUML's explicit zero root syntax" {
-  let diagram = parse_mindmap(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n0 Central topic\n++ Branch\n@endmindmap",
   )
   @test.assert_eq(diagram.ideas[0].label, "Central topic")
@@ -21,7 +21,7 @@ test "accepts PlantUML's explicit zero root syntax" {
 
 ///|
 test "supports independent plus and minus branches" {
-  let diagram = parse_mindmap(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n* Root\n++ Right child\n+++ Right leaf\n-- Left child\n---@red[not a color]\n@endmindmap",
   )
   @test.assert_eq(diagram.ideas[1].direction, @tree.TreeDirection::Right)
@@ -32,7 +32,7 @@ test "supports independent plus and minus branches" {
 
 ///|
 test "parses item presentation without changing hierarchy" {
-  let diagram = parse_mindmap(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n* Root\n**[#aabbcc]_ Boxless <<tag>>\n@endmindmap",
   )
   let idea = diagram.ideas[1]
@@ -45,7 +45,7 @@ test "parses item presentation without changing hierarchy" {
 
 ///|
 test "treats a spaced boxless marker as label text" {
-  let diagram = parse_mindmap(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n* Root\n**[#aabbcc] _ Boxless\n@endmindmap",
   )
   let idea = diagram.ideas[1]
@@ -56,7 +56,7 @@ test "treats a spaced boxless marker as label text" {
 
 ///|
 test "parses org-mode multiline labels as one item" {
-  let diagram = parse_mindmap(
+  let diagram = @parser.parse_mindmap(
     "@startmindmap\n* Root\n**: first line\nsecond line; <<note>>\n@endmindmap",
   )
   @test.assert_eq(diagram.ideas.length(), 2)
@@ -67,7 +67,7 @@ test "parses org-mode multiline labels as one item" {
 ///|
 test "rejects hierarchy gaps and inconsistent indentation" {
   for source in ["* Root\n** Child\n**** Gap", "* Root\n*** Child\n**** Uneven"] {
-    try parse_mindmap(source) catch {
+    try @parser.parse_mindmap(source) catch {
       SyntaxError(_, _) => ()
     } noraise {
       _ => @test.fail("expected mindmap indentation error")
