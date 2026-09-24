@@ -4,7 +4,7 @@ import {
   "moonbit-community/rabbita/cmd",
   "moonbit-community/rabbita/dom",
   "moonbit-community/rabbita/http",
-  "Yoorkin/rui",
+  "moonbit-community/rui",
   "kokic/uml/api",
   "kokic/uml/style",
   "kokic/uml/entity",
