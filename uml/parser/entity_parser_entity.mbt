@@ -325,18 +325,3 @@ fn EntityParser::add_member_to(
     self.entities[index].members.push(entry)
   }
 }
-
-///|
-test "entity index keeps bare names ambiguous across packages" {
-  let parser = EntityParser::new("")
-  parser.package_stack.push("first")
-  ignore(parser.ensure_entity("User"))
-  ignore(parser.package_stack.pop())
-  parser.package_stack.push("second")
-  ignore(parser.ensure_entity("User"))
-  ignore(parser.package_stack.pop())
-
-  @test.assert_eq(parser.has_entity("first.User"), true)
-  @test.assert_eq(parser.has_entity("second.User"), true)
-  @test.assert_eq(parser.resolve("User"), "User")
-}

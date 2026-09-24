@@ -184,11 +184,6 @@ fn decimal(
 }
 
 ///|
-fn @flow.Decimal::is_zero(self : @flow.Decimal) -> Bool {
-  self.coeff == "0"
-}
-
-///|
 fn @flow.Decimal::scaled(self : @flow.Decimal, target : Int) -> String {
   shift_digits(self.coeff, target - self.scale)
 }
@@ -258,44 +253,9 @@ fn compare_int(a : Int, b : Int) -> Int {
 }
 
 ///|
-/// Renders the value like `BigDecimal.toPlainString`: no exponent, no
-/// trailing dot, keeping the fraction exactly as scaled.
-fn @flow.Decimal::to_plain_string(self : @flow.Decimal) -> String {
-  let output = StringBuilder()
-  if self.sign < 0 && !self.is_zero() {
-    output.write_char('-')
-  }
-  if self.scale == 0 {
-    output.write_string(self.coeff)
-  } else {
-    let digits = self.coeff
-    let integral = if digits.length() <= self.scale {
-      "0"
-    } else {
-      digits[:digits.length() - self.scale].to_owned()
-    }
-    output.write_string(integral)
-    output.write_char('.')
-    if digits.length() <= self.scale {
-      for _ in 0..<(self.scale - digits.length()) {
-        output.write_char('0')
-      }
-    }
-    output.write_string(digits[digits.length() - self.scale:].to_owned())
-  }
-  output.to_string()
-}
-
-///|
 fn @flow.TimeTick::compare(
   self : @flow.TimeTick,
   other : @flow.TimeTick,
 ) -> Int {
   self.time.compare(other.time)
-}
-
-///|
-/// Render a decimal time value in its plain source form.
-pub fn decimal_to_plain_string(decimal : @flow.Decimal) -> String {
-  decimal.to_plain_string()
 }

@@ -1,6 +1,5 @@
 import {
   "moonbitlang/core/string",
-  "moonbitlang/core/test",
   "kokic/uml/tokenizer",
   "kokic/uml/flow",
   "kokic/uml/seq",
@@ -17,3 +16,7 @@ import {
   "moonbitlang/parser/mbti_ast",
   "moonbitlang/parser/mbti_parser",
 }
+
+import {
+  "moonbitlang/core/test",
+} for "test"

@@ -405,7 +405,6 @@ fn parse_tags(cursor : @tokenizer.Cursor) -> Bool {
     ignore(cursor.restore(start))
     return false
   }
-  let mut matched = true
   while cursor.peek() is Some(char) &&
         char.is_whitespace() &&
         cursor.peek_ahead(1) == Some('$') {
@@ -424,7 +423,6 @@ fn parse_tags(cursor : @tokenizer.Cursor) -> Bool {
       ignore(cursor.restore(start))
       return false
     }
-    matched = true
   }
-  matched
+  true
 }

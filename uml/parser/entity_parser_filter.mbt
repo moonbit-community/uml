@@ -7,7 +7,7 @@ fn member_portion(word : String) -> @entity.EntityPortion? {
     Some(@entity.EntityPortion::FieldPortion)
   } else if word.has_prefix("method") {
     Some(@entity.EntityPortion::MethodPortion)
-  } else if word.has_prefix("circle") || word.has_prefix("circled") {
+  } else if word.has_prefix("circle") {
     Some(@entity.EntityPortion::CirclePortion)
   } else if word.has_prefix("stereotype") {
     Some(@entity.EntityPortion::StereotypePortion)

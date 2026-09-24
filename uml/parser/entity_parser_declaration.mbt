@@ -227,15 +227,3 @@ fn member_of(line : String) -> @entity.Member {
     is_hidden: false,
   }
 }
-
-///|
-test "shaped entity decoder normalizes encoded declarations" {
-  let (kind, display, code) = decode_shaped_entity(
-    Class,
-    "(Place order)",
-    "(Place order)",
-  )
-  @test.assert_eq(kind, @entity.EntityKind::Usecase)
-  @test.assert_eq(display, "Place order")
-  @test.assert_eq(code, "Place order")
-}

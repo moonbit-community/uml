@@ -1384,3 +1384,30 @@ test "routes couple relations through the association point with arrows" {
   @test.assert_eq(second_main.right_end, Arrow)
   @test.assert_eq(second_main.right_couple, Some(("C", "D")))
 }
+
+///|
+test "accepts relation arrows without surrounding spaces" {
+  let diagram = parse_entity(
+    "@startuml\nA-->B\norder-item-->target-item\n@enduml",
+  )
+  @test.assert_eq(diagram.relations.length(), 2)
+  @test.assert_eq(diagram.relations[0].left, "A")
+  @test.assert_eq(diagram.relations[0].right, "B")
+  @test.assert_eq(diagram.relations[1].left, "order-item")
+  @test.assert_eq(diagram.relations[1].right, "target-item")
+}
+
+///|
+test "rejects malformed note annotations" {
+  for
+    source in [
+      "note right of", "note sideways of User", "note left of User::", "constraint on links #pink",
+      "note right of User unexpected metadata",
+    ] {
+    try parse_entity("@startuml\nclass User\n" + source + "\n@enduml") catch {
+      SyntaxError(_, _) => ()
+    } noraise {
+      _ => @test.fail("expected annotation error: " + source)
+    }
+  }
+}

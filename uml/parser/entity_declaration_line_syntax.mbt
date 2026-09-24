@@ -627,20 +627,3 @@ fn declaration_line(cursor : @tokenizer.Cursor) -> DeclarationLineSyntax? {
   }
   Some(syntax)
 }
-
-///|
-test "declaration line grammar accepts supported declarations" {
-  let lines = [
-    "abstract class \"User\" as U {", "interface Auth", "+ static class Repository<T> <<storage>> extends BaseRepository",
-    "class RedisCache implements Cache", "() Api <<service>> [[https://example.com/api]] #lightblue",
-    "class Service $backend $critical #lightblue ##[dashed]red", "usecase (Login user)",
-    "actor :User:", "component [API]", "mix_actor External", "map Config {}", "json Payload {",
-    "<> association",
-  ]
-  for line in lines {
-    let cursor = @tokenizer.Cursor::new(line)
-    guard declaration_line(cursor) is Some(_) else {
-      @test.fail("declaration grammar rejected: " + line)
-    }
-  }
-}

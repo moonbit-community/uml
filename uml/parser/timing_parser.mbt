@@ -267,7 +267,6 @@ fn take_compact(cursor : @tokenizer.Cursor) -> Bool {
 ///|
 /// Consumes the optional `"FULL" as ` prefix of a player declaration.
 fn take_full_as(cursor : @tokenizer.Cursor) -> String? {
-  guard cursor.peek() == Some('"') else { return None }
   guard parse_quoted(cursor) is Some(full) else { return None }
   skip_spaces(cursor)
   guard match_keyword(cursor, "as") else { return None }

@@ -64,6 +64,35 @@ pub extend Decimal with Eq::{not_equal, equal}
 pub extend Decimal with Debug::{to_repr}
 
 ///|
+/// Renders the value like `BigDecimal.toPlainString`: no exponent, no
+/// trailing dot, keeping the fraction exactly as scaled.
+pub fn Decimal::to_plain_string(self : Decimal) -> String {
+  let output = StringBuilder()
+  if self.sign < 0 && self.coeff != "0" {
+    output.write_char('-')
+  }
+  if self.scale == 0 {
+    output.write_string(self.coeff)
+  } else {
+    let digits = self.coeff
+    let integral = if digits.length() <= self.scale {
+      "0"
+    } else {
+      digits[:digits.length() - self.scale].to_owned()
+    }
+    output.write_string(integral)
+    output.write_char('.')
+    if digits.length() <= self.scale {
+      for _ in 0..<(self.scale - digits.length()) {
+        output.write_char('0')
+      }
+    }
+    output.write_string(digits[digits.length() - self.scale:].to_owned())
+  }
+  output.to_string()
+}
+
+///|
 pub(all) struct TimeTick {
   time : Decimal
   format : TimingFormat
