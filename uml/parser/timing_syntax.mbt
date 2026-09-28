@@ -3,11 +3,6 @@
 /// grammars: `%pL` letters, `%pLN` letters and numbers, `\w` ASCII word chars.
 
 ///|
-fn is_letter(char : Char) -> Bool {
-  @identifier.is_unicode_letter(char)
-}
-
-///|
 /// `[%pLN_.@]`: letters, numbers, underscore, dot and at-sign.
 fn is_code_char(char : Char) -> Bool {
   @identifier.is_identifier_char(char) || char == '.' || char == '@'
@@ -28,7 +23,7 @@ fn is_state_decl_char(char : Char) -> Bool {
 ///|
 /// `[\p{L}_]`: the first character of `PLAYER_CODE`.
 fn is_player_code_start(char : Char) -> Bool {
-  is_letter(char) || char == '_'
+  @identifier.is_unicode_letter(char) || char == '_'
 }
 
 ///|
