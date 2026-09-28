@@ -1,7 +1,0 @@
-import {
-  "moonbit-community/unicode",
-}
-
-import {
-  "moonbitlang/core/test",
-} for "test"

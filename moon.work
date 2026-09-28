@@ -3,6 +3,5 @@ members = [
   "./metrics",
   "./uml",
   "./uml-cli",
-  "./identifier",
   "./profile",
 ]
