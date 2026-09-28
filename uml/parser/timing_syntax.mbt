@@ -108,34 +108,23 @@ fn parse_quoted(cursor : @tokenizer.Cursor) -> String? {
 /// Matches a double-quoted string, empty content allowed, mirroring
 /// `[%g]([^%g]*)[%g]`.
 fn parse_quoted_any(cursor : @tokenizer.Cursor) -> String? {
-  let start = cursor.offset()
-  guard cursor.consume('"') else { return None }
-  let content_start = cursor.offset()
-  while !cursor.is_eof() && cursor.peek() != Some('"') {
-    ignore(cursor.advance())
+  lexmatch cursor.remaining_view() {
+    ((re"^\"" + (re"[^\"]*" as content) + re"\"") as quoted, after=_) => {
+      ignore(cursor.restore(cursor.offset() + quoted.char_length()))
+      Some(content.to_owned())
+    }
+    _ => None
   }
-  guard cursor.consume('"') else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some(cursor.slice(content_start, cursor.offset() - 1))
 }
 
 ///|
 /// Matches `<<.+?>>` and returns the whole stereotype text.
 fn parse_stereotype(cursor : @tokenizer.Cursor) -> String? {
-  let start = cursor.offset()
-  guard cursor.consume_literal("<<") else { return None }
-  let content_start = cursor.offset()
-  while !cursor.is_eof() &&
-        !(cursor.peek() == Some('>') && cursor.peek_ahead(1) == Some('>')) {
-    ignore(cursor.advance())
-  }
-  guard cursor.offset() > content_start && cursor.consume_literal(">>") else {
-    ignore(cursor.restore(start))
-    return None
-  }
-  Some(cursor.slice(start, cursor.offset()))
+  cursor.attempt(cursor => {
+    cursor
+    .take_stereotype_value()
+    .filter(value => value.length() > "<<>>".length())
+  })
 }
 
 ///|

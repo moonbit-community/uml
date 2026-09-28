@@ -50,14 +50,13 @@ fn take_url_terminator(cursor : Cursor) -> Bool {
 ///|
 /// Consumes the label of a URL target up to its `]]` terminator.
 fn take_url_label(cursor : Cursor) -> String? {
-  cursor.attempt(cursor => {
-    let start = cursor.offset()
-    while !cursor.is_eof() && !cursor.starts_with_literal("]]") {
-      ignore(cursor.advance())
+  lexmatch cursor.remaining_view() {
+    ((re"^" + (re".*?" as label) + URL_TERMINATOR) as value, after=_) => {
+      cursor.offset += value.char_length()
+      Some(label.to_owned())
     }
-    guard cursor.consume_literal("]]") else { return None }
-    Some(cursor.slice(start, cursor.offset() - 2))
-  })
+    _ => None
+  }
 }
 
 ///|

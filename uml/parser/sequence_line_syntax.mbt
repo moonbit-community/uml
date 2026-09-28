@@ -59,14 +59,13 @@ fn take_quoted_or_ident(cursor : @tokenizer.Cursor) -> String? {
 ///|
 /// Matches an optionally negative run of digits.
 fn take_signed_integer(cursor : @tokenizer.Cursor) -> Int? {
-  let start = cursor.offset()
-  let sign = if cursor.consume('-') { "-" } else { "" }
-  let digits = cursor.take_while(Char::is_ascii_digit)
-  guard digits.length() > 0 else {
-    ignore(cursor.restore(start))
-    return None
+  lexmatch cursor.remaining_view() {
+    (re"^-?[0-9]+" as value, after=_) => {
+      ignore(cursor.restore(cursor.offset() + value.char_length()))
+      Some(@string.parse_int(value.to_owned()) catch { _ => 0 })
+    }
+    _ => None
   }
-  Some(@string.parse_int(sign + digits) catch { _ => 0 })
 }
 
 ///|

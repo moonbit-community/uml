@@ -18,16 +18,13 @@ pub fn syntax_words(line : String) -> Array[String] {
   let words = []
   ignore(cursor.skip_while(Char::is_whitespace))
   while !cursor.is_eof() {
-    let word = StringBuilder()
+    let start = cursor.offset()
     while cursor.peek() is Some(char) && !char.is_whitespace() {
-      guard cursor.take_quoted_text() is Some(quoted) else {
-        word.write_char(char)
+      if cursor.take_quoted_text() is None {
         ignore(cursor.advance())
-        continue
       }
-      word.write_string(quoted)
     }
-    words.push(word.to_string())
+    words.push(cursor.slice(start, cursor.offset()))
     ignore(cursor.skip_while(Char::is_whitespace))
   }
   words

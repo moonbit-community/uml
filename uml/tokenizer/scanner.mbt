@@ -1,4 +1,14 @@
 ///|
+const QUOTED_CONTENT = re"([^\"\\]|\\.)*"
+
+///|
+/// A missing closing quote also accepts a final, unpaired backslash.
+const QUOTED_FRAGMENT : Regex = re"\"" + QUOTED_CONTENT + re"(\"|\\?$)"
+
+///|
+const URL_TERMINATOR = re"\]\]"
+
+///|
 /// Returns whether `literal` starts at the current cursor position without
 /// consuming input.
 pub fn Cursor::starts_with_literal(self : Cursor, literal : String) -> Bool {
@@ -46,18 +56,13 @@ pub fn Cursor::consume_inline_space1(self : Cursor) -> Bool {
 /// Consumes a double-quoted syntax fragment, preserving its quotes and escape
 /// sequences. An unclosed quote consumes the remaining input.
 pub fn Cursor::take_quoted_text(self : Cursor) -> String? {
-  let start = self.offset()
-  guard self.consume('"') else { return None }
-  while self.advance() is Some(char) {
-    if char == '\\' {
-      ignore(self.advance())
-      continue
+  lexmatch self.remaining_view() {
+    ((re"^" + QUOTED_FRAGMENT) as quoted, after=_) => {
+      self.offset += quoted.char_length()
+      Some(quoted.to_owned())
     }
-    if char == '"' {
-      return Some(self.slice(start, self.offset()))
-    }
+    _ => None
   }
-  Some(self.slice(start, self.offset()))
 }
 
 ///|
@@ -65,21 +70,13 @@ pub fn Cursor::take_quoted_text(self : Cursor) -> String? {
 /// `take_quoted_text`, requires a closing quote: an unclosed fragment
 /// consumes nothing and restores the original position.
 pub fn Cursor::take_quoted_value(self : Cursor) -> String? {
-  self.attempt(self => {
-    guard self.peek() == Some('"') else { return None }
-    let start = self.offset
-    ignore(self.advance())
-    while self.advance() is Some(char) {
-      if char == '\\' {
-        ignore(self.advance())
-        continue
-      }
-      if char == '"' {
-        return Some(self.slice(start + 1, self.offset - 1))
-      }
+  lexmatch self.remaining_view() {
+    ((re"^\"" + (QUOTED_CONTENT as content) + re"\"") as quoted, after=_) => {
+      self.offset += quoted.char_length()
+      Some(content.to_owned())
     }
-    None
-  })
+    _ => None
+  }
 }
 
 ///|
@@ -106,15 +103,13 @@ pub fn Cursor::take_delimited_text(
 /// Consumes a `<<...>>` stereotype value, including the markers. An unclosed
 /// fragment consumes nothing and restores the original position.
 pub fn Cursor::take_stereotype_value(self : Cursor) -> String? {
-  self.attempt(self => {
-    let start = self.offset()
-    guard self.consume_literal("<<") else { return None }
-    while !self.is_eof() && !self.starts_with_literal(">>") {
-      ignore(self.advance())
+  lexmatch self.remaining_view() {
+    (re"^<<.*?>>" as value, after=_) => {
+      self.offset += value.char_length()
+      Some(value.to_owned())
     }
-    guard self.consume_literal(">>") else { return None }
-    Some(self.slice(start, self.offset()))
-  })
+    _ => None
+  }
 }
 
 ///|
@@ -122,19 +117,16 @@ pub fn Cursor::take_stereotype_value(self : Cursor) -> String? {
 /// unclosed or invalid fragment consumes nothing and restores the original
 /// position.
 pub fn Cursor::take_url_value(self : Cursor) -> String? {
-  self.attempt(self => {
-    guard self.consume_literal("[[") else { return None }
-    let content_start = self.offset()
-    while !self.is_eof() && !self.starts_with_literal("]]") {
-      ignore(self.advance())
+  lexmatch self.remaining_view() {
+    ((re"^\[\[.*?" + URL_TERMINATOR) as value, after=_) => {
+      guard parse_url_target(value.to_owned()) is Some(target) else {
+        return None
+      }
+      self.offset += value.char_length()
+      Some(target.target)
     }
-    guard self.consume_literal("]]") else { return None }
-    let content = self.slice(content_start, self.offset() - 2)
-    guard parse_url_target("[[" + content + "]]") is Some(target) else {
-      return None
-    }
-    Some(target.target)
-  })
+    _ => None
+  }
 }
 
 ///|
