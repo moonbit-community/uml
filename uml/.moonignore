@@ -1,0 +1,7 @@
+.DS_Store
+*.mbti
+*.dot
+*.svg
+inspect/
+__snapshot__/
+__snapshot__/
