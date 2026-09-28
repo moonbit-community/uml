@@ -4,14 +4,22 @@
 /// The cursor stores character offsets rather than string offsets so callers
 /// can inspect and consume Unicode text without duplicating index arithmetic.
 pub struct Cursor {
-  chars : Array[Char]
+  text : StringView
+  code_unit_offsets : Array[Int]
   mut offset : Int
 }
 
 ///|
 /// Creates a cursor positioned at the beginning of `input`.
 pub fn Cursor::new(input : String) -> Cursor {
-  { chars: input.to_array(), offset: 0, }
+  let chars = input.to_array()
+  let code_unit_offsets = [0]
+  let mut code_units = 0
+  for char in chars {
+    code_units += if char.to_int() > 0xFFFF { 2 } else { 1 }
+    code_unit_offsets.push(code_units)
+  }
+  { text: StringView::from_array(chars[:]), code_unit_offsets, offset: 0, }
 }
 
 ///|
@@ -23,13 +31,13 @@ pub fn Cursor::offset(self : Cursor) -> Int {
 ///|
 /// Returns the number of characters in the input.
 pub fn Cursor::length(self : Cursor) -> Int {
-  self.chars.length()
+  self.code_unit_offsets.length() - 1
 }
 
 ///|
 /// Returns whether the cursor has consumed the complete input.
 pub fn Cursor::is_eof(self : Cursor) -> Bool {
-  self.offset >= self.chars.length()
+  self.offset >= self.length()
 }
 
 ///|
@@ -41,8 +49,8 @@ pub fn Cursor::peek(self : Cursor) -> Char? {
 ///|
 /// Returns a character at an absolute character offset.
 pub fn Cursor::char_at(self : Cursor, offset : Int) -> Char? {
-  guard offset >= 0 && offset < self.chars.length() else { return None }
-  Some(self.chars[offset])
+  guard offset >= 0 && offset < self.length() else { return None }
+  self.text.get_char(self.code_unit_offsets[offset])
 }
 
 ///|
@@ -71,11 +79,11 @@ pub fn Cursor::consume(self : Cursor, expected : Char) -> Bool {
 /// Consumes a literal string when it starts at the current position.
 pub fn Cursor::consume_literal(self : Cursor, literal : String) -> Bool {
   let chars = literal.to_array()
-  guard self.offset + chars.length() <= self.chars.length() else {
-    return false
-  }
+  guard self.offset + chars.length() <= self.length() else { return false }
   for index in 0..<chars.length() {
-    guard self.chars[self.offset + index] == chars[index] else { return false }
+    guard self.char_at(self.offset + index) == Some(chars[index]) else {
+      return false
+    }
   }
   self.offset += chars.length()
   true
@@ -85,7 +93,7 @@ pub fn Cursor::consume_literal(self : Cursor, literal : String) -> Bool {
 /// Consumes characters while `predicate` accepts them and returns the count.
 pub fn Cursor::skip_while(self : Cursor, predicate : (Char) -> Bool) -> Int {
   let start = self.offset
-  while self.offset < self.chars.length() && predicate(self.chars[self.offset]) {
+  while self.peek() is Some(char) && predicate(char) {
     self.offset += 1
   }
   self.offset - start
@@ -102,7 +110,14 @@ pub fn Cursor::take_while(self : Cursor, predicate : (Char) -> Bool) -> String {
 ///|
 /// Returns the unconsumed text.
 pub fn Cursor::remaining(self : Cursor) -> String {
-  self.slice(self.offset, self.chars.length())
+  self.remaining_view().to_owned()
+}
+
+///|
+/// Returns the unconsumed text without copying it. Cursor offsets remain
+/// character-based; StringView lengths and indexes use UTF-16 code units.
+pub fn Cursor::remaining_view(self : Cursor) -> StringView {
+  self.text[self.code_unit_offsets[self.offset]:]
 }
 
 ///|
@@ -112,8 +127,8 @@ pub fn Cursor::remaining(self : Cursor) -> String {
 /// re-implementing the same scan with `take_while(_ => true)`. Use
 /// `take_rest_trimmed` when the captured label should be trimmed.
 pub fn Cursor::take_rest(self : Cursor) -> String {
-  let text = self.slice(self.offset, self.chars.length())
-  self.offset = self.chars.length()
+  let text = self.remaining()
+  self.offset = self.length()
   text
 }
 
@@ -126,19 +141,15 @@ pub fn Cursor::take_rest_trimmed(self : Cursor) -> String {
 ///|
 /// Returns a character slice using absolute character offsets.
 pub fn Cursor::slice(self : Cursor, start : Int, end : Int) -> String {
-  let first = start.max(0).min(self.chars.length())
-  let last = end.max(first).min(self.chars.length())
-  let output = StringBuilder()
-  for index in first..<last {
-    output.write_char(self.chars[index])
-  }
-  output.to_string()
+  let first = start.max(0).min(self.length())
+  let last = end.max(first).min(self.length())
+  self.text[self.code_unit_offsets[first]:self.code_unit_offsets[last]].to_owned()
 }
 
 ///|
 /// Restores a previously saved offset. Returns false for an invalid offset.
 pub fn Cursor::restore(self : Cursor, offset : Int) -> Bool {
-  guard offset >= 0 && offset <= self.chars.length() else { return false }
+  guard offset >= 0 && offset <= self.length() else { return false }
   self.offset = offset
   true
 }
@@ -147,7 +158,7 @@ pub fn Cursor::restore(self : Cursor, offset : Int) -> Bool {
 /// Returns the text from the current position up to, but not including, `\n`.
 pub fn Cursor::current_line(self : Cursor) -> String {
   let mut end = self.offset
-  while end < self.chars.length() && self.chars[end] != '\n' {
+  while self.char_at(end) is Some(char) && char != '\n' {
     end += 1
   }
   self.slice(self.offset, end)
@@ -172,7 +183,7 @@ pub fn Cursor::skip_line(self : Cursor) -> Unit {
 ///|
 /// Returns a source span at the current offset.
 pub fn Cursor::source_span(self : Cursor) -> SourceSpan {
-  source_span(self.chars, self.offset)
+  source_span(self.text.to_array(), self.offset)
 }
 
 ///|
