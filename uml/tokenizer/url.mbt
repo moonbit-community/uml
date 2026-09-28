@@ -27,12 +27,7 @@ pub extend UrlOccurrence with Debug::{to_repr}
 
 ///|
 pub fn normalize_url_target(value : String) -> String {
-  let value = value.trim()
-  if value.length() >= 2 && value.has_prefix("\"") && value.has_suffix("\"") {
-    value[1:value.length() - 1].to_owned()
-  } else {
-    value.to_owned()
-  }
+  unquote_identifier(value)
 }
 
 ///|

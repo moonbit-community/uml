@@ -66,21 +66,6 @@ fn space_one_or_more(cursor : @tokenizer.Cursor) -> Bool {
 }
 
 ///|
-fn match_literal(cursor : @tokenizer.Cursor, literal : String) -> Bool {
-  let chars = literal.to_array()
-  guard cursor.offset() + chars.length() <= cursor.length() else {
-    return false
-  }
-  for index in 0..<chars.length() {
-    if cursor.char_at(cursor.offset() + index) != Some(chars[index]) {
-      return false
-    }
-  }
-  ignore(cursor.restore(cursor.offset() + chars.length()))
-  true
-}
-
-///|
 /// Lowercases an ASCII character, the case folding used by the compiled
 /// `Pattern.CASE_INSENSITIVE` regexes.
 fn lower_ascii(char : Char) -> Char {
@@ -140,13 +125,13 @@ fn parse_quoted_any(cursor : @tokenizer.Cursor) -> String? {
 /// Matches `<<.+?>>` and returns the whole stereotype text.
 fn parse_stereotype(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
-  guard match_literal(cursor, "<<") else { return None }
+  guard cursor.consume_literal("<<") else { return None }
   let content_start = cursor.offset()
   while !cursor.is_eof() &&
         !(cursor.peek() == Some('>') && cursor.peek_ahead(1) == Some('>')) {
     ignore(cursor.advance())
   }
-  guard cursor.offset() > content_start && match_literal(cursor, ">>") else {
+  guard cursor.offset() > content_start && cursor.consume_literal(">>") else {
     ignore(cursor.restore(start))
     return None
   }
@@ -240,20 +225,20 @@ fn[T] with_state_spec(
           None => None
         }
       2 =>
-        if match_literal(cursor, "{hidden}") {
+        if cursor.consume_literal("{hidden}") {
           Some(["{hidden}"])
         } else {
           None
         }
-      3 => if match_literal(cursor, "{...}") { Some(["{...}"]) } else { None }
-      4 => if match_literal(cursor, "{-}") { Some(["{-}"]) } else { None }
-      5 => if match_literal(cursor, "{?}") { Some(["{?}"]) } else { None }
+      3 => if cursor.consume_literal("{...}") { Some(["{...}"]) } else { None }
+      4 => if cursor.consume_literal("{-}") { Some(["{-}"]) } else { None }
+      5 => if cursor.consume_literal("{?}") { Some(["{?}"]) } else { None }
       _ =>
-        if match_literal(cursor, "{") &&
+        if cursor.consume_literal("{") &&
           parse_state_code(cursor) is Some(first) &&
-          match_literal(cursor, ",") &&
+          cursor.consume_literal(",") &&
           parse_state_code(cursor) is Some(second) &&
-          match_literal(cursor, "}") {
+          cursor.consume_literal("}") {
           Some([first, second])
         } else {
           None
