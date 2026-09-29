@@ -3,9 +3,9 @@ name = "kokic/uml-live"
 version = "0.1.0"
 
 import {
-  "moonbit-community/rabbita@0.15.6",
-  "kokic/uml@0.4.1",
-  "moonbit-community/rui@0.1.2",
+  "moonbit-community/rabbita@0.16.3",
+  "moonbit-community/rui@0.3.4",
+  "kokic/uml@0.4.2",
 }
 
 readme = "README.md"

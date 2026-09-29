@@ -3,9 +3,9 @@ name = "moonbit-community/uml-cli"
 version = "0.1.1"
 
 import {
-  "kokic/uml@0.4.1",
-  "moonbitlang/async@0.21.2",
-  "moonbitlang/x@0.5.1",
+  "kokic/uml@0.4.2",
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/x@0.5.5",
 }
 
 readme = "README.md"
