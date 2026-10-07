@@ -28,6 +28,8 @@ pub(all) struct Participant {
   color : String?
   url : String?
   boxes : Array[ParticipantBox]
+  position : Int
+  stereotype : String?
 }
 
 ///|
@@ -62,6 +64,7 @@ pub(all) struct ArrowConfig {
   part : ArrowPart
   circle_start : Bool
   circle_end : Bool
+  line_style : String?
 }
 
 ///|
@@ -123,9 +126,15 @@ pub(all) struct GroupingLeaf {
 pub(all) struct Message {
   from_code : String
   to_code : String
+  from_display : String
+  to_display : String
   label : String?
   arrow_config : ArrowConfig
   anchor : String?
+  from_anchor : String?
+  to_anchor : String?
+  parallel : Bool
+  multicast : Array[String]
   activation_spec : ActivationSpec?
   activation_spec2 : ActivationSpec?
   life_color : String?
@@ -154,6 +163,8 @@ pub(all) struct MessageExo {
   label : String?
   arrow_config : ArrowConfig
   short_arrow : Bool
+  parallel : Bool
+  anchor : String?
   activation_spec : ActivationSpec?
   life_color : String?
   url : String?
@@ -219,6 +230,15 @@ pub(all) struct AutonumberResume {
 ///|
 pub(all) struct Return {
   value : String?
+  parallel : Bool
+  color : String?
+}
+
+///|
+pub(all) struct LinkAnchor {
+  first : String
+  second : String
+  label : String?
 }
 
 ///|
@@ -251,7 +271,7 @@ pub(all) enum Event {
   Autoactivate(Bool)
   Footbox(Bool)
   HideUnlinked(Bool)
-  LinkAnchor
+  LinkAnchor(LinkAnchor)
   Return(Return)
   Create
   Url(String, String)

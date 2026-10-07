@@ -39,6 +39,11 @@ pub(all) struct StateNode {
   parent : String?
   region_index : Int
   description : String?
+  embedded : @entity.Entity?
+  standalone_note : StateNote?
+  tags : Array[String]
+  is_removed : Bool
+  is_hidden : Bool
   stereotype : String?
   url : String?
   color : String?
@@ -59,6 +64,8 @@ pub fn StateNode::has_description(self : StateNode) -> Bool {
 pub(all) struct StateTransition {
   source : String
   target : String
+  source_port : String?
+  target_port : String?
   label : String?
   direction : TransitionDirection
   /// PlantUML link queue length, with horizontal directions reduced to one.

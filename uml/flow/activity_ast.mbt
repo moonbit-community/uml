@@ -17,6 +17,8 @@ pub(all) enum ActivityNode {
   Stop
   End
   Kill
+  Break
+  Backward(ActivityBackward)
   Action(String)
   Arrow(String)
   If(String)
@@ -26,10 +28,15 @@ pub(all) enum ActivityNode {
   While(String)
   EndWhile(String)
   Repeat
+  RepeatAction(String)
   RepeatWhile(String)
   Fork
   ForkAgain
   EndFork
+  EndMerge
+  Split
+  SplitAgain
+  EndSplit
   Switch(String)
   Case(String)
   EndSwitch
@@ -51,6 +58,7 @@ pub extend ActivityNode with Debug::{to_repr}
 /// Text carried by a control-flow edge rather than by an activity node.
 pub(all) struct ActivityEdgeLabel {
   text : String?
+  style : String?
 } derive(Eq, Debug)
 
 ///|
@@ -104,6 +112,7 @@ pub extend ActivityWhile with Debug::{to_repr}
 ///|
 /// A `repeat` instruction whose terminal condition owns return and exit labels.
 pub(all) struct ActivityRepeat {
+  start : String?
   condition : String
   retry : ActivityEdgeLabel
   exit : ActivityEdgeLabel
@@ -119,6 +128,7 @@ pub extend ActivityRepeat with Debug::{to_repr}
 ///|
 /// A parallel fork with independently laid out instruction lists.
 pub(all) struct ActivityFork {
+  merge : Bool
   branches : Array[Array[ActivityInstruction]]
 } derive(Eq, Debug)
 
@@ -162,6 +172,8 @@ pub(all) enum ActivityInstruction {
   Stop
   End
   Kill
+  Break
+  Backward(ActivityBackward)
   Action(String)
   Note(String, ActivityNoteSide)
   Edge(ActivityEdgeLabel)
@@ -169,6 +181,7 @@ pub(all) enum ActivityInstruction {
   While(ActivityWhile)
   Repeat(ActivityRepeat)
   Fork(ActivityFork)
+  Split(ActivityFork)
   Switch(ActivitySwitch)
   Partition(ActivityPartition)
   Swimlane(String)
@@ -196,3 +209,16 @@ pub extend ActivityDiagram with Eq::{not_equal, equal}
 
 ///|
 pub extend ActivityDiagram with Debug::{to_repr}
+
+///|
+pub(all) struct ActivityBackward {
+  label : String
+  incoming : ActivityEdgeLabel
+  outgoing : ActivityEdgeLabel
+} derive(Eq, Debug)
+
+///|
+pub extend ActivityBackward with Eq::{not_equal, equal}
+
+///|
+pub extend ActivityBackward with Debug::{to_repr}

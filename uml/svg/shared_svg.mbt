@@ -274,15 +274,28 @@ pub fn text_markup(
 /// Resolve line-style tokens to numeric drawing state. Legacy SVG attribute
 /// helpers delegate here so both backends use the same stroke constants.
 pub fn line_drawing_style(line_style : String?) -> @graphics.DrawingStyle {
-  let style = @graphics.DrawingStyle::default()
-  match line_style {
-    Some("dashed") =>
-      { ..style, dash: Some([DASHED_LINE_LENGTH, DASHED_LINE_GAP]), }
-    Some("dotted") =>
-      { ..style, dash: Some([DOTTED_LINE_LENGTH, DOTTED_LINE_GAP]), }
-    Some("bold") => { ..style, stroke_width: Some(2.5), }
-    _ => style
+  let mut style = @graphics.DrawingStyle::default()
+  for token in line_style.unwrap_or("").split(",") {
+    let token = token.trim().to_lower()
+    match token {
+      "dashed" =>
+        style = { ..style, dash: Some([DASHED_LINE_LENGTH, DASHED_LINE_GAP]), }
+      "dotted" =>
+        style = { ..style, dash: Some([DOTTED_LINE_LENGTH, DOTTED_LINE_GAP]), }
+      "bold" => style = { ..style, stroke_width: Some(2.5), }
+      "plain" => style = { ..style, dash: Some([]), }
+      _ if token.has_prefix("thickness=") => {
+        let thickness = @string.parse_double(token[10:].to_owned()) catch {
+          _ => 0.0
+        }
+        if thickness > 0.0 {
+          style = { ..style, stroke_width: Some(thickness), }
+        }
+      }
+      _ => ()
+    }
   }
+  style
 }
 
 ///|

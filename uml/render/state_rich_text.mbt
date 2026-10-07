@@ -6,11 +6,14 @@ priv struct StateRichSpan {
   color : String?
   family : String?
   decoration : StateRichDecoration
+  url : String?
+  media : StateRichMedia?
 }
 
 ///|
 priv struct StateRichLine {
   spans : Array[StateRichSpan]
+  block : StateRichBlock?
   width : Double
   height : Double
 }
@@ -60,6 +63,7 @@ fn state_rich_spans(
   size? : Int? = None,
   color? : String? = None,
   family? : String? = None,
+  url? : String? = None,
   decoration? : StateRichDecoration = Default::default(),
   monospaced_family? : String = STATE_MONOSPACED_FAMILY,
 ) -> (Array[StateRichSpan], Bool) {
@@ -83,13 +87,72 @@ fn state_rich_spans(
       }
       ignore(cursor.restore(start))
     }
+    if cursor.remaining().has_prefix("[[") &&
+      @tokenizer.parse_url_target_prefix(cursor.remaining())
+      is Some((target, rest)) {
+      if !pending.is_empty() {
+        spans.push({
+          text: pending,
+          face,
+          size,
+          color,
+          family,
+          decoration,
+          url,
+          media: None,
+        })
+        pending = ""
+      }
+      let length = cursor.remaining().length() - rest.length()
+      let (linked, _) = state_rich_spans(
+        target.label.unwrap_or(target.target),
+        face,
+        size~,
+        family~,
+        color=Some("#0000FF"),
+        url=Some(target.target),
+        decoration={ ..decoration, underline: true, },
+        monospaced_family~,
+      )
+      spans.append(linked)
+      ignore(cursor.restore(cursor.offset() + length))
+      changed = true
+      continue
+    }
+    if state_rich_media_open(cursor.remaining()) is Some((length, media)) {
+      if !pending.is_empty() {
+        spans.push({
+          text: pending,
+          face,
+          size,
+          color,
+          family,
+          decoration,
+          url,
+          media: None,
+        })
+        pending = ""
+      }
+      spans.push({
+        text: if media is Some(_) {
+          ""
+        } else {
+          "(Cannot decode image)"
+        },
+        face,
+        size,
+        color,
+        family,
+        decoration,
+        url,
+        media,
+      })
+      ignore(cursor.restore(cursor.offset() + length))
+      changed = true
+      continue
+    }
     let mut raw_end = None
-    for
-      (open, close) in [
-        ("[[", "]]"),
-        ("<math>", "</math>"),
-        ("<latex>", "</latex>"),
-      ] {
+    for (open, close) in [("<math>", "</math>"), ("<latex>", "</latex>")] {
       if cursor.remaining().has_prefix(open) {
         raw_end = cursor
           .remaining()
@@ -115,7 +178,16 @@ fn state_rich_spans(
       let length = ending.map_or(body.length(), end => end.0)
       if length > 0 && (!tag.paired || ending is Some(_)) {
         if !pending.is_empty() {
-          spans.push({ text: pending, face, size, color, family, decoration, })
+          spans.push({
+            text: pending,
+            face,
+            size,
+            color,
+            family,
+            decoration,
+            url,
+            media: None,
+          })
           pending = ""
         }
         let nested_decoration = decoration.add(tag)
@@ -126,6 +198,7 @@ fn state_rich_spans(
           color~,
           family~,
           decoration=nested_decoration,
+          url~,
           monospaced_family~,
         )
         spans.append(nested)
@@ -153,7 +226,16 @@ fn state_rich_spans(
       let end = state_rich_end(body, close, nonempty=false)
       if !mono || end is Some(_) {
         if !pending.is_empty() {
-          spans.push({ text: pending, face, size, color, family, decoration, })
+          spans.push({
+            text: pending,
+            face,
+            size,
+            color,
+            family,
+            decoration,
+            url,
+            media: None,
+          })
           pending = ""
         }
         let length = end.unwrap_or(body.length())
@@ -170,6 +252,7 @@ fn state_rich_spans(
           color~,
           family=tag.family.map_or(family, value => Some(value)),
           decoration~,
+          url~,
           monospaced_family~,
         )
         spans.append(nested)
@@ -182,7 +265,16 @@ fn state_rich_spans(
     }
     if state_rich_color_open(cursor.remaining()) is Some((length, value)) {
       if !pending.is_empty() {
-        spans.push({ text: pending, face, size, color, family, decoration, })
+        spans.push({
+          text: pending,
+          face,
+          size,
+          color,
+          family,
+          decoration,
+          url,
+          media: None,
+        })
         pending = ""
       }
       let start = cursor.offset() + length
@@ -201,6 +293,7 @@ fn state_rich_spans(
         color=inherited,
         family~,
         decoration~,
+        url~,
         monospaced_family~,
       )
       spans.append(nested)
@@ -212,7 +305,16 @@ fn state_rich_spans(
     }
     if state_rich_size_open(cursor.remaining()) is Some((length, new_size)) {
       if !pending.is_empty() {
-        spans.push({ text: pending, face, size, color, family, decoration, })
+        spans.push({
+          text: pending,
+          face,
+          size,
+          color,
+          family,
+          decoration,
+          url,
+          media: None,
+        })
         pending = ""
       }
       let start = cursor.offset() + length
@@ -226,6 +328,7 @@ fn state_rich_spans(
         color~,
         family~,
         decoration~,
+        url~,
         monospaced_family~,
       )
       spans.append(nested)
@@ -251,7 +354,16 @@ fn state_rich_spans(
       let length = end.unwrap_or(body.length())
       guard length > 0 else { continue }
       if !pending.is_empty() {
-        spans.push({ text: pending, face, size, color, family, decoration, })
+        spans.push({
+          text: pending,
+          face,
+          size,
+          color,
+          family,
+          decoration,
+          url,
+          media: None,
+        })
         pending = ""
       }
       let inner = match mode {
@@ -274,6 +386,7 @@ fn state_rich_spans(
         } else {
           decoration
         },
+        url~,
         monospaced_family~,
       )
       spans.append(nested)
@@ -289,7 +402,16 @@ fn state_rich_spans(
     }
   }
   if !pending.is_empty() {
-    spans.push({ text: pending, face, size, color, family, decoration, })
+    spans.push({
+      text: pending,
+      face,
+      size,
+      color,
+      family,
+      decoration,
+      url,
+      media: None,
+    })
   }
   (spans, changed)
 }
@@ -345,11 +467,16 @@ fn state_rich_line(
   let mut width = 0.0
   let mut height = STATE_RICH_MIN_ATOM_HEIGHT
   for span in spans {
+    if span.resolved_media(base) is Some(media) {
+      width += media.width
+      height = height.max(media.height)
+      continue
+    }
     let metrics = span.metrics(base)
     width += metrics.measure(span.text).width.to_double()
     height = height.max(metrics.line_height.to_double())
   }
-  { spans, width, height, }
+  { spans, block: None, width, height, }
 }
 
 ///|
@@ -378,12 +505,31 @@ fn state_rich_text(
   }
   let mut changed = metrics.line_height.to_double() < STATE_RICH_MIN_ATOM_HEIGHT
   let lines = []
-  for line in display.text.split("\n") {
-    let (spans, styled) = state_rich_spans(
-      line.to_owned(),
-      face,
-      monospaced_family~,
-    )
+  let source = display.text.split("\n").map(StringView::to_owned).to_array()
+  let mut line_index = 0
+  while line_index < source.length() {
+    let line = source[line_index]
+    if state_is_table_line(line) {
+      let (table, next) = state_rich_table(
+        source, line_index, metrics, monospaced_family,
+      )
+      lines.push({
+        spans: [],
+        block: Some(Table(table)),
+        width: table.width,
+        height: table.height,
+      })
+      line_index = next
+      changed = true
+      continue
+    }
+    line_index += 1
+    if state_rich_rule(line, metrics, monospaced_family) is Some(rule) {
+      lines.push(rule)
+      changed = true
+      continue
+    }
+    let (spans, styled) = state_rich_spans(line, face, monospaced_family~)
     changed = changed || styled
     if spans.is_empty() {
       spans.push({
@@ -393,6 +539,8 @@ fn state_rich_text(
         color: None,
         family: None,
         decoration: Default::default(),
+        url: None,
+        media: None,
       })
     }
     if wrap_width == 0.0 {
@@ -400,6 +548,17 @@ fn state_rich_text(
     } else {
       let tokens = []
       for index, span in spans {
+        if span.resolved_media(metrics) is Some(media) {
+          tokens.push({ text: "", kind: Break, width: 0.0, source: index, })
+          tokens.push({
+            text: "",
+            kind: Word,
+            width: media.width,
+            source: index,
+          })
+          tokens.push({ text: "", kind: Break, width: 0.0, source: index, })
+          continue
+        }
         let metrics = span.metrics(metrics)
         tokens.append(
           state_wrap_tokens(span.text, metrics).map(token => {
@@ -448,9 +607,41 @@ fn StateRichText::draw(
   output.group(metadata, output => {
     let mut line_top = top
     for line in self.lines {
+      if line.block is Some(block) {
+        block.draw(
+          output,
+          left,
+          line_top,
+          self.width,
+          line.height,
+          metrics,
+          metadata,
+        )
+        line_top += line.height
+        continue
+      }
+
       let mut x = left +
         state_text_anchor_offset(alignment, self.width - line.width)
       for span in line.spans {
+        if span.resolved_media(metrics) is Some(media) {
+          draw_rich_link(output, span.url, output => {
+            media.draw(
+              output,
+              x,
+              line_top + line.height - media.height,
+              span.color,
+              if span.decoration.background {
+                span.decoration.color
+              } else {
+                None
+              },
+              metadata,
+            )
+          })
+          x += media.width
+          continue
+        }
         let font = span.metrics(metrics)
         let baseline = line_top +
           line.height -
@@ -486,47 +677,49 @@ fn StateRichText::draw(
             },
           )
         }
-        output
-        .with_style({
-          ..@graphics.DrawingStyle::default(),
-          fill: span.color.map_or(@graphics.Paint::Inherit, value => {
-            Color(value)
-          }),
-        })
-        .draw(
-          StyledText(
-            {
-              text: span.text,
-              position: { x, y: baseline, },
-              advance: Some(size.advance_width.to_double()),
-              anchor: Start,
-              font_size: font.font_size.to_double(),
-              font_family: span.family,
-              strike: false,
-            },
-            {
-              ..@graphics.TextStyle::default(),
-              weight: Some(span.face.weight),
-              italic: Some(span.face.style == @metrics.FontStyle::Italic),
-            },
-          ),
-          metadata={
-            ..metadata,
-            class_name: Some("state-richtext-run"),
-            data: [
-              ..metadata.data,
-              ("rich-role", metadata.class_name.unwrap_or("state-label")),
-              ("rich-decoration", decoration.css_key()),
-              ..if decoration.background {
-                decoration.color
-                .filter(color => parse_state_gradient(color) is None)
-                .map_or([], color => [("rich-background", color)])
-              } else {
-                []
+        draw_rich_link(output, span.url, output => {
+          output
+          .with_style({
+            ..@graphics.DrawingStyle::default(),
+            fill: span.color.map_or(@graphics.Paint::Inherit, value => {
+              Color(value)
+            }),
+          })
+          .draw(
+            StyledText(
+              {
+                text: span.text,
+                position: { x, y: baseline, },
+                advance: Some(size.advance_width.to_double()),
+                anchor: Start,
+                font_size: font.font_size.to_double(),
+                font_family: span.family,
+                strike: false,
               },
-            ],
-          },
-        )
+              {
+                ..@graphics.TextStyle::default(),
+                weight: Some(span.face.weight),
+                italic: Some(span.face.style == @metrics.FontStyle::Italic),
+              },
+            ),
+            metadata={
+              ..metadata,
+              class_name: Some("state-richtext-run"),
+              data: [
+                ..metadata.data,
+                ("rich-role", metadata.class_name.unwrap_or("state-label")),
+                ("rich-decoration", decoration.css_key()),
+                ..if decoration.background {
+                  decoration.color
+                  .filter(color => parse_state_gradient(color) is None)
+                  .map_or([], color => [("rich-background", color)])
+                } else {
+                  []
+                },
+              ],
+            },
+          )
+        })
         if decoration.color is Some(color) {
           let offsets = []
           if decoration.underline {
@@ -710,3 +903,30 @@ const STATE_RICH_DECORATION_STROKE_DIVISOR : Double = 28.0
 ///|
 /// DriverTextSvg's gradient background deltaPatch.
 const STATE_RICH_BACKGROUND_OFFSET : Double = 2.0
+
+///|
+fn draw_rich_link(
+  output : @graphics.Graphic,
+  url : String?,
+  draw : (@graphics.Graphic) -> Unit,
+) -> Unit {
+  match url {
+    Some(target) => output.link(target, draw, target="_top")
+    None => draw(output)
+  }
+}
+
+///|
+fn StateRichSpan::resolved_media(
+  self : StateRichSpan,
+  metrics : @metrics.FontMetrics,
+) -> StateRichMedia? {
+  self.media.map(media => {
+    if media.sprite is Some(_) {
+      let scale = self.metrics(metrics).font_size.to_double() / 13.0
+      { ..media, width: media.width * scale, height: media.height * scale, }
+    } else {
+      media
+    }
+  })
+}

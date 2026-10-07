@@ -82,13 +82,24 @@ pub fn plantuml_measure(
 }
 
 ///|
+pub(all) struct TreeLabelMetrics {
+  width : Double
+  height : Double
+}
+
+///|
 /// Measure a tree label with the PlantUML width compensation, after stripping
 /// creole markers.
 pub fn tree_label_metrics(
   metrics : @metrics.FontMetrics,
   label : String,
-) -> @metrics.TextMetrics {
-  plantuml_measure(metrics, tree_visible_text(label))
+  wrap_width? : Double = 0.0,
+) -> TreeLabelMetrics {
+  if tree_rich_text(label, metrics, wrap_width) is Some(rich) {
+    return { width: rich.width, height: rich.height, }
+  }
+  let measured = plantuml_measure(metrics, tree_visible_text(label))
+  { width: measured.width.to_double(), height: measured.height.to_double(), }
 }
 
 ///|
@@ -99,16 +110,20 @@ pub fn tree_label_width(
   metrics : @metrics.FontMetrics,
   font_size : Int,
   label : String,
-) -> Int {
+  wrap_width? : Double = 0.0,
+) -> Double {
+  if tree_rich_text(label, metrics, wrap_width) is Some(rich) {
+    return rich.width
+  }
   let visible = tree_visible_text(label)
   let lines = visible.split("\n").to_array()
   if lines.length() > 1 {
     let space = plantuml_space_advance(font_size)
     let first = plantuml_measure(metrics, lines[0].to_owned()).width + space
     let rest = plantuml_measure(metrics, lines[1:].join("\n")).width
-    first.max(rest)
+    first.max(rest).to_double()
   } else {
-    plantuml_measure(metrics, visible).width
+    plantuml_measure(metrics, visible).width.to_double()
   }
 }
 
@@ -218,6 +233,264 @@ fn layout_tree_text(
 }
 
 ///|
+fn draw_tree_text_at(
+  output : @graphics.Graphic,
+  x : Double,
+  y : Double,
+  label : String,
+  line_height : Int,
+  anchor : @graphics.TextAnchor,
+  fill : String,
+  font_size : Int,
+  text_metrics : @metrics.FontMetrics,
+  class_name : String,
+  wrap_width? : Double = 0.0,
+  font_family? : String? = None,
+) -> Unit {
+  let output = output.with_style({
+    ..@graphics.DrawingStyle::default(),
+    fill: Color(fill),
+  })
+  if tree_rich_text(label, text_metrics, wrap_width) is Some(rich) {
+    draw_tree_rich_text(
+      output,
+      rich,
+      x,
+      y - font_size.to_double(),
+      anchor,
+      text_metrics,
+      fill,
+      font_family,
+      class_name,
+    )
+    return
+  }
+  let output = output.translated(x, y)
+  for
+    run in layout_tree_text(
+      0, 0, label, line_height, font_size, text_metrics, anchor,
+    ) {
+    output.draw(
+      StyledText({ ..run, font_family, }, {
+        ..Default::default(),
+        weight: Some(text_metrics.font_weight),
+        italic: Some(text_metrics.style == @metrics.FontStyle::Italic),
+      }),
+      metadata={
+        ..@graphics.Metadata::default(),
+        class_name: Some(class_name),
+      },
+    )
+  }
+}
+
+///|
+/// Reuse the full Creole scanner and wrapping pipeline already used by state
+/// labels, then measure each styled run with the tree font calibration.
+fn tree_rich_text(
+  label : String,
+  metrics : @metrics.FontMetrics,
+  wrap_width : Double,
+) -> StateRichText? {
+  let rich = state_rich_text(label, metrics, wrap_width, literal_newlines=true)
+  let rich = match rich {
+    Some(rich) => rich
+    None if wrap_width > 0.0 => {
+      let display = state_display(label, literal_newlines=true).wrap(
+        metrics, wrap_width,
+      )
+      let face : StateFontFace = {
+        weight: metrics.font_weight,
+        style: metrics.style,
+      }
+      let lines = display.text
+        .split("\n")
+        .map(line => {
+          state_rich_line(
+            [
+              {
+                text: line.to_owned(),
+                face,
+                size: None,
+                color: None,
+                family: None,
+                decoration: Default::default(),
+                url: None,
+                media: None,
+              },
+            ],
+            metrics,
+          )
+        })
+        .to_array()
+      {
+        lines,
+        width: 0.0,
+        height: lines.fold(init=0.0, (height, line) => height + line.height),
+        alignment: display.alignment,
+      }
+    }
+    None => return None
+  }
+  let lines = rich.lines.mapi((index, line) => {
+    if line.block is Some(_) {
+      return line
+    }
+    let extra = if index == 0 && rich.lines.length() > 1 {
+      plantuml_space_advance(metrics.font_size).to_double()
+    } else {
+      0.0
+    }
+    {
+      ..line,
+      width: line.spans.fold(init=extra, (width, span) => {
+        if span.resolved_media(metrics) is Some(media) {
+          return width + media.width
+        }
+        width +
+        plantuml_measure(span.metrics(metrics), span.text).advance_width.to_double()
+      }),
+    }
+  })
+  Some({
+    ..rich,
+    lines,
+    width: lines.fold(init=0.0, (width, line) => width.max(line.width)),
+  })
+}
+
+///|
+fn draw_tree_rich_text(
+  output : @graphics.Graphic,
+  rich : StateRichText,
+  x : Double,
+  top : Double,
+  anchor : @graphics.TextAnchor,
+  metrics : @metrics.FontMetrics,
+  fill : String,
+  family : String?,
+  class_name : String,
+) -> Unit {
+  let mut top = top
+  for index, line in rich.lines {
+    if line.block is Some(block) {
+      block.draw(
+        output,
+        x - state_text_anchor_offset(anchor, rich.width),
+        top,
+        rich.width,
+        line.height,
+        metrics,
+        { ..Default::default(), class_name: Some(class_name), },
+      )
+      top += line.height
+      continue
+    }
+
+    let alignment = rich.alignment.unwrap_or(anchor)
+    let mut x = x -
+      state_text_anchor_offset(anchor, rich.width) +
+      state_text_anchor_offset(alignment, rich.width - line.width)
+    if index == 0 && rich.lines.length() > 1 {
+      x += plantuml_space_advance(metrics.font_size).to_double()
+    }
+    for span in line.spans {
+      if span.resolved_media(metrics) is Some(media) {
+        draw_rich_link(output, span.url, output => {
+          media.draw(
+            output,
+            x,
+            top + line.height - media.height,
+            span.color,
+            if span.decoration.background {
+              span.decoration.color
+            } else {
+              None
+            },
+            { ..Default::default(), class_name: Some(class_name), },
+          )
+        })
+        x += media.width
+        continue
+      }
+      let font = span.metrics(metrics)
+      let full_width = plantuml_measure(font, span.text).advance_width
+      let (text, leading, _) = split_whitespace(span.text)
+      let measured = plantuml_measure(font, text)
+      let run_x = x + plantuml_measure(font, leading).advance_width.to_double()
+      let baseline = top +
+        line.height -
+        font.line_height.to_double() +
+        font.font_size.to_double()
+      let color = @svg.svg_color(span.color, fill)
+      let graphic = output.with_style({ ..output.style, fill: Color(color), })
+      if span.decoration.background && span.decoration.color is Some(background) {
+        graphic
+        .with_style({
+          ..Default::default(),
+          fill: Color(@svg.svg_color(Some(background), fill)),
+          stroke: None,
+        })
+        .draw(
+          Rectangle(
+            origin={ x, y: top, },
+            width=measured.width.to_double(),
+            height=line.height,
+            rx=None,
+            ry=None,
+          ),
+        )
+      }
+      draw_rich_link(graphic, span.url, graphic => {
+        graphic.draw(
+          StyledText(
+            {
+              text,
+              position: { x: run_x, y: baseline, },
+              advance: Some(measured.advance_width.to_double()),
+              anchor: Start,
+              font_size: font.font_size.to_double(),
+              font_family: span.family.map_or(family, name => Some(name)),
+              strike: span.decoration.strike,
+            },
+            {
+              ..Default::default(),
+              weight: Some(span.face.weight),
+              italic: Some(span.face.style == @metrics.FontStyle::Italic),
+            },
+          ),
+          metadata={ ..Default::default(), class_name: Some(class_name), },
+        )
+      })
+      if span.decoration.underline {
+        graphic
+        .with_style({
+          ..Default::default(),
+          stroke: Color(@svg.svg_color(span.decoration.color, color)),
+          stroke_width: Some(1.0),
+        })
+        .draw(
+          Line(
+            {
+              x,
+              y: baseline +
+              font.font_size.to_double() / STATE_RICH_UNDERLINE_DIVISOR,
+            },
+            {
+              x: x + measured.advance_width.to_double(),
+              y: baseline +
+              font.font_size.to_double() / STATE_RICH_UNDERLINE_DIVISOR,
+            },
+          ),
+        )
+      }
+      x += full_width.to_double()
+    }
+    top += line.height
+  }
+}
+
+///|
 fn draw_tree_text(
   output : @graphics.Graphic,
   x : Int,
@@ -230,17 +503,16 @@ fn draw_tree_text(
   text_metrics : @metrics.FontMetrics,
   class_name : String,
 ) -> Unit {
-  let output = output.with_style({
-    ..@graphics.DrawingStyle::default(),
-    fill: Color(fill),
-  })
-  for
-    run in layout_tree_text(
-      x, y, label, line_height, font_size, text_metrics, anchor,
-    ) {
-    output.draw(Text(run), metadata={
-      ..@graphics.Metadata::default(),
-      class_name: Some(class_name),
-    })
-  }
+  draw_tree_text_at(
+    output,
+    x.to_double(),
+    y.to_double(),
+    label,
+    line_height,
+    anchor,
+    fill,
+    font_size,
+    text_metrics,
+    class_name,
+  )
 }

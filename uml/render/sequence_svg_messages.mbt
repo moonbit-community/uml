@@ -2,8 +2,8 @@
 fn append_arrow_head(
   output : SequenceDrawing,
   head : @seq.ArrowHead,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
 ) -> Unit {
   match head {
     @seq.CrossX => {
@@ -19,8 +19,8 @@ fn append_partial_arrow_head(
   output : SequenceDrawing,
   head : @seq.ArrowHead,
   part : @seq.ArrowPart,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   points_right : Bool,
 ) -> Unit {
   match head {
@@ -64,7 +64,7 @@ fn append_partial_arrow_head(
 }
 
 ///|
-fn message_label_x(from : ParticipantLayout, to : ParticipantLayout) -> Int {
+fn message_label_x(from : ParticipantLayout, to : ParticipantLayout) -> Double {
   if from.center_x > to.center_x {
     to.center_x + to.width / 2 + 7
   } else {
@@ -89,10 +89,12 @@ fn append_message(
 ) -> Unit {
   guard layout.participant_at(message.from_code) is Some(from) else { return }
   guard layout.participant_at(message.to_code) is Some(to) else { return }
-  // Java merges the stereotype into the arrow style signature
-  // (AbstractMessage.getStyleSignature); the modeled style set has no
-  // stereotype-tagged arrow styles, so the tag changes nothing visible.
-  let _ = message.stereotype
+  guard !sequence_arrow_hidden(message.arrow_config) else { return }
+  let output = sequence_arrow_drawing(
+    output,
+    message.arrow_config,
+    layout.defaults,
+  )
   // Java's `AbstractMessage.getUrl()` falls back to the URL of an attached
   // on-arrow note, wrapping the arrow in the note's link as well.
   output.link(link_url(message.url, note_url), output => {
@@ -106,6 +108,24 @@ fn append_message(
     let line_class = "message\{dotted}"
     let start_y = y
     let end_y = y
+    let from_segment = layout.participant_segment(message.from_code, y)
+    let to_segment = layout.participant_segment(message.to_code, y)
+    let from_x = if from.center_x <= to.center_x {
+      from_segment.1
+    } else {
+      from_segment.0
+    }
+    let to_x = if message.activation_spec is Some(@seq.Create) {
+      if from.center_x < to.center_x {
+        to.center_x - to.width / 2
+      } else {
+        to.center_x + to.width / 2
+      }
+    } else if from.center_x <= to.center_x {
+      to_segment.0
+    } else {
+      to_segment.1
+    }
     let draw_message = (output : SequenceDrawing) => {
       if from.participant.code == to.participant.code {
         let loop_x = from.center_x + 34
@@ -145,8 +165,8 @@ fn append_message(
           font_metrics=Some(layout.text_metrics.body),
         )
       } else {
-        let start_x = from.center_x
-        let end_x = to.center_x
+        let start_x = from_x
+        let end_x = to_x
         let end_marker = match message.arrow_config.part {
           @seq.Full => output.marker(message.arrow_config.head2, false)
           @seq.TopPart | @seq.BottomPart => None
@@ -238,6 +258,12 @@ fn append_exo_message(
   guard layout.participant_at(message.participant_code) is Some(participant) else {
     return
   }
+  guard !sequence_arrow_hidden(message.arrow_config) else { return }
+  let output = sequence_arrow_drawing(
+    output,
+    message.arrow_config,
+    layout.defaults,
+  )
   output.link(link_url(message.url, note_url), output => {
     let y = placement.y + MESSAGE_ARROW_OFFSET
     let (outside_x, participant_x) = match message.exo_type {

@@ -5,11 +5,15 @@ fn activity_edge_x_bounds(
   from : ActivityNodeLayout,
   to : ActivityNodeLayout,
   nodes : Array[@flow.ActivityNode],
-) -> (Int, Int) {
+) -> (Double, Double) {
+  if activity_rainbow_extents(edge, from, to, nodes) is Some((left, right, _)) {
+    return (left, right)
+  }
   let from_source = nodes[edge.from_node_index]
   let to_source = nodes[edge.to_node_index]
-  if (from_source.is_fork() || to_source.is_fork()) && edge.route is Forward {
-    let port = if from_source is @flow.ActivityNode::Fork {
+  if (from_source.is_parallel_bar() || to_source.is_parallel_bar()) &&
+    edge.route is Forward {
+    let port = if from_source.is_parallel_entry() {
       to.x + to.width / 2
     } else {
       from.x + from.width / 2
@@ -23,6 +27,7 @@ fn activity_edge_x_bounds(
   match edge.route {
     ForkSequence | WhileEntry | RepeatForward =>
       (x.min(target_x), x.max(target_x))
+    ForkMerge => (x.min(to.x), x.max(to.x + to.width))
     Forward =>
       if from_is_decision && !to_is_switch_exit && target_x != x {
         let start_x = if target_x < x { from.x } else { from.x + from.width }
@@ -104,6 +109,9 @@ fn activity_edge_x_bounds(
       }
       (x.min(end), turn.max(end))
     }
+    BackwardActionIn(_) | BackwardActionOut =>
+      (from.x.min(to.x), (from.x + from.width).max(to.x + to.width))
+    BreakLeft(offset, _) => ((to.x + offset).min(x), to.x.max(x))
     WhileExitLeft(offset) => {
       let route_x = from.x + offset
       (route_x, from.x.max(target_x))

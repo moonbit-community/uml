@@ -205,30 +205,63 @@ fn JsonTreeCursor::parse_string(
           'r' => output.write_char('\r')
           't' => output.write_char('\t')
           'u' => {
-            let hex = self.chars[self.index + 1:self.index + 5]
-            guard hex.length() == 4 && hex.all(char => char.is_digit(16)) else {
-              json_tree_error("invalid \\u escape")
+            let first = self.unicode_escape(self.index + 1)
+            self.index += 4
+            let code_point = if first >= 0xD800 && first <= 0xDBFF {
+              guard self.index + 2 < self.chars.length() &&
+                self.chars[self.index + 1] == '\\' &&
+                self.chars[self.index + 2] == 'u' else {
+                json_tree_error("missing low surrogate")
+              }
+              let second = self.unicode_escape(self.index + 3)
+              guard second >= 0xDC00 && second <= 0xDFFF else {
+                json_tree_error("invalid low surrogate")
+              }
+              self.index += 6
+              0x10000 + (first - 0xD800) * 0x400 + second - 0xDC00
+            } else {
+              first
             }
-            let code_point = hex.fold(init=0, (value, digit) => {
-              value * 16 + digit.to_int()
-            })
             guard code_point.to_char() is Some(char) else {
               json_tree_error("invalid \\u escape")
             }
             output.write_char(char)
-            self.index += 4
           }
           _ => json_tree_error("invalid string escape")
         }
         self.index += 1
       }
       char => {
+        guard char.to_int() >= 0x20 else {
+          json_tree_error("unescaped control character")
+        }
         output.write_char(char)
         self.index += 1
       }
     }
   }
   json_tree_error("unterminated string")
+}
+
+///|
+fn JsonTreeCursor::unicode_escape(
+  self : JsonTreeCursor,
+  start : Int,
+) -> Int raise @tokenizer.ParseError {
+  guard start + 4 <= self.chars.length() else {
+    json_tree_error("truncated \\u escape")
+  }
+  let mut value = 0
+  for index in start..<(start + 4) {
+    let digit = match self.chars[index] {
+      char if char >= '0' && char <= '9' => char.to_int() - '0'.to_int()
+      char if char >= 'a' && char <= 'f' => char.to_int() - 'a'.to_int() + 10
+      char if char >= 'A' && char <= 'F' => char.to_int() - 'A'.to_int() + 10
+      _ => json_tree_error("invalid \\u escape")
+    }
+    value = value * 16 + digit
+  }
+  value
 }
 
 ///|
@@ -249,7 +282,9 @@ fn JsonTreeCursor::parse_number(
       json_tree_error("leading zeros in JSON number")
     }
   } else {
-    ignore(self.take_digits(output))
+    guard self.take_digits(output) > 0 else {
+      json_tree_error("missing integer digits")
+    }
   }
   if self.consume('.') {
     output.write_char('.')

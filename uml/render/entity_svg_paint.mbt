@@ -56,7 +56,7 @@ fn append_packages(
         group.color,
         @entity.package_background_color(diagram.style),
       )
-      let tab_width = text_metrics.regular.measure(group.display).width.to_double() +
+      let tab_width = text_metrics.regular.entity_measure(group.display).width.to_double() +
         18.0
       let x = package_layout.x
       let y = package_layout.y
@@ -64,77 +64,77 @@ fn append_packages(
       let bottom = y + package_layout.height
       let border_color = @entity.package_border_color(diagram.style)
       output.group({ ..Default::default(), class_name: Some("package"), }, output => {
-        output
-        .with_style({
-          ..Default::default(),
-          stroke: Color(border_color),
-          inline: true,
-          fill: Color(fill),
-        })
-        .draw(
-          Path([
-            MoveTo({ x: x + 2.5, y, }),
-            LineTo({ x: x + tab_width - 9.0, y, }),
-            QuadraticTo({ x: x + tab_width - 6.5, y, }, {
-              x: x + tab_width - 5.5,
-              y: y + 2.5,
+        with_entity_link(output, group.url, output => {
+          output
+          .with_style({
+            ..Default::default(),
+            stroke: Color(border_color),
+            inline: true,
+            fill: Color(fill),
+          })
+          .draw(
+            Path([
+              MoveTo({ x: x + 2.5, y, }),
+              LineTo({ x: x + tab_width - 9.0, y, }),
+              QuadraticTo({ x: x + tab_width - 6.5, y, }, {
+                x: x + tab_width - 5.5,
+                y: y + 2.5,
+              }),
+              LineTo({ x: x + tab_width + 1.5, y: y + PACKAGE_TAB_HEIGHT, }),
+              LineTo({ x: right - 2.5, y: y + PACKAGE_TAB_HEIGHT, }),
+              QuadraticTo({ x: right, y: y + PACKAGE_TAB_HEIGHT, }, {
+                x: right,
+                y: y + PACKAGE_TAB_HEIGHT + 2.5,
+              }),
+              LineTo({ x: right, y: bottom - 2.5, }),
+              QuadraticTo({ x: right, y: bottom, }, {
+                x: right - 2.5,
+                y: bottom,
+              }),
+              LineTo({ x: x + 2.5, y: bottom, }),
+              QuadraticTo({ x, y: bottom, }, { x, y: bottom - 2.5, }),
+              LineTo({ x, y: y + 2.5, }),
+              QuadraticTo({ x, y, }, { x: x + 2.5, y, }),
+            ]),
+          )
+          output
+          .with_style({
+            ..Default::default(),
+            stroke: Color(border_color),
+            inline: true,
+          })
+          .draw(
+            Line({ x, y: y + PACKAGE_TAB_HEIGHT, }, {
+              x: x + tab_width + 1.5,
+              y: y + PACKAGE_TAB_HEIGHT,
             }),
-            LineTo({ x: x + tab_width + 1.5, y: y + PACKAGE_TAB_HEIGHT, }),
-            LineTo({ x: right - 2.5, y: y + PACKAGE_TAB_HEIGHT, }),
-            QuadraticTo({ x: right, y: y + PACKAGE_TAB_HEIGHT, }, {
-              x: right,
-              y: y + PACKAGE_TAB_HEIGHT + 2.5,
-            }),
-            LineTo({ x: right, y: bottom - 2.5, }),
-            QuadraticTo({ x: right, y: bottom, }, { x: right - 2.5, y: bottom, }),
-            LineTo({ x: x + 2.5, y: bottom, }),
-            QuadraticTo({ x, y: bottom, }, { x, y: bottom - 2.5, }),
-            LineTo({ x, y: y + 2.5, }),
-            QuadraticTo({ x, y, }, { x: x + 2.5, y, }),
-          ]),
-        )
-        output
-        .with_style({
-          ..Default::default(),
-          stroke: Color(border_color),
-          inline: true,
-        })
-        .draw(
-          Line({ x, y: y + PACKAGE_TAB_HEIGHT, }, {
-            x: x + tab_width + 1.5,
-            y: y + PACKAGE_TAB_HEIGHT,
-          }),
-        )
-        draw_entity_text(
-          output,
-          x + 4.0,
-          y + 16.0,
-          group.display,
-          text_metrics.regular,
-          class_name="package-title",
-        )
-        if group.stereotype is Some(stereotype) {
-          let display = @tokenizer.display_stereotype(stereotype)
-          let metrics = text_metrics.italic.measure(display)
-          let stereotype_x = x +
-            (package_layout.width - metrics.width.to_double()) / 2.0
+          )
           draw_entity_text(
             output,
-            stereotype_x,
-            y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double(),
-            display,
-            text_metrics.italic,
-            class_name="package-stereotype",
+            x + 4.0,
+            y + 16.0,
+            group.display,
+            text_metrics.regular,
+            class_name="package-title",
           )
-        }
+          if group.stereotype is Some(stereotype) {
+            let display = @tokenizer.display_stereotype(stereotype)
+            let metrics = text_metrics.italic.entity_measure(display)
+            let stereotype_x = x +
+              (package_layout.width - metrics.width.to_double()) / 2.0
+            draw_entity_text(
+              output,
+              stereotype_x,
+              y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double(),
+              display,
+              text_metrics.italic,
+              class_name="package-stereotype",
+            )
+          }
+        })
       })
     }
   }
-}
-
-///|
-fn ClassLayout::node_y(self : ClassLayout, index : Int) -> Int {
-  24 + index / self.columns * self.cell_height
 }
 
 ///|
@@ -150,6 +150,7 @@ fn EntityPaintContext::append_entity_image(
       self.append_object_like(entity, index, layout)
     LollipopRenderer => self.append_lollipop(entity, index, layout)
     PointRenderer => self.append_point(entity, index, layout)
+    DiamondRenderer => self.append_association_diamond(entity, index, layout)
     UsecaseRenderer | ActorRenderer | ComponentRenderer =>
       self.append_usecase(entity, index, layout)
     DescriptionRenderer => self.append_description(entity, index, layout)
@@ -252,7 +253,7 @@ fn EntityPaintContext::append_lollipop(
     entity.line_color,
     self.diagram.style.diagram_line_color(),
   )
-  let title = self.text_metrics.regular.measure(entity.display)
+  let title = self.text_metrics.regular.entity_measure(entity.display)
   let title_x = x + LOLLIPOP_SIZE / 2 - title.width / 2
   let title_y = y + LOLLIPOP_SIZE + title.ascent
   self.output.group(
@@ -523,7 +524,7 @@ fn EntityPaintContext::append_map_body(
         data: [("port", row.entry.key), ("port-id", row.port_id)],
       },
       output => {
-        let key_metrics = self.text_metrics.regular.measure(row.key)
+        let key_metrics = self.text_metrics.regular.entity_measure(row.key)
         let key_x = if row.entry.link_target is Some(_) {
           x + (width - key_metrics.width) / 2
         } else {
@@ -543,7 +544,7 @@ fn EntityPaintContext::append_map_body(
         )
         match row.entry.value {
           Some(value) => {
-            let value_metrics = self.text_metrics.regular.measure(value)
+            let value_metrics = self.text_metrics.regular.entity_measure(value)
             let divider_x = x + body.key_column_width
             let value_x = divider_x +
               (body.value_column_width - value_metrics.width) / 2
@@ -590,6 +591,20 @@ fn EntityPaintContext::append_object_body(
   separator_attributes : @graphics.DrawingStyle,
 ) -> Unit {
   let body = entity.object_body_layout(self.text_metrics)
+  if body.compartments is Some(sections) {
+    draw_class_compartments(
+      self.output,
+      sections,
+      x,
+      y + header.height,
+      width,
+      self.text_metrics,
+      self.diagram.style.defaults().entity_colors(),
+      @entity.object_font_color(self.diagram.style),
+      separator_attributes,
+    )
+    return
+  }
   let row_height = self.text_metrics.row_height()
   let text_x = if body.has_visibility { 20 } else { 5 }
   let entity_colors = self.diagram.style.defaults().entity_colors()
@@ -612,15 +627,16 @@ fn EntityPaintContext::append_object_body(
       output.group({ ..Default::default(), class_name: Some("member-icon"), }, graphic => {
         entry.draw_visibility_icon(graphic, x + 5, member_y, entity_colors)
       })
-      append_paint_text(
+      draw_member_text(
         output,
+        entry,
         x + text_x,
         member_y,
-        entry.display_without_visibility(),
         "object-member member",
-        self.text_metrics.regular,
+        self.text_metrics,
+        entity_colors.text,
       )
-      body_y += row_height
+      body_y += entry.rendered_height(self.text_metrics)
     }
   }
 }
@@ -686,7 +702,7 @@ fn EntityPaintContext::append_json_body(
     }
     match row.key {
       Some(key) => {
-        let key_metrics = self.text_metrics.regular.measure(key)
+        let key_metrics = self.text_metrics.regular.entity_measure(key)
         append_paint_text(
           output,
           x + row.hline_from + MAP_CELL_HORIZONTAL_PADDING,
@@ -701,7 +717,7 @@ fn EntityPaintContext::append_json_body(
     }
     match row.value {
       Some(value) => {
-        let value_metrics = self.text_metrics.regular.measure(value)
+        let value_metrics = self.text_metrics.regular.entity_measure(value)
         append_paint_text(
           output,
           x + row.value_x + MAP_CELL_HORIZONTAL_PADDING,
@@ -816,7 +832,9 @@ fn EntityPaintContext::append_usecase_body(
   // The ellipse itself has grown by 6px, so SVG text needs a +2px
   // top offset before converting its font ascent to a baseline.
   let content_top = y + height / 2 - content_height / 2 + 2
-  let title_metrics = self.text_metrics.usecase_regular.measure(entity.display)
+  let title_metrics = self.text_metrics.usecase_regular.entity_measure(
+    entity.display,
+  )
   let output = self.output
   output
   .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
@@ -832,7 +850,7 @@ fn EntityPaintContext::append_usecase_body(
   )
   match stereotype {
     Some(value) => {
-      let metrics = self.text_metrics.usecase_italic.measure(value)
+      let metrics = self.text_metrics.usecase_italic.entity_measure(value)
       append_paint_text(
         output,
         x + width / 2,
@@ -850,7 +868,7 @@ fn EntityPaintContext::append_usecase_body(
   let title_y = match stereotype {
     Some(value) =>
       content_top +
-      self.text_metrics.usecase_italic.measure(value).height +
+      self.text_metrics.usecase_italic.entity_measure(value).height +
       title_metrics.baseline
     None => content_top + title_metrics.baseline
   }
@@ -898,7 +916,7 @@ fn EntityPaintContext::append_actor_body(
   let output = self.output
   let text_metrics = self.text_metrics
   let center_x = x + width / 2
-  let title = text_metrics.actor_regular.measure(entity.display)
+  let title = text_metrics.actor_regular.entity_measure(entity.display)
   let (_, _, stereotype) = entity.actor_content_layout(text_metrics)
   let appearance = actor_appearance(text_metrics.actor_style)
   let (figure_width, figure_height) = actor_figure_geometry(
@@ -906,13 +924,13 @@ fn EntityPaintContext::append_actor_body(
     business=entity.kind is @entity.EntityKind::BusinessActor,
   )
   let stereotype_height = stereotype.map_or(0, value => {
-    text_metrics.actor_italic.measure(value).height
+    text_metrics.actor_italic.entity_measure(value).height
   })
   let figure_top = y + stereotype_height
   let label_y = figure_top + figure_height + title.baseline
   match stereotype {
     Some(value) => {
-      let metrics = text_metrics.actor_italic.measure(value)
+      let metrics = text_metrics.actor_italic.entity_measure(value)
       append_paint_text(
         output,
         center_x,
@@ -1167,7 +1185,7 @@ fn EntityPaintContext::append_component_body(
   line_attributes : @graphics.DrawingStyle,
   text_color : String,
 ) -> Unit {
-  let title = self.text_metrics.regular.measure(entity.display)
+  let title = self.text_metrics.regular.entity_measure(entity.display)
   let tab_x = x + width - COMPONENT_TAB_WIDTH - COMPONENT_TAB_INSET
   let tab_y = y + COMPONENT_TAB_INSET
   let mark_x = tab_x - COMPONENT_TAB_MARK_LEFT_OFFSET
@@ -1185,46 +1203,82 @@ fn EntityPaintContext::append_component_body(
     ),
     metadata={ ..Default::default(), class_name: Some("component-body"), },
   )
-  self.output
-  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
-  .draw(
-    Rectangle(
-      origin={ x: tab_x.to_double(), y: tab_y.to_double(), },
-      width=COMPONENT_TAB_WIDTH.to_double(),
-      height=COMPONENT_TAB_HEIGHT.to_double(),
-      rx=None,
-      ry=None,
-    ),
-    metadata={ ..Default::default(), class_name: Some("component-tab"), },
-  )
-  self.output
-  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
-  .draw(
-    Rectangle(
-      origin={ x: mark_x.to_double(), y: first_mark_y.to_double(), },
-      width=COMPONENT_TAB_MARK_WIDTH.to_double(),
-      height=COMPONENT_TAB_MARK_HEIGHT.to_double(),
-      rx=None,
-      ry=None,
-    ),
-    metadata={ ..Default::default(), class_name: Some("component-tab-mark"), },
-  )
-  self.output
-  .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
-  .draw(
-    Rectangle(
-      origin={ x: mark_x.to_double(), y: second_mark_y.to_double(), },
-      width=COMPONENT_TAB_MARK_WIDTH.to_double(),
-      height=COMPONENT_TAB_MARK_HEIGHT.to_double(),
-      rx=None,
-      ry=None,
-    ),
-    metadata={ ..Default::default(), class_name: Some("component-tab-mark"), },
-  )
+  let component_style = self.text_metrics.component_style
+  if component_style == "uml1" {
+    for tab_y in [y + 5, y + height - 10] {
+      self.output
+      .with_style({
+        ..line_attributes,
+        fill: Color(fill),
+        stroke: Color(stroke),
+      })
+      .draw(
+        Rectangle(
+          origin={ x: (x - 5).to_double(), y: tab_y.to_double(), },
+          width=10,
+          height=5,
+          rx=None,
+          ry=None,
+        ),
+        metadata={ ..Default::default(), class_name: Some("component-tab"), },
+      )
+    }
+  } else if component_style != "rectangle" {
+    self.output
+    .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+    .draw(
+      Rectangle(
+        origin={ x: tab_x.to_double(), y: tab_y.to_double(), },
+        width=COMPONENT_TAB_WIDTH.to_double(),
+        height=COMPONENT_TAB_HEIGHT.to_double(),
+        rx=None,
+        ry=None,
+      ),
+      metadata={ ..Default::default(), class_name: Some("component-tab"), },
+    )
+    self.output
+    .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+    .draw(
+      Rectangle(
+        origin={ x: mark_x.to_double(), y: first_mark_y.to_double(), },
+        width=COMPONENT_TAB_MARK_WIDTH.to_double(),
+        height=COMPONENT_TAB_MARK_HEIGHT.to_double(),
+        rx=None,
+        ry=None,
+      ),
+      metadata={ ..Default::default(), class_name: Some("component-tab-mark"), },
+    )
+    self.output
+    .with_style({ ..line_attributes, fill: Color(fill), stroke: Color(stroke), })
+    .draw(
+      Rectangle(
+        origin={ x: mark_x.to_double(), y: second_mark_y.to_double(), },
+        width=COMPONENT_TAB_MARK_WIDTH.to_double(),
+        height=COMPONENT_TAB_MARK_HEIGHT.to_double(),
+        rx=None,
+        ry=None,
+      ),
+      metadata={ ..Default::default(), class_name: Some("component-tab-mark"), },
+    )
+  }
+  let text = entity.description_text_layout(self.text_metrics)
+  let (left, right, top, _) = component_margins(component_style)
+  let center = x + left + (width - left - right) / 2
+  if text.stereotype is Some(stereotype) {
+    append_paint_text(
+      self.output,
+      center,
+      y + top + self.text_metrics.italic.entity_measure(stereotype).baseline,
+      stereotype,
+      "component-stereotype",
+      self.text_metrics.italic,
+      fill=text_color,
+    )
+  }
   append_paint_text(
     self.output,
-    x + width / 2,
-    y + (height + title.height) / 2 - 2,
+    center,
+    y + top + text.stereotype_height + title.baseline,
     entity.display,
     capability.title_class(),
     self.text_metrics.regular,
@@ -1233,3 +1287,51 @@ fn EntityPaintContext::append_component_body(
 }
 
 ///|
+
+///|
+fn EntityPaintContext::append_association_diamond(
+  self : EntityPaintContext,
+  entity : @entity.Entity,
+  index : Int,
+  layout : ClassLayout,
+) -> Unit {
+  guard !entity.is_hidden && !entity.is_removed else { return }
+  let (x, y, width, height) = layout.entity_rect(
+    self.diagram,
+    index,
+    self.text_metrics,
+  )
+  let x = x.to_double()
+  let y = y.to_double()
+  let width = width.to_double()
+  let height = height.to_double()
+  self.output
+  .with_style({
+    ..entity_line_style(entity.line_style),
+    fill: Color(
+      @svg.svg_color(
+        entity.color,
+        @entity.class_background_color(self.diagram.style),
+      ),
+    ),
+    stroke: Color(
+      @svg.svg_color(
+        entity.line_color,
+        @entity.class_border_color(self.diagram.style),
+      ),
+    ),
+  })
+  .draw(
+    Polygon([
+      { x: x + width / 2.0, y, },
+      { x: x + width, y: y + height / 2.0, },
+      { x: x + width / 2.0, y: y + height, },
+      { x, y: y + height / 2.0, },
+    ]),
+    metadata={
+      ..Default::default(),
+      class_name: Some("association-diamond"),
+      data: [("code", entity.qualified_code)],
+    },
+  )
+}

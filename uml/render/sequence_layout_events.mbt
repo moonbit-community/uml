@@ -12,7 +12,7 @@ fn start_activation(
   active : Map[String, Array[Int]],
   participant_code : String,
   caller_code : String?,
-  y : Int,
+  y : Double,
   color : String?,
 ) -> Unit {
   let depth = activation_depth(active, participant_code)
@@ -34,7 +34,7 @@ fn finish_activation(
   activations : Array[ActivationSpan],
   active : Map[String, Array[Int]],
   participant_code : String,
-  y : Int,
+  y : Double,
 ) -> Bool {
   guard active.get(participant_code) is Some(indices) else { false }
   guard indices.pop() is Some(index) else { false }
@@ -68,7 +68,7 @@ fn apply_activation_spec(
   spec : @seq.ActivationSpec?,
   participant_code : String,
   caller_code : String?,
-  y : Int,
+  y : Double,
   color : String?,
   activations : Array[ActivationSpan],
   active : Map[String, Array[Int]],
@@ -95,15 +95,15 @@ fn apply_activation_spec(
 fn layout_events(
   diagram : @seq.SequenceDiagram,
   participant_index : Map[String, Int],
-  start_y : Int,
+  start_y : Double,
   text_metrics : SequenceTextMetrics,
 ) -> (
   Array[EventPlacement],
   Array[ActivationSpan],
   Array[GroupSpan],
   Array[DestroyMark],
-  Array[Int],
-  Int,
+  Array[Double],
+  Double,
 ) {
   let placements = []
   let activations = []
@@ -113,37 +113,20 @@ fn layout_events(
   let group_stack = []
   let mut current_y = start_y
   let mut previous_top = current_y
-  let mut parallel_bottom = current_y
   let mut last_visual_bottom = start_y
-  let last_message_y : Map[String, Int] = Map([])
-  let mut autoactivate = diagram.autoactivate
+  let last_message_y : Map[String, Double] = Map([])
   let mut ignore_newpage = false
+  // SequenceDiagram.setAutonewpage is a no-op in the reference implementation.
   let auto_page_breaks = []
-  let mut auto_newpage : Int? = None
-  let mut messages_since_auto_newpage = 0
   let autonumber = @seq.AutonumberState::new()
 
   for event_index, event in diagram.events {
     autonumber.apply(event)
-    // Auto pagination is a layout marker inserted before the next message;
-    // it keeps the parsed event stream unchanged for metadata and numbering.
-    let auto_page_break = auto_newpage is Some(threshold) &&
-      threshold > 0 &&
-      messages_since_auto_newpage >= threshold &&
-      (event is @seq.Message(_) || event is @seq.MessageExo(_))
-    if auto_page_break {
-      auto_page_breaks.push(current_y + 20)
-      current_y += 40
-      previous_top += 40
-      parallel_bottom += 40
-      last_visual_bottom += 40
-      messages_since_auto_newpage = 0
-    }
     let ignored = event is @seq.Newpage(_) && ignore_newpage
-    let event_height = if ignored { 0 } else { event.height(text_metrics) }
+    let event_height = if ignored { 0.0 } else { event.height(text_metrics) }
     let advances = !ignored && event_advances_layout(event, text_metrics)
     let height = if !advances {
-      0
+      0.0
     } else if event is @seq.Note(_) || event is @seq.Notes(_) {
       event_height
     } else {
@@ -154,6 +137,8 @@ fn layout_events(
     let y = match event {
       @seq.Note(note) if note.on_arrow => previous_top + 4
       @seq.Notes(notes) if notes[0].on_arrow => previous_top + 4
+      @seq.Message(message) if message.parallel => previous_top
+      @seq.MessageExo(message) if message.parallel => previous_top
       _ => current_y
     }
     let number = match event {
@@ -165,8 +150,7 @@ fn layout_events(
       ()
     } else {
       previous_top = y
-      parallel_bottom = y + height
-      current_y = parallel_bottom
+      current_y = current_y.max(y + height)
     }
 
     if event.participant_span(participant_index) is Some(span) {
@@ -178,7 +162,6 @@ fn layout_events(
 
     match event {
       @seq.Message(message) => {
-        messages_since_auto_newpage += 1
         let arrow_extra = if message.is_self() {
           SELF_MESSAGE_LOOP_DEPTH
         } else {
@@ -207,29 +190,16 @@ fn layout_events(
           active,
           destroys,
         )
-        if autoactivate &&
-          message.activation_spec is None &&
-          message.arrow_config.body != @seq.Dotted {
-          start_activation(
-            activations,
-            active,
-            message.to_code,
-            Some(message.from_code),
-            y + MESSAGE_ARROW_OFFSET,
-            None,
-          )
-        }
         last_message_y[message.from_code] = y + MESSAGE_ARROW_OFFSET
         last_message_y[message.to_code] = y + MESSAGE_ARROW_OFFSET
       }
       @seq.MessageExo(message) => {
-        messages_since_auto_newpage += 1
         last_visual_bottom = last_visual_bottom.max(y + MESSAGE_ARROW_OFFSET)
         apply_activation_spec(
           message.activation_spec,
           message.participant_code,
           None,
-          y + height,
+          y + MESSAGE_ARROW_OFFSET,
           message.life_color,
           activations,
           active,
@@ -300,12 +270,9 @@ fn layout_events(
             groups[index] = { ..group, branches, }
           }
         }
-      @seq.Autoactivate(enabled) => autoactivate = enabled
+      @seq.Autoactivate(_) => ()
       @seq.IgnoreNewpage => ignore_newpage = true
-      @seq.AutoNewpage(size) => {
-        auto_newpage = size
-        messages_since_auto_newpage = 0
-      }
+      @seq.AutoNewpage(_) => ()
       _ => ()
     }
   }

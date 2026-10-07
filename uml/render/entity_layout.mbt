@@ -38,6 +38,7 @@ pub struct GraphvizLayout {
   edges : Array[@graphviz.GraphvizEdge]
   note_edges : Array[@graphviz.GraphvizEdge]
   relation_labels : Array[RelationLabelLayout]
+  constraints : Array[RelationConstraintLayout]
   packages : Array[GraphvizPackageLayout]
   notes : Array[@graphviz.GraphvizNote]
 } derive(Eq, Debug)
@@ -87,9 +88,7 @@ fn graphviz_entity_index(
   node_name : String,
 ) -> Int? {
   for index, entity in diagram.entities {
-    if !entity.is_hidden &&
-      !entity.is_removed &&
-      graphviz_node_name(index) == node_name {
+    if !entity.is_removed && graphviz_node_name(index) == node_name {
       return Some(index)
     }
   }
@@ -142,19 +141,10 @@ fn note_size(
   note : @entity.Note,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int) {
-  let lines = note.text.split("\n").to_array()
-  let mut width = 0
-  for line in lines {
-    width = width.max(
-      text_metrics.note.measure(line.to_owned()).width +
-      NOTE_LEFT_PADDING +
-      NOTE_RIGHT_PADDING,
-    )
-  }
+  let measured = text_metrics.note.entity_measure(note.text)
   (
-    width,
-    lines.length().max(1) * text_metrics.note.line_height +
-    2 * NOTE_VERTICAL_PADDING,
+    measured.width + NOTE_LEFT_PADDING + NOTE_RIGHT_PADDING,
+    measured.height + 2 * NOTE_VERTICAL_PADDING,
   )
 }
 
@@ -168,8 +158,14 @@ fn @entity.Relation::graphviz_minlen(self : @entity.Relation) -> Int {
     0
   } else {
     let mut segments = 0
+    let mut in_style = false
     for char in self.raw_arrow {
-      if char == '-' || char == '.' || char == '=' || char == '~' {
+      if char == '[' {
+        in_style = true
+      } else if char == ']' {
+        in_style = false
+      } else if !in_style &&
+        (char == '-' || char == '.' || char == '=' || char == '~') {
         segments += 1
       }
     }
@@ -186,6 +182,13 @@ fn @entity.EntityDiagram::graphviz_layout(
   let family_capability = self.family.capability()
   let usecase = family_capability.usecase_relation_style
   let graph = @graphviz.new_directed_graph("class", self.style)
+  let routing = match
+    self.style.property("linetype").map(value => value.to_lower()) {
+    Some("ortho") => "ortho"
+    Some("polyline") => "polyline"
+    _ => "spline"
+  }
+  graph.set_attr("splines", routing)
   graph.set_attr("remincross", "true")
   graph.set_attr("searchsize", "500")
   let package_content_graphs : Map[String, @cgraph.Graph] = Map([])
@@ -218,6 +221,33 @@ fn @entity.EntityDiagram::graphviz_layout(
     package_indices[cluster_name] = package_index
   }
   let node_names : Map[String, String] = Map([])
+  let node_ports : Map[String, Array[EntityNodePort]] = Map([])
+  let requested_ports : Map[String, Array[String]] = Map([])
+  for relation in self.relations {
+    for
+      endpoint in [
+        (relation.left, relation.left_port),
+        (relation.right, relation.right_port),
+      ] {
+      let (code, port) = endpoint
+      if port is Some(port) {
+        let names = requested_ports.get(code).unwrap_or([])
+        if !names.contains(port) {
+          names.push(port)
+        }
+        requested_ports[code] = names
+      }
+    }
+  }
+  for note in self.notes {
+    if note.target_kind is MemberTip && note.member_name is Some(member_name) {
+      let names = requested_ports.get(note.target).unwrap_or([])
+      if !names.contains(member_name) {
+        names.push(member_name)
+      }
+      requested_ports[note.target] = names
+    }
+  }
   let together_containers : Map[String, @cgraph.Graph] = Map([])
   for group_index, group in self.together_groups {
     let mut container : @cgraph.Graph? = None
@@ -244,7 +274,7 @@ fn @entity.EntityDiagram::graphviz_layout(
     }
   }
   for index, entity in self.entities {
-    guard !entity.is_hidden && !entity.is_removed else { continue }
+    guard !entity.is_removed else { continue }
     let name = graphviz_node_name(index)
     node_names[entity.qualified_code] = name
     let node = match together_containers.get(entity.qualified_code) {
@@ -263,11 +293,18 @@ fn @entity.EntityDiagram::graphviz_layout(
       geometry.height.to_double(),
       shape=capability.graphviz_shape(),
     )
-    if capability.ports is MapEntryPorts {
+    let ports = entity.node_ports(
+      requested_ports.get(entity.qualified_code).unwrap_or([]),
+      text_metrics,
+      self.family,
+    )
+    node_ports[entity.qualified_code] = ports
+    if !ports.is_empty() {
       node.set_attr(
         "label",
-        entity.map_graphviz_port_label(text_metrics, geometry.width),
+        graphviz_entity_port_label(ports, geometry.width, geometry.height),
       )
+      node.set_attr("shape", "plaintext")
       node.set_attr("margin", "0")
     }
   }
@@ -275,7 +312,7 @@ fn @entity.EntityDiagram::graphviz_layout(
   let source_ports : Map[String, Array[String]] = Map([])
   let sink_ports : Map[String, Array[String]] = Map([])
   for index, entity in self.entities {
-    guard !entity.is_hidden && !entity.is_removed else { continue }
+    guard !entity.is_removed else { continue }
     match entity.kind {
       // PlantUML `CommandCreateElementFull` maps both `port` and `portin`
       // to `LeafType.PORTIN`, so plain ports pin to the source rank too.
@@ -327,7 +364,7 @@ fn @entity.EntityDiagram::graphviz_layout(
             Some(group) =>
               // PlantUML `USymbolNode.suppWidthBecauseOfShape` pads the
               // node-symbol title block by 60px.
-              text_metrics.regular.measure(group.display).width.to_double() +
+              text_metrics.regular.entity_measure(group.display).width.to_double() +
               (if group.symbol is Some("node") { 60.0 } else { 0.0 })
             None => 0.72
           }
@@ -354,18 +391,27 @@ fn @entity.EntityDiagram::graphviz_layout(
     guard tail_name is Some(tail_name) && head_name is Some(head_name) else {
       continue
     }
-    if usecase && relation.dotted && relation.direction is Automatic {
+    if relation.graphviz_minlen() == 0 && !relation.has_style("norank") {
       let rank = graph.subgraph(name="rank_dependency_\{relation_index}")
       rank.set_attr("rank", "same")
       let _ = rank.node(tail_name)
       let _ = rank.node(head_name)
     }
-    let tail_port = self
-      .entity(relation.left)
-      .map_or(None, entity => entity.graphviz_port(relation.left_port))
-    let head_port = self
-      .entity(relation.right)
-      .map_or(None, entity => entity.graphviz_port(relation.right_port))
+    let tail_port = graphviz_entity_port(
+      node_ports.get(relation.left).unwrap_or([]),
+      relation.left_port,
+    )
+    let head_port = graphviz_entity_port(
+      node_ports.get(relation.right).unwrap_or([]),
+      relation.right_port,
+    )
+    let reversed = relation.direction is Leftward ||
+      relation.direction is Upward
+    let (tail_name, head_name, tail_port, head_port) = if reversed {
+      (head_name, tail_name, head_port, tail_port)
+    } else {
+      (tail_name, head_name, tail_port, head_port)
+    }
     let tail = graph.node(tail_name)
     let head = graph.node(head_name)
     let edge = match (tail_port, head_port) {
@@ -396,11 +442,32 @@ fn @entity.EntityDiagram::graphviz_layout(
         }
       }
     }
+    if label.is_empty() &&
+      self.constraints.any(constraint => {
+        constraint.first_relation == relation_index ||
+        constraint.second_relation == relation_index
+      }) {
+      edge.set_attr(
+        if routing == "ortho" {
+          "xlabel"
+        } else {
+          "label"
+        },
+        constraint_spot_label(),
+      )
+    }
     if !label.is_empty() {
       if usecase {
         label = @tokenizer.display_stereotype(label)
       }
-      edge.set_attr("label", label)
+      edge.set_attr(
+        if routing == "ortho" {
+          "xlabel"
+        } else {
+          "label"
+        },
+        entity_graphviz_label(label, text_metrics.relation_label_regular),
+      )
       let label_font_size = if usecase {
         @entity.arrow_font_size(
           self.style,
@@ -418,16 +485,46 @@ fn @entity.EntityDiagram::graphviz_layout(
       edge.set_attr("fontname", label_font_name)
     }
     if relation.left_cardinality is Some(text) {
-      edge.set_attr("taillabel", text)
+      edge.set_attr(
+        if reversed {
+          "headlabel"
+        } else {
+          "taillabel"
+        },
+        entity_graphviz_label(text, text_metrics.relation_end_regular),
+      )
     }
     if relation.right_cardinality is Some(text) {
-      edge.set_attr("headlabel", text)
+      edge.set_attr(
+        if reversed {
+          "taillabel"
+        } else {
+          "headlabel"
+        },
+        entity_graphviz_label(text, text_metrics.relation_end_regular),
+      )
     }
-    if relation.left_role is Some(text) && edge.get_attr("taillabel") is None {
-      edge.set_attr("taillabel", text)
+    if relation.left_role is Some(text) &&
+      edge.get_attr(if reversed { "headlabel" } else { "taillabel" }) is None {
+      edge.set_attr(
+        if reversed {
+          "headlabel"
+        } else {
+          "taillabel"
+        },
+        entity_graphviz_label(text, text_metrics.relation_end_regular),
+      )
     }
-    if relation.right_role is Some(text) && edge.get_attr("headlabel") is None {
-      edge.set_attr("headlabel", text)
+    if relation.right_role is Some(text) &&
+      edge.get_attr(if reversed { "taillabel" } else { "headlabel" }) is None {
+      edge.set_attr(
+        if reversed {
+          "taillabel"
+        } else {
+          "headlabel"
+        },
+        entity_graphviz_label(text, text_metrics.relation_end_regular),
+      )
     }
     if relation.left_cardinality is Some(_) ||
       relation.left_role is Some(_) ||
@@ -442,8 +539,16 @@ fn @entity.EntityDiagram::graphviz_layout(
       edge.set_attr("labelfontname", text_metrics.relation_end_font_family)
     }
     edge.set_attr("dir", "none")
-    if relation.dotted {
+    if relation.has_style("hidden") {
+      edge.set_attr("style", "invis")
+    } else if relation.dotted {
       edge.set_attr("style", "dotted")
+    }
+    if relation.has_style("norank") {
+      edge.set_attr("constraint", "false")
+    }
+    if relation.weight is Some(weight) {
+      edge.set_attr("weight", weight)
     }
   }
   let magma_edges = self.magma_grid_edges()
@@ -498,11 +603,32 @@ fn @entity.EntityDiagram::graphviz_layout(
           let _ = rank.node(left_name)
           let _ = rank.node(right_name)
         }
-        let edge = graph.edge(
-          graph.node(left_name),
-          graph.node(right_name),
-          name="note_edge\{note_index}",
+        let member_port = graphviz_entity_port(
+          node_ports.get(target).unwrap_or([]),
+          note.member_name,
         )
+        let edge = match member_port {
+          Some(port) if target_name == left_name =>
+            graph.edge(
+              graph.node(left_name),
+              graph.node(right_name),
+              name="note_edge\{note_index}",
+              tail_port=port,
+            )
+          Some(port) =>
+            graph.edge(
+              graph.node(left_name),
+              graph.node(right_name),
+              name="note_edge\{note_index}",
+              head_port=port,
+            )
+          None =>
+            graph.edge(
+              graph.node(left_name),
+              graph.node(right_name),
+              name="note_edge\{note_index}",
+            )
+        }
         note_edge_names[edge.id()] = "\{note_index}"
         edge.set_attr("dir", "none")
         edge.set_attr("style", "invis")
@@ -513,8 +639,8 @@ fn @entity.EntityDiagram::graphviz_layout(
   let laid_out = @graphviz.layout_dot(
     graph,
     self.style,
-    PLANTUML_MIN_NODESEP_IN,
-    PLANTUML_MIN_RANKSEP_IN,
+    entity_graphviz_spacing(self.style, "nodesep", PLANTUML_MIN_NODESEP_IN),
+    entity_graphviz_spacing(self.style, "ranksep", PLANTUML_MIN_RANKSEP_IN),
   )
   let bbox = laid_out.bbox
   let nodes : Array[GraphvizNodeLayout] = []
@@ -547,8 +673,18 @@ fn @entity.EntityDiagram::graphviz_layout(
     anchor=Center,
   )
   let raw_edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
-    laid_out, relation_names, bbox,
-  )
+    laid_out,
+    relation_names,
+    bbox,
+    external_labels=routing == "ortho",
+  ).map(edge => {
+    let direction = self.relations[edge.index].direction
+    if direction is Leftward || direction is Upward {
+      reverse_relation_edge(edge)
+    } else {
+      edge
+    }
+  })
   let edges = normalize_relation_edges(self, text_metrics, nodes, raw_edges)
   let note_edges : Array[@graphviz.GraphvizEdge] = @graphviz.graphviz_edges(
     laid_out, note_edge_names, bbox,
@@ -585,6 +721,7 @@ fn @entity.EntityDiagram::graphviz_layout(
     edges,
     note_edges,
     relation_labels,
+    constraints: self.relation_constraint_layouts(text_metrics, edges),
     packages,
     notes,
   }
@@ -594,4 +731,45 @@ fn @entity.EntityDiagram::graphviz_layout(
 /// The Graphviz `minlen` of a relation, mirroring `LinkDecor.getMinlen`.
 pub fn relation_graphviz_minlen(relation : @entity.Relation) -> Int {
   relation.graphviz_minlen()
+}
+
+///|
+fn @entity.Relation::has_style(self : @entity.Relation, token : String) -> Bool {
+  self.line_style.map_or(false, value => {
+    value.split(",").any(part => part.trim().equal_ignore_ascii_case(token))
+  })
+}
+
+///|
+fn entity_graphviz_spacing(
+  style : @style.DocumentStyle,
+  key : String,
+  default_inches : Double,
+) -> Double {
+  match style.property(key) {
+    Some(value) => {
+      let points = @string.parse_double(value) catch {
+        _ => return default_inches
+      }
+      if points >= 0.0 {
+        @graphviz.points_to_inches(points)
+      } else {
+        default_inches
+      }
+    }
+    None => default_inches
+  }
+}
+
+///|
+fn entity_graphviz_label(
+  text : String,
+  metrics : @metrics.FontMetrics,
+) -> String {
+  guard state_rich_text(text, metrics, 0.0, literal_newlines=true) is Some(rich) else {
+    return text
+  }
+  let width = rich.width.ceil().to_int().max(1)
+  let height = rich.height.ceil().to_int().max(1)
+  "<<TABLE FIXEDSIZE=\"TRUE\" WIDTH=\"\{width}\" HEIGHT=\"\{height}\" BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"0\"><TR><TD></TD></TR></TABLE>>"
 }

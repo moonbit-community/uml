@@ -17,6 +17,8 @@ priv struct Parser {
   concurrent_regions : Array[String]
   regions : Array[@flow.StateRegion]
   style : @style.DocumentStyle
+  removals : Array[(String, Bool)]
+  hides : Array[(String, Bool)]
 }
 
 ///|
@@ -33,6 +35,8 @@ fn Parser::new(input : String) -> Parser {
     concurrent_regions: [],
     regions: [],
     style: @style.DocumentStyle::empty(),
+    removals: [],
+    hides: [],
   }
 }
 
@@ -121,6 +125,11 @@ fn Parser::ensure_endpoint(
       parent: location.parent,
       region_index: location.region_index,
       description: None,
+      embedded: None,
+      standalone_note: None,
+      tags: [],
+      is_removed: false,
+      is_hidden: false,
       stereotype: None,
       url: None,
       color: None,
@@ -141,6 +150,12 @@ fn Parser::upsert_state(
         ..state,
         // Reusing a Quark updates the existing entity without moving it to
         // the scope of a later declaration (CommandCreateState.executeArg).
+        embedded: state.embedded.map_or(existing.embedded, value => Some(value)),
+        standalone_note: state.standalone_note.map_or(
+          existing.standalone_note,
+          value => Some(value),
+        ),
+        tags: existing.tags + state.tags,
         parent: existing.parent,
         region_index: existing.region_index,
         kind: if group {
@@ -189,6 +204,11 @@ fn Parser::add_state_field(
       parent: location.parent,
       region_index: location.region_index,
       description: Some(text),
+      embedded: None,
+      standalone_note: None,
+      tags: [],
+      is_removed: false,
+      is_hidden: false,
       stereotype: None,
       url: None,
       color: None,
@@ -301,8 +321,13 @@ fn Parser::apply_line_syntax(
           parent: location.parent,
           region_index: location.region_index,
           description: syntax.description,
+          embedded: None,
+          standalone_note: None,
+          tags: syntax.tags,
+          is_removed: false,
+          is_hidden: false,
           stereotype: syntax.stereotype,
-          url: syntax.url,
+          url: syntax.url.map(url => self.state_url(url)),
           color: syntax.color,
         },
         group=syntax.opens_group,
@@ -333,8 +358,13 @@ fn Parser::apply_line_syntax(
           parent: location.parent,
           region_index: location.region_index,
           description: syntax.description,
+          embedded: None,
+          standalone_note: None,
+          tags: syntax.tags,
+          is_removed: false,
+          is_hidden: false,
           stereotype: syntax.stereotype,
-          url: syntax.url,
+          url: syntax.url.map(url => self.state_url(url)),
           color: syntax.color,
         },
         group=true,
@@ -367,6 +397,12 @@ fn Parser::parse_line(
     lower == "@startuml" ||
     lower == "@enduml" ||
     @style.is_preprocessor_directive(line) {
+    return
+  }
+  if self.consume_state_embedded(line) {
+    return
+  }
+  if self.consume_state_control(line) {
     return
   }
   if self.consume_state_document(line) {
@@ -427,6 +463,15 @@ pub fn parse_state(
   let parser = Parser::new(input)
   while !parser.buffer.at_end() {
     let line = parser.buffer.current_clean()
+    if line.to_lower() == "<style>" {
+      parser.buffer.advance()
+      guard @style.consume_style_body(() => parser.buffer.take_next(), directive => {
+        parser.apply_state_style(directive)
+      }) else {
+        raise SyntaxError(parser.line_number(), "unclosed style")
+      }
+      continue
+    }
     if state_skinparam_prefix(line) is Some(prefix) {
       parser.buffer.consume_skinparam(
         parser.style,
@@ -444,6 +489,7 @@ pub fn parse_state(
   }
   parser.resolve_state_commands()
   parser.validate_state_links()
+  parser.apply_state_removals()
   {
     states: parser.states,
     transitions: parser.transitions,

@@ -16,48 +16,16 @@ priv struct StateGradients {
 /// Verified 2026-09-16: named/hex equivalents, grayscale expansion, and RGBA
 /// preservation passed temporary property tests, which were then removed.
 fn state_gradient_color(value : String) -> String? {
-  let resolved = @svg.svg_color(Some(value), "").to_lower()
-  let digits = if resolved.has_prefix("#") {
-    resolved[1:].to_owned()
-  } else {
-    resolved
-  }
-  guard [1, 3, 6, 8].contains(digits.length()) &&
-    digits
-    .iter()
-    .all(char => char.is_ascii_digit() || (char >= 'a' && char <= 'f')) else {
-    return None
-  }
-  let color = match digits.length() {
-    1 => digits.repeat(6)
-    3 => {
-      let output = StringBuilder()
-      for char in digits.iter() {
-        output.write_char(char)
-        output.write_char(char)
-      }
-      output.to_string()
-    }
-    _ => digits
-  }
-  Some("#" + color)
+  @svg.gradient_color(value)
 }
 
 ///|
 fn parse_state_gradient(value : String) -> StateGradient? {
-  let cursor = @tokenizer.Cursor::new(value)
-  while cursor.advance() is Some(policy) {
-    guard policy == '-' || policy == '|' || policy == '/' || policy == '\\' else {
-      continue
-    }
-    guard state_gradient_color(cursor.slice(0, cursor.offset() - 1))
-      is Some(first) &&
-      state_gradient_color(cursor.remaining()) is Some(second) else {
-      continue
-    }
-    return Some({ first, second, policy, })
-  }
-  None
+  @svg.parse_gradient(value).map(gradient => {
+    first: gradient.first,
+    second: gradient.second,
+    policy: gradient.policy,
+  })
 }
 
 ///|
@@ -73,12 +41,11 @@ fn state_first_gradient_color(value : String) -> String {
 fn StateGradient::axis(
   self : StateGradient,
 ) -> (@graphics.Point, @graphics.Point) {
-  match self.policy {
-    '|' => ({ x: 0.0, y: 0.5, }, { x: 1.0, y: 0.5, })
-    '-' => ({ x: 0.5, y: 0.0, }, { x: 0.5, y: 1.0, })
-    '\\' => ({ x: 0.0, y: 1.0, }, { x: 1.0, y: 0.0, })
-    _ => ({ x: 0.0, y: 0.0, }, { x: 1.0, y: 1.0, })
-  }
+  @svg.Gradient::{
+    first: self.first,
+    second: self.second,
+    policy: self.policy,
+  }.axis()
 }
 
 ///|

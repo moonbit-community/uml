@@ -91,7 +91,7 @@ fn relation_text_box_from_top_left(
   y : Double,
   metrics : @metrics.FontMetrics,
 ) -> RelationTextBox {
-  let measured = metrics.measure(text)
+  let measured = metrics.entity_measure(text)
   {
     text,
     x,
@@ -110,7 +110,7 @@ fn relation_text_box_from_center(
   center : (Double, Double),
   metrics : @metrics.FontMetrics,
 ) -> RelationTextBox {
-  let measured = metrics.measure(text)
+  let measured = metrics.entity_measure(text)
   relation_text_box_from_top_left(
     text,
     center.0 - measured.width.to_double() / 2.0,

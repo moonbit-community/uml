@@ -12,6 +12,7 @@ priv struct ParticipantDecl {
   color : String?
   url : String?
   order : Int?
+  stereotype : String?
 }
 
 ///|
@@ -22,7 +23,10 @@ priv struct ParseCtx {
   box_stack : Array[@seq.ParticipantBox]
   mut grouping_depth : Int
   mut pending_create : String?
-  activating_messages : Array[String]
+  activating_messages : Array[(@seq.Event, String)]
+  mut last_message : @seq.Event?
+  mut autoactivate : Bool
+  mut next_participant_position : Int
   mut last_message_from : String?
   mut last_message_to : String?
   style : @style.DocumentStyle
@@ -38,6 +42,9 @@ fn ParseCtx::new(input : String) -> ParseCtx {
     grouping_depth: 0,
     pending_create: None,
     activating_messages: [],
+    last_message: None,
+    autoactivate: false,
+    next_participant_position: 0,
     last_message_from: None,
     last_message_to: None,
     style: @style.DocumentStyle::empty(),
@@ -60,7 +67,10 @@ fn ParseCtx::ensure_participant(
     color: None,
     url: None,
     boxes: self.box_stack.copy(),
+    position: self.next_participant_position,
+    stereotype: None,
   }
+  self.next_participant_position += 1
 }
 
 ///|
@@ -75,13 +85,9 @@ fn ParseCtx::declare_participant(
     let participant = self.participants[reference.code]
     self.participants[reference.code] = {
       ..participant,
-      display: reference.display,
-      typ: declaration.typ,
-      color: declaration.color.map_or(participant.color, value => Some(value)),
-      url: declaration.url.map_or(participant.url, value => Some(value)),
-      order: declaration.order.map_or(participant.order, value => Some(value)),
-      boxes: self.box_stack.copy(),
+      position: self.next_participant_position,
     }
+    self.next_participant_position += 1
     return
   }
   self.ensure_participant(reference.code, reference.display, declaration.typ)
@@ -96,6 +102,7 @@ fn ParseCtx::declare_participant(
     url: declaration.url,
     order,
     boxes: self.box_stack.copy(),
+    stereotype: declaration.stereotype,
   }
   if declaration.created {
     self.events.push(@seq.Create)
@@ -109,14 +116,17 @@ fn ParseCtx::register_event(self : ParseCtx, event : @seq.Event) -> Unit {
     @seq.Message(message) => {
       self.ensure_participant(
         message.from_code,
-        message.from_code,
+        message.from_display,
         @seq.Participant,
       )
       self.ensure_participant(
         message.to_code,
-        message.to_code,
+        message.to_display,
         @seq.Participant,
       )
+      for code in message.multicast {
+        self.ensure_participant(code, code, @seq.Participant)
+      }
     }
     @seq.MessageExo(message) =>
       self.ensure_participant(
@@ -199,17 +209,19 @@ fn ParseCtx::apply_message_activation(
   message : @seq.Message,
 ) -> Unit {
   let participant = match spec {
-    Some(@seq.Activate) | Some(@seq.Create) => message.to_code
-    Some(@seq.Deactivate) | Some(@seq.Destroy) => message.from_code
+    Some(@seq.Activate) | Some(@seq.Create) | Some(@seq.Destroy) =>
+      message.to_code
+    Some(@seq.Deactivate) => message.from_code
     None => return
   }
   match spec {
-    Some(@seq.Activate) | Some(@seq.Create) =>
-      self.activating_messages.push(participant)
+    Some(@seq.Activate) =>
+      self.activating_messages.push((@seq.Message(message), participant))
+    Some(@seq.Create) => ()
     Some(@seq.Deactivate) | Some(@seq.Destroy) =>
       if self.activating_messages
         .last()
-        .map_or(false, code => code == participant) {
+        .map_or(false, pair => pair.1 == participant) {
         let _ = self.activating_messages.pop()
       }
     None => ()
@@ -222,9 +234,16 @@ fn ParseCtx::resolve_event(
   event : @seq.Event,
 ) -> @seq.Event raise @tokenizer.ParseError {
   match event {
+    @seq.Message(message) if self.pending_create == Some(message.to_code) =>
+      @seq.Message({
+        ..message,
+        activation_spec: Some(@seq.Create),
+        activation_spec2: message.activation_spec,
+      })
+    @seq.Return(value) => self.resolve_return(value)
     @seq.DeactivateLatest =>
       match self.activating_messages.last() {
-        Some(participant_code) => {
+        Some((_, participant_code)) => {
           let _ = self.activating_messages.pop()
           @seq.LifeEvent({
             participant_code,
@@ -246,16 +265,27 @@ fn ParseCtx::push_event(
   self : ParseCtx,
   event : @seq.Event,
 ) -> Unit raise @tokenizer.ParseError {
+  // CommandReturn already deactivates its activating call. Automatic arrow
+  // activation is a CommandArrow behavior and must not run a second time.
+  let returning = event is @seq.Return(_)
   let event = self.resolve_event(event)
   self.validate_event(event)
   self.register_event(event)
   self.events.push(event)
   match event {
     @seq.Message(message) => {
+      self.last_message = Some(event)
       self.last_message_from = Some(message.from_code)
       self.last_message_to = Some(message.to_code)
       self.apply_message_activation(message.activation_spec, message)
       self.apply_message_activation(message.activation_spec2, message)
+    }
+    @seq.Autoactivate(enabled) => self.autoactivate = enabled
+    @seq.MessageExo(message) => {
+      self.last_message = Some(event)
+      if message.activation_spec is Some(@seq.Activate) {
+        self.activating_messages.push((event, message.participant_code))
+      }
     }
     @seq.LifeEvent(life) => {
       if life.event_type is @seq.Activate &&
@@ -267,32 +297,53 @@ fn ParseCtx::push_event(
             code == life.participant_code
           })
         ) {
-        self.activating_messages.push(life.participant_code)
+        if self.last_message is Some(message) {
+          self.activating_messages.push((message, life.participant_code))
+        }
       }
       if life.event_type is @seq.Deactivate || life.event_type is @seq.Destroy {
         if self.activating_messages
           .last()
-          .map_or(false, code => code == life.participant_code) {
+          .map_or(false, pair => pair.1 == life.participant_code) {
           let _ = self.activating_messages.pop()
         }
       }
     }
     _ => ()
   }
-}
-
-///|
-fn is_inline_whitespace(char : Char) -> Bool {
-  char == ' ' || char == '\t' || char == '\r'
+  if !returning &&
+    event is @seq.Message(message) &&
+    self.autoactivate &&
+    (
+      message.arrow_config.head2 is @seq.Normal ||
+      message.arrow_config.head2 is @seq.Async
+    ) {
+    let dotted = message.arrow_config.body is @seq.Dotted
+    self.push_event(
+      @seq.LifeEvent({
+        participant_code: if dotted {
+          message.from_code
+        } else {
+          message.to_code
+        },
+        event_type: if dotted {
+          @seq.Deactivate
+        } else {
+          @seq.Activate
+        },
+        color: if dotted {
+          None
+        } else {
+          message.life_color
+        },
+      }),
+    )
+  }
 }
 
 ///|
 fn is_ident_char(char : Char) -> Bool {
-  char.is_ascii_alphabetic() ||
-  char.is_ascii_digit() ||
-  char == '_' ||
-  char == '.' ||
-  char == '@'
+  @identifier.is_identifier_char(char) || char == '.' || char == '@'
 }
 
 ///|

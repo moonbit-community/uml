@@ -103,22 +103,24 @@ fn wbs_items(diagram : @tree.WbsDiagram) -> Array[WbsItem] {
     let metrics = diagram.style.font_metrics(font_size~)
     let label = node.label.replace(old="\\n", new="\n")
     let text = tree_label_metrics(metrics, label)
-    let text_width = tree_label_width(metrics, font_size, label).to_double()
+    let text_width = tree_label_width(metrics, font_size, label)
     let (width, height) = match node.shape {
       @tree.NodeShape::Pseudo => (0.0, 0.0)
       @tree.NodeShape::Box =>
         (
           (text_width +
-          style.padding_x.unwrap_or(@tree.WBS_DEFAULT_PADDING_X).to_double() *
-          2.0).max(style.minimum_width.unwrap_or(0).to_double()),
-          text.height.to_double() +
-          style.padding_y.unwrap_or(@tree.WBS_DEFAULT_PADDING_Y).to_double() *
-          2.0,
+          style.padding_left.unwrap_or(@tree.WBS_DEFAULT_PADDING_X) +
+          style.padding_right.unwrap_or(@tree.WBS_DEFAULT_PADDING_X)).max(
+            style.minimum_width.unwrap_or(0),
+          ),
+          text.height +
+          style.padding_top.unwrap_or(@tree.WBS_DEFAULT_PADDING_Y) +
+          style.padding_bottom.unwrap_or(@tree.WBS_DEFAULT_PADDING_Y),
         )
       @tree.NodeShape::Boxless =>
         (
           text_width + boxless_horizontal_margin.to_double(),
-          text.height.to_double() + boxless_vertical_margin.to_double() * 2.0,
+          text.height + boxless_vertical_margin.to_double() * 2.0,
         )
     }
     items.push({
@@ -195,7 +197,7 @@ fn wbs_child_margin(diagram : @tree.WbsDiagram, item : WbsItem) -> Double {
   if diagram.nodes[item.index].shape is @tree.NodeShape::Pseudo {
     0.0
   } else {
-    item.style.margin_bottom.unwrap_or(@tree.WBS_DEFAULT_MARGIN).to_double()
+    item.style.margin_bottom.unwrap_or(@tree.WBS_DEFAULT_MARGIN)
   }
 }
 

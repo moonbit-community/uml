@@ -88,7 +88,7 @@ fn take_anchor(cursor : @tokenizer.Cursor) -> String? {
 
 ///|
 fn is_anchor_char(char : Char) -> Bool {
-  char.is_ascii_alphabetic() || char.is_ascii_digit() || char == '_'
+  @identifier.is_identifier_char(char)
 }
 
 ///|
@@ -351,24 +351,25 @@ fn take_right_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
 /// Matches an optional `[LINE_STYLE]` token: a comma-separated list of
 /// colors (`#\w+`) and style keywords, mirroring `CommandLinkElement.
 /// LINE_STYLE`. Consumes nothing when absent or malformed.
-fn take_arrow_style(cursor : @tokenizer.Cursor) -> Unit {
+fn take_arrow_style(cursor : @tokenizer.Cursor) -> String? {
   let start = cursor.offset()
-  guard cursor.consume('[') else { return }
+  guard cursor.consume('[') else { return None }
+  let content = cursor.remaining()
   if !take_style_token(cursor) {
     ignore(cursor.restore(start))
-    return
+    return None
   }
   while cursor.consume(',') {
     if !take_style_token(cursor) {
       ignore(cursor.restore(start))
-      return
+      return None
     }
   }
   guard cursor.consume(']') else {
     ignore(cursor.restore(start))
-    return
+    return None
   }
-  ()
+  Some(content[:cursor.offset() - start - 2].to_owned())
 }
 
 ///|
@@ -383,6 +384,11 @@ fn take_style_token(cursor : @tokenizer.Cursor) -> Bool {
     return false
   }
   let word = cursor.take_while(sequence_is_word_char)
+  if word == "thickness" && cursor.consume('=') {
+    return !cursor
+      .take_while(char => char.is_ascii_digit() || char == '.')
+      .is_empty()
+  }
   if is_style_keyword(word.to_lower()) {
     true
   } else {
@@ -419,16 +425,16 @@ fn is_style_keyword(word : String) -> Bool {
 /// dash, mirroring the talc "arrow body" failure.
 fn take_arrow_dressing(
   cursor : @tokenizer.Cursor,
-) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult)? {
+) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult, String?)? {
   let left = take_left_dressing(cursor)
   let first = cursor.take_while(char => char == '-')
-  take_arrow_style(cursor)
+  let line_style = take_arrow_style(cursor)
   let second = cursor.take_while(char => char == '-')
   let dashes = first.length() + second.length()
   guard dashes > 0 else { return None }
   let right = take_right_dressing(cursor)
   let body = if dashes > 1 { @seq.Dotted } else { @seq.Solid }
-  Some((left, body, right))
+  Some((left, body, right, line_style))
 }
 
 ///|
@@ -438,11 +444,11 @@ fn take_arrow_dressing(
 /// `CommandExoArrowLeft`/`@seq.Right` alternatives.
 fn take_exo_arrow_dressing(
   cursor : @tokenizer.Cursor,
-) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult)? {
+) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult, String?)? {
   let start = cursor.offset()
   let (left_head, left_part) = take_left_arrow_head(cursor)
   let first = cursor.take_while(char => char == '-')
-  take_arrow_style(cursor)
+  let line_style = take_arrow_style(cursor)
   let second = cursor.take_while(char => char == '-')
   let dashes = first.length() + second.length()
   guard dashes > 0 else {
@@ -472,6 +478,7 @@ fn take_exo_arrow_dressing(
         has_dir: right_head.has_direction(),
         part: right_part,
       },
+      line_style,
     ),
   )
 }
@@ -621,20 +628,20 @@ fn take_exo_tail(
 /// full line to be consumed.
 fn message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   cursor.attempt(cursor => {
-    ignore(cursor.consume('&'))
+    let parallel = cursor.consume('&')
     cursor.skip_inline_spaces()
     let anchor = take_anchor(cursor)
     if anchor is Some(_) {
       cursor.skip_inline_spaces()
     }
     guard take_part_ref(cursor) is Some(first) else { return None }
-    ignore(take_anchor(cursor))
+    let first_anchor = take_anchor(cursor)
     guard take_arrow_dressing(cursor) is Some(dressing) else { return None }
-    let (left, body, right) = dressing
+    let (left, body, right, line_style) = dressing
     cursor.skip_inline_spaces()
     guard take_part_ref(cursor) is Some(second) else { return None }
-    ignore(take_multicast(cursor))
-    ignore(take_anchor(cursor))
+    let multicast = take_multicast(cursor)
+    let second_anchor = take_anchor(cursor)
     let (activation_spec, activation_spec2, life_color, stereotype, url, label) = take_message_tail(
       cursor,
     )
@@ -650,11 +657,37 @@ fn message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
       @seq.Message({
         from_code: from,
         to_code: to,
+        from_display: if direction is @seq.Reverse {
+          second.display
+        } else {
+          first.display
+        },
+        to_display: if direction is @seq.Reverse {
+          first.display
+        } else {
+          second.display
+        },
         label,
         arrow_config: @seq.ArrowConfig::from_dressing(
-          left, right, body, direction,
+          left,
+          right,
+          body,
+          direction,
+          line_style~,
         ),
         anchor,
+        from_anchor: if direction is @seq.Reverse {
+          second_anchor
+        } else {
+          first_anchor
+        },
+        to_anchor: if direction is @seq.Reverse {
+          first_anchor
+        } else {
+          second_anchor
+        },
+        parallel,
+        multicast,
         activation_spec,
         activation_spec2,
         life_color,
@@ -670,16 +703,16 @@ fn message_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
 /// border, requiring the full line to be consumed.
 fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   cursor.attempt(cursor => {
-    ignore(cursor.consume('&'))
+    let parallel = cursor.consume('&')
     cursor.skip_inline_spaces()
-    ignore(take_anchor(cursor))
+    let anchor = take_anchor(cursor)
     cursor.skip_inline_spaces()
     guard take_exo_left_symbol(cursor)
       is Some((symbol_char, short_arrow, border_circle, border_cross)) else {
       return None
     }
     guard take_exo_arrow_dressing(cursor) is Some(dressing) else { return None }
-    let (left, body, right) = dressing
+    let (left, body, right, line_style) = dressing
     let (participant_circle, participant_cross) = take_o_x_space(cursor).unwrap_or(
       (false, false),
     )
@@ -699,6 +732,8 @@ fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     Some(
       @seq.MessageExo({
         participant_code: participant.code,
+        parallel,
+        anchor,
         exo_type,
         label,
         arrow_config: @seq.ArrowConfig::from_dressing(
@@ -710,6 +745,7 @@ fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
           } else {
             @seq.Forward
           },
+          line_style~,
         ),
         short_arrow,
         activation_spec,
@@ -725,9 +761,9 @@ fn left_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
 /// border, requiring the full line to be consumed.
 fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   cursor.attempt(cursor => {
-    ignore(cursor.consume('&'))
+    let parallel = cursor.consume('&')
     cursor.skip_inline_spaces()
-    ignore(take_anchor(cursor))
+    let anchor = take_anchor(cursor)
     cursor.skip_inline_spaces()
     guard take_exo_participant(cursor) is Some(participant) else { return None }
     let (participant_circle, participant_cross) = take_space_o_x(cursor).unwrap_or(
@@ -735,7 +771,7 @@ fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     )
     cursor.skip_inline_spaces()
     guard take_exo_arrow_dressing(cursor) is Some(dressing) else { return None }
-    let (left, body, right) = dressing
+    let (left, body, right, line_style) = dressing
     guard take_exo_right_symbol(cursor)
       is Some((symbol_char, short_arrow, border_circle, border_cross)) else {
       return None
@@ -754,6 +790,8 @@ fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     Some(
       @seq.MessageExo({
         participant_code: participant.code,
+        parallel,
+        anchor,
         exo_type,
         label,
         arrow_config: @seq.ArrowConfig::from_dressing(
@@ -765,6 +803,7 @@ fn right_exo_message_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
           } else {
             @seq.Forward
           },
+          line_style~,
         ),
         short_arrow,
         activation_spec,

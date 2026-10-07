@@ -3,6 +3,7 @@
 /// emitted through Graphic and marker handles belong to the SVG document.
 priv struct SequenceDrawing {
   graphic : @graphics.Graphic
+  line_style : @graphics.DrawingStyle
   arrow : @graphics.MarkerRef
   arrow_start : @graphics.MarkerRef
   open_arrow : @graphics.MarkerRef
@@ -10,8 +11,8 @@ priv struct SequenceDrawing {
 }
 
 ///|
-fn sequence_point(x : Int, y : Int) -> @graphics.Point {
-  { x: x.to_double(), y: y.to_double(), }
+fn sequence_point(x : Double, y : Double) -> @graphics.Point {
+  { x, y, }
 }
 
 ///|
@@ -22,7 +23,7 @@ fn SequenceDrawing::draw(
   fill? : @graphics.Paint = Inherit,
 ) -> Unit {
   self.graphic
-  .with_style({ ..Default::default(), fill, })
+  .with_style({ ..self.line_style, fill, })
   .draw(shape, metadata={ ..Default::default(), class_name, })
 }
 
@@ -63,8 +64,8 @@ fn SequenceDrawing::marker(
 ///|
 fn sequence_drawing(document : @svg.SvgDocument) -> SequenceDrawing {
   let define_arrow = (name : String, start : Bool, open : Bool) => {
-    let base = if start { 10 } else { 0 }
-    let tip = if start { 0 } else { 10 }
+    let base = if start { 10.0 } else { 0.0 }
+    let tip = if start { 0.0 } else { 10.0 }
     document.define_marker(
       name,
       {
@@ -101,6 +102,7 @@ fn sequence_drawing(document : @svg.SvgDocument) -> SequenceDrawing {
   let open_arrow_start = define_arrow("open-arrow-start", true, true)
   {
     graphic: document.graphic(),
+    line_style: Default::default(),
     arrow,
     arrow_start,
     open_arrow,

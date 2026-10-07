@@ -1,7 +1,10 @@
 import {
   "kokic/uml/graphics",
+  "kokic/uml/identifier",
   "moonbitlang/core/math",
   "moonbitlang/core/string",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
   "kokic/uml/entity",
   "kokic/uml/flow",
   "kokic/uml/graphviz",

@@ -120,9 +120,12 @@ pub fn SvgDocument::new(
       aria_label,
     ),
   )
-  writer.open("style")
-  writer.raw(svg_style_rule(font_family, font_size, background) + css)
-  writer.close()
+  let css = writer.gradient_css(
+    svg_style_rule(font_family, font_size, background) + css,
+  )
+  writer.text("style", css)
+  let background = writer.gradient_paint(Color(background), false)
+  let background = if background is Color(value) { value } else { "none" }
   writer.empty(
     "rect",
     attributes=background_rect_attributes(width, height, background),
@@ -157,6 +160,7 @@ pub fn SvgDocument::empty(
 ///|
 /// Add document presentation rules with XML text escaping handled here.
 pub fn SvgDocument::stylesheet(self : SvgDocument, css : String) -> Unit {
+  let css = self.writer.gradient_css(css)
   self.writer.text("style", css)
 }
 

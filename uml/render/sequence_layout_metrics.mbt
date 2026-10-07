@@ -1,11 +1,12 @@
 ///|
 priv struct TextSize {
-  width : Int
-  height : Int
+  width : Double
+  height : Double
 }
 
 ///|
 pub(all) struct SequenceTextMetrics {
+  style : @style.DocumentStyle
   participant : @metrics.FontMetrics
   note : @metrics.FontMetrics
   body : @metrics.FontMetrics
@@ -18,31 +19,20 @@ pub(all) struct SequenceTextMetrics {
 fn SequenceTextMetrics::new(
   style : @style.DocumentStyle,
 ) -> SequenceTextMetrics {
-  let base_size = style.font_size_value()
-  let line_height = base_size + 2
+  let base_size = style.font_size_value(fallback=14)
   {
-    participant: style.font_metrics(
-      font_size=base_size,
-      font_weight=700,
-      line_height~,
+    style,
+    participant: sequence_font(style, "Participant", base_size),
+    note: sequence_font(style, "Note", (base_size - 1).max(1)),
+    body: sequence_font(style, "Arrow", (base_size - 1).max(1)),
+    body_bold: sequence_font(style, "Group", (base_size - 1).max(1), weight=700),
+    body_italic: sequence_font(
+      style,
+      "Arrow",
+      (base_size - 1).max(1),
+      italic=true,
     ),
-    note: style.font_metrics(font_size=base_size, line_height~),
-    body: style.font_metrics(font_size=(base_size - 1).max(1), line_height~),
-    body_bold: style.font_metrics(
-      font_size=(base_size - 1).max(1),
-      font_weight=700,
-      line_height~,
-    ),
-    body_italic: style.font_metrics(
-      font_size=(base_size - 1).max(1),
-      font_style=Italic,
-      line_height~,
-    ),
-    small_bold: style.font_metrics(
-      font_size=(base_size - 2).max(1),
-      font_weight=700,
-      line_height~,
-    ),
+    small_bold: sequence_font(style, "Box", (base_size - 3).max(1), weight=700),
   }
 }
 
@@ -52,16 +42,18 @@ pub(all) struct ParticipantLayout {
   text_metrics : SequenceTextMetrics
   defaults : @style.SequenceColors
   index : Int
-  center_x : Int
-  width : Int
-  birth_y : Int?
-  death_y : Int?
+  center_x : Double
+  width : Double
+  height : Double
+  label : String
+  birth_y : Double?
+  death_y : Double?
 }
 
 ///|
 pub(all) struct EventPlacement {
-  y : Int
-  height : Int
+  y : Double
+  height : Double
   number : String?
   ignored : Bool
 }
@@ -71,15 +63,15 @@ pub(all) struct ActivationSpan {
   participant_code : String
   caller_code : String?
   depth : Int
-  start_y : Int
-  end_y : Int
+  start_y : Double
+  end_y : Double
   color : String?
 }
 
 ///|
 pub(all) struct GroupSpan {
-  start_y : Int
-  end_y : Int
+  start_y : Double
+  end_y : Double
   depth : Int
   keyword : @seq.GroupKeyword
   header : String
@@ -93,8 +85,8 @@ pub(all) struct GroupSpan {
 
 ///|
 pub(all) struct GroupBranch {
-  start_y : Int
-  end_y : Int
+  start_y : Double
+  end_y : Double
   label : String?
   color : String?
 }
@@ -102,7 +94,7 @@ pub(all) struct GroupBranch {
 ///|
 pub(all) struct DestroyMark {
   participant_code : String
-  y : Int
+  y : Double
 }
 
 ///|
@@ -113,47 +105,47 @@ pub(all) struct DiagramLayout {
   activations : Array[ActivationSpan]
   groups : Array[GroupSpan]
   destroys : Array[DestroyMark]
-  auto_page_breaks : Array[Int]
-  width : Int
-  height : Int
-  body_top : Int
-  body_bottom : Int
+  auto_page_breaks : Array[Double]
+  width : Double
+  height : Double
+  body_top : Double
+  body_bottom : Double
   text_metrics : SequenceTextMetrics
   defaults : @style.SequenceColors
 }
 
 ///|
-let horizontal_margin = 5
+let horizontal_margin = 5.0
 
 ///|
-let vertical_margin = 5
+let vertical_margin = 5.0
 
 ///|
-let participant_edge_gap = 17
+let participant_edge_gap = 17.0
 
 ///|
 fn TextSize::of_with(
   text : String,
   font_metrics : @metrics.FontMetrics,
 ) -> TextSize {
-  let metrics = font_metrics.measure(text)
-  { width: metrics.width, height: metrics.height, }
+  let (width, height) = state_text_size(text, font_metrics)
+  { width, height, }
 }
 
 ///|
-const MESSAGE_ARROW_OFFSET : Int = 18
+const MESSAGE_ARROW_OFFSET : Double = 18.0
 
 ///|
-const MESSAGE_EVENT_HEIGHT : Int = 14
+const MESSAGE_EVENT_HEIGHT : Double = 14.0
 
 ///|
-const SELF_MESSAGE_EVENT_HEIGHT : Int = 42
+const SELF_MESSAGE_EVENT_HEIGHT : Double = 42.0
 
 ///|
-const SELF_MESSAGE_LOOP_DEPTH : Int = 28
+const SELF_MESSAGE_LOOP_DEPTH : Double = 28.0
 
 ///|
-const MESSAGE_VISUAL_CLEARANCE : Int = 6
+const MESSAGE_VISUAL_CLEARANCE : Double = 6.0
 
 ///|
 fn @seq.Message::display_label(self : @seq.Message) -> String {
@@ -164,7 +156,7 @@ fn @seq.Message::display_label(self : @seq.Message) -> String {
 fn @seq.Message::label_height(
   self : @seq.Message,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   match self.label {
     Some(label) if label.length() > 0 =>
       TextSize::of_with(label, text_metrics.body).height
@@ -173,8 +165,8 @@ fn @seq.Message::label_height(
 }
 
 ///|
-fn @seq.ParticipantType::header_height(self : @seq.ParticipantType) -> Int {
-  self.symbol_height() +
+fn @seq.ParticipantType::header_height(self : @seq.ParticipantType) -> Double {
+  self.symbol_height().to_double() +
   (match self {
     Actor | Boundary | Control | Entity | Database => 16
     Queue => 26
@@ -187,7 +179,7 @@ fn @seq.ParticipantType::header_height(self : @seq.ParticipantType) -> Int {
 fn @seq.Note::height(
   self : @seq.Note,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   self.component(text_metrics).height
 }
 
@@ -195,7 +187,7 @@ fn @seq.Note::height(
 fn @seq.Event::height(
   self : @seq.Event,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   match self {
     @seq.Message(message) =>
       if message.is_self() {
@@ -206,13 +198,14 @@ fn @seq.Event::height(
     @seq.MessageExo(_) => MESSAGE_EVENT_HEIGHT
     @seq.Note(note) => note.height(text_metrics) + 10
     @seq.Notes(notes) =>
-      notes.fold(init=0, (acc, note) => acc.max(note.height(text_metrics))) + 10
+      notes.fold(init=0.0, (acc, note) => acc.max(note.height(text_metrics))) +
+      10
     @seq.GroupingStart(_) => 22
     @seq.GroupingLeaf(leaf) => if leaf.is_end { 0 } else { 29 }
     @seq.LifeEvent(_) => 0
     @seq.Delay(_) => 28
     @seq.Divider(_) => 34
-    @seq.HSpace(space) => space.pixels.unwrap_or(0)
+    @seq.HSpace(space) => space.pixels.unwrap_or(0).to_double()
     @seq.Newpage(_) => 40
     @seq.Reference(reference) =>
       (TextSize::of_with(reference.label.unwrap_or("ref"), text_metrics.body).height +
@@ -224,7 +217,7 @@ fn @seq.Event::height(
     @seq.Create => 0
     @seq.Url(_, _) => 0
     @seq.DeactivateLatest => 0
-    @seq.LinkAnchor => 0
+    @seq.LinkAnchor(_) => 0
     @seq.Autonumber(_)
     | @seq.AutonumberStop
     | @seq.AutonumberResume(_)
@@ -241,7 +234,7 @@ fn @seq.Event::height(
 fn @seq.Event::required_gap_before(
   self : @seq.Event,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   match self {
     @seq.Message(message) =>
       if message.is_self() {
@@ -261,7 +254,7 @@ fn @seq.Event::required_gap_before(
       }
     @seq.Note(note) => note.component(text_metrics).height + 18
     @seq.Notes(notes) =>
-      notes.fold(init=0, (acc, note) => {
+      notes.fold(init=0.0, (acc, note) => {
         acc.max(note.component(text_metrics).height)
       }) +
       18
@@ -282,7 +275,19 @@ fn @seq.Event::participant_span(
     }
   }
   match self {
-    @seq.Message(message) => between(message.from_code, message.to_code)
+    @seq.Message(message) => {
+      let mut span = between(message.from_code, message.to_code)
+      for code in message.multicast {
+        if index_for(code) is Some(index) {
+          span = Some(
+            span.map_or((index, index), pair => {
+              (pair.0.min(index), pair.1.max(index))
+            }),
+          )
+        }
+      }
+      span
+    }
     @seq.MessageExo(message) =>
       index_for(message.participant_code).map(index => (index, index))
     @seq.Note(note) =>
@@ -353,7 +358,7 @@ fn next_visual_gap(
   events : Array[@seq.Event],
   index : Int,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   for next_index in (index + 1)..<events.length() {
     let next = events[next_index]
     if event_advances_layout(next, text_metrics) {
@@ -379,9 +384,9 @@ fn @seq.Message::gap_requirement(
   self : @seq.Message,
   number : String?,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   // The participant gap already includes both half-widths and the group margin.
-  let activation_lane = match self.activation_spec {
+  let activation_lane : Double = match self.activation_spec {
     Some(@seq.Activate) | Some(@seq.Create) => 10
     _ => 0
   }
@@ -404,7 +409,7 @@ fn @seq.Message::rendered_label(
 fn @seq.ParticipantBox::minimum_width(
   self : @seq.ParticipantBox,
   text_metrics : SequenceTextMetrics,
-) -> Int {
+) -> Double {
   self.label.map_or(0, label => {
     TextSize::of_with(label, text_metrics.small_bold).width + 16
   })
@@ -414,7 +419,7 @@ fn @seq.ParticipantBox::minimum_width(
 fn participant_box_horizontal_bounds(
   layouts : Array[ParticipantLayout],
   box : @seq.ParticipantBox,
-) -> (Int, Int) {
+) -> (Double, Double) {
   let first = layouts[0]
   let last = layouts[layouts.length() - 1]
   let mut left = first.center_x - first.width / 2 - 10
@@ -474,7 +479,9 @@ fn @seq.SequenceDiagram::participant_is_linked(
   for event in self.events {
     match event {
       @seq.Message(message) =>
-        if message.from_code == code || message.to_code == code {
+        if message.from_code == code ||
+          message.to_code == code ||
+          message.multicast.contains(code) {
           return true
         }
       @seq.MessageExo(message) =>
@@ -523,8 +530,8 @@ fn @seq.SequenceDiagram::hides_unlinked(self : @seq.SequenceDiagram) -> Bool {
 fn @seq.SequenceDiagram::minimum_text_width(
   self : @seq.SequenceDiagram,
   text_metrics : SequenceTextMetrics,
-) -> Int {
-  let mut width = 0
+) -> Double {
+  let mut width = 0.0
   for event in self.events {
     let measured = match event {
       @seq.GroupingStart(group) =>
@@ -550,7 +557,7 @@ fn @seq.SequenceDiagram::minimum_text_width(
       @seq.Return(value) =>
         TextSize::of_with(value.value.unwrap_or(""), text_metrics.body).width +
         48
-      @seq.LinkAnchor => 0
+      @seq.LinkAnchor(_) => 0
       @seq.BoxStart(box) =>
         TextSize::of_with(box.label.unwrap_or(""), text_metrics.small_bold).width +
         32

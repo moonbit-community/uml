@@ -214,15 +214,23 @@ fn visibility_of(raw : String) -> @entity.Visibility {
 ///|
 fn member_of(line : String) -> @entity.Member {
   let raw = line.trim().to_owned()
-  let is_separator = raw == "--" ||
-    raw == ".." ||
-    (raw.has_prefix("==") && raw.has_suffix("=="))
+  let is_separator = ["--", "==", "..", "__"].any(marker => {
+      raw.has_prefix(marker) && raw.has_suffix(marker)
+    }) &&
+    raw != "..."
   {
     raw,
-    visibility: visibility_of(raw),
-    is_method: raw.contains("(") && raw.contains(")"),
-    is_static: raw.contains("{static}") || raw.contains("static "),
-    is_abstract: raw.contains("{abstract}") || raw.contains("abstract "),
+    visibility: visibility_of(@entity.member_display(raw)),
+    is_method: if raw.contains("{method}") {
+      true
+    } else if raw.contains("{field}") {
+      false
+    } else {
+      raw.contains("(") || raw.contains(")")
+    },
+    is_static: raw.to_lower().contains("{static}") ||
+    raw.to_lower().contains("{classifier}"),
+    is_abstract: raw.to_lower().contains("{abstract}"),
     is_separator,
     is_hidden: false,
   }

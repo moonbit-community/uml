@@ -88,6 +88,25 @@ fn append_state_node(
   cluster_title_top? : Double? = None,
 ) -> Unit {
   guard diagram.state(layout.code) is Some(state) else { return }
+  if state.standalone_note is Some(note) {
+    append_state_note(output, { ..diagram, notes: [note], }, {
+      note_index: 0,
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height,
+    })
+    return
+  }
+  if state.embedded is Some(entity) {
+    append_state_embedded(
+      output,
+      diagram.style,
+      { ..entity, url: state.url, },
+      layout,
+    )
+    return
+  }
   let composite = diagram.has_children(state.code)
   let empty_description = diagram.state_uses_empty_image(state)
   let metadata = {
@@ -518,7 +537,10 @@ fn @flow.StateDiagram::render_svg(
   self : @flow.StateDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
+  let self = {
+    ..self.visible_state_diagram(),
+    style: self.style.with_color_scheme(color_scheme),
+  }
   let drawing = @graphviz.layout_or_fallback(() => self.drawing_layout(), None)
   let layout = drawing.layout
   let size = state_output_size(self, layout)
@@ -527,6 +549,9 @@ fn @flow.StateDiagram::render_svg(
     size.height,
     "State diagram",
   )
+  if self.states.any(state => state.embedded is Some(_)) {
+    document.stylesheet(entity_stylesheet(self.style, false))
+  }
   document.stylesheet(
     ".state-region-separator{stroke:\{state_first_gradient_color(self.style.diagram_line_color())}}",
   )
@@ -620,11 +645,15 @@ fn append_state_layout(
   include_hidden? : Bool = false,
 ) -> Unit {
   for region in layout.regions {
-    if !diagram.is_state_cluster(region.parent) {
+    if (include_hidden || !diagram.state_is_hidden(region.parent)) &&
+      !diagram.is_state_cluster(region.parent) {
       append_state_region_separator(output, region)
     }
   }
   for node in layout.nodes {
+    guard include_hidden || !diagram.state_is_hidden(node.code) else {
+      continue
+    }
     append_state_node(
       output,
       diagram,
@@ -633,9 +662,15 @@ fn append_state_layout(
     )
   }
   for region in layout.regions {
+    guard include_hidden || !diagram.state_is_hidden(region.parent) else {
+      continue
+    }
     append_empty_concurrent_region(output, diagram, region)
   }
   for note in layout.notes {
+    guard include_hidden || !diagram.note_is_hidden(note.note_index) else {
+      continue
+    }
     guard !(diagram.notes[note.note_index].target is @flow.TransitionNote(_)) else {
       continue
     }
@@ -645,6 +680,12 @@ fn append_state_layout(
     append_state_note(output, diagram, note, connection~)
   }
   for edge in layout.edges {
+    let transition = diagram.transitions[edge.transition_index]
+    guard include_hidden ||
+      !(diagram.state_is_hidden(transition.source) ||
+      diagram.state_is_hidden(transition.target)) else {
+      continue
+    }
     guard include_hidden ||
       !diagram.transitions[edge.transition_index].has_line_style("hidden") else {
       continue

@@ -11,6 +11,17 @@ fn EntityParser::parse_line(
 ) -> Unit raise @tokenizer.ParseError {
   let line = @tokenizer.strip_line_comment(line).trim().to_owned()
   guard line.length() > 0 else { return }
+  if line.equal_ignore_ascii_case("<style>") {
+    let start = self.line_number()
+    self.buffer.advance()
+    guard @style.consume_style_body(() => self.buffer.take_next(), directive => {
+      self.style.apply(directive)
+    }) else {
+      raise SyntaxError(start, "unclosed style")
+    }
+    self.buffer.index -= 1
+    return
+  }
   match @tokenizer.common_block_terminator(line) {
     Some(terminator) => {
       self.consume_common_block(terminator)
@@ -27,6 +38,12 @@ fn EntityParser::parse_line(
       return
     }
     None => ()
+  }
+  if line.to_lower().has_prefix("skinparam ") && line.has_suffix("{") {
+    self.consume_skinparam_block(
+      line["skinparam".length():line.length() - 1].trim().to_owned(),
+    )
+    return
   }
   match @style.parse_style_directive(line) {
     Some(directive) => {

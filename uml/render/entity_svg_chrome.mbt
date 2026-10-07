@@ -70,7 +70,7 @@ fn @entity.EntityDiagram::chrome_blocks(
 
 ///|
 fn ChromeBlock::height(self : ChromeBlock) -> Int {
-  self.metrics.measure(self.text).height + CHROME_BLOCK_PADDING * 2
+  self.metrics.entity_measure(self.text).height + CHROME_BLOCK_PADDING * 2
 }
 
 ///|
@@ -89,46 +89,9 @@ fn chrome_stack_height(blocks : Array[ChromeBlock]) -> Int {
 fn chrome_stack_width(blocks : Array[ChromeBlock]) -> Int {
   let mut width = 0
   for block in blocks {
-    width = width.max(block.metrics.measure(block.text).width)
+    width = width.max(block.metrics.entity_measure(block.text).width)
   }
   width
-}
-
-///|
-/// Resolve the `scale` directive to a positive factor; `scale 2`, `scale
-/// 1.5` and `scale 200/100` forms are all accepted.
-fn diagram_scale(style : @style.DocumentStyle) -> Double {
-  match style.scale {
-    Some(value) => {
-      let trimmed = value.trim().to_owned()
-      let direct : Double? = Some(@string.parse_double(trimmed)) catch {
-        _ => None
-      }
-      match direct {
-        Some(value) => value.max(0.0)
-        None =>
-          match @tokenizer.find_literal(trimmed, "/") {
-            Some(index) => {
-              let numerator = @string.parse_double(trimmed[0:index].to_owned()) catch {
-                _ => 1.0
-              }
-              let denominator = @string.parse_double(
-                trimmed[index + 1:].to_owned(),
-              ) catch {
-                _ => 1.0
-              }
-              if denominator == 0.0 {
-                1.0
-              } else {
-                (numerator / denominator).max(0.0)
-              }
-            }
-            None => 1.0
-          }
-      }
-    }
-    None => 1.0
-  }
 }
 
 ///|
@@ -141,7 +104,7 @@ fn draw_chrome_stack(
 ) -> Unit {
   let mut y = start_y
   for block in blocks {
-    let metrics = block.metrics.measure(block.text)
+    let metrics = block.metrics.entity_measure(block.text)
     let x = ((canvas_width - metrics.width.to_double()) / 2.0).max(0.0)
     output.group(
       { ..Default::default(), class_name: Some(block.block_class), },

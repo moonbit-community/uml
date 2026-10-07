@@ -5,10 +5,18 @@ fn append_layout_edge(
   to_node_index : Int?,
   route : ActivityEdgeRoute,
   label? : String? = None,
+  style? : String? = None,
 ) -> Unit {
   guard from_node_index is Some(from_node_index) else { return }
   guard to_node_index is Some(to_node_index) else { return }
-  edges.push({ from_node_index, to_node_index, route, label, })
+  edges.push({
+    from_node_index,
+    to_node_index,
+    route,
+    label,
+    style,
+    rainbow_separation: 0.0,
+  })
 }
 
 ///|
@@ -96,13 +104,13 @@ fn reposition_swimlanes(
   edges : Array[ActivityEdgeLayout],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  height : Int,
+  height : Double,
 ) -> Array[ActivityRegionLayout] {
   let names = swimlane_names(nodes)
   // Swimlanes.drawU uses the ordinary layout for zero or one named lane.
   guard names.length() > 1 else { return [] }
   preserve_fork_lane_ports(nodes, layouts, edges)
-  let bounds : Array[(Int, Int)?] = names.map(_ => None)
+  let bounds : Array[(Double, Double)?] = names.map(_ => None)
   for layout in layouts {
     guard swimlane_for_node(nodes, layout.node_index) is Some(name) else {
       continue
@@ -141,9 +149,9 @@ fn reposition_swimlanes(
   let titles = names.map(activity_display_text)
   let widths = []
   for index, _ in names {
-    let content_width = bounds[index].map_or(0, extent => extent.1 - extent.0)
+    let content_width = bounds[index].map_or(0.0, extent => extent.1 - extent.0)
     widths.push(
-      content_width.max(metrics.measure(titles[index]).width) +
+      content_width.max(activity_measure(metrics, titles[index]).width) +
       REGION_PADDING * 2,
     )
   }
@@ -153,7 +161,7 @@ fn reposition_swimlanes(
     positions.push(cursor_x)
     cursor_x += width + SWIMLANE_GAP
   }
-  let shifts = nodes.map(_ => 0)
+  let shifts = nodes.map(_ => 0.0)
   for index, layout in layouts {
     guard swimlane_for_node(nodes, layout.node_index) is Some(name) else {
       continue
@@ -239,8 +247,8 @@ fn preserve_fork_lane_ports(
 ) -> Unit {
   for index, edge in edges {
     guard edge.route is Forward else { continue }
-    let from_fork = nodes[edge.from_node_index].is_fork()
-    let to_fork = nodes[edge.to_node_index].is_fork()
+    let from_fork = nodes[edge.from_node_index].is_parallel_bar()
+    let to_fork = nodes[edge.to_node_index].is_parallel_bar()
     guard from_fork || to_fork else { continue }
     guard swimlane_for_node(nodes, edge.from_node_index) !=
       swimlane_for_node(nodes, edge.to_node_index) else {
@@ -252,7 +260,7 @@ fn preserve_fork_lane_ports(
     let to = layouts[layouts
       .search_by(node => node.node_index == edge.to_node_index)
       .unwrap()]
-    let port_x = if nodes[edge.from_node_index] is @flow.ActivityNode::Fork {
+    let port_x = if nodes[edge.from_node_index].is_parallel_entry() {
       to.x + to.width / 2
     } else {
       from.x + from.width / 2

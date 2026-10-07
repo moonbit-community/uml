@@ -1,10 +1,10 @@
 ///|
 /// FtileWithNoteOpale.suppSpace.
-const NOTE_GAP : Int = 20
+const NOTE_GAP : Double = 20
 
 ///|
 /// FtileWithNotes wraps each note in TextBlockUtils.withMargin(opale, 10, 10).
-const NOTE_STACK_MARGIN : Int = 10
+const NOTE_STACK_MARGIN : Double = 10
 
 ///|
 fn attach_activity_note(
@@ -84,8 +84,13 @@ fn tile_axis(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> Int {
+) -> Double {
   match tile {
+    LoopWithBackward(body, _, _, _, _) =>
+      tile_axis(body, nodes, metrics, small_metrics)
+    LoopWithBreaks(body, _, _, repeat) =>
+      tile_axis(body, nodes, metrics, small_metrics) +
+      (if repeat { REPEAT_SIDE_CLEARANCE } else { 0 })
     Noted(body, notes) => {
       let (left, _) = measure_note_columns(notes, nodes, metrics, small_metrics)
       left.width + tile_axis(body, nodes, metrics, small_metrics)
@@ -134,8 +139,8 @@ fn sequence_axis(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> Int {
-  let mut axis = 0
+) -> Double {
+  let mut axis = 0.0
   for tile in tiles {
     let size = measure_tile(tile, nodes, metrics, small_metrics)
     guard size.height > 0 else { continue }
@@ -151,8 +156,8 @@ fn place_noted(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {

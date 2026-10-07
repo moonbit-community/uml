@@ -1,4 +1,5 @@
 import {
+  "kokic/uml/entity",
   "kokic/uml/style",
   "moonbitlang/x/decimal",
 }

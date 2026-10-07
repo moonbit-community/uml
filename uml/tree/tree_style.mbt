@@ -31,19 +31,25 @@ pub extend TreeDiagramFamily with Debug::{to_repr}
 /// mindmap-only `same_class_width`), so the parsing and precedence logic
 /// lives once.
 pub(all) struct TreeNodeStyle {
-  minimum_width : Int?
-  padding_x : Int?
-  padding_y : Int?
-  margin_left : Int?
-  margin_right : Int?
-  margin_top : Int?
-  margin_bottom : Int?
+  minimum_width : Double?
+  padding_left : Double?
+  padding_right : Double?
+  padding_top : Double?
+  padding_bottom : Double?
+  margin_left : Double?
+  margin_right : Double?
+  margin_top : Double?
+  margin_bottom : Double?
   font_size : Int?
+  font_name : String?
+  font_weight : Int?
+  italic : Bool?
+  wrap_width : Double?
   background_color : String?
   line_color : String?
   font_color : String?
-  line_thickness : Int?
-  round_corner : Int?
+  line_thickness : Double?
+  round_corner : Double?
   same_class_width : Bool?
   width_auto : Bool?
   alignment : TextAlignment?
@@ -58,7 +64,7 @@ pub extend TreeNodeStyle with Debug::{to_repr}
 ///|
 pub(all) struct TreeArrowStyle {
   line_color : String?
-  line_thickness : Int?
+  line_thickness : Double?
 } derive(Eq, Debug)
 
 ///|
@@ -104,22 +110,22 @@ pub type WbsNodeStyle = TreeNodeStyle
 pub type WbsArrowStyle = TreeArrowStyle
 
 ///|
-pub const MINDMAP_DEFAULT_PADDING_X : Int = 10
+pub const MINDMAP_DEFAULT_PADDING_X : Double = 10.0
 
 ///|
-pub const MINDMAP_DEFAULT_PADDING_Y : Int = 10
+pub const MINDMAP_DEFAULT_PADDING_Y : Double = 10.0
 
 ///|
-pub const MINDMAP_DEFAULT_MARGIN : Int = 10
+pub const MINDMAP_DEFAULT_MARGIN : Double = 10.0
 
 ///|
-pub const WBS_DEFAULT_PADDING_X : Int = 10
+pub const WBS_DEFAULT_PADDING_X : Double = 10.0
 
 ///|
-pub const WBS_DEFAULT_PADDING_Y : Int = 10
+pub const WBS_DEFAULT_PADDING_Y : Double = 10.0
 
 ///|
-pub const WBS_DEFAULT_MARGIN : Int = 15
+pub const WBS_DEFAULT_MARGIN : Double = 15.0
 
 ///|
 pub const WBS_DEFAULT_FONT_SIZE : Int = 12
@@ -128,13 +134,19 @@ pub const WBS_DEFAULT_FONT_SIZE : Int = 12
 pub fn TreeNodeStyle::empty() -> TreeNodeStyle {
   {
     minimum_width: None,
-    padding_x: None,
-    padding_y: None,
+    padding_left: None,
+    padding_right: None,
+    padding_top: None,
+    padding_bottom: None,
     margin_left: None,
     margin_right: None,
     margin_top: None,
     margin_bottom: None,
     font_size: None,
+    font_name: None,
+    font_weight: None,
+    italic: None,
+    wrap_width: None,
     background_color: None,
     line_color: None,
     font_color: None,
@@ -152,8 +164,10 @@ pub fn TreeNodeStyle::defaults(family : TreeDiagramFamily) -> TreeNodeStyle {
     Mindmap =>
       {
         ..TreeNodeStyle::empty(),
-        padding_x: Some(MINDMAP_DEFAULT_PADDING_X),
-        padding_y: Some(MINDMAP_DEFAULT_PADDING_Y),
+        padding_left: Some(MINDMAP_DEFAULT_PADDING_X),
+        padding_right: Some(MINDMAP_DEFAULT_PADDING_X),
+        padding_top: Some(MINDMAP_DEFAULT_PADDING_Y),
+        padding_bottom: Some(MINDMAP_DEFAULT_PADDING_Y),
         margin_left: Some(MINDMAP_DEFAULT_MARGIN),
         margin_right: Some(MINDMAP_DEFAULT_MARGIN),
         margin_top: Some(MINDMAP_DEFAULT_MARGIN),
@@ -163,14 +177,16 @@ pub fn TreeNodeStyle::defaults(family : TreeDiagramFamily) -> TreeNodeStyle {
     Wbs =>
       {
         ..TreeNodeStyle::empty(),
-        padding_x: Some(WBS_DEFAULT_PADDING_X),
-        padding_y: Some(WBS_DEFAULT_PADDING_Y),
+        padding_left: Some(WBS_DEFAULT_PADDING_X),
+        padding_right: Some(WBS_DEFAULT_PADDING_X),
+        padding_top: Some(WBS_DEFAULT_PADDING_Y),
+        padding_bottom: Some(WBS_DEFAULT_PADDING_Y),
         margin_left: Some(WBS_DEFAULT_MARGIN),
         margin_right: Some(WBS_DEFAULT_MARGIN),
         margin_top: Some(WBS_DEFAULT_MARGIN),
         margin_bottom: Some(WBS_DEFAULT_MARGIN),
         font_size: Some(WBS_DEFAULT_FONT_SIZE),
-        round_corner: Some(0),
+        round_corner: Some(0.0),
         alignment: Some(Left),
       }
   }
@@ -178,7 +194,7 @@ pub fn TreeNodeStyle::defaults(family : TreeDiagramFamily) -> TreeNodeStyle {
 
 ///|
 pub fn TreeArrowStyle::defaults() -> TreeArrowStyle {
-  { line_color: None, line_thickness: Some(1), }
+  { line_color: None, line_thickness: Some(1.0), }
 }
 
 ///|
@@ -205,13 +221,19 @@ pub fn TreeNodeStyle::merge(
 ) -> TreeNodeStyle {
   {
     minimum_width: overlay.minimum_width.fallback(self.minimum_width),
-    padding_x: overlay.padding_x.fallback(self.padding_x),
-    padding_y: overlay.padding_y.fallback(self.padding_y),
+    padding_left: overlay.padding_left.fallback(self.padding_left),
+    padding_right: overlay.padding_right.fallback(self.padding_right),
+    padding_top: overlay.padding_top.fallback(self.padding_top),
+    padding_bottom: overlay.padding_bottom.fallback(self.padding_bottom),
     margin_left: overlay.margin_left.fallback(self.margin_left),
     margin_right: overlay.margin_right.fallback(self.margin_right),
     margin_top: overlay.margin_top.fallback(self.margin_top),
     margin_bottom: overlay.margin_bottom.fallback(self.margin_bottom),
     font_size: overlay.font_size.fallback(self.font_size),
+    font_name: overlay.font_name.fallback(self.font_name),
+    font_weight: overlay.font_weight.fallback(self.font_weight),
+    italic: overlay.italic.fallback(self.italic),
+    wrap_width: overlay.wrap_width.fallback(self.wrap_width),
     background_color: overlay.background_color.fallback(self.background_color),
     line_color: overlay.line_color.fallback(self.line_color),
     font_color: overlay.font_color.fallback(self.font_color),
@@ -243,12 +265,12 @@ fn parse_bool(value : String) -> Bool? {
 }
 
 ///|
-fn parse_box_lengths(value : String) -> (Int, Int, Int, Int)? {
+fn parse_box_lengths(value : String) -> (Double, Double, Double, Double)? {
   let values = []
   for word in value.split(" ") {
     let word = word.trim().to_owned()
     guard word.length() > 0 else { continue }
-    guard parse_nonnegative_int(word) is Some(length) else { return None }
+    guard parse_nonnegative_double(word) is Some(length) else { return None }
     values.push(length)
   }
   match values {
@@ -268,12 +290,12 @@ pub fn TreeNodeStyle::with_property(
 ) -> TreeNodeStyle {
   let normalized = key
     .to_lower()
-    .replace(old="-", new="")
-    .replace(old=":", new="")
+    .replace_all(old="-", new="")
+    .replace_all(old=":", new="")
   let value = value.trim().to_owned()
   match normalized {
     "minimumwidth" =>
-      parse_nonnegative_int(value).map_or(self, width => {
+      parse_nonnegative_double(value).map_or(self, width => {
         ..self,
         minimum_width: Some(width),
       })
@@ -282,8 +304,10 @@ pub fn TreeNodeStyle::with_property(
         let (top, right, bottom, left) = lengths
         {
           ..self,
-          padding_x: Some(left.max(right)),
-          padding_y: Some(top.max(bottom)),
+          padding_left: Some(left),
+          padding_right: Some(right),
+          padding_top: Some(top),
+          padding_bottom: Some(bottom),
         }
       })
     "margin" =>
@@ -303,15 +327,33 @@ pub fn TreeNodeStyle::with_property(
         font_size: Some(size.max(1)),
       })
     "backgroundcolor" => { ..self, background_color: Some(value), }
+    "fontname" | "fontfamily" => { ..self, font_name: Some(value), }
+    "fontstyle" =>
+      {
+        ..self,
+        font_weight: Some(
+          if value.to_lower().contains("bold") {
+            700
+          } else {
+            400
+          },
+        ),
+        italic: Some(value.to_lower().contains("italic")),
+      }
+    "wrapwidth" =>
+      parse_nonnegative_double(value).map_or(self, width => {
+        ..self,
+        wrap_width: Some(width),
+      })
     "linecolor" | "bordercolor" => { ..self, line_color: Some(value), }
     "fontcolor" => { ..self, font_color: Some(value), }
     "linethickness" =>
-      parse_nonnegative_int(value).map_or(self, thickness => {
+      parse_nonnegative_double(value).map_or(self, thickness => {
         ..self,
-        line_thickness: Some(thickness.max(1)),
+        line_thickness: Some(thickness),
       })
     "roundcorner" =>
-      parse_nonnegative_int(value).map_or(self, corner => {
+      parse_nonnegative_double(value).map_or(self, corner => {
         ..self,
         round_corner: Some(corner),
       })
@@ -342,13 +384,13 @@ pub fn TreeArrowStyle::with_property(
   key : String,
   value : String,
 ) -> TreeArrowStyle {
-  match key.to_lower().replace(old=":", new="") {
+  match key.to_lower().replace_all(old=":", new="") {
     "linecolor" | "color" =>
       { ..self, line_color: Some(value.trim().to_owned()), }
     "linethickness" =>
-      parse_nonnegative_int(value).map_or(self, thickness => {
+      parse_nonnegative_double(value).map_or(self, thickness => {
         ..self,
-        line_thickness: Some(thickness.max(1)),
+        line_thickness: Some(thickness),
       })
     _ => self
   }
@@ -424,7 +466,7 @@ pub fn TreeStyle::apply_skinparam(
 ) -> Unit {
   match directive {
     Property(key, value) => {
-      let normalized = key.to_lower().replace(old="-", new="")
+      let normalized = key.to_lower().replace_all(old="-", new="")
       let node_prefix = family_node_skinparam_prefix(self.family)
       let arrow_prefix = family_arrow_skinparam_prefix(self.family)
       if normalized.has_prefix(node_prefix) {
@@ -463,4 +505,14 @@ pub fn TreeStyle::node_style(
     .get(normalized_stereotype(value))
     .unwrap_or(TreeNodeStyle::empty()),
   )
+}
+
+///|
+fn parse_nonnegative_double(value : String) -> Double? {
+  let parsed = @string.parse_double(value.trim()) catch { _ => return None }
+  if parsed >= 0.0 {
+    Some(parsed)
+  } else {
+    None
+  }
 }

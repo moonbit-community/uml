@@ -6,7 +6,7 @@ priv enum ClassLineSyntax {
   ParsedFilter(FilterLineSyntax)
   ParsedCommand(ClassCommandLineSyntax)
   ParsedTextBlock(String)
-  ParsedSkinparamBlock
+  ParsedSkinparamBlock(String)
   ParsedTogetherBlock
   ParsedMultilineElement(MultilineElementHeader)
   ParsedSingleLineJson(JsonSingleDeclaration)
@@ -39,7 +39,11 @@ fn class_control_line(cursor : @tokenizer.Cursor) -> ClassLineSyntax? {
       "}" | "};" | "end package" | "end namespace" => Some(ParsedPackageClose)
       "together {" => Some(ParsedTogetherBlock)
       value if value.has_prefix("skinparam") && line.has_suffix("{") =>
-        Some(ParsedSkinparamBlock)
+        Some(
+          ParsedSkinparamBlock(
+            line["skinparam".length():line.length() - 1].trim().to_owned(),
+          ),
+        )
       _ => None
     }
   })
@@ -226,7 +230,7 @@ fn EntityParser::apply_class_line_syntax(
     ParsedFilter(value) => self.apply_filter_syntax(value)
     ParsedCommand(value) => self.apply_class_command(value)
     ParsedTextBlock(keyword) => self.consume_text_block(keyword)
-    ParsedSkinparamBlock => self.consume_skinparam_block()
+    ParsedSkinparamBlock(prefix) => self.consume_skinparam_block(prefix)
     ParsedTogetherBlock => self.consume_braced_block("together")
     ParsedMultilineElement(header) => self.consume_multiline_element(header)
     ParsedSingleLineJson(value) => self.add_single_line_json(value)
@@ -317,6 +321,7 @@ fn EntityParser::consume_braced_block(
 ///|
 fn EntityParser::consume_skinparam_block(
   self : EntityParser,
+  prefix : String,
 ) -> Unit raise @tokenizer.ParseError {
   self.buffer.advance()
   let closed = @style.consume_skinparam_body(
@@ -329,6 +334,7 @@ fn EntityParser::consume_skinparam_block(
       Some(line)
     },
     directive => self.style.apply(directive),
+    prefix~,
   )
   guard closed else { self.raise_parse_error("unclosed skinparam") }
 }

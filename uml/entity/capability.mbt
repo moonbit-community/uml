@@ -91,6 +91,7 @@ pub(all) enum EntityRendererKind {
   JsonRenderer
   LollipopRenderer
   PointRenderer
+  DiamondRenderer
   UsecaseRenderer
   ActorRenderer
   ComponentRenderer
@@ -296,7 +297,8 @@ pub fn EntityKind::render_capability(
         header: ObjectHeader,
         body: JsonData,
         shape: Box,
-        ports: JsonTreePorts,
+        // TextBlockCucaJSon.getPorts returns an empty Ports, unlike maps.
+        ports: NoPorts,
         spot: NoSpot,
         renders_stereotype: true,
         relation_endpoint: PortOrShapeBoundaryEndpoint,
@@ -334,7 +336,7 @@ pub fn EntityKind::render_capability(
         shape: Box,
         ports: NoPorts,
         spot: NoSpot,
-        renders_stereotype: false,
+        renders_stereotype: true,
         relation_endpoint: ShapeBoundaryEndpoint,
         style_role: ComponentStyle,
       }
@@ -361,6 +363,13 @@ pub fn EntityKind::render_capability(
         renders_stereotype: false,
         relation_endpoint: CenterEndpoint,
         style_role: LollipopStyle,
+      }
+    Diamond =>
+      {
+        ..description_leaf_capability(),
+        renderer: DiamondRenderer,
+        shape: Rhombus,
+        renders_stereotype: false,
       }
     Interface if family
       is (ComponentDiagram | DeploymentDiagram | UseCaseDiagram) =>
@@ -455,6 +464,7 @@ pub fn EntityRenderCapability::graphviz_shape(
     (Circle, _) => "circle"
     (InterfaceCircle, _) => "box"
     (Hexagon, _) => "hexagon"
+    (Rhombus, _) => "diamond"
   }
 }
 
@@ -466,4 +476,5 @@ pub(all) enum NodeShape {
   Circle
   InterfaceCircle
   Hexagon
+  Rhombus
 }

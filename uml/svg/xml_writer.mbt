@@ -3,11 +3,12 @@
 pub struct XmlWriter {
   output : StringBuilder
   open_tags : Array[String]
+  gradients : Map[String, Unit]
 }
 
 ///|
 pub fn XmlWriter::new() -> XmlWriter {
-  { output: StringBuilder(), open_tags: [], }
+  { output: StringBuilder(), open_tags: [], gradients: Map([]), }
 }
 
 ///|

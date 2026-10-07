@@ -1,8 +1,8 @@
 ///|
 /// Whether two layout nodes overlap.
 fn mbti_rects_overlap(
-  left : (Int, Int, Int, Int),
-  right : (Int, Int, Int, Int),
+  left : (Double, Double, Double, Double),
+  right : (Double, Double, Double, Double),
 ) -> Bool {
   left.0 < right.0 + right.2 &&
   right.0 < left.0 + left.2 &&
@@ -63,7 +63,7 @@ test "mindmap layout connects every relation as a tree edge" {
   // Each non-root node hangs under exactly one parent.
   @test.assert_eq(layout.edges.length(), layout.nodes.length() - 1)
   for edge in layout.edges {
-    let mut parent_x = 0
+    let mut parent_x = 0.0
     let mut found_parent = false
     let mut found_child = false
     for node in layout.nodes {

@@ -1,34 +1,7 @@
 ///|
 priv struct ClassLayout {
-  columns : Int
-  cell_width : Int
-  cell_height : Int
-  width : Int
   graphviz : GraphvizLayout?
   mindmap : MindmapClassLayout?
-}
-
-///|
-fn @entity.EntityDiagram::layout(
-  self : @entity.EntityDiagram,
-  text_metrics : ClassTextMetrics,
-) -> ClassLayout {
-  let columns = self.entities.length().min(3).max(1)
-  let mut cell_width = 220
-  let mut cell_height = 180
-  for entity in self.entities {
-    let geometry = entity.node_geometry(text_metrics, self.family)
-    cell_width = cell_width.max(geometry.width + 24)
-    cell_height = cell_height.max(geometry.height + 24)
-  }
-  {
-    columns,
-    cell_width,
-    cell_height,
-    width: 24 + columns * cell_width,
-    graphviz: None,
-    mindmap: None,
-  }
 }
 
 ///|
@@ -36,7 +9,7 @@ fn ClassLayout::entity_rect(
   self : ClassLayout,
   diagram : @entity.EntityDiagram,
   index : Int,
-  text_metrics : ClassTextMetrics,
+  _text_metrics : ClassTextMetrics,
 ) -> (Int, Int, Int, Int) {
   if self.mindmap is Some(mindmap) {
     return mindmap.rects[index]
@@ -57,11 +30,7 @@ fn ClassLayout::entity_rect(
     }
     None => ()
   }
-  let geometry = diagram.entities[index].node_geometry(
-    text_metrics,
-    diagram.family,
-  )
-  (self.node_x(index), self.node_y(index), geometry.width, geometry.height)
+  abort("entity is missing from the completed layout")
 }
 
 ///|
@@ -112,6 +81,18 @@ fn ClassLayout::content_bounds(
     )
     bounds = include_point(bounds, x, y)
     bounds = include_point(bounds, x + w, y + h)
+    if entity.render_capability(diagram.family).renderer is ClassRenderer {
+      let header = entity.header_layout(text_metrics, diagram.family)
+      if header.generic is Some(_) {
+        let (gx, gy, gw, gh) = header.generic_rect(w.to_int())
+        bounds = include_point(bounds, x + gx.to_double(), y + gy.to_double())
+        bounds = include_point(
+          bounds,
+          x + (gx + gw).to_double(),
+          y + (gy + gh).to_double(),
+        )
+      }
+    }
   }
   match self.mindmap {
     Some(mindmap) =>
@@ -166,6 +147,24 @@ fn ClassLayout::content_bounds(
               bounds,
               note.x + note.width / 2.0,
               note.y + note.height / 2.0,
+            )
+          }
+          for constraint in graphviz.constraints {
+            bounds = include_point(
+              bounds,
+              constraint.start.0,
+              constraint.start.1,
+            )
+            bounds = include_point(bounds, constraint.end.0, constraint.end.1)
+            bounds = include_point(
+              bounds,
+              constraint.label.x,
+              constraint.label.y,
+            )
+            bounds = include_point(
+              bounds,
+              constraint.label.x + constraint.label.width,
+              constraint.label.y + constraint.label.height,
             )
           }
           for label_layout in graphviz.relation_labels {
@@ -335,11 +334,6 @@ fn entity_index(diagram : @entity.EntityDiagram, code : String) -> Int? {
     }
   }
   None
-}
-
-///|
-fn ClassLayout::node_x(self : ClassLayout, index : Int) -> Int {
-  24 + index % self.columns * self.cell_width
 }
 
 ///|

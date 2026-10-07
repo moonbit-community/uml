@@ -36,6 +36,44 @@ fn draw_entity_text(
   anchor? : @graphics.TextAnchor = Start,
   text_style? : @graphics.TextStyle? = None,
 ) -> Unit {
+  if state_rich_text(text, metrics, 0.0, literal_newlines=true) is Some(rich) {
+    let styled = graphic.with_style({
+      ..Default::default(),
+      fill: if fill.is_empty() {
+        Inherit
+      } else {
+        Color(fill)
+      },
+    })
+    rich.draw(
+      styled,
+      x,
+      y - metrics.ascent.to_double(),
+      metrics,
+      { ..Default::default(), class_name, },
+      anchor,
+      None,
+    )
+    return
+  }
+  if text.contains("\n") {
+    for index, line in text.split("\n") {
+      draw_entity_text(
+        graphic,
+        x,
+        y + index.to_double() * metrics.line_height.to_double(),
+        line.to_owned(),
+        metrics,
+        class_name?,
+        fill~,
+        font_family~,
+        font_size~,
+        anchor~,
+        text_style~,
+      )
+    }
+    return
+  }
   let run = entity_text_run(
     text,
     { x, y, },
@@ -68,7 +106,7 @@ fn entity_text_run(
   font_family? : String = "",
   font_size? : Int = 0,
 ) -> @graphics.TextRun {
-  let measured = metrics.measure(text)
+  let measured = metrics.entity_measure(text)
   {
     text,
     position,
@@ -85,5 +123,39 @@ fn entity_text_run(
       Some(font_family)
     },
     strike: false,
+  }
+}
+
+///|
+priv struct EntityTextSize {
+  width : Int
+  height : Int
+  baseline : Int
+  ascent : Int
+  advance_width : Int
+}
+
+///|
+fn @metrics.FontMetrics::entity_measure(
+  self : @metrics.FontMetrics,
+  text : String,
+) -> EntityTextSize {
+  if state_rich_text(text, self, 0.0, literal_newlines=true) is Some(rich) {
+    {
+      width: rich.width.ceil().to_int(),
+      height: rich.height.ceil().to_int(),
+      baseline: self.ascent,
+      ascent: self.ascent,
+      advance_width: rich.width.ceil().to_int(),
+    }
+  } else {
+    let measured = self.measure(text)
+    {
+      width: measured.width,
+      height: measured.height,
+      baseline: measured.baseline,
+      ascent: measured.ascent,
+      advance_width: measured.advance_width,
+    }
   }
 }

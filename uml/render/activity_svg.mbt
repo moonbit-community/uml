@@ -10,18 +10,40 @@ fn layout_for(layout : ActivityLayout, node_index : Int) -> ActivityNodeLayout? 
 ///|
 fn append_label(
   output : @graphics.Graphic,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   label : String,
   font_metrics : @metrics.FontMetrics,
   anchor? : @graphics.TextAnchor = Middle,
   multiline_anchor? : @svg.MultilineTextAnchor = Center,
 ) -> Unit {
-  output.draw(
+  if state_rich_text(label, font_metrics, 0.0) is Some(rich) {
+    let top = if multiline_anchor is @svg.Center {
+      y -
+      font_metrics.ascent.to_double() +
+      font_metrics.line_height.to_double() / 2.0 -
+      rich.height / 2.0
+    } else {
+      y - font_metrics.ascent.to_double()
+    }
+    rich.draw(
+      output.with_style(Default::default()),
+      x,
+      top,
+      font_metrics,
+      activity_class("activity-label"),
+      anchor,
+      None,
+    )
+    return
+  }
+  output
+  .with_style(Default::default())
+  .draw(
     StyledTextBlock(
       @svg.layout_multiline_text(
-        x.to_double(),
-        y.to_double(),
+        x,
+        y,
         label,
         line_height=font_metrics.line_height.to_double(),
         anchor=multiline_anchor,
@@ -53,17 +75,16 @@ fn append_edge(
   let y2 = to.y
   let from_center_y = from.y + from.height / 2
   let from_is_decision = layout.source_nodes[edge.from_node_index].is_decision()
-  let from_is_fork = layout.source_nodes[edge.from_node_index].is_fork()
+  let from_is_fork = layout.source_nodes[edge.from_node_index].is_parallel_bar()
   let to_is_continuation = layout.source_nodes[edge.to_node_index]
     is @flow.ActivityNode::EndIf &&
     to.width == 0
   let to_is_switch_exit = layout.source_nodes[edge.to_node_index]
     is @flow.ActivityNode::EndSwitch
-  let to_is_fork = layout.source_nodes[edge.to_node_index].is_fork()
+  let to_is_fork = layout.source_nodes[edge.to_node_index].is_parallel_bar()
   let path : Array[@graphics.PathSegment] = if (from_is_fork || to_is_fork) &&
     edge.route is Forward {
-    let drop_x = if layout.source_nodes[edge.from_node_index]
-      is @flow.ActivityNode::Fork {
+    let drop_x = if layout.source_nodes[edge.from_node_index].is_parallel_entry() {
       target_x
     } else {
       x
@@ -71,6 +92,65 @@ fn append_edge(
     [MoveTo(activity_point(drop_x, y1)), LineTo(activity_point(drop_x, y2))]
   } else {
     match edge.route {
+      ForkMerge => {
+        let inside = x >= to.x && x <= to.x + to.width
+        let end_x = if inside {
+          target_x
+        } else if x < to.x {
+          to.x
+        } else {
+          to.x + to.width
+        }
+        let end_y = if inside { to.y } else { to.y + to.height / 2 }
+        [
+          MoveTo(activity_point(x, y1)),
+          LineTo(activity_point(x, end_y)),
+          LineTo(activity_point(end_x, end_y)),
+        ]
+      }
+      BackwardActionIn(repeat, drop) => {
+        let bottom = to.y + to.height
+        if repeat {
+          let start = if target_x < x { from.x } else { from.x + from.width }
+          [
+            MoveTo(activity_point(start, from_center_y)),
+            LineTo(activity_point(target_x, from_center_y)),
+            LineTo(activity_point(target_x, bottom)),
+          ]
+        } else {
+          [
+            MoveTo(activity_point(x, y1)),
+            LineTo(activity_point(x, y1 + drop)),
+            LineTo(activity_point(target_x, y1 + drop)),
+            LineTo(activity_point(target_x, bottom)),
+          ]
+        }
+      }
+      BackwardActionOut => {
+        let contact_x = if x > target_x { to.x + to.width } else { to.x }
+        let contact_y = to.y + to.height / 2
+        [
+          MoveTo(activity_point(x, from.y)),
+          LineTo(activity_point(x, contact_y)),
+          LineTo(activity_point(contact_x, contact_y)),
+        ]
+      }
+      BreakLeft(offset, complete) => {
+        let route_x = to.x + offset
+        if complete {
+          [
+            MoveTo(activity_point(x, from.y)),
+            LineTo(activity_point(route_x, from.y)),
+            LineTo(activity_point(route_x, to.y + to.height / 2)),
+            LineTo(activity_point(to.x, to.y + to.height / 2)),
+          ]
+        } else {
+          [
+            MoveTo(activity_point(x, from.y)),
+            LineTo(activity_point(route_x, from.y)),
+          ]
+        }
+      }
       IfChainMerge =>
         [MoveTo(activity_point(x, y2)), LineTo(activity_point(target_x, y2))]
       ForkSequence | WhileEntry | RepeatForward => {
@@ -96,8 +176,7 @@ fn append_edge(
       ForkLane(from_offset, to_offset) => {
         let from_x = from.x + from_offset
         let to_x = to.x + to_offset
-        let middle_y = if layout.source_nodes[edge.from_node_index]
-          is @flow.ActivityNode::Fork {
+        let middle_y = if layout.source_nodes[edge.from_node_index].is_parallel_entry() {
           y1 + FORK_LANE_OUT_DROP
         } else {
           y2 - FORK_LANE_IN_RISE
@@ -312,7 +391,11 @@ fn append_edge(
       metadata=activity_class("activity-edge"),
     )
   }
-  let end_marker = if edge.route is (WhileExitLeft(_) | IfChainMerge) ||
+  let end_marker = if edge.style.map_or(false, style => {
+      style.split(",").any(token => token.trim().to_lower() == "hidden")
+    }) {
+    None
+  } else if edge.route is (WhileExitLeft(_) | IfChainMerge) ||
     (edge.route is IfEmptyDown && to_is_continuation) {
     None
   } else {
@@ -331,6 +414,9 @@ fn append_edge(
           IfSideTerminal => "if-side-terminal"
           Goto => "goto"
           BackwardLeft => "backward-left"
+          BreakLeft(_) => "break-left"
+          BackwardActionIn(_) => "backward-action-in"
+          BackwardActionOut => "backward-action-out"
           BackwardRight(_) => "backward-right"
           RepeatBackRight(_) => "repeat-back-right"
           RepeatLaneBack(_) => "repeat-lane-back"
@@ -346,6 +432,7 @@ fn append_edge(
           SwitchSideMerge => "switch-side-merge"
           WhileExitLeft(_) => "while-exit-left"
           WhileEntry => "while-entry"
+          ForkMerge => "fork-merge"
         },
       ),
     ],
@@ -400,8 +487,8 @@ fn append_region(
   output.draw(
     Rectangle(
       origin=activity_point(region.x, region.y),
-      width=region.width.to_double(),
-      height=region.height.to_double(),
+      width=region.width,
+      height=region.height,
       rx=None,
       ry=None,
     ),
@@ -411,7 +498,10 @@ fn append_region(
     output,
     region.x + region.width / 2,
     region.y +
-    REGION_HEADER_HEIGHT.max(font_metrics.measure(region.label).height) / 2 +
+    REGION_HEADER_HEIGHT.max(
+      activity_measure(font_metrics, region.label).height,
+    ) /
+    2 +
     4,
     region.label,
     font_metrics,
@@ -419,8 +509,8 @@ fn append_region(
 }
 
 ///|
-fn activity_point(x : Int, y : Int) -> @graphics.Point {
-  { x: x.to_double(), y: y.to_double(), }
+fn activity_point(x : Double, y : Double) -> @graphics.Point {
+  { x, y, }
 }
 
 ///|
@@ -457,18 +547,18 @@ fn activity_append_node(
       match node {
         Start =>
           output.draw(
-            Circle(center~, radius=(height / 2).to_double()),
+            Circle(center~, radius=height / 2),
             metadata=activity_class("activity-start"),
           )
         End => {
           output.draw(
-            Circle(center~, radius=height.to_double() / 2.0),
+            Circle(center~, radius=height / 2.0),
             metadata=activity_class("activity-end-circle"),
           )
-          let span = (height.to_double() - END_CROSS_STROKE) / 2.0.sqrt()
-          let inset = (height.to_double() - span) / 2.0
-          let left = x.to_double() + inset
-          let top = y.to_double() + inset
+          let span = (height - END_CROSS_STROKE) / 2.0.sqrt()
+          let inset = (height - span) / 2.0
+          let left = x + inset
+          let top = y + inset
           output.draw(
             Path([
               MoveTo({ x: left, y: top, }),
@@ -481,20 +571,36 @@ fn activity_append_node(
         }
         Stop => {
           output.draw(
-            Circle(center~, radius=(height / 2).to_double()),
+            Circle(center~, radius=height / 2),
             metadata=activity_class("activity-stop-outer"),
           )
           output.draw(
-            Circle(center~, radius=STOP_INNER.to_double()),
+            Circle(center~, radius=STOP_INNER),
             metadata=activity_class("activity-stop-inner"),
           )
         }
-        _ if node.is_fork() =>
+        Split | EndSplit => {
+          let (first, last) = activity_split_extent(layout, node_layout)
+          output
+          .with_style({
+            ..Default::default(),
+            stroke_width: Some(SPLIT_BAR_HEIGHT),
+            inline: true,
+          })
+          .draw(
+            Path([
+              MoveTo(activity_point(first, y)),
+              LineTo(activity_point(last, y)),
+            ]),
+            metadata=activity_class("activity-edge"),
+          )
+        }
+        _ if node.is_parallel_bar() =>
           output.draw(
             Rectangle(
               origin=activity_point(x, y),
-              width=width.to_double(),
-              height=height.to_double(),
+              width~,
+              height~,
               rx=Some(2.0),
               ry=None,
             ),
@@ -556,13 +662,13 @@ fn activity_append_node(
             font_metrics,
           )
         }
-        Action(_) => {
+        Action(_) | RepeatAction(_) => {
           output.draw(
             Rectangle(
               origin=activity_point(x, y),
-              width=width.to_double(),
-              height=height.to_double(),
-              rx=Some(BOX_ROUND.to_double()),
+              width~,
+              height~,
+              rx=Some(BOX_ROUND),
               ry=None,
             ),
             metadata=activity_class("activity-action"),
@@ -576,6 +682,8 @@ fn activity_append_node(
           )
         }
         Kill
+        | Break
+        | Backward(_)
         | ForkAgain
         | EndWhile(_)
         | Arrow(_)
@@ -610,9 +718,10 @@ const ACTIVITY_ARROW_MIDDLE : Double = ACTIVITY_ARROW_EXTENT / 2.0
 fn define_activity_arrow(
   document : @svg.SvgDocument,
   fill : String,
+  id? : String = "activity-arrow",
 ) -> @graphics.MarkerRef {
   document.define_marker(
-    "activity-arrow",
+    id,
     {
       origin: { x: 0.0, y: 0.0, },
       viewport: { width: ACTIVITY_ARROW_SIZE, height: ACTIVITY_ARROW_SIZE, },
@@ -644,17 +753,43 @@ fn @flow.ActivityDiagram::render_svg(
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = self.layout()
-  let document = @svg.SvgDocument::empty(
+  let decoration = decorate_document_text(
+    self.style,
     layout.width,
     layout.height,
+  )
+  let scale = self.style.output_scale(decoration.width, decoration.height)
+  let document = @svg.SvgDocument::empty(
+    (decoration.width * scale).ceil().to_int(),
+    (decoration.height * scale).ceil().to_int(),
     "Activity diagram",
   )
-  let family = self.style.font_family()
-  let font_metrics = self.style.font_metrics_for(family, font_size=ACTION_FONT)
-  let small_metrics = self.style.font_metrics_for(family, font_size=SMALL_FONT)
+  let font_metrics = activity_font_metrics(self.style, false)
+  let small_metrics = activity_font_metrics(self.style, true)
   let defaults = self.style.defaults()
-  let line = self.style.diagram_line_color()
+  let line = self.style.property_color(
+    "ArrowColor",
+    self.style.diagram_line_color(),
+  )
   let text = self.style.diagram_text_color()
+  let action_fill = self.style.property_color(
+    "ActivityBackgroundColor",
+    defaults.node,
+  )
+  let action_border = self.style.property_color("ActivityBorderColor", line)
+  let action_text = self.style.property_color("ActivityFontColor", text)
+  let diamond_fill = self.style.property_color(
+    "ActivityDiamondBackgroundColor",
+    defaults.node,
+  )
+  let diamond_border = self.style.property_color(
+    "ActivityDiamondBorderColor", action_border,
+  )
+  let note_fill = self.style.property_color(
+    "NoteBackgroundColor",
+    defaults.note,
+  )
+  let note_border = self.style.property_color("NoteBorderColor", line)
   let emphasized_width = @svg.emphasized_stroke_width()
   document.stylesheet(
     (
@@ -664,34 +799,76 @@ fn @flow.ActivityDiagram::render_svg(
       $|.activity-partition,.activity-swimlane{fill:\{defaults.partition};stroke:\{line};stroke-width:\{emphasized_width}}
       $|.activity-swimlane{stroke-dasharray:\{@svg.separator_dash_pattern()}}
       $|.activity-start,.activity-stop-inner,.activity-fork,.activity-merge{fill:\{line}}
-      $|.activity-stop-outer,.activity-action,.activity-decision,.activity-exit{fill:\{defaults.node};stroke:\{line};stroke-width:\{emphasized_width}}
+      $|.activity-stop-outer,.activity-action,.activity-decision,.activity-exit{fill:\{action_fill};stroke:\{action_border};stroke-width:\{emphasized_width}}
       $|.activity-end-circle{fill:none;stroke:\{line};stroke-width:\{emphasized_width}}
       $|.activity-end-cross{fill:none;stroke:\{line};stroke-width:\{END_CROSS_STROKE}}
-      $|.activity-note{fill:\{defaults.note};stroke:\{line};stroke-width:\{emphasized_width}},
+      $|.activity-action + .activity-label{fill:\{action_text}}
+      $|.activity-decision,.activity-exit{fill:\{diamond_fill};stroke:\{diamond_border}}
+      $|.activity-note{fill:\{note_fill};stroke:\{note_border};stroke-width:\{emphasized_width}}
     ),
   )
   let arrow = define_activity_arrow(document, line)
-  let output = document.graphic()
-  output
-  .with_style({
-    ..@graphics.DrawingStyle::default(),
-    fill: Color(self.style.canvas_color()),
-  })
-  .draw(
-    Rectangle(
-      origin=activity_point(0, 0),
-      width=layout.width.to_double(),
-      height=layout.height.to_double(),
-      rx=None,
-      ry=None,
-    ),
-  )
-  layout.regions.each(region => append_region(output, region, font_metrics))
-  layout.edges.each(edge => {
-    append_edge(output, layout, edge, small_metrics, arrow)
-  })
-  layout.nodes.each(node => {
-    activity_append_node(output, layout, node, font_metrics, small_metrics)
+  for block in decoration.text {
+    document.stylesheet(
+      resolve_state_font(self.style, block.role).css_rule(
+        ".activity-document-" + block.kind + "-label",
+      ),
+    )
+  }
+  document
+  .graphic()
+  .scale_group(scale, output => {
+    output
+    .with_style({
+      ..@graphics.DrawingStyle::default(),
+      fill: Color(self.style.canvas_color()),
+    })
+    .draw(
+      Rectangle(
+        origin=activity_point(0, 0),
+        width=decoration.width,
+        height=decoration.height,
+        rx=None,
+        ry=None,
+      ),
+    )
+    let content = handwritten_graphic(
+      output.translated(decoration.dx, decoration.dy),
+      self.style,
+    )
+    layout.regions.each(region => append_region(content, region, font_metrics))
+    for index, edge in layout.edges {
+      if edge.style.map_or(false, value => value.contains(";")) {
+        append_activity_rainbow(
+          content, document, layout, edge, small_metrics, line, index,
+        )
+        continue
+      }
+      let paint = activity_arrow_style(edge.style, line)
+      let marker = if edge.style is Some(_) {
+        define_activity_arrow(
+          document,
+          match paint.stroke {
+            Color(color) => color
+            _ => "none"
+          },
+          id="activity-arrow-" + index.to_string(),
+        )
+      } else {
+        arrow
+      }
+      append_edge(
+        content.with_style(paint),
+        layout,
+        edge,
+        small_metrics,
+        marker,
+      )
+    }
+    layout.nodes.each(node => {
+      activity_append_node(content, layout, node, font_metrics, small_metrics)
+    })
+    draw_document_text(output, self.style, "activity-document", decoration.text)
   })
   document.to_string()
 }
@@ -703,4 +880,60 @@ pub fn render_activity_svg(
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   diagram.render_svg(color_scheme~)
+}
+
+///|
+/// HtmlColorAndStyle selects the final color and link style independently.
+fn activity_arrow_style(
+  raw : String?,
+  default_color : String,
+) -> @graphics.DrawingStyle {
+  let mut paint : @graphics.DrawingStyle = {
+    ..Default::default(),
+    inline: true,
+    fill: None,
+    stroke: Color(default_color),
+  }
+  let mut hidden = false
+  for token in raw.unwrap_or("").split(",") {
+    let token = token.trim().to_lower()
+    match token {
+      "dashed" =>
+        paint = {
+          ..paint,
+          dash: Some([STATE_LINK_DASH, STATE_LINK_DASH]),
+          stroke_width: Some(STATE_LINK_STROKE_WIDTH),
+        }
+      "dotted" =>
+        paint = {
+          ..paint,
+          dash: Some([STATE_LINK_DOT, STATE_LINK_DOT_GAP]),
+          stroke_width: Some(STATE_LINK_STROKE_WIDTH),
+        }
+      "bold" =>
+        paint = {
+          ..paint,
+          dash: Some([]),
+          stroke_width: Some(STATE_LINK_BOLD_WIDTH),
+        }
+      "hidden" => hidden = true
+      "plain" => paint = { ..paint, dash: None, stroke_width: None, }
+      "" => ()
+      _ => {
+        let old = match paint.stroke {
+          Color(color) => color
+          _ => default_color
+        }
+        paint = {
+          ..paint,
+          stroke: Color(@svg.svg_color(Some(token.to_owned()), old)),
+        }
+      }
+    }
+  }
+  if hidden {
+    { ..paint, stroke: None, }
+  } else {
+    paint
+  }
 }

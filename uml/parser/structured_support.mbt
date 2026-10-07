@@ -1,9 +1,6 @@
 ///|
 fn blank_node() -> @structured.StructuredNode {
-  {
-    kind: @structured.Array,
-    rows: [{ key: None, value: @structured.Text(""), child: None, }],
-  }
+  { kind: @structured.Array, rows: [], }
 }
 
 ///|
@@ -63,4 +60,22 @@ fn[T] structured_node_from_value(
   inspect : (T) -> StructuredValueView[T],
 ) -> @structured.StructuredNode {
   structured_node_from_view(inspect(value), inspect)
+}
+
+///|
+/// JsonDiagram wraps an empty root as a single empty-string array item;
+/// nested empty compounds remain zero-row records.
+fn[T] structured_root_from_value(
+  value : T,
+  inspect : (T) -> StructuredValueView[T],
+) -> @structured.StructuredNode {
+  let root = structured_node_from_value(value, inspect)
+  if root.rows.is_empty() {
+    {
+      kind: @structured.Array,
+      rows: [{ key: None, value: @structured.Text(""), child: None, }],
+    }
+  } else {
+    root
+  }
 }

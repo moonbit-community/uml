@@ -1,11 +1,11 @@
 ///|
 /// FtileSwitchWithDiamonds.SUPP15.
-const SWITCH_SIDE_GAP : Int = 15
+const SWITCH_SIDE_GAP : Double = 15
 
 ///|
 /// FtileSwitchWithManyLinks.ConnectionHorizontalThenVertical uses the
 /// hexagon's side width to turn outside a right-hand case that folds inward.
-fn switch_right_route_x(from : ActivityNodeLayout, target_x : Int) -> Int {
+fn switch_right_route_x(from : ActivityNodeLayout, target_x : Double) -> Double {
   let right = from.x + from.width
   if target_x < right {
     right + DIAMOND_TEXT_PADDING / 2
@@ -24,14 +24,14 @@ fn switch_columns(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int, Array[Int], Bool) {
+) -> (Double, Double, Array[Double], Bool) {
   let entry_width = nodes[entry].size(metrics, small_metrics).width
   let exit_width = nodes[exit].size(metrics, small_metrics).width
   let sizes = branches.map(branch => {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
     let axis = sequence_axis(branch.tiles, nodes, metrics, small_metrics)
-    let label_width = branch.label.map_or(0, label => {
-      small_metrics.measure(label).width
+    let label_width = branch.label.map_or(0.0, label => {
+      activity_measure(small_metrics, label).width
     })
     // Incoming labels extend the right side; body measurement includes outgoing labels.
     { ..body, width: body.width.max(axis + label_width), }
@@ -52,17 +52,19 @@ fn switch_columns(
       small_metrics,
     )
     let spanning_width = entry_width - (first.width - first_axis) - last_axis
-    let mut middle_width = 0
+    let mut middle_width = 0.0
     for index in 1..<(sizes.length() - 1) {
       middle_width += sizes[index].width
     }
     if spanning_width > middle_width {
       let positions = []
-      let mut cursor = 0
+      let mut cursor = 0.0
       for index in 0..<(sizes.length() - 1) {
         positions.push(
           cursor +
-          (spanning_width - middle_width) * index / (sizes.length() - 1),
+          (spanning_width - middle_width) *
+          index.to_double() /
+          (sizes.length() - 1).to_double(),
         )
         cursor += sizes[index].width
       }
@@ -76,8 +78,8 @@ fn switch_columns(
       )
     }
   }
-  let packed = sizes.fold(init=0, (width, size) => width + size.width) +
-    (sizes.length() - 1).max(0) * BRANCH_GAP
+  let packed = sizes.fold(init=0.0, (width, size) => width + size.width) +
+    (sizes.length() - 1).max(0).to_double() * BRANCH_GAP
   let axis = (packed / 2).max(entry_width / 2).max(exit_width / 2)
   let width = axis +
     (packed - packed / 2)
@@ -94,35 +96,37 @@ fn switch_columns(
 
 ///|
 /// FtileSwitchWithManyLinks.getYdelta1a and FtileDecorateInLabel.addTop.
-const SWITCH_LABEL_GAP : Int = 10
+const SWITCH_LABEL_GAP : Double = 10
 
 ///|
 fn switch_label_height(
   branch : BranchTiles,
   small_metrics : @metrics.FontMetrics,
-) -> Int {
-  branch.label.map_or(0, label => small_metrics.measure(label).height)
+) -> Double {
+  branch.label.map_or(0.0, label => {
+    activity_measure(small_metrics, label).height
+  })
 }
 
 ///|
 /// Gap above the decorated columns, and height including their label padding.
 fn switch_rows(
   branches : Array[BranchTiles],
-  entry_height : Int,
+  entry_height : Double,
   wide_condition : Bool,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int) {
+) -> (Double, Double) {
   let mut label_height = SWITCH_LABEL_GAP
-  let mut height = 0
+  let mut height = 0.0
   for branch in branches {
     let label = switch_label_height(branch, small_metrics)
     label_height = label_height.max(label)
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
     let outgoing_height = sequence_outgoing_label(branch.tiles, nodes).map_or(
-      0,
-      text => small_metrics.measure(text).height,
+      0.0,
+      text => activity_measure(small_metrics, text).height,
     )
     height = height.max(label + body.height + outgoing_height)
   }
@@ -138,10 +142,10 @@ fn switch_rows(
 
 ///|
 /// FtileSwitchWithManyLinks.ConnectionVerticalThenHorizontal right-side detour.
-const SWITCH_MERGE_APPROACH : Int = 10
+const SWITCH_MERGE_APPROACH : Double = 10
 
 ///|
-const SWITCH_MERGE_CLEARANCE : Int = 8
+const SWITCH_MERGE_CLEARANCE : Double = 8
 
 ///|
-const SWITCH_MERGE_DETOUR : Int = 12
+const SWITCH_MERGE_DETOUR : Double = 12

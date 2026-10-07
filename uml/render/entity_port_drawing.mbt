@@ -39,7 +39,7 @@ fn EntityPaintContext::append_port(
     entity.line_color,
     diagram.style.diagram_line_color(),
   )
-  let metrics = text_metrics.regular.measure(entity.display)
+  let metrics = text_metrics.regular.entity_measure(entity.display)
   let label_x = x - (metrics.width - width) / 2
   let label_y = if up {
     // `EntityImagePort`: the label block sits above the rect with an 8px

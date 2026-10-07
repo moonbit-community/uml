@@ -90,12 +90,20 @@ pub struct Graphic {
   emit : (DrawCommand) -> Unit
   translation : Point
   style : DrawingStyle
+  transform_factory : (() -> (Shape, Metadata) -> Shape)?
+  transform : ((Shape, Metadata) -> Shape)?
 }
 
 ///|
 /// Connect a drawing context to a backend or a command recorder.
 pub fn Graphic::new(emit : (DrawCommand) -> Unit) -> Graphic {
-  { emit, translation: Default::default(), style: Default::default(), }
+  {
+    emit,
+    translation: Default::default(),
+    style: Default::default(),
+    transform_factory: None,
+    transform: None,
+  }
 }
 
 ///|
@@ -104,6 +112,7 @@ pub fn Graphic::translated(self : Graphic, x : Double, y : Double) -> Graphic {
   {
     ..self,
     translation: { x: self.translation.x + x, y: self.translation.y + y, },
+    transform: self.transform_factory.map(factory => factory()),
   }
 }
 
@@ -111,7 +120,21 @@ pub fn Graphic::translated(self : Graphic, x : Double, y : Double) -> Graphic {
 /// Replace the complete local style. Use a struct spread to change selected
 /// fields of an existing style; there is no hidden merge or CSS precedence.
 pub fn Graphic::with_style(self : Graphic, style : DrawingStyle) -> Graphic {
-  { ..self, style: style.snapshot(), }
+  {
+    ..self,
+    style: style.snapshot(),
+    transform: self.transform_factory.map(factory => factory()),
+  }
+}
+
+///|
+/// Install a geometry transformation with independent state for every derived
+/// drawing context, matching UGraphic.apply semantics for handwritten strokes.
+pub fn Graphic::with_shape_transform(
+  self : Graphic,
+  factory : () -> (Shape, Metadata) -> Shape,
+) -> Graphic {
+  { ..self, transform_factory: Some(factory), transform: Some(factory()), }
 }
 
 ///|
@@ -141,9 +164,17 @@ pub fn Graphic::draw(
       Shape::StyledTextBlock({ ..block, lines: block.lines.copy(), }, style)
     _ => shape
   }
-  (self.emit)(
-    Draw(shape, self.style.snapshot(), self.translation, metadata.snapshot()),
-  )
+  let metadata = metadata.snapshot()
+  let transformed_line = self.transform is Some(_) && shape is Line(_, _)
+  let shape = self.transform.map_or(shape, transform => {
+    transform(shape, metadata)
+  })
+  let style = if transformed_line {
+    { ..self.style, fill: None, inline: true, }
+  } else {
+    self.style
+  }
+  (self.emit)(Draw(shape, style.snapshot(), self.translation, metadata))
 }
 
 ///|

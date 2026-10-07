@@ -2,10 +2,10 @@
 /// Geometry for one visible activity instruction.
 pub(all) struct ActivityNodeLayout {
   node_index : Int
-  x : Int
-  y : Int
-  width : Int
-  height : Int
+  x : Double
+  y : Double
+  width : Double
+  height : Double
 } derive(Eq, Debug)
 
 ///|
@@ -17,28 +17,32 @@ pub extend ActivityNodeLayout with Debug::{to_repr}
 ///|
 pub(all) enum ActivityEdgeRoute {
   Forward
-  ForkLane(Int, Int)
+  ForkLane(Double, Double)
   ForkSequence
-  ForkSequencePorts(Int, Int)
+  ForkSequencePorts(Double, Double)
   Horizontal
   Goto
   BackwardLeft
-  BackwardRight(Int, Int)
-  RepeatBackRight(Int)
-  RepeatLaneBack(Int)
+  BreakLeft(Double, Bool)
+  BackwardActionIn(Bool, Double)
+  BackwardActionOut
+  BackwardRight(Double, Double)
+  RepeatBackRight(Double)
+  RepeatLaneBack(Double)
   RepeatForward
   IfDownLeft
   IfDownRight
   IfSideTerminal
-  IfBypassRight(Int)
+  IfBypassRight(Double)
   IfEmptyDown
   IfChainMerge
   SwitchLeft
   SwitchRight
   SwitchMiddle
   SwitchSideMerge
-  WhileExitLeft(Int)
+  WhileExitLeft(Double)
   WhileEntry
+  ForkMerge
 } derive(Eq, Debug)
 
 ///|
@@ -54,6 +58,8 @@ pub(all) struct ActivityEdgeLayout {
   to_node_index : Int
   route : ActivityEdgeRoute
   label : String?
+  style : String?
+  rainbow_separation : Double
 } derive(Eq, Debug)
 
 ///|
@@ -78,10 +84,10 @@ pub extend ActivityRegionKind with Debug::{to_repr}
 pub(all) struct ActivityRegionLayout {
   kind : ActivityRegionKind
   label : String
-  x : Int
-  y : Int
-  width : Int
-  height : Int
+  x : Double
+  y : Double
+  width : Double
+  height : Double
 } derive(Eq, Debug)
 
 ///|
@@ -97,8 +103,8 @@ pub(all) struct ActivityLayout {
   edges : Array[ActivityEdgeLayout]
   regions : Array[ActivityRegionLayout]
   source_nodes : Array[@flow.ActivityNode]
-  width : Int
-  height : Int
+  width : Double
+  height : Double
 } derive(Eq, Debug)
 
 ///|
@@ -111,6 +117,8 @@ pub extend ActivityLayout with Debug::{to_repr}
 priv enum Tile {
   Leaf(Int)
   Noted(Tile, Array[Int])
+  LoopWithBreaks(Tile, Array[Int], Int, Bool)
+  LoopWithBackward(Tile, Int, Int, Int, @flow.ActivityBackward)
   FlowAnchor(Int)
   GotoAnchor(Int)
   Partition(Int, Array[Tile], Int)
@@ -131,8 +139,8 @@ priv struct BranchTiles {
 
 ///|
 priv struct TileMeasure {
-  width : Int
-  height : Int
+  width : Double
+  height : Double
 }
 
 ///|
@@ -140,6 +148,7 @@ priv struct PlacedTile {
   entry : Int?
   exit : Int?
   outgoing_label : String?
+  outgoing_style : String?
   outgoing_route : ActivityEdgeRoute
 }
 
@@ -147,107 +156,107 @@ priv struct PlacedTile {
 priv struct PlacedBranch {
   tile : PlacedTile
   label : String?
+  style : String?
 }
 
 ///|
 /// Canvas margins derived from PlantUML output: content is inset 16px on the
 /// left, 15px on the top and about 20px on the right and bottom.
-pub const CANVAS_LEFT : Int = 16
+pub const CANVAS_LEFT : Double = 16
 
 ///|
-const CANVAS_TOP : Int = 15
+const CANVAS_TOP : Double = 15
 
 ///|
-const CANVAS_RIGHT : Int = 20
+const CANVAS_RIGHT : Double = 20
 
 ///|
-const CANVAS_BOTTOM : Int = 20
+const CANVAS_BOTTOM : Double = 20
 
 ///|
 /// Vertical gap between sequential tiles (PlantUML renders 20px).
-const VERTICAL_GAP : Int = 20
+const VERTICAL_GAP : Double = 20
 
 ///|
 /// Sequential gap when the connecting arrow carries a single-line label.
 /// PlantUML renders 41.28px for the first line plus the line height per
 /// additional line.
-const EDGE_LABEL_GAP : Int = 41
+const EDGE_LABEL_GAP : Double = 41
 
 ///|
-const EDGE_LABEL_LINE : Int = 13
 
 ///|
 /// Snake places a vertical connector's label beside its flow axis.
-const EDGE_LABEL_OFFSET : Int = 4
+const EDGE_LABEL_OFFSET : Double = 4
 
 ///|
 /// Box padding on all four sides (skin `activity { Padding 10 }`).
-const TEXT_PADDING : Int = 10
+const TEXT_PADDING : Double = 10
 
 ///|
 /// Round-corner radius of activity boxes (skin `RoundCorner 25`).
-const BOX_ROUND : Int = 12
+const BOX_ROUND : Double = 12
 
 ///|
 /// Minimum decision height; taller labels expand the hexagon.
-const DIAMOND_HEIGHT : Int = 24
+const DIAMOND_HEIGHT : Double = 24
 
 ///|
 /// Horizontal padding added to a decision label inside the diamond.
-const DIAMOND_TEXT_PADDING : Int = 24
+const DIAMOND_TEXT_PADDING : Double = 24
 
 ///|
 /// Start-circle diameter.
-const TERMINAL_SIZE : Int = 20
+const TERMINAL_SIZE : Double = 20
 
 ///|
 /// Stop-circle outer diameter (PlantUML `FtileCircleStop` SIZE 22).
-const STOP_SIZE : Int = 22
+const STOP_SIZE : Double = 22
 
 ///|
 /// FtileCircleEndCross.SIZE and its internal cross stroke.
-const END_SIZE : Int = 20
+const END_SIZE : Double = 20
 
 ///|
 const END_CROSS_STROKE : Double = 2.5
 
 ///|
 /// Stop-circle inner diameter.
-const STOP_INNER : Int = 6
+const STOP_INNER : Double = 6
 
 ///|
 /// Exit/merge node size (endif/endwhile diamond, 24x24).
-const EXIT_SIZE : Int = 24
+const EXIT_SIZE : Double = 24
 
 ///|
 /// Gap between the decision diamond and a branch body without a down label.
-const DIAMOND_BODY_GAP : Int = 10
+const DIAMOND_BODY_GAP : Double = 10
 
 ///|
 /// Diamond-to-body gap when the branch label is drawn on the down edge.
 /// PlantUML renders 32.14px.
-const DOWN_LABEL_GAP : Int = 32
+const DOWN_LABEL_GAP : Double = 32
 
 ///|
 /// Gap between a branch body bottom and the exit node.
-const BODY_EXIT_GAP : Int = 6
+const BODY_EXIT_GAP : Double = 6
 
 ///|
 /// Minimum horizontal gap between adjacent branch columns.
-const BRANCH_GAP : Int = 20
+const BRANCH_GAP : Double = 20
 
 ///|
 /// Margin between a decision diamond's side vertex and a branch column
 /// center in the two-branch (FtileIfDown) layout.
-const BRANCH_DIAMOND_MARGIN : Int = 10
+const BRANCH_DIAMOND_MARGIN : Double = 10
 
 ///|
 /// Horizontal clearance of a while back edge beyond the body.
-const WHILE_BACK_MARGIN : Int = 12
+const WHILE_BACK_MARGIN : Double = 12
 
 ///|
 /// Clearance below the loop body before the return edge turns outward.
-const LOOP_BACK_GAP : Int = 10
+const LOOP_BACK_GAP : Double = 10
 
 ///|
 /// The vertical route line a `BackwardLeft` edge loops
@@ -258,22 +267,22 @@ const LOOP_BACK_GAP : Int = 10
 fn backward_left_route_x(
   from : ActivityNodeLayout,
   to : ActivityNodeLayout,
-) -> Int {
+) -> Double {
   from.x.min(to.x) - WHILE_BACK_MARGIN
 }
 
 ///|
 /// While body-to-port gap: the reference SVG places the return line first,
 /// then the exit turn; the following sequence owns its own vertical gap.
-const WHILE_EXIT_GAP : Int = LOOP_BACK_GAP + WHILE_BACK_MARGIN
+const WHILE_EXIT_GAP : Double = LOOP_BACK_GAP + WHILE_BACK_MARGIN
 
 ///|
 /// Fork bar height.
-const FORK_BAR_HEIGHT : Int = 6
+const FORK_BAR_HEIGHT : Double = 6
 
 ///|
 /// Fork branch column margin (PlantUML `xMargin = 14`).
-const FORK_COLUMN_MARGIN : Int = 14
+const FORK_COLUMN_MARGIN : Double = 14
 
 ///|
 /// Font size used for activity labels. PlantUML's skin sets `FontSize 12`
@@ -287,13 +296,13 @@ const ACTION_FONT : Int = 13
 const SMALL_FONT : Int = 12
 
 ///|
-const REGION_PADDING : Int = 12
+const REGION_PADDING : Double = 12
 
 ///|
-const REGION_HEADER_HEIGHT : Int = 24
+const REGION_HEADER_HEIGHT : Double = 24
 
 ///|
-const SWIMLANE_GAP : Int = 24
+const SWIMLANE_GAP : Double = 24
 
 ///|
 fn add_layout_node(
@@ -324,6 +333,11 @@ fn tiles_from_instructions(
         tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Stop)))
       @flow.ActivityInstruction::End =>
         tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::End)))
+      @flow.ActivityInstruction::Backward(_) => ()
+      @flow.ActivityInstruction::Break =>
+        tiles.push(
+          Tile::FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::Break)),
+        )
       @flow.ActivityInstruction::Kill =>
         tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Kill)))
       @flow.ActivityInstruction::Action(label) =>
@@ -342,7 +356,12 @@ fn tiles_from_instructions(
           Tile::Leaf(
             add_layout_node(
               nodes,
-              @flow.ActivityNode::Arrow("-> " + label.text.unwrap_or("") + ";"),
+              @flow.ActivityNode::Arrow(
+                label.style.map_or("->", style => "-[" + style + "]->") +
+                " " +
+                label.text.unwrap_or("") +
+                ";",
+              ),
             ),
           ),
         )
@@ -396,18 +415,40 @@ fn tiles_from_instructions(
           @flow.ActivityNode::While(while_instruction.condition),
         )
         let exit = add_layout_node(nodes, @flow.ActivityNode::EndWhile(""))
+        let body = tiles_from_instructions(
+          while_instruction.instructions,
+          nodes,
+        )
+        let loop_tile = Tile::WhileLoop(
+          entry,
+          body,
+          exit,
+          while_instruction.enter.text.map(activity_display_text),
+          while_instruction.exit.text.map(activity_display_text),
+        )
+        let loop_tile = activity_backward_tile(
+          loop_tile,
+          while_instruction.instructions,
+          entry,
+          exit,
+          nodes,
+        )
+        let breaks = activity_break_points(body, nodes)
         tiles.push(
-          Tile::WhileLoop(
-            entry,
-            tiles_from_instructions(while_instruction.instructions, nodes),
-            exit,
-            while_instruction.enter.text.map(activity_display_text),
-            while_instruction.exit.text.map(activity_display_text),
-          ),
+          if breaks.is_empty() {
+            loop_tile
+          } else {
+            LoopWithBreaks(loop_tile, breaks, exit, false)
+          },
         )
       }
       @flow.ActivityInstruction::Repeat(repeat_instruction) => {
-        let entry = add_layout_node(nodes, @flow.ActivityNode::Repeat)
+        let entry = add_layout_node(
+          nodes,
+          repeat_instruction.start.map_or(@flow.ActivityNode::Repeat, text => {
+            @flow.ActivityNode::RepeatAction(text)
+          }),
+        )
         let body = tiles_from_instructions(
           repeat_instruction.instructions,
           nodes,
@@ -422,18 +463,45 @@ fn tiles_from_instructions(
           nodes,
           @flow.ActivityNode::RepeatWhile(repeat_instruction.condition),
         )
+        let loop_tile = Tile::RepeatLoop(
+          entry,
+          body,
+          exit,
+          repeat_instruction.retry.text.map(activity_display_text),
+          repeat_instruction.exit.text.map(activity_display_text),
+        )
+        let loop_tile = activity_backward_tile(
+          loop_tile,
+          repeat_instruction.instructions,
+          entry,
+          exit,
+          nodes,
+        )
+        let breaks = activity_break_points(body, nodes)
         tiles.push(
-          Tile::RepeatLoop(
-            entry,
-            body,
-            exit,
-            repeat_instruction.retry.text.map(activity_display_text),
-            repeat_instruction.exit.text.map(activity_display_text),
-          ),
+          if breaks.is_empty() {
+            loop_tile
+          } else {
+            LoopWithBreaks(
+              loop_tile,
+              breaks,
+              add_layout_node(nodes, @flow.ActivityNode::EndIf),
+              true,
+            )
+          },
         )
       }
-      @flow.ActivityInstruction::Fork(fork) => {
-        let entry = add_layout_node(nodes, @flow.ActivityNode::Fork)
+      @flow.ActivityInstruction::Fork(fork)
+      | @flow.ActivityInstruction::Split(fork) => {
+        let split = instruction is @flow.ActivityInstruction::Split(_)
+        let entry = add_layout_node(
+          nodes,
+          if split {
+            @flow.ActivityNode::Split
+          } else {
+            @flow.ActivityNode::Fork
+          },
+        )
         let branches = fork.branches.map(branch => {
           let tiles = tiles_from_instructions(branch, nodes)
           if sequence_is_empty(tiles, nodes) {
@@ -443,7 +511,16 @@ fn tiles_from_instructions(
           }
           { decision: None, tiles, label: None, }
         })
-        let exit = add_layout_node(nodes, @flow.ActivityNode::EndFork)
+        let exit = add_layout_node(
+          nodes,
+          if split {
+            @flow.ActivityNode::EndSplit
+          } else if fork.merge {
+            @flow.ActivityNode::EndMerge
+          } else {
+            @flow.ActivityNode::EndFork
+          },
+        )
         tiles.push(Tile::Parallel(entry, branches, exit))
       }
       @flow.ActivityInstruction::Switch(switch) => {
@@ -534,6 +611,7 @@ fn @flow.ActivityNode::label(self : @flow.ActivityNode) -> String? {
   match self {
     Action(label)
     | Note(label, _)
+    | RepeatAction(label)
     | Partition(label)
     | Swimlane(label)
     | If(label)
@@ -551,13 +629,13 @@ fn @flow.ActivityNode::is_decision(self : @flow.ActivityNode) -> Bool {
 }
 
 ///|
-fn @flow.ActivityNode::is_fork(self : @flow.ActivityNode) -> Bool {
-  self is (Fork | EndFork)
+fn @flow.ActivityNode::is_parallel_bar(self : @flow.ActivityNode) -> Bool {
+  self is (Fork | EndFork | Split | EndSplit)
 }
 
 ///|
 fn @flow.ActivityNode::is_exit(self : @flow.ActivityNode) -> Bool {
-  self is (EndIf | EndSwitch)
+  self is (EndIf | EndSwitch | EndMerge)
 }
 
 ///|
@@ -573,9 +651,10 @@ fn @flow.ActivityNode::size(
     Kill => { width: 0, height: 0, }
     _ if self.is_exit() => { width: EXIT_SIZE, height: EXIT_SIZE, }
     Repeat => { width: EXIT_SIZE, height: EXIT_SIZE, }
-    _ if self.is_fork() => { width: 0, height: FORK_BAR_HEIGHT, }
+    _ if self.is_parallel_bar() =>
+      { width: 0, height: parallel_bar_height(self), }
     _ if self.is_decision() => {
-      let text = small_metrics.measure(self.label().unwrap_or(""))
+      let text = activity_measure(small_metrics, self.label().unwrap_or(""))
       {
         width: if text.width == 0 {
           DIAMOND_TEXT_PADDING
@@ -585,8 +664,8 @@ fn @flow.ActivityNode::size(
         height: text.height.max(DIAMOND_HEIGHT),
       }
     }
-    Note(_, _) | Action(_) => {
-      let text = metrics.measure(self.label().unwrap())
+    Note(_, _) | Action(_) | RepeatAction(_) => {
+      let text = activity_measure(metrics, self.label().unwrap())
       {
         width: text.width + TEXT_PADDING * 2,
         height: text.height + TEXT_PADDING * 2,
@@ -603,9 +682,9 @@ fn measure_sequence(
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
-  let mut left = 0
-  let mut right = 0
-  let mut height = 0
+  let mut left = 0.0
+  let mut right = 0.0
+  let mut height = 0.0
   let mut found = false
   let mut pending_label : String?? = None
   let mut outgoing_label : String? = None
@@ -629,10 +708,10 @@ fn measure_sequence(
     })
     let label = incoming.unwrap_or(outgoing_label)
     if found {
-      height += sequence_gap(incoming.unwrap_or(None))
+      height += sequence_gap(incoming.unwrap_or(None), small_metrics)
       if label is Some(label) {
         right = right.max(
-          EDGE_LABEL_OFFSET + small_metrics.measure(label).width,
+          EDGE_LABEL_OFFSET + activity_measure(small_metrics, label).width,
         )
       }
     }
@@ -645,7 +724,9 @@ fn measure_sequence(
     pending_label = None
   }
   if found && sequence_outgoing_label(tiles, nodes) is Some(label) {
-    right = right.max(EDGE_LABEL_OFFSET + small_metrics.measure(label).width)
+    right = right.max(
+      EDGE_LABEL_OFFSET + activity_measure(small_metrics, label).width,
+    )
   }
   { width: left + right, height, }
 }
@@ -714,16 +795,11 @@ fn sequence_incoming_label(
 }
 
 ///|
-fn line_count(label : String) -> Int {
-  label.split("\n").length().max(1)
-}
-
-///|
 /// Shared by measurement and placement so sequential tiles reserve exactly
 /// the space their connecting label needs, independently of node indices.
-fn sequence_gap(label : String?) -> Int {
+fn sequence_gap(label : String?, metrics : @metrics.FontMetrics) -> Double {
   label.map_or(VERTICAL_GAP, label => {
-    EDGE_LABEL_GAP + EDGE_LABEL_LINE * (line_count(label) - 1)
+    EDGE_LABEL_GAP + activity_extra_lines_height(label, metrics)
   })
 }
 
@@ -760,9 +836,9 @@ fn measure_if_chain(
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
-  let mut width = 0
-  let mut decision_height = 0
-  let mut body_height = 0
+  let mut width = 0.0
+  let mut decision_height = 0.0
+  let mut body_height = 0.0
   for index, branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
     let decision = branch.decision.map_or(
@@ -795,6 +871,24 @@ fn measure_tile(
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   match tile {
+    LoopWithBackward(body, backward, _, _, _) => {
+      let size = measure_tile(body, nodes, metrics, small_metrics)
+      {
+        width: size.width + nodes[backward].size(metrics, small_metrics).width,
+        height: size.height,
+      }
+    }
+    LoopWithBreaks(body, _, _, repeat) => {
+      let size = measure_tile(body, nodes, metrics, small_metrics)
+      if repeat {
+        {
+          width: size.width + REPEAT_SIDE_CLEARANCE,
+          height: size.height + VERTICAL_GAP + EXIT_SIZE,
+        }
+      } else {
+        size
+      }
+    }
     Leaf(index) => nodes[index].size(metrics, small_metrics)
     Noted(body, notes) => {
       let body_size = measure_tile(body, nodes, metrics, small_metrics)
@@ -809,7 +903,7 @@ fn measure_tile(
     FlowAnchor(_) | GotoAnchor(_) => { width: 0, height: 0, }
     Partition(index, tiles, _) => {
       let body = measure_sequence(tiles, nodes, metrics, small_metrics)
-      let title = metrics.measure(nodes[index].label().unwrap())
+      let title = activity_measure(metrics, nodes[index].label().unwrap())
       {
         width: body.width.max(title.width) + TEXT_PADDING * 2,
         height: body.height +
@@ -899,7 +993,7 @@ fn measure_tile(
         repeat_exit_padding(exit_label, small_metrics),
       }
     }
-    Parallel(_, branches, _) => {
+    Parallel(entry, branches, exit) => {
       let branches_width = measure_fork_columns(
         branches, nodes, metrics, small_metrics,
       )
@@ -908,13 +1002,20 @@ fn measure_tile(
       )
       {
         width: branches_width + FORK_COLUMN_MARGIN * 2,
-        height: FORK_BAR_HEIGHT +
+        height: parallel_bar_height(nodes[entry]) +
         VERTICAL_GAP +
         incoming +
         branches_height +
         VERTICAL_GAP +
         outgoing +
-        FORK_BAR_HEIGHT,
+        (if nodes[entry] is @flow.ActivityNode::Split &&
+          !branches.any(branch => sequence_has_exit(branch.tiles, nodes)) {
+          0.0
+        } else if nodes[exit] is @flow.ActivityNode::EndMerge {
+          EXIT_SIZE
+        } else {
+          parallel_bar_height(nodes[entry])
+        }),
       }
     }
   }
@@ -952,10 +1053,10 @@ fn measure_if_vertical(
 fn empty_branch_width(
   branch : BranchTiles,
   metrics : @metrics.FontMetrics,
-) -> Int {
+) -> Double {
   if branch.tiles.all(tile => tile is Swimlane) {
     branch.label.map_or(EXIT_SIZE, label => {
-      metrics.measure(label).width.max(EXIT_SIZE)
+      activity_measure(metrics, label).width.max(EXIT_SIZE)
     })
   } else {
     0
@@ -972,7 +1073,7 @@ fn sequence_has_exit(
 ) -> Bool {
   for index = tiles.length() - 1; index >= 0; index = index - 1 {
     match tiles[index] {
-      FlowAnchor(_) => return true
+      FlowAnchor(index) => return !(nodes[index] is @flow.ActivityNode::Break)
       GotoAnchor(_) => return false
       Swimlane => continue
       Leaf(index) => {
@@ -989,7 +1090,13 @@ fn sequence_has_exit(
       Partition(_, body, _) => return sequence_has_exit(body, nodes)
       IfChain(branches, _) | Switch(_, branches, _) =>
         return branches.any(branch => sequence_has_exit(branch.tiles, nodes))
-      WhileLoop(_) | RepeatLoop(_) | Parallel(_) => return true
+      Parallel(entry, branches, _) if nodes[entry] is @flow.ActivityNode::Split =>
+        return branches.any(branch => sequence_has_exit(branch.tiles, nodes))
+      WhileLoop(_)
+      | RepeatLoop(_)
+      | Parallel(_)
+      | LoopWithBreaks(_)
+      | LoopWithBackward(_) => return true
     }
   }
   true
@@ -997,21 +1104,203 @@ fn sequence_has_exit(
 
 ///|
 /// Reserve the title block before placing the partition's child flow.
-fn partition_header_height(text_height : Int) -> Int {
+fn partition_header_height(text_height : Double) -> Double {
   REGION_HEADER_HEIGHT.max(text_height) + REGION_PADDING
 }
 
 ///|
 /// Additional lines extend the label block below the condition.
-fn decision_body_gap(label : String?, metrics : @metrics.FontMetrics) -> Int {
+fn decision_body_gap(label : String?, metrics : @metrics.FontMetrics) -> Double {
   label.map_or(DIAMOND_BODY_GAP, text => {
-    DOWN_LABEL_GAP + (line_count(text) - 1) * metrics.line_height
+    DOWN_LABEL_GAP + activity_extra_lines_height(text, metrics)
   })
 }
 
 ///|
 /// ParallelBuilderFork.ConnectionIn/ConnectionOut translated bend distances.
-const FORK_LANE_OUT_DROP : Int = 4
+const FORK_LANE_OUT_DROP : Double = 4
 
 ///|
-const FORK_LANE_IN_RISE : Int = 14
+const FORK_LANE_IN_RISE : Double = 14
+
+///|
+fn sequence_incoming_style(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> String?? {
+  let mut pending : String?? = None
+  for tile in tiles {
+    match tile {
+      Swimlane => continue
+      Leaf(index) if nodes[index] is @flow.ActivityNode::Arrow(value) =>
+        pending = Some(@flow.arrow_label(value).style)
+      _ =>
+        return pending.map_or(tile_incoming_style(tile, nodes), value => {
+          Some(value)
+        })
+    }
+  }
+  pending
+}
+
+///|
+fn tile_incoming_style(
+  tile : Tile,
+  nodes : Array[@flow.ActivityNode],
+) -> String?? {
+  match tile {
+    Partition(_, body, _) => sequence_incoming_style(body, nodes)
+    Noted(body, _) => tile_incoming_style(body, nodes)
+    _ => None
+  }
+}
+
+///|
+fn sequence_outgoing_style(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> String? {
+  guard sequence_has_exit(tiles, nodes) else { return None }
+  for index = tiles.length() - 1; index >= 0; index = index - 1 {
+    match tiles[index] {
+      Swimlane => continue
+      Leaf(node) if nodes[node] is @flow.ActivityNode::Arrow(value) =>
+        return @flow.arrow_label(value).style
+      Partition(_, body, _) => return sequence_outgoing_style(body, nodes)
+      Noted(body, _) => return sequence_outgoing_style([body], nodes)
+      _ => return None
+    }
+  }
+  None
+}
+
+///|
+/// Welding points are consumed by their enclosing loop, never an outer loop.
+fn activity_break_points(
+  tiles : Array[Tile],
+  nodes : Array[@flow.ActivityNode],
+) -> Array[Int] {
+  let points = []
+  for tile in tiles {
+    match tile {
+      FlowAnchor(index) if nodes[index] is @flow.ActivityNode::Break =>
+        points.push(index)
+      Partition(_, body, _) =>
+        for point in activity_break_points(body, nodes) {
+          points.push(point)
+        }
+      Noted(body, _) =>
+        for point in activity_break_points([body], nodes) {
+          points.push(point)
+        }
+      IfChain(branches, _)
+      | Switch(_, branches, _)
+      | Parallel(_, branches, _) =>
+        for branch in branches {
+          for point in activity_break_points(branch.tiles, nodes) {
+            points.push(point)
+          }
+        }
+      _ => ()
+    }
+  }
+  points
+}
+
+///|
+fn activity_backward_tile(
+  body : Tile,
+  instructions : Array[@flow.ActivityInstruction],
+  entry : Int,
+  exit : Int,
+  nodes : Array[@flow.ActivityNode],
+) -> Tile {
+  let mut backward = None
+  for instruction in instructions {
+    if instruction is @flow.ActivityInstruction::Backward(value) {
+      backward = Some(value)
+    }
+  }
+  match backward {
+    None => body
+    Some(value) =>
+      LoopWithBackward(
+        body,
+        add_layout_node(nodes, @flow.ActivityNode::Action(value.label)),
+        entry,
+        exit,
+        value,
+      )
+  }
+}
+
+///|
+/// Keep geometric arithmetic fractional through placement and compression.
+fn activity_measure(
+  metrics : @metrics.FontMetrics,
+  text : String,
+) -> TileMeasure {
+  let (width, height) = state_text_size(text, metrics)
+  { width, height, }
+}
+
+///|
+/// FtileThinSplit uses the arrow stroke as its allocated height; fork uses
+/// AbstractParallelFtilesBuilder's synchronization-bar height.
+const SPLIT_BAR_HEIGHT : Double = 1.5
+
+///|
+fn parallel_bar_height(node : @flow.ActivityNode) -> Double {
+  if node is (@flow.ActivityNode::Split | @flow.ActivityNode::EndSplit) {
+    SPLIT_BAR_HEIGHT
+  } else {
+    FORK_BAR_HEIGHT
+  }
+}
+
+///|
+fn @flow.ActivityNode::is_parallel_entry(self : @flow.ActivityNode) -> Bool {
+  self is (Fork | Split)
+}
+
+///|
+/// Only synchronization bars carry ignoreForCompression; FtileThinSplit lines
+/// remain occupied geometry and therefore keep the space between branches.
+fn @flow.ActivityNode::is_fork(self : @flow.ActivityNode) -> Bool {
+  self is (Fork | EndFork)
+}
+
+///|
+fn activity_split_extent(
+  layout : ActivityLayout,
+  node : ActivityNodeLayout,
+) -> (Double, Double) {
+  let mut first = node.x + node.width / 2.0
+  let mut last = first
+  let entry = layout.source_nodes[node.node_index] is @flow.ActivityNode::Split
+  for edge in layout.edges {
+    let endpoint = if entry && edge.from_node_index == node.node_index {
+      Some(edge.to_node_index)
+    } else if !entry && edge.to_node_index == node.node_index {
+      Some(edge.from_node_index)
+    } else {
+      None
+    }
+    if endpoint is Some(endpoint) &&
+      layout_for(layout, endpoint) is Some(branch) {
+      first = first.min(branch.x + branch.width / 2.0)
+      last = last.max(branch.x + branch.width / 2.0)
+    }
+  }
+  (first, last)
+}
+
+///|
+fn activity_extra_lines_height(
+  label : String,
+  metrics : @metrics.FontMetrics,
+) -> Double {
+  (activity_measure(metrics, label).height - metrics.line_height.to_double()).max(
+    0.0,
+  )
+}

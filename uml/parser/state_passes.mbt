@@ -64,6 +64,8 @@ fn Parser::resolve_state_transition(
   self.transitions.push({
     source,
     target,
+    source_port: syntax.source_port,
+    target_port: syntax.target_port,
     label: syntax.label,
     direction: syntax.direction,
     length: syntax.length,

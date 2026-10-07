@@ -6,12 +6,12 @@ fn sequence_stylesheet(
   let background = style.canvas_color()
   let font_family = style.font_family()
   let font_size = style.font_size()
-  let base_font_size = style.font_size_value()
+  let base_font_size = style.font_size_value(fallback=14)
   let body_font_size = (base_font_size - 1).max(1)
-  let small_font_size = (base_font_size - 2).max(1)
-  let line_color = style.diagram_line_color()
+  let small_font_size = (base_font_size - 3).max(1)
+  let line_color = sequence_colors(style).line
   let text_color = style.diagram_text_color()
-  let defaults = style.defaults().sequence_colors()
+  let defaults = sequence_colors(style)
   let border_width = @svg.standard_border_stroke_width()
   let emphasized_width = @svg.emphasized_stroke_width()
   let svg_style =
@@ -19,15 +19,15 @@ fn sequence_stylesheet(
     $|.participant rect{stroke:\{line_color};stroke-width:0.5}
     $|.activation{stroke:\{line_color};stroke-width:1}
     $|.note,.divider-title{stroke:\{line_color};stroke-width:\{border_width}}
-    $|.participant-label{font-size:\{base_font_size}px;font-weight:bold;fill:\{text_color}}
+    $|.participant-label{font-size:\{base_font_size}px;font-weight:normal;fill:\{text_color}}
     $|.participant-icon{stroke:\{line_color};stroke-width:0.5}
     $|.participant-box-group{stroke:\{line_color};stroke-width:0.5}
     $|.participant-box-label{font-size:\{small_font_size}px;font-weight:bold;fill:\{text_color}}
     $|.lifeline{stroke:\{defaults.lifeline};stroke-width:0.5;stroke-dasharray:\{@svg.lifeline_dash_pattern()}}
     $|.message,.cross{fill:none;stroke:\{line_color};stroke-width:1.3}
     $|.message.dotted{stroke-dasharray:\{@svg.dotted_message_dash_pattern()}}
-    $|.arrow-fill{fill:\{line_color}}
-    $|.arrow-open{fill:none;stroke:\{line_color};stroke-width:\{emphasized_width}}
+    $|.arrow-fill{fill:context-stroke}
+    $|.arrow-open{fill:none;stroke:context-stroke;stroke-width:\{emphasized_width}}
     $|.endpoint{fill:\{background};stroke:\{line_color};stroke-width:\{border_width}}
     $|.message-label,.reference-label,.delay-label{fill:\{text_color};font-size:\{body_font_size}px}
     $|.note-label{fill:\{text_color};font-size:\{base_font_size}px}
@@ -51,6 +51,23 @@ fn sequence_stylesheet(
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{fill:none;stroke:#A80036;stroke-width:2}
   document.stylesheet(svg_style)
+  let metrics = SequenceTextMetrics::new(style)
+  for
+    (selector, role, font) in [
+      (".participant-label", "Participant", metrics.participant),
+      (".note-label", "Note", metrics.note),
+      (".message-label,.reference-label,.delay-label", "Arrow", metrics.body),
+      (".group-label,.divider-label", "Group", metrics.body_bold),
+      (".participant-box-label", "Box", metrics.small_bold),
+    ] {
+    let family = sequence_style_property(style, role, "FontName").unwrap_or(
+      font_family,
+    )
+    let color = sequence_style_color(style, role, "FontColor", text_color)
+    document.stylesheet(
+      "\{selector}{font-family:\{family};font-size:\{font.font_size}px;font-weight:\{font.font_weight};fill:\{color}}",
+    )
+  }
 }
 
 ///|
@@ -60,32 +77,50 @@ fn sequence_stylesheet(
 /// headers determine horizontal constraints, events reserve vertical space,
 /// and group, lifeline, activation, and message layers are then painted in
 /// that order.
-fn @seq.SequenceDiagram::render_svg(
+fn @seq.SequenceDiagram::paint_sequence_svg(
   self : @seq.SequenceDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  layout : DiagramLayout,
 ) -> String {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
-  let layout = self.layout()
-  let document = @svg.SvgDocument::empty(
+  let decoration = decorate_document_text(
+    self.style,
     layout.width,
     layout.height,
+  )
+  let scale = self.style.output_scale(decoration.width, decoration.height)
+  let document = @svg.SvgDocument::empty(
+    (decoration.width * scale).ceil().to_int().max(1),
+    (decoration.height * scale).ceil().to_int().max(1),
     "Sequence diagram",
+    view_box=(
+      { x: 0.0, y: 0.0, },
+      { width: decoration.width, height: decoration.height, },
+    ),
   )
   let output = sequence_drawing(document)
   sequence_stylesheet(document, self.style)
   output.draw(
     Rectangle(
       origin=sequence_point(0, 0),
-      width=layout.width.to_double(),
-      height=layout.height.to_double(),
+      width=decoration.width,
+      height=decoration.height,
       rx=None,
       ry=None,
     ),
     fill=Color(self.style.canvas_color()),
   )
+  let output = {
+    ..output,
+    graphic: handwritten_graphic(
+      output.graphic.translated(decoration.dx, decoration.dy),
+      self.style,
+    ),
+  }
   append_groups(output, layout)
   append_participant_boxes(output, layout)
   for participant in layout.participants {
+    guard participant.birth_y.map_or(true, y => y < layout.body_bottom) else {
+      continue
+    }
     append_participant(
       output,
       participant,
@@ -157,9 +192,16 @@ fn @seq.SequenceDiagram::render_svg(
     }
   }
   append_destroy_marks(output, layout)
+  append_sequence_anchors(output, self, layout)
   if self.show_footbox {
     append_footboxes(output, layout)
   }
+  draw_document_text(
+    document.graphic(),
+    self.style,
+    "sequence",
+    decoration.text,
+  )
   document.to_string()
 }
 
@@ -169,5 +211,10 @@ pub fn render_sequence_svg(
   diagram : @seq.SequenceDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  diagram.render_svg(color_scheme~)
+  let diagram = {
+    ..diagram,
+    style: diagram.style.with_color_scheme(color_scheme),
+  }
+  let page = sequence_pages(diagram, diagram.layout())[0]
+  diagram.paint_sequence_svg(page.layout)
 }

@@ -20,7 +20,7 @@ fn JavaRandom::next(self : JavaRandom, bits : Int) -> Int {
 fn JavaRandom::next_double(self : JavaRandom) -> Double {
   let high = self.next(26)
   let low = self.next(27)
-  (Int64::from_int(high << 27) + Int64::from_int(low)).to_double() /
+  ((Int64::from_int(high) << 27) + Int64::from_int(low)).to_double() /
   9007199254740992.0
 }
 

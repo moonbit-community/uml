@@ -26,10 +26,10 @@ fn note_color(
 ///|
 fn append_line(
   output : SequenceDrawing,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
+  x1 : Double,
+  y1 : Double,
+  x2 : Double,
+  y2 : Double,
   class_name : String,
   fill? : @graphics.Paint = None,
 ) -> Unit {
@@ -43,8 +43,8 @@ fn append_line(
 ///|
 fn append_text(
   output : SequenceDrawing,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   text : String,
   class_name : String,
   defaults : @style.SequenceColors,
@@ -58,20 +58,17 @@ fn append_text(
       line_height~,
     ),
   )
-  output.draw(
-    TextBlock(
-      @svg.layout_multiline_text(
-        x.to_double(),
-        y.to_double(),
-        text,
-        line_height=line_height.to_double(),
-        anchor=Baseline,
-        text_anchor=anchor,
-        text_metrics=Some(text_metrics),
-      ),
-    ),
-    class_name~,
-    fill=Color(defaults.text),
+  append_state_text_at_top(
+    output.graphic.with_style({
+      ..Default::default(),
+      fill: Color(defaults.text),
+    }),
+    text,
+    x,
+    y - text_metrics.ascent.to_double(),
+    class_name,
+    text_metrics,
+    anchor~,
   )
 }
 
@@ -87,15 +84,14 @@ fn DiagramLayout::participant_at(
 fn DiagramLayout::participant_head_y(
   self : DiagramLayout,
   participant : ParticipantLayout,
-) -> Int {
-  participant.birth_y.map_or(
-    self.body_top - participant.participant.typ.header_height(),
-    birth_y => birth_y + 9 - participant.participant.typ.header_height(),
-  )
+) -> Double {
+  participant.birth_y.map_or(self.body_top - participant.height, birth_y => {
+    birth_y + MESSAGE_ARROW_OFFSET - participant.height / 2
+  })
 }
 
 ///|
-fn DiagramLayout::participant_tail_y(self : DiagramLayout) -> Int {
+fn DiagramLayout::participant_tail_y(self : DiagramLayout) -> Double {
   self.body_bottom + 9
 }
 

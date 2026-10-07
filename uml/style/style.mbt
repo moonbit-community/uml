@@ -165,7 +165,11 @@ pub fn DocumentStyle::property_color(
 
 ///|
 pub fn DocumentStyle::diagram_text_color(self : DocumentStyle) -> String {
-  @svg.svg_color(self.property("FontColor"), self.defaults().text)
+  let color = match self.property("FontColor") {
+    Some(color) => Some(color)
+    None => self.property("DefaultFontColor")
+  }
+  @svg.svg_color(color, self.defaults().text)
 }
 
 ///|

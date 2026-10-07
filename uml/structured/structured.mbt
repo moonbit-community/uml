@@ -80,6 +80,9 @@ pub extend StructuredNode with Debug::{to_repr}
 pub(all) struct StructuredDiagram {
   format : StructuredFormat
   root : StructuredNode
+  presentation : Array[(String, String)]
+  styles : Array[StructuredStyleProperty]
+  highlights : Array[StructuredHighlight]
 } derive(Eq, Debug)
 
 ///|
@@ -89,3 +92,28 @@ pub extend StructuredDiagram with Eq::{not_equal, equal}
 pub extend StructuredDiagram with Debug::{to_repr}
 
 ///|
+pub(all) struct StructuredStyleProperty {
+  selector : String
+  name : String
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub(all) struct StructuredHighlight {
+  path : Array[String]
+  stereotype : String?
+} derive(Eq, Debug)
+
+///|
+
+///|
+pub extend StructuredStyleProperty with Eq::{not_equal, equal}
+
+///|
+pub extend StructuredStyleProperty with Debug::{to_repr}
+
+///|
+pub extend StructuredHighlight with Eq::{not_equal, equal}
+
+///|
+pub extend StructuredHighlight with Debug::{to_repr}

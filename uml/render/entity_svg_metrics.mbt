@@ -44,9 +44,10 @@ fn @entity.Entity::spot(
 
 ///|
 fn @entity.Member::display_without_visibility(self : @entity.Member) -> String {
+  let display = @entity.member_display(self.raw)
   match self.visibility {
-    Unknown => self.raw
-    _ => self.raw[1:].trim_start().to_owned()
+    Unknown => display
+    _ => display[1:].trim_start().to_owned()
   }
 }
 
@@ -143,6 +144,10 @@ priv struct ClassHeaderLayout {
   spot_half_width : Int
   title_width : Int
   title_height : Int
+  title_text : String
+  generic : String?
+  generic_width : Int
+  generic_height : Int
   stereotype_width : Int
   stereotype_height : Int
   stereotype : String?
@@ -162,6 +167,7 @@ priv struct ClassHeaderPlacement {
 
 ///|
 priv struct ClassBodyLayout {
+  compartments : Array[ClassCompartment]?
   fields : Array[@entity.Member]
   methods : Array[@entity.Member]
   fields_height : Int
@@ -189,6 +195,7 @@ priv struct ObjectHeaderLayout {
 /// so their position is preserved, while their height is accounted for
 /// independently from member rows.
 priv struct ObjectBodyLayout {
+  compartments : Array[ClassCompartment]?
   entries : Array[@entity.Member]
   height : Int
   has_visibility : Bool
@@ -224,7 +231,11 @@ fn body_section_height(
   if entries.is_empty() {
     8
   } else {
-    member_rows_height(entries.length(), text_metrics)
+    let mut height = 7
+    for entry in entries {
+      height += entry.rendered_height(text_metrics)
+    }
+    height
   }
 }
 
@@ -244,7 +255,7 @@ fn measure_header_label(
   metrics : @metrics.FontMetrics,
   horizontal_padding : Int,
 ) -> (String?, Int, Int) {
-  let measured = metrics.measure(display)
+  let measured = metrics.entity_measure(display)
   (Some(display), measured.width + horizontal_padding, measured.height)
 }
 
@@ -255,7 +266,22 @@ fn @entity.Entity::header_layout(
   family : @entity.EntityFamily,
 ) -> ClassHeaderLayout {
   let title_metrics = self.title_metrics(text_metrics)
-  let title = title_metrics.measure(self.display)
+  let title_text = if text_metrics.generic_old {
+    self.generic.map_or(self.display, generic => {
+      self.display + "<" + generic + ">"
+    })
+  } else {
+    self.display
+  }
+  let title = title_metrics.entity_measure(title_text)
+  let generic = if text_metrics.generic_old { None } else { self.generic }
+  let (generic_width, generic_height) = generic.map_or((0, 0), value => {
+    let measured = text_metrics.class_stereotype.entity_measure(value)
+    (
+      measured.width + 4 * CLASS_GENERIC_MARGIN,
+      measured.height + 4 * CLASS_GENERIC_MARGIN,
+    )
+  })
   let title_width = title.width + 2 * CLASS_NAME_HORIZONTAL_MARGIN
   // The mbti family replaces the circled letter with the kind word (struct,
   // trait, ...) drawn in bold, so its spot slot spans the measured word.
@@ -265,7 +291,7 @@ fn @entity.Entity::header_layout(
     None
   }
   let spot_half_width = spot_word.map_or(CLASS_SPOT_RADIUS, word => {
-    (text_metrics.class_spot.measure(word).width + 1) / 2
+    (text_metrics.class_spot.entity_measure(word).width + 1) / 2
   })
   let circle_width = if self.circle_hidden {
     0
@@ -299,8 +325,11 @@ fn @entity.Entity::header_layout(
   }
   {
     width: circle_width +
-    title_width.max(stereotype_width).max(annotation_width),
-    height: circle_height.max(
+    title_width.max(stereotype_width).max(annotation_width) +
+    generic_width,
+    height: circle_height
+    .max(generic_height)
+    .max(
       stereotype_height +
       title.height +
       annotation_height +
@@ -311,6 +340,10 @@ fn @entity.Entity::header_layout(
     spot_half_width,
     title_width,
     title_height: title.height,
+    title_text,
+    generic,
+    generic_width,
+    generic_height,
     stereotype_width,
     stereotype_height,
     stereotype,
@@ -325,7 +358,7 @@ fn @entity.Entity::object_header_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
 ) -> ObjectHeaderLayout {
-  let title = text_metrics.regular.measure(self.display)
+  let title = text_metrics.regular.entity_measure(self.display)
   let title_width = title.width + OBJECT_TEXT_HORIZONTAL_PADDING * 2
   let (stereotype, stereotype_width, stereotype_height) = match
     self.stereotype {
@@ -355,6 +388,7 @@ fn @entity.Entity::object_body_layout(
 ) -> ObjectBodyLayout {
   let entries : Array[@entity.Member] = []
   let mut member_count = 0
+  let mut members_height = 0
   let mut separator_count = 0
   let mut previous_separator = false
   for entry in self.members {
@@ -369,6 +403,7 @@ fn @entity.Entity::object_body_layout(
     } else {
       entries.push(entry)
       member_count += 1
+      members_height += entry.rendered_height(text_metrics)
       previous_separator = false
     }
   }
@@ -381,10 +416,18 @@ fn @entity.Entity::object_body_layout(
     OBJECT_EMPTY_BODY_HEIGHT
   } else {
     OBJECT_BODY_BOTTOM_PADDING +
-    member_count * text_metrics.row_height() +
+    members_height +
     separator_count * OBJECT_SEPARATOR_HEIGHT
   }
-  { entries, height, has_visibility, }
+  let compartments = self.custom_compartments(text_metrics)
+  let height = compartments.map_or(height, sections => {
+    let mut height = 0
+    for section in sections {
+      height += section.height
+    }
+    height
+  })
+  { compartments, entries, height, has_visibility, }
 }
 
 ///|
@@ -424,11 +467,11 @@ fn @entity.Entity::map_body_layout(
   let mut top = 0
   for entry in self.map_entries {
     let key = entry.display_key()
-    let key_metrics = text_metrics.regular.measure(key)
+    let key_metrics = text_metrics.regular.entity_measure(key)
     let key_block_width = key_metrics.width + MAP_CELL_HORIZONTAL_PADDING * 2
     let (value_block_width, value_height) = match entry.value {
       Some(value) => {
-        let metrics = text_metrics.regular.measure(value)
+        let metrics = text_metrics.regular.entity_measure(value)
         (
           metrics.width + MAP_CELL_HORIZONTAL_PADDING * 2,
           metrics.height + MAP_CELL_VERTICAL_PADDING * 2,
@@ -464,33 +507,183 @@ fn MapBodyLayout::row(self : MapBodyLayout, key : String) -> MapRowLayout? {
 }
 
 ///|
-fn @entity.Entity::graphviz_port(
-  self : @entity.Entity,
-  port : String?,
-) -> @cgraph.Port? {
-  guard self.kind is Map else { return None }
-  guard port is Some(key) else { return None }
-  guard self.map_entries.any(entry => entry.key == key) else { return None }
-  Some({ name: Some(stable_port_identifier(key)), compass: None, })
+priv struct EntityNodePort {
+  name : String
+  top : Int
+  height : Int
+  score : Int
 }
 
 ///|
-/// Graphviz only consumes this invisible HTML table to route named ports. The
-/// custom SVG painter draws the visible table from the same `MapBodyLayout`.
-fn @entity.Entity::map_graphviz_port_label(
+fn member_port_score(text : String, name : String) -> Int {
+  guard text.contains(name) else { return 0 }
+  let chars = text.to_array()
+  let word = name.to_array()
+  for start in 0..<(chars.length() - word.length() + 1) {
+    let mut equal = true
+    for offset in 0..<word.length() {
+      if chars[start + offset] != word[offset] {
+        equal = false
+        break
+      }
+    }
+    guard equal else { continue }
+    let end = start + word.length()
+    if (start == 0 || !@identifier.is_identifier_char(chars[start - 1])) &&
+      (end == chars.length() || !@identifier.is_identifier_char(chars[end])) {
+      return 100
+    }
+  }
+  50
+}
+
+///|
+/// Java MethodsOrFieldsArea elects the longest referenced short name for each
+/// row, then Ports keeps the strongest word-boundary match for each name.
+fn @entity.Entity::node_ports(
   self : @entity.Entity,
+  requested : Array[String],
   text_metrics : ClassTextMetrics,
+  family : @entity.EntityFamily,
+) -> Array[EntityNodePort] {
+  let capability = self.render_capability(family)
+  if capability.ports is MapEntryPorts {
+    let header = self.object_header_layout(text_metrics)
+    return self.map_body_layout(text_metrics).rows.map(row => {
+      name: row.entry.key,
+      top: header.height + row.top,
+      height: row.height,
+      score: 100,
+    })
+  }
+  guard capability.ports is MemberPorts && !requested.is_empty() else {
+    return []
+  }
+  let names = requested.copy()
+  names.sort_by((left, right) => {
+    let length = right.length() - left.length()
+    if length == 0 {
+      left.compare(right)
+    } else {
+      length
+    }
+  })
+  let rows : Array[(@entity.Member, Int)] = []
+  if capability.body is OrderedMembers {
+    let mut top = self.object_header_layout(text_metrics).height
+    let body = self.object_body_layout(text_metrics)
+    if body.compartments is Some(sections) {
+      for section in sections {
+        let mut row_top = top + section.content_top
+        for item in section.items {
+          if item is MemberRow(entry, _) {
+            rows.push((entry, row_top))
+          }
+          row_top += item.height()
+        }
+        top += section.height
+      }
+    } else {
+      for entry in body.entries {
+        if entry.is_separator {
+          top += OBJECT_SEPARATOR_HEIGHT
+        } else {
+          rows.push((entry, top))
+          top += entry.rendered_height(text_metrics)
+        }
+      }
+    }
+  } else {
+    let header = self.header_layout(text_metrics, family)
+    let body = self.body_layout(text_metrics, family)
+    if body.compartments is Some(sections) {
+      let mut top = header.height
+      for section in sections {
+        let mut row_top = top + section.content_top
+        for item in section.items {
+          if item is MemberRow(entry, _) {
+            rows.push((entry, row_top))
+          }
+          row_top += item.height()
+        }
+        top += section.height
+      }
+    } else {
+      if !body.fields_collapsed {
+        let mut top = header.height
+        for entry in body.fields {
+          rows.push((entry, top))
+          top += entry.rendered_height(text_metrics)
+        }
+      }
+      if !body.methods_collapsed {
+        let mut top = header.height + body.fields_height
+        for entry in body.methods {
+          rows.push((entry, top))
+          top += entry.rendered_height(text_metrics)
+        }
+      }
+    }
+  }
+  let elected : Map[String, EntityNodePort] = Map([])
+  for row in rows {
+    let (entry, top) = row
+    for name in names {
+      let score = member_port_score(entry.display_without_visibility(), name)
+      guard score > 0 else { continue }
+      if elected.get(name).map_or(true, previous => previous.score < score) {
+        elected[name] = {
+          name,
+          top,
+          height: entry.rendered_height(text_metrics),
+          score,
+        }
+      }
+      break
+    }
+  }
+  let ports = elected.values().to_array()
+  ports.sort_by((left, right) => left.top - right.top)
+  ports
+}
+
+///|
+fn graphviz_entity_port(
+  ports : Array[EntityNodePort],
+  name : String?,
+) -> @cgraph.Port? {
+  guard name is Some(name) && ports.any(port => port.name == name) else {
+    return None
+  }
+  Some({ name: Some(stable_port_identifier(name)), compass: None, })
+}
+
+///|
+/// The same measured row positions supply node dimensions and the invisible
+/// Graphviz HTML table, matching SvekNode.appendLabelHtmlSpecialForLink.
+fn graphviz_entity_port_label(
+  ports : Array[EntityNodePort],
   width : Int,
+  height : Int,
 ) -> String {
-  let body = self.map_body_layout(text_metrics)
   let output = StringBuilder()
   output <+
-    $|<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0"><TR><TD WIDTH="\{width}" HEIGHT="\{self.object_header_layout(text_metrics).height}"></TD></TR>
-  for row in body.rows {
+    "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"0\">"
+  let mut top = 0
+  for port in ports {
+    if port.top > top {
+      output <+
+        "<TR><TD FIXEDSIZE=\"TRUE\" WIDTH=\"\{width}\" HEIGHT=\"\{port.top - top}\"></TD></TR>"
+    }
     output <+
-      $|<TR><TD PORT="\{row.port_id}" WIDTH="\{width}" HEIGHT="\{row.height}"></TD></TR>
+      "<TR><TD FIXEDSIZE=\"TRUE\" PORT=\"\{stable_port_identifier(port.name)}\" WIDTH=\"\{width}\" HEIGHT=\"\{port.height}\"></TD></TR>"
+    top = port.top + port.height
   }
-  output.write_string("</TABLE>>")
+  if height > top {
+    output <+
+      "<TR><TD FIXEDSIZE=\"TRUE\" WIDTH=\"\{width}\" HEIGHT=\"\{height - top}\"></TD></TR>"
+  }
+  output <+ "</TABLE>>"
   output.to_string()
 }
 
@@ -570,7 +763,7 @@ fn measure_json_node(
       let mut value_column_width = 0
       let mut height = 0
       for entry in members {
-        let key = text_metrics.regular.measure(entry.key)
+        let key = text_metrics.regular.entity_measure(entry.key)
         let value_size = measure_json_node(entry.value, text_metrics)
         key_column_width = key_column_width.max(
           key.width + MAP_CELL_HORIZONTAL_PADDING * 2,
@@ -597,7 +790,7 @@ fn measure_json_node(
       { key_column_width: 0, width, height, }
     }
     _ => {
-      let scalar = text_metrics.regular.measure(node.display())
+      let scalar = text_metrics.regular.entity_measure(node.display())
       {
         key_column_width: 0,
         width: scalar.width + MAP_CELL_HORIZONTAL_PADDING * 2,
@@ -632,7 +825,7 @@ fn build_json_rows(
       })
       let mut current_top = top
       for entry in members {
-        let key = text_metrics.regular.measure(entry.key)
+        let key = text_metrics.regular.entity_measure(entry.key)
         let value_size = measure_json_node(entry.value, text_metrics)
         let row_height = (key.height + MAP_CELL_VERTICAL_PADDING * 2).max(
           value_size.height,
@@ -798,7 +991,8 @@ fn ClassHeaderLayout::placement(
   let circle_width = self.circle_width.to_double()
   let surplus = (rect_width.to_double() -
   circle_width -
-  content_width.to_double()).max(0.0)
+  content_width.to_double() -
+  self.generic_width.to_double()).max(0.0)
   let h2 = (circle_width / 4.0).min(surplus * 0.1)
   let h1 = (surplus - h2) / 2.0
   let circle_center = if self.circle_width == 0 {
@@ -912,13 +1106,33 @@ fn @entity.Entity::body_layout(
       body_section_height(entries, text_metrics)
     }
   }
+  let compartments = if !(family is Mbti) && !fields_collapsed {
+    self.custom_compartments(text_metrics)
+  } else {
+    None
+  }
+  let mut custom_height = 0
+  if compartments is Some(sections) {
+    for section in sections {
+      custom_height += section.height
+    }
+  }
   {
+    compartments,
     fields,
     methods,
     fields_collapsed,
     methods_collapsed,
-    fields_height: section_height(fields, fields_collapsed),
-    methods_height: section_height(methods, methods_collapsed),
+    fields_height: if compartments is Some(_) {
+      custom_height
+    } else {
+      section_height(fields, fields_collapsed)
+    },
+    methods_height: if compartments is Some(_) {
+      0
+    } else {
+      section_height(methods, methods_collapsed)
+    },
   }
 }
 
@@ -953,6 +1167,9 @@ priv struct ClassTextMetrics {
   arrow_regular : @metrics.FontMetrics
   note : @metrics.FontMetrics
   actor_style : String
+  component_style : String
+  generic_old : Bool
+  minimum_class_width : Int
   member_interaction : Bool
   member_defaults : @entity.ClassMemberState
   member_states : Map[String, @entity.ClassMemberState]
@@ -1059,12 +1276,6 @@ const ACTOR_HOLLOW_WIDTH : Int = 28
 
 ///|
 const ACTOR_HOLLOW_HEIGHT : Int = 35
-
-///|
-const COMPONENT_HORIZONTAL_PADDING : Int = 40
-
-///|
-const COMPONENT_VERTICAL_PADDING : Int = 30
 
 ///|
 const COMPONENT_TAB_WIDTH : Int = 15
@@ -1203,6 +1414,16 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
     ),
     note: style.font_metrics(font_size=NOTE_FONT_SIZE),
     actor_style: @entity.actor_style(style),
+    generic_old: style
+    .property("GenericDisplay")
+    .map_or(false, value => value.equal_ignore_ascii_case("old")),
+    minimum_class_width: style
+    .property("MinClassWidth")
+    .map_or(0, value => @string.parse_int(value) catch { _ => 0 }),
+    component_style: style
+    .property("ComponentStyle")
+    .unwrap_or("uml2")
+    .to_lower(),
     member_interaction: false,
     member_defaults: { fields_expanded: true, methods_expanded: true, },
     member_states: {},
@@ -1241,11 +1462,26 @@ fn @entity.Entity::class_node_size(
 ) -> (Int, Int) {
   let header = self.header_layout(text_metrics, family)
   let body = self.body_layout(text_metrics, family)
-  let mut width = header.width
+  let mut width = header.width.max(text_metrics.minimum_class_width)
+  if body.compartments is Some(sections) {
+    for section in sections {
+      width = width.max(section.width)
+    }
+    return (width, header.height + body.fields_height)
+  }
   let visible = (if body.fields_collapsed { [] } else { body.fields }) +
     (if body.methods_collapsed { [] } else { body.methods })
   for entry in visible {
-    width = width.max(text_metrics.regular.measure(entry.raw).width + 28)
+    let metrics = if entry.is_abstract {
+      text_metrics.italic
+    } else {
+      text_metrics.regular
+    }
+    width = width.max(
+      metrics.entity_measure(entry.display_without_visibility()).width +
+      entry.member_text_x() +
+      5,
+    )
   }
   (width, header.height + body.fields_height + body.methods_height)
 }
@@ -1257,11 +1493,18 @@ fn @entity.Entity::object_node_size(
 ) -> (Int, Int) {
   let header = self.object_header_layout(text_metrics)
   let body = self.object_body_layout(text_metrics)
+  if body.compartments is Some(sections) {
+    let mut width = header.width
+    for section in sections {
+      width = width.max(section.width)
+    }
+    return (width, header.height + body.height)
+  }
   let text_x = if body.has_visibility { 20 } else { 5 }
   let mut width = header.width
   for entry in body.entries {
     guard !entry.is_separator else { continue }
-    let text_width = text_metrics.regular.measure(
+    let text_width = text_metrics.regular.entity_measure(
         entry.display_without_visibility(),
       ).width
     width = width.max(text_width + text_x + OBJECT_TEXT_HORIZONTAL_PADDING)
@@ -1294,14 +1537,16 @@ fn @entity.Entity::usecase_content_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, String?) {
-  let title = text_metrics.usecase_regular.measure(self.display)
+  let title = text_metrics.usecase_regular.entity_measure(self.display)
   // BodyEnhanced1 uses TextBlockUtils.withMargin(block, 6, 0), which adds
   // 6px to both horizontal sides. Its UEmpty footprint participates in sizing.
   let title_width = title.width + USECASE_BODY_HORIZONTAL_MARGIN
   match self.stereotype {
     Some(stereotype) if !self.stereotype_hidden => {
       let display = @tokenizer.display_stereotype(stereotype)
-      let stereotype_metrics = text_metrics.usecase_italic.measure(display)
+      let stereotype_metrics = text_metrics.usecase_italic.entity_measure(
+        display,
+      )
       (
         title_width.max(stereotype_metrics.width),
         title.height + stereotype_metrics.height,
@@ -1425,7 +1670,7 @@ fn @entity.Entity::actor_content_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
 ) -> (Int, Int, String?) {
-  let title = text_metrics.actor_regular.measure(self.display)
+  let title = text_metrics.actor_regular.entity_measure(self.display)
   let (figure_width, figure_height) = actor_figure_geometry(
     actor_appearance(text_metrics.actor_style),
     business=self.kind is @entity.EntityKind::BusinessActor,
@@ -1433,7 +1678,7 @@ fn @entity.Entity::actor_content_layout(
   match self.stereotype {
     Some(stereotype) if !self.stereotype_hidden => {
       let display = @tokenizer.display_stereotype(stereotype)
-      let stereotype_metrics = text_metrics.actor_italic.measure(display)
+      let stereotype_metrics = text_metrics.actor_italic.entity_measure(display)
       (
         title.width.max(stereotype_metrics.width).max(figure_width),
         stereotype_metrics.height + figure_height + title.height,
@@ -1449,10 +1694,13 @@ fn @entity.Entity::component_geometry(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
 ) -> NodeGeometry {
-  let title = text_metrics.regular.measure(self.display)
+  let text = self.description_text_layout(text_metrics)
+  let (left, right, top, bottom) = component_margins(
+    text_metrics.component_style,
+  )
   {
-    width: title.width + COMPONENT_HORIZONTAL_PADDING,
-    height: title.height + COMPONENT_VERTICAL_PADDING,
+    width: text.block_width + left + right,
+    height: text.block_height + top + bottom,
     shape: Box,
   }
 }
@@ -1508,6 +1756,12 @@ fn @entity.Entity::node_geometry(
       { width: PORT_SIZE, height: PORT_SIZE, shape: Box, }
     (DescriptionHeader, NoBody, LollipopRenderer) =>
       { width: LOLLIPOP_SIZE, height: LOLLIPOP_SIZE, shape: Circle, }
+    (DescriptionHeader, NoBody, DiamondRenderer) =>
+      {
+        width: ASSOCIATION_DIAMOND_SIZE,
+        height: ASSOCIATION_DIAMOND_SIZE,
+        shape: Rhombus,
+      }
     (DescriptionHeader, NoBody, PointRenderer) =>
       {
         width: ASSOCIATION_POINT_SIZE,
@@ -1520,4 +1774,37 @@ fn @entity.Entity::node_geometry(
     }
     _ => panic()
   }
+}
+
+///|
+/// USymbolComponent1/USymbolRectangle use equal ten-pixel margins;
+/// USymbolComponent2 reserves the icon at the top right.
+fn component_margins(style : String) -> (Int, Int, Int, Int) {
+  match style {
+    "uml1" | "rectangle" => (10, 10, 10, 10)
+    _ => (15, 25, 20, 10)
+  }
+}
+
+///|
+/// EntityImageAssociation.SIZE is the half diagonal of the diamond.
+const ASSOCIATION_DIAMOND_SIZE : Int = 24
+
+///|
+const CLASS_GENERIC_MARGIN : Int = 1
+
+///|
+const CLASS_GENERIC_OVERHANG : Int = 4
+
+///|
+fn ClassHeaderLayout::generic_rect(
+  self : ClassHeaderLayout,
+  width : Int,
+) -> (Int, Int, Int, Int) {
+  (
+    width - self.generic_width + CLASS_GENERIC_OVERHANG + CLASS_GENERIC_MARGIN,
+    -CLASS_GENERIC_OVERHANG + CLASS_GENERIC_MARGIN,
+    self.generic_width - 2 * CLASS_GENERIC_MARGIN,
+    self.generic_height - 2 * CLASS_GENERIC_MARGIN,
+  )
 }

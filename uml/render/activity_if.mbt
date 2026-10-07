@@ -6,7 +6,7 @@ fn if_columns(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int, Int, Int) {
+) -> (Double, Double, Double, Double) {
   let decision = nodes[branches[0].decision.unwrap()].size(
     metrics, small_metrics,
   )
@@ -31,11 +31,11 @@ fn if_columns(
   let right_x = left_x + left_axis + apart - right_axis
   let axis = left_x + left_axis + apart / 2
   let width = right_x + right.width + BRANCH_DIAMOND_MARGIN
-  let left_label = branches[0].label.map_or(0, label => {
-    small_metrics.measure(label).width
+  let left_label = branches[0].label.map_or(0.0, label => {
+    activity_measure(small_metrics, label).width
   })
-  let right_label = branches[1].label.map_or(0, label => {
-    small_metrics.measure(label).width
+  let right_label = branches[1].label.map_or(0.0, label => {
+    activity_measure(small_metrics, label).width
   })
   // ConditionalBuilder adds only the margins needed by the side labels.
   let extra_left = (left_label - (axis - decision.width / 2)).max(0)
@@ -60,7 +60,7 @@ fn if_vertical_columns(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int) {
+) -> (Double, Double) {
   let body_index = if_vertical_body_index(branches, nodes).unwrap()
   let body = measure_sequence(
     branches[body_index].tiles,
@@ -77,14 +77,14 @@ fn if_vertical_columns(
   let decision = nodes[branches[0].decision.unwrap()].size(
     metrics, small_metrics,
   )
-  let label_width = branches[1 - body_index].label.map_or(0, label => {
-    small_metrics.measure(label).width
+  let label_width = branches[1 - body_index].label.map_or(0.0, label => {
+    activity_measure(small_metrics, label).width
   })
   let axis = (body_axis + BRANCH_DIAMOND_MARGIN)
     .max(decision.width / 2)
     .max(EXIT_SIZE / 2)
-  let down_width = branches[body_index].label.map_or(0, label => {
-    EDGE_LABEL_OFFSET + small_metrics.measure(label).width
+  let down_width = branches[body_index].label.map_or(0.0, label => {
+    EDGE_LABEL_OFFSET + activity_measure(small_metrics, label).width
   })
   let right = (body.width - body_axis + BRANCH_DIAMOND_MARGIN)
     .max(down_width)
@@ -112,7 +112,7 @@ fn if_vertical_columns(
 
 ///|
 /// FtileIfLongHorizontal wraps every branch in FtileMinWidthCentered.
-const IF_CHAIN_MIN_BRANCH_WIDTH : Int = 30
+const IF_CHAIN_MIN_BRANCH_WIDTH : Double = 30
 
 ///|
 /// FtileIfLongHorizontal builds each column with FtileAssemblySimple,
@@ -122,7 +122,7 @@ fn if_chain_column(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int) {
+) -> (Double, Double) {
   let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
   let padded_width = body.width.max(IF_CHAIN_MIN_BRANCH_WIDTH)
   let body_axis = sequence_axis(branch.tiles, nodes, metrics, small_metrics) +
@@ -133,8 +133,8 @@ fn if_chain_column(
   )
   let empty_width = empty_branch_width(branch, small_metrics)
   let axis = body_axis.max(decision.width / 2).max(empty_width / 2)
-  let label_width = branch.label.map_or(0, label => {
-    EDGE_LABEL_OFFSET + small_metrics.measure(label).width
+  let label_width = branch.label.map_or(0.0, label => {
+    EDGE_LABEL_OFFSET + activity_measure(small_metrics, label).width
   })
   let right = (padded_width - body_axis)
     .max(label_width)
@@ -147,11 +147,13 @@ fn if_chain_column(
 /// ConditionalBuilder reserves a top margin when side labels exceed the diamond.
 fn if_side_label_padding(
   branches : Array[BranchTiles],
-  decision_height : Int,
+  decision_height : Double,
   metrics : @metrics.FontMetrics,
-) -> Int {
-  let height = branches.fold(init=0, (height, branch) => {
-    height.max(branch.label.map_or(0, label => metrics.measure(label).height))
+) -> Double {
+  let height = branches.fold(init=0.0, (height, branch) => {
+    height.max(
+      branch.label.map_or(0.0, label => activity_measure(metrics, label).height),
+    )
   })
   (height - decision_height).max(0)
 }
@@ -160,7 +162,7 @@ fn if_side_label_padding(
 fn if_chain_body_gap(
   branches : Array[BranchTiles],
   metrics : @metrics.FontMetrics,
-) -> Int {
+) -> Double {
   branches.fold(init=DIAMOND_BODY_GAP, (gap, branch) => {
     gap.max(decision_body_gap(branch.label, metrics))
   })
@@ -183,8 +185,8 @@ fn if_merge_size(
 fn place_if_merge(
   index : Int,
   size : TileMeasure,
-  center_x : Int,
-  y : Int,
+  center_x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
 ) -> Unit {
   layouts.push({
@@ -254,6 +256,6 @@ fn if_vertical_merge_size(
 
 ///|
 /// FtileIfDown.getAdditionalWidth separates the side terminal from its label.
-fn if_side_terminal_gap(width : Int, label_width : Int) -> Int {
+fn if_side_terminal_gap(width : Double, label_width : Double) -> Double {
   width.max(label_width + width / 2)
 }

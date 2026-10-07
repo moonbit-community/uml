@@ -2,6 +2,10 @@
 
 A MoonBit project that converts UML strings to SVG, aiming to align with PlantUML's behavior, including its layout.
 
+See [compatibility notes](./COMPATIBILITY.md) for the documented upstream
+differences, resource and pagination APIs, verification scope, and explicitly
+deferred formula embedding.
+
 | Sequence | Class |
 |---|---|
 | ![Sequence diagram](./uml/__snapshot__/sequence.svg) | ![Class diagram](./uml/__snapshot__/class.svg) |

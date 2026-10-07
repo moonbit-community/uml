@@ -240,6 +240,13 @@ fn clip_ray_to_node(
       let bounds = rect(center, INTERFACE_CIRCLE_SIZE, INTERFACE_CIRCLE_SIZE)
       clip_ray_to_ellipse(endpoint, adjacent, bounds)
     }
+    Rhombus =>
+      clip_ray_to_polygon(endpoint, adjacent, [
+        point(node.x, node.y - node.height / 2.0),
+        point(node.x + node.width / 2.0, node.y),
+        point(node.x, node.y + node.height / 2.0),
+        point(node.x - node.width / 2.0, node.y),
+      ])
     Hexagon => {
       let bounds = rect(point(node.x, node.y), node.width, node.height)
       clip_ray_to_rect(endpoint, adjacent, bounds)
@@ -261,4 +268,30 @@ fn closest_point_on_rect(target : Point, bounds : Rect) -> Point {
   let top = bounds.center.y - bounds.height / 2.0
   let bottom = bounds.center.y + bounds.height / 2.0
   point(target.x.min(right).max(left), target.y.min(bottom).max(top))
+}
+
+///|
+fn clip_ray_to_polygon(
+  endpoint : Point,
+  adjacent : Point,
+  vertices : Array[Point],
+) -> Point {
+  let dx = adjacent.x - endpoint.x
+  let dy = adjacent.y - endpoint.y
+  let mut nearest : Double? = None
+  for index, start in vertices {
+    let end = vertices[(index + 1) % vertices.length()]
+    let sx = end.x - start.x
+    let sy = end.y - start.y
+    let cross = dx * sy - dy * sx
+    guard cross.abs() > NOTE_GEOMETRY_EPSILON else { continue }
+    let px = start.x - endpoint.x
+    let py = start.y - endpoint.y
+    let t = (px * sy - py * sx) / cross
+    let u = (px * dy - py * dx) / cross
+    if u >= -NOTE_GEOMETRY_EPSILON && u <= 1.0 + NOTE_GEOMETRY_EPSILON {
+      nearest = keep_nearest_nonnegative(nearest, t)
+    }
+  }
+  nearest.map_or(endpoint, t => point(endpoint.x + dx * t, endpoint.y + dy * t))
 }

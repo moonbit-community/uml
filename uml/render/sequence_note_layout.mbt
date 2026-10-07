@@ -1,17 +1,17 @@
 ///|
 /// The measured geometry shared by the constraint pass and SVG renderer.
 priv struct NoteComponent {
-  width : Int
-  height : Int
-  text_x : Int
-  text_y : Int
-  fold : Int
+  width : Double
+  height : Double
+  text_x : Double
+  text_y : Double
+  fold : Double
 }
 
 ///|
 priv struct NoteGeometry {
-  x : Int
-  y : Int
+  x : Double
+  y : Double
   component : NoteComponent
 }
 
@@ -55,8 +55,8 @@ fn @seq.Note::component(
 fn DiagramLayout::participant_segment(
   self : DiagramLayout,
   participant_code : String,
-  y : Int,
-) -> (Int, Int) {
+  y : Double,
+) -> (Double, Double) {
   let center = self
     .participant_at(participant_code)
     .map_or(self.width / 2, participant => participant.center_x)
@@ -73,7 +73,7 @@ fn DiagramLayout::participant_segment(
     if activation.participant_code == participant_code &&
       activation.start_y <= y &&
       y <= activation.end_y {
-      let activation_left = center - 5 + activation.depth * 8
+      let activation_left = center - 5 + activation.depth.to_double() * 8.0
       left = left.min(activation_left)
       right = right.max(activation_left + 10)
     }

@@ -6,7 +6,7 @@ test "parses node, stereotype, and arrow style blocks" {
   let root_style = @render.mindmap_node_style(diagram, 0)
   let child_style = @render.mindmap_node_style(diagram, 1)
   @test.assert_eq(root_style.minimum_width, Some(100))
-  @test.assert_eq(root_style.padding_x, Some(6))
+  @test.assert_eq(root_style.padding_left, Some(6))
   @test.assert_eq(root_style.margin_right, Some(8))
   @test.assert_eq(root_style.same_class_width, Some(true))
   @test.assert_eq(child_style.alignment, Some(@tree.TextAlignment::Right))
@@ -58,8 +58,8 @@ test "style box shorthand keeps horizontal and vertical layout values" {
     "<style>\nNode {\n  Padding 5 13\n  Margin 7 11 17 19\n}\n</style>\n* Root",
   )
   let node_style = @render.mindmap_node_style(diagram, 0)
-  @test.assert_eq(node_style.padding_x, Some(13))
-  @test.assert_eq(node_style.padding_y, Some(5))
+  @test.assert_eq(node_style.padding_left, Some(13))
+  @test.assert_eq(node_style.padding_top, Some(5))
   @test.assert_eq(node_style.margin_top, Some(7))
   @test.assert_eq(node_style.margin_right, Some(11))
   @test.assert_eq(node_style.margin_bottom, Some(17))
@@ -75,5 +75,5 @@ test "root and leaf selectors layer over the node rule" {
   let leaf_style = @render.mindmap_node_style(diagram, 1)
   @test.assert_eq(root_style.minimum_width, Some(120))
   @test.assert_eq(leaf_style.minimum_width, Some(80))
-  @test.assert_eq(leaf_style.padding_x, Some(4))
+  @test.assert_eq(leaf_style.padding_left, Some(4))
 }

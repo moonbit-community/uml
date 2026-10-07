@@ -2,7 +2,7 @@
 fn DiagramLayout::group_bounds(
   self : DiagramLayout,
   group : GroupSpan,
-) -> (Int, Int) {
+) -> (Double, Double) {
   guard self.participants.length() > 0 else { (18, self.width - 36) }
   let first_index = group.first_participant.unwrap_or(0)
   let last_index = group.last_participant.unwrap_or(
@@ -10,7 +10,7 @@ fn DiagramLayout::group_bounds(
   )
   let first = self.participants[first_index]
   let last = self.participants[last_index]
-  let inset = 10 + group.depth * 8
+  let inset = 10.0 + group.depth.to_double() * 8.0
   let x = first.center_x - first.width / 2 - inset
   let right = last.center_x + last.width / 2 + inset
   (x, (right - x).max(1))
@@ -51,8 +51,8 @@ fn append_groups(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
           output.draw(
             Rectangle(
               origin=sequence_point(x, group.start_y),
-              width=width.to_double(),
-              height=height.to_double(),
+              width~,
+              height~,
               rx=None,
               ry=None,
             ),
@@ -66,8 +66,8 @@ fn append_groups(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
             output.draw(
               Rectangle(
                 origin=sequence_point(x, branch.start_y),
-                width=width.to_double(),
-                height=branch_height.to_double(),
+                width~,
+                height=branch_height,
                 rx=None,
                 ry=None,
               ),
@@ -145,10 +145,10 @@ fn append_groups(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
 fn delay_ranges(
   layout : DiagramLayout,
   events : Array[@seq.Event],
-) -> Array[(Int, Int)] {
+) -> Array[(Double, Double)] {
   let ranges = []
   events.eachi((index, event) => {
-    if event is @seq.Delay(_) {
+    if event is @seq.Delay(_) && !layout.placements[index].ignored {
       let placement = layout.placements[index]
       ranges.push((placement.y, placement.y + placement.height))
     }
@@ -202,14 +202,16 @@ fn append_activations(output : SequenceDrawing, layout : DiagramLayout) -> Unit 
       is Some(participant) else {
       continue
     }
-    let width = 10
-    let x = participant.center_x - width / 2 + activation.depth * 8
+    let width = 10.0
+    let x = participant.center_x -
+      width / 2 +
+      activation.depth.to_double() * 8.0
     let height = (activation.end_y - activation.start_y).max(12)
     output.draw(
       Rectangle(
         origin=sequence_point(x, activation.start_y),
-        width=width.to_double(),
-        height=height.to_double(),
+        width~,
+        height~,
         rx=None,
         ry=None,
       ),

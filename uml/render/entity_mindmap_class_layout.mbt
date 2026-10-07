@@ -91,8 +91,8 @@ fn @entity.EntityDiagram::mindmap_class_layout(
   for entity_index, entity in self.entities {
     let geometry = entity.node_geometry(text_metrics, self.family)
     items.push({
-      width: geometry.width,
-      height: geometry.height,
+      width: geometry.width.to_double(),
+      height: geometry.height.to_double(),
       margin_left: @tree.MINDMAP_DEFAULT_MARGIN,
       margin_right: @tree.MINDMAP_DEFAULT_MARGIN,
       margin_top: @tree.MINDMAP_DEFAULT_MARGIN,
@@ -107,19 +107,24 @@ fn @entity.EntityDiagram::mindmap_class_layout(
   let layout = layout_tree(items, roots)
   let rects : Array[(Int, Int, Int, Int)] = Array::make(count, (0, 0, 0, 0))
   for node in layout.nodes {
-    rects[node.index] = (node.x, node.y, node.width, node.height)
+    rects[node.index] = (
+      node.x.round().to_int(),
+      node.y.round().to_int(),
+      node.width.round().to_int(),
+      node.height.round().to_int(),
+    )
   }
   let structure_edges : Array[MindmapClassEdge] = layout.edges.map(edge => {
     let relation = self.relations[parent_relation_indices[edge.child_index].unwrap()]
     {
-      x1: edge.x1,
-      y1: edge.y1,
-      control1_x: edge.control1_x,
-      control1_y: edge.control1_y,
-      control2_x: edge.control2_x,
-      control2_y: edge.control2_y,
-      x2: edge.x2,
-      y2: edge.y2,
+      x1: edge.x1.round().to_int(),
+      y1: edge.y1.round().to_int(),
+      control1_x: edge.control1_x.round().to_int(),
+      control1_y: edge.control1_y.round().to_int(),
+      control2_x: edge.control2_x.round().to_int(),
+      control2_y: edge.control2_y.round().to_int(),
+      x2: edge.x2.round().to_int(),
+      y2: edge.y2.round().to_int(),
       parent_end: relation.right_end,
       child_end: relation.left_end,
     }

@@ -145,6 +145,10 @@ fn StateDrawingBounds::draw(
   let adjustment = STATE_LIMIT_SHAPE_ADJUSTMENT
   let shadow_extent = 2.0 * state_metadata_shadow(metadata)
   match shape {
+    Image(origin~, width~, height~, ..) => {
+      point(origin)
+      point({ x: origin.x + width, y: origin.y + height, })
+    }
     Rectangle(origin~, width~, height~, ..) => {
       if metadata.class_name == Some("state-package-empty-extent") {
         point(origin)

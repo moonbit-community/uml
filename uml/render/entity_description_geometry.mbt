@@ -80,13 +80,13 @@ fn @entity.Entity::description_text_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
 ) -> DescriptionTextLayout {
-  let label = text_metrics.regular.measure(self.display)
+  let label = text_metrics.regular.entity_measure(self.display)
   match self.stereotype {
     Some(value) if !self.stereotype_hidden => {
       let display = @tokenizer.display_stereotype(value)
       // The description stereotype style has no font-size key of its own, so
       // it inherits the element size (italic, same family as the label).
-      let stereo = text_metrics.italic.measure(display)
+      let stereo = text_metrics.italic.entity_measure(display)
       // `withMargin(block, 1, 0)`: 1px horizontal stereotype margin.
       let stereo_width = stereo.width + 2
       {

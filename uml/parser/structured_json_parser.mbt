@@ -23,15 +23,19 @@ fn json_value_view(value : Json) -> StructuredValueView[Json] {
 
 ///|
 fn json_root(value : Json) -> @structured.StructuredNode {
-  structured_node_from_value(value, json_value_view)
+  structured_root_from_value(value, json_value_view)
 }
 
 ///|
 pub fn parse_structured_json(
   input : String,
-) -> @structured.StructuredDiagram raise @json.ParseError {
-  let source = @tokenizer.splice_source_between_markers(input, "@startjson", marker => {
-    marker == "@endjson"
-  })
-  { format: @structured.Json, root: json_root(@json.parse(source)), }
+) -> @structured.StructuredDiagram raise {
+  let source = structured_source(input, "json")
+  {
+    format: @structured.Json,
+    root: json_root(@json.parse(source.data)),
+    presentation: source.presentation,
+    styles: source.styles,
+    highlights: source.highlights,
+  }
 }

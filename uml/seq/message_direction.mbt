@@ -4,7 +4,19 @@ pub fn ArrowConfig::from_dressing(
   right : DressingResult,
   body : ArrowBody,
   direction : MessageDirection,
+  line_style? : String? = None,
 ) -> ArrowConfig {
+  let body = line_style.map_or(body, value => {
+    value
+    .split(",")
+    .fold(init=body, (current, token) => {
+      match token.trim().to_lower() {
+        "dashed" | "dotted" => Dotted
+        "plain" => Solid
+        _ => current
+      }
+    })
+  })
   let (start, end) = match direction {
     Reverse => (right, left)
     Forward => (left, right)
@@ -23,6 +35,7 @@ pub fn ArrowConfig::from_dressing(
     part,
     circle_start: start.circle,
     circle_end: end.circle,
+    line_style,
   }
 }
 

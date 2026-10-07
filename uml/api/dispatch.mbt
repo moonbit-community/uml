@@ -1,15 +1,67 @@
 ///|
 fn meaningful_source_lines(input : String) -> Array[String] {
-  input
-  .split("\n")
-  .map(line => @tokenizer.strip_line_comment(line.to_owned()).trim().to_owned())
-  .filter(line => {
-    line.length() > 0 &&
-    !line.equal_ignore_ascii_case("@startuml") &&
-    !line.equal_ignore_ascii_case("@enduml") &&
-    !@style.is_preprocessor_directive(line)
-  })
-  .to_array()
+  let result : Array[String] = []
+  let mut terminator : String? = None
+  let mut body_depth = 0
+  for raw in @tokenizer.preprocess(input).split("\n") {
+    let line = @tokenizer.strip_line_comment(raw.to_owned()).trim().to_owned()
+    let lower = line.to_lower()
+    if terminator is Some(ending) {
+      if lower == ending || lower == ending.replace(old=" ", new="") {
+        terminator = None
+      }
+      continue
+    }
+    if body_depth > 0 {
+      body_depth += @tokenizer.unquoted_delimiter_delta(line, '{', '}')
+      continue
+    }
+    guard !line.is_empty() &&
+      lower != "@startuml" &&
+      lower != "@enduml" &&
+      !@style.is_preprocessor_directive(line) else {
+      continue
+    }
+    if @tokenizer.common_block_terminator(line) is Some(ending) {
+      terminator = Some(ending)
+      continue
+    }
+    if lower.has_prefix("skinparam ") {
+      body_depth = @tokenizer.unquoted_delimiter_delta(line, '{', '}').max(0)
+      continue
+    }
+    let words = @tokenizer.syntax_words(lower)
+    if words is [kind, ..] &&
+      ["title", "caption", "legend", "header", "footer"].contains(kind) {
+      if words[1:].all(word => {
+          ["left", "right", "center", "top", "bottom"].contains(word)
+        }) {
+        terminator = Some("end " + kind)
+      }
+      continue
+    }
+    if (
+        lower.has_prefix("note ") ||
+        lower.has_prefix("hnote ") ||
+        lower.has_prefix("rnote ")
+      ) &&
+      @tokenizer.find_unquoted_literal(line, ":") is None {
+      terminator = Some("end note")
+      continue
+    }
+    if @style.parse_style_directive(line) is Some(_) {
+      continue
+    }
+    result.push(line)
+    if starts_with_keyword(line, [
+        "class", "interface", "enum", "abstract", "annotation", "exception", "metaclass",
+        "stereotype", "dataclass", "record", "struct", "protocol", "object", "map",
+        "json", "entity",
+      ]) {
+      body_depth = @tokenizer.unquoted_delimiter_delta(line, '{', '}').max(0)
+    }
+  }
+  result
 }
 
 ///|
@@ -151,9 +203,9 @@ pub fn is_state_source(input : String) -> Bool {
   for line in meaningful_source_lines(input) {
     let lower = line.to_lower()
     if lower.has_prefix("state ") ||
-      state_start_markers.contains(line) ||
-      line.has_prefix("[*] ") ||
-      line.has_suffix(" [*]") {
+      state_start_markers.any(marker => {
+        @tokenizer.find_unquoted_literal(line, marker) is Some(_)
+      }) {
       return true
     }
   }
@@ -172,6 +224,21 @@ fn is_object_declaration(line : String) -> Bool {
 /// alone: a sequence reply such as `A --> B` otherwise looks like a class
 /// relation to the class-diagram heuristic.
 pub fn is_sequence_source(input : String) -> Bool {
+  try_parse_sequence(input) is Some(_)
+}
+
+///|
+/// PlantUML tries the sequence factory first. Testing its actual command
+/// grammar handles undeclared participants and ambiguous description symbols
+/// without trying to infer the diagram type from a substring in a label.
+fn try_parse_sequence(input : String) -> @seq.SequenceDiagram? {
+  Some(@parser.parse_sequence(input)) catch {
+    _ => None
+  }
+}
+
+///|
+fn has_sequence_commands(input : String) -> Bool {
   let lines = meaningful_source_lines(input)
   !lines.any(has_component_declaration) &&
   !lines.any(has_usecase_declaration) &&
@@ -306,6 +373,13 @@ fn entity_family_from_lines(lines : Array[String]) -> @entity.EntityFamily? {
   if object {
     return Some(@entity.ObjectDiagram)
   }
+  if lines.any(line => {
+      starts_with_keyword(line, [
+        "package", "namespace", "interface", "entity", "circle", "diamond",
+      ])
+    }) {
+    return Some(@entity.ClassDiagram)
+  }
   // A source with only relations and common lines belongs to the class
   // grammar, which PlantUML tries before the description factory.
   if relation {
@@ -321,7 +395,7 @@ fn entity_family_from_lines(lines : Array[String]) -> @entity.EntityFamily? {
 /// helper (or the `is_*_source` wrappers) instead of re-checking the marker
 /// prefix locally.
 fn has_start_marker(input : String, marker : String) -> Bool {
-  input.trim().to_lower().has_prefix(marker)
+  input.split("\n").any(line => line.trim().equal_ignore_ascii_case(marker))
 }
 
 ///|
@@ -487,7 +561,8 @@ pub let class_relation_arrows : FixedArray[String] = [
 /// Activity-diagram commands that stand alone on a line.
 pub let activity_commands : FixedArray[String] = [
   "start", "stop", "endif", "endwhile", "repeat", "fork", "fork again", "end fork",
-  "endfork", "endswitch", "else",
+  "endfork", "endswitch", "else", "split", "split again", "end split", "end merge",
+  "break",
 ]
 
 ///|
@@ -498,6 +573,7 @@ pub let activity_commands : FixedArray[String] = [
 /// label command through their other markers (`:work;`, `start`, ...).
 pub let activity_command_prefixes : FixedArray[String] = [
   "repeat while ", "if ", "elseif ", "else ", "while ", "switch ", "case ", "goto ",
+  "backward ",
 ]
 
 ///|

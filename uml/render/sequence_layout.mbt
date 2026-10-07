@@ -3,7 +3,7 @@ fn DiagramLayout::note_anchor_center(
   self : DiagramLayout,
   note : @seq.Note,
   arrow_anchor : @seq.Message?,
-) -> Int {
+) -> Double {
   guard note.on_arrow else {
     note.participant_codes
     .get(0)
@@ -31,7 +31,7 @@ fn DiagramLayout::note_anchor_center(
 fn DiagramLayout::content_horizontal_bounds(
   self : DiagramLayout,
   events : Array[@seq.Event],
-) -> (Int, Int) {
+) -> (Double, Double) {
   guard self.participants.length() > 0 else { (0, self.width) }
   let first = self.participants[0]
   let last = self.participants[self.participants.length() - 1]
@@ -59,7 +59,7 @@ fn DiagramLayout::content_horizontal_bounds(
               self.text_metrics.body,
             ).width
           let extent = if message.short_arrow {
-            40
+            40.0
           } else {
             (label_width + 32).max(90)
           }
@@ -97,6 +97,20 @@ fn DiagramLayout::content_horizontal_bounds(
     min_x = min_x.min(x)
     max_x = max_x.max(x + width)
   }
+  let anchors = sequence_anchor_positions(events, self)
+  for event in events {
+    guard event is @seq.LinkAnchor(link) &&
+      anchors.get(link.first) is Some(first) &&
+      anchors.get(link.second) is Some(second) else {
+      continue
+    }
+    let x = (first.0 + second.0) / 2.0
+    let label_width = link.label.map_or(0.0, label => {
+      TextSize::of_with(label, self.text_metrics.body).width
+    })
+    min_x = min_x.min(x - SEQUENCE_ANCHOR_LABEL_GAP)
+    max_x = max_x.max(x + SEQUENCE_ANCHOR_LABEL_GAP + label_width)
+  }
   let max_box_depth = max_participant_box_depth(self.participants)
   for depth in 0..<max_box_depth {
     for_each_participant_box_run(self.participants, depth, (start, end, box) => {
@@ -115,9 +129,9 @@ fn DiagramLayout::content_horizontal_bounds(
 fn participant_lifetimes(
   events : Array[@seq.Event],
   placements : Array[EventPlacement],
-) -> (Map[String, Int], Map[String, Int]) {
-  let births : Map[String, Int] = Map([])
-  let deaths : Map[String, Int] = Map([])
+) -> (Map[String, Double], Map[String, Double]) {
+  let births : Map[String, Double] = Map([])
+  let deaths : Map[String, Double] = Map([])
   for index, event in events {
     match event {
       @seq.Message(message) =>
@@ -154,11 +168,11 @@ fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
   let (participants, participant_index, width) = layout_participants(
     self, text_metrics,
   )
-  let mut participant_header_height = 36 +
+  let mut participant_header_height = 36.0 +
     self.participant_box_header_height(text_metrics)
   for participant in participants {
     participant_header_height = participant_header_height.max(
-      participant.participant.typ.header_height(),
+      participant.height,
     )
   }
   let (placements, activations, groups, destroys, auto_page_breaks, body_bottom) = layout_events(
@@ -191,7 +205,7 @@ fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
     body_top: participant_header_height + vertical_margin,
     body_bottom,
     text_metrics,
-    defaults: self.style.defaults().sequence_colors(),
+    defaults: sequence_colors(self.style),
   }
   let (min_x, max_x) = layout.content_horizontal_bounds(self.events)
   let shift = (horizontal_margin - min_x).max(0)

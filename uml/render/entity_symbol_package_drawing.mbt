@@ -58,10 +58,10 @@ fn append_symbol_package(
   text_metrics : ClassTextMetrics,
 ) -> Unit {
   let stroke = @entity.package_border_color(diagram.style)
-  let title = text_metrics.regular.measure(group.display)
+  let title = text_metrics.regular.entity_measure(group.display)
   let stereo = group.stereotype.map(value => {
     let display = @tokenizer.display_stereotype(value)
-    let metrics = text_metrics.italic.measure(display)
+    let metrics = text_metrics.italic.entity_measure(display)
     (display, metrics.width.to_double() + 2, metrics.height.to_double())
   })
   let symbol_ctx : SymbolPackageContext = {
@@ -78,26 +78,33 @@ fn append_symbol_package(
     stroke_attributes: { ..entity_line_style(None), stroke: Color(stroke), },
   }
   output.group({ ..Default::default(), class_name: Some("symbol-package"), }, graphic => {
-    let symbol_ctx = { ..symbol_ctx, output: graphic, }
-    match symbol {
-      "node" => symbol_ctx.append_node()
-      "frame" => symbol_ctx.append_frame()
-      "cloud" => symbol_ctx.append_cloud()
-      "database" => symbol_ctx.append_database()
-      "queue" => symbol_ctx.append_queue()
-      "stack" => symbol_ctx.append_stack()
-      "storage" => symbol_ctx.append_storage()
-      "artifact" => symbol_ctx.append_artifact()
-      "card" => symbol_ctx.append_card()
-      "file" => symbol_ctx.append_file()
-      "hexagon" => symbol_ctx.append_hexagon()
-      "rectangle" => symbol_ctx.append_rectangle()
-      "action" => symbol_ctx.append_action()
-      "process" => symbol_ctx.append_process()
-      "component" => symbol_ctx.append_component()
-      "folder" => symbol_ctx.append_folder()
-      _ => ()
-    }
+    with_entity_link(graphic, group.url, graphic => {
+      let symbol_ctx = { ..symbol_ctx, output: graphic, }
+      match symbol {
+        "node" => symbol_ctx.append_node()
+        "frame" => symbol_ctx.append_frame()
+        "cloud" => symbol_ctx.append_cloud()
+        "database" => symbol_ctx.append_database()
+        "queue" => symbol_ctx.append_queue()
+        "stack" => symbol_ctx.append_stack()
+        "storage" => symbol_ctx.append_storage()
+        "artifact" => symbol_ctx.append_artifact()
+        "card" => symbol_ctx.append_card()
+        "file" => symbol_ctx.append_file()
+        "hexagon" => symbol_ctx.append_hexagon()
+        "rectangle" => symbol_ctx.append_rectangle()
+        "action" => symbol_ctx.append_action()
+        "process" => symbol_ctx.append_process()
+        "component" =>
+          if text_metrics.component_style == "rectangle" {
+            symbol_ctx.append_rectangle()
+          } else {
+            symbol_ctx.append_component()
+          }
+        "folder" => symbol_ctx.append_folder()
+        _ => ()
+      }
+    })
   })
 }
 
@@ -715,7 +722,7 @@ fn append_symbol_package_text(
 ) -> Unit {
   match stereo {
     Some((display, x, top)) => {
-      let stereo_height = text_metrics.italic.measure(display).height.to_double()
+      let stereo_height = text_metrics.italic.entity_measure(display).height.to_double()
       draw_entity_text(
         output,
         x,
@@ -727,7 +734,7 @@ fn append_symbol_package_text(
     }
     None => ()
   }
-  let title_height = text_metrics.regular.measure(group.display).height.to_double()
+  let title_height = text_metrics.regular.entity_measure(group.display).height.to_double()
   draw_entity_text(
     output,
     title_x,

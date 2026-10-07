@@ -119,6 +119,7 @@ pub(all) enum Shape {
   )
   TextBlock(MultilineText)
   StyledTextBlock(MultilineText, TextStyle)
+  Image(origin~ : Point, width~ : Double, height~ : Double, href~ : String)
 } derive(Eq, Debug)
 
 ///|

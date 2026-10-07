@@ -76,23 +76,25 @@ fn ClassDrawing::draw_class(
       data: [("code", entity.qualified_code)],
     },
     graphic => {
-      graphic
-      .with_style({ ..line_style, fill: Color(fill), })
-      .draw(
-        Rectangle(
-          origin=class_point(x, y),
-          width=width.to_double(),
-          height=height.to_double(),
-          rx=None,
-          ry=None,
-        ),
-      )
-      let self = { ..self, graphic, }
-      self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
-      self.append_class_header(entity, x, y, placement, header)
-      self.append_class_members(
-        entity, x, y, width, header, body, line_style, entity_colors,
-      )
+      with_entity_link(graphic, entity.url, graphic => {
+        graphic
+        .with_style({ ..line_style, fill: Color(fill), })
+        .draw(
+          Rectangle(
+            origin=class_point(x, y),
+            width=width.to_double(),
+            height=height.to_double(),
+            rx=None,
+            ry=None,
+          ),
+        )
+        let self = { ..self, graphic, }
+        self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
+        self.append_class_header(entity, x, y, width, placement, header)
+        self.append_class_members(
+          entity, x, y, width, header, body, line_style, entity_colors,
+        )
+      })
     },
   )
 }
@@ -156,6 +158,7 @@ fn ClassDrawing::append_class_header(
   entity : @entity.Entity,
   x : Int,
   y : Int,
+  width : Int,
   placement : ClassHeaderPlacement,
   header : ClassHeaderLayout,
 ) -> Unit {
@@ -184,11 +187,48 @@ fn ClassDrawing::append_class_header(
     self.graphic,
     x + placement.title_x,
     y + placement.title_baseline,
-    entity.display,
+    header.title_text,
     "class-title",
-    text_metrics.regular,
+    entity.title_metrics(text_metrics),
+    fill=self.diagram.style.property_font_color("ClassFontColor"),
     italic=if italic { Some(true) } else { None },
   )
+  if header.generic is Some(generic) {
+    // HeaderLayout places the generic box above and beyond the top-right
+    // corner. Both TextBlockGeneric margins participate in measurement.
+    let (gx, gy, gw, gh) = header.generic_rect(width)
+    self.graphic
+    .with_style({
+      fill: Color(@entity.class_background_color(self.diagram.style)),
+      stroke: Color(@entity.class_border_color(self.diagram.style)),
+      stroke_width: Some(1),
+      dash: Some([2, 2]),
+      inline: true,
+    })
+    .draw(
+      Rectangle(
+        origin=class_point(x + gx, y + gy),
+        width=gw.to_double(),
+        height=gh.to_double(),
+        rx=None,
+        ry=None,
+      ),
+      metadata={ ..Default::default(), class_name: Some("class-generic-box"), },
+    )
+    draw_class_text(
+      self.graphic,
+      x + gx + CLASS_GENERIC_MARGIN,
+      y +
+      gy +
+      CLASS_GENERIC_MARGIN +
+      text_metrics.class_stereotype.entity_measure(generic).baseline,
+      generic,
+      "class-generic",
+      text_metrics.class_stereotype,
+      fill=stereotype_font_color,
+      font_family=text_metrics.class_stereotype_font_family,
+    )
+  }
   match (header.annotation, placement.annotation_position) {
     (Some(annotation), Some((annotation_x, annotation_baseline))) =>
       draw_class_text(
@@ -221,6 +261,32 @@ fn ClassDrawing::append_class_members(
   let interactive = self.text_metrics.member_interaction &&
     self.diagram.family.capability().class_members_collapsible
   let independent = self.diagram.family is Mbti
+  if body.compartments is Some(sections) {
+    draw_class_compartments(
+      self.graphic,
+      sections,
+      x,
+      y + header.height,
+      width,
+      self.text_metrics,
+      entity_colors,
+      self.diagram.style.property_font_color("ClassAttributeFontColor"),
+      line_style,
+    )
+    if interactive {
+      append_member_toggle(
+        self.graphic,
+        entity.qualified_code,
+        "all",
+        true,
+        x,
+        y,
+        width,
+        header.height,
+      )
+    }
+    return
+  }
   let sections = [
     (
       "fields",
@@ -263,6 +329,7 @@ fn ClassDrawing::append_class_members(
         height,
         self.text_metrics.row_height(),
         entity_colors,
+        self.diagram.style.property_font_color("ClassAttributeFontColor"),
         line_style,
         self.text_metrics,
       )
@@ -331,6 +398,7 @@ fn append_member_section(
   section_height : Int,
   row_height : Int,
   entity_colors : @style.EntityColors,
+  text_color : String,
   line_style : @graphics.DrawingStyle,
   text_metrics : ClassTextMetrics,
 ) -> Unit {
@@ -338,23 +406,64 @@ fn append_member_section(
   output
   .with_style(line_style)
   .draw(Line(class_point(x, y), class_point(x + width, y)))
-  for member_index, entry in entries {
-    let member_y = y + (member_index + 1) * row_height + 1
+  let mut top = y
+  for entry in entries {
+    let member_y = top + row_height + 1
     output.group({ ..Default::default(), class_name: Some("member-icon"), }, graphic => {
       entry.draw_visibility_icon(graphic, x + 5, member_y, entity_colors)
     })
-    draw_class_text(
+    draw_member_text(
       output,
+      entry,
       x + entry.member_text_x(),
       member_y,
-      entry.display_without_visibility(),
       "member",
-      text_metrics.regular,
+      text_metrics,
+      text_color,
     )
+    top += entry.rendered_height(text_metrics)
   }
 }
 
 ///|
 fn class_point(x : Int, y : Int) -> @graphics.Point {
   { x: x.to_double(), y: y.to_double(), }
+}
+
+///|
+fn draw_member_text(
+  output : @graphics.Graphic,
+  entry : @entity.Member,
+  x : Int,
+  y : Int,
+  class_name : String,
+  metrics : ClassTextMetrics,
+  color : String,
+) -> Unit {
+  let font = if entry.is_abstract { metrics.italic } else { metrics.regular }
+  let text = entry.display_without_visibility()
+  draw_class_text(
+    output,
+    x,
+    y,
+    text,
+    class_name,
+    font,
+    italic=Some(entry.is_abstract),
+    fill=color,
+  )
+  if entry.is_static {
+    let measured = font.entity_measure(text)
+    output
+    .with_style({
+      ..Default::default(),
+      stroke: Color(color),
+      stroke_width: Some(1),
+      inline: true,
+    })
+    .draw(Line(class_point(x, y + 1), class_point(x + measured.width, y + 1)), metadata={
+      ..Default::default(),
+      class_name: Some("member-static-underline"),
+    })
+  }
 }

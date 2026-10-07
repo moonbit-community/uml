@@ -10,19 +10,19 @@ fn while_columns(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int) {
+) -> (Double, Double) {
   let entry_size = nodes[entry].size(metrics, small_metrics)
   let exit_size = nodes[exit].size(metrics, small_metrics)
   let body_size = measure_sequence(body, nodes, metrics, small_metrics)
   let body_axis = sequence_axis(body, nodes, metrics, small_metrics)
-  let label_width = exit_label.map_or(0, label => {
-    small_metrics.measure(label).width
+  let label_width = exit_label.map_or(0.0, label => {
+    activity_measure(small_metrics, label).width
   })
   let left = body_axis
     .max(entry_size.width / 2 + label_width)
     .max(exit_size.width / 2)
-  let down_width = enter_label.map_or(0, label => {
-    EDGE_LABEL_OFFSET + small_metrics.measure(label).width
+  let down_width = enter_label.map_or(0.0, label => {
+    EDGE_LABEL_OFFSET + activity_measure(small_metrics, label).width
   })
   let right = (body_size.width - body_axis)
     .max(down_width)

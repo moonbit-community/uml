@@ -123,19 +123,32 @@ fn relation_direction(arrow : String) -> @entity.RelationDirection {
 
 ///|
 fn relation_style(arrow : String) -> String? {
-  guard @tokenizer.find_literal(arrow, "[") is Some(start) else { return None }
-  guard @tokenizer.find_literal(arrow[start + 1:].to_owned(), "]")
-    is Some(length) else {
-    return None
+  let styles : Array[String] = []
+  let mut rest = arrow
+  while @tokenizer.find_literal(rest, "[") is Some(start) {
+    let after = rest[start + 1:].to_owned()
+    guard @tokenizer.find_literal(after, "]") is Some(end) else { break }
+    styles.push(after[:end].to_owned())
+    rest = after[end + 1:].to_owned()
   }
-  Some(arrow[start + 1:start + 1 + length].to_owned())
+  if styles.is_empty() {
+    None
+  } else {
+    Some(styles.join(","))
+  }
 }
 
 ///|
 fn relation_inside(arrow : String) -> String? {
-  for inside in ["(0)", "(0", "0)"] {
-    if arrow.contains(inside) {
-      return Some(inside)
+  for inside in ["(0)", "(0", "0)", "0"] {
+    if @tokenizer.find_literal(arrow, inside) is Some(offset) {
+      let end = offset + inside.length()
+      if offset > 0 &&
+        end < arrow.length() &&
+        "-=.~".contains(arrow[offset - 1:offset].to_owned()) &&
+        "-=.~".contains(arrow[end:end + 1].to_owned()) {
+        return Some(inside)
+      }
     }
   }
   None
@@ -379,7 +392,10 @@ fn EntityParser::apply_relation_syntax(
     label: syntax.label,
     direction: relation_direction(arrow),
     line_style: relation_style(arrow),
-    color: syntax.color,
+    color: match syntax.color {
+      Some(color) => Some(color)
+      None => relation_arrow_color(arrow)
+    },
     url: syntax.url,
     stereotype: syntax.stereotype,
     weight: syntax.weight,
@@ -395,4 +411,27 @@ fn EntityParser::apply_relation_syntax(
       (self.resolve(first), self.resolve(second))
     }),
   })
+}
+
+///|
+fn relation_arrow_color(arrow : String) -> String? {
+  guard relation_style(arrow) is Some(style) else { return None }
+  let mut color : String? = None
+  for token in style.split(",") {
+    let token = token.trim().to_owned()
+    match token.to_lower() {
+      "dashed"
+      | "dotted"
+      | "plain"
+      | "bold"
+      | "hidden"
+      | "norank"
+      | "single"
+      | "node" => ()
+      value if value.has_prefix("thickness=") => ()
+      _ if !token.is_empty() => color = Some(token)
+      _ => ()
+    }
+  }
+  color
 }

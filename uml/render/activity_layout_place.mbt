@@ -4,8 +4,8 @@ fn place_sequence(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -14,6 +14,7 @@ fn place_sequence(
   let mut entry = None
   let mut previous : PlacedTile? = None
   let mut pending_label : String?? = None
+  let mut pending_style : String?? = None
   for tile in tiles {
     match tile {
       Swimlane(_) => continue
@@ -22,6 +23,7 @@ fn place_sequence(
         continue
       }
       Leaf(index) if nodes[index] is @flow.ActivityNode::Arrow(value) => {
+        pending_style = Some(@flow.arrow_label(value).style)
         pending_label = Some(
           @flow.arrow_label(value).text.map(activity_display_text),
         )
@@ -37,7 +39,7 @@ fn place_sequence(
       Some(label)
     })
     if previous is Some(_) {
-      cursor_y += sequence_gap(incoming.unwrap_or(None))
+      cursor_y += sequence_gap(incoming.unwrap_or(None), small_metrics)
     }
     let placed = place_tile(
       tile,
@@ -53,8 +55,8 @@ fn place_sequence(
       // Assembly connects the fork's central ports, unlike its branch links.
       let route = if previous.outgoing_route is Forward &&
         (
-          previous.exit.map_or(false, index => nodes[index].is_fork()) ||
-          placed.entry.map_or(false, index => nodes[index].is_fork())
+          previous.exit.map_or(false, index => nodes[index].is_parallel_bar()) ||
+          placed.entry.map_or(false, index => nodes[index].is_parallel_bar())
         ) {
         ForkSequence
       } else {
@@ -66,9 +68,13 @@ fn place_sequence(
         placed.entry,
         route,
         label=incoming.unwrap_or(previous.outgoing_label),
+        style=pending_style.unwrap_or(
+          tile_incoming_style(tile, nodes).unwrap_or(previous.outgoing_style),
+        ),
       )
     }
     pending_label = None
+    pending_style = None
     if entry is None {
       entry = placed.entry
     }
@@ -81,22 +87,29 @@ fn place_sequence(
         entry,
         exit: previous.exit,
         outgoing_label: sequence_outgoing_label(tiles, nodes),
+        outgoing_style: sequence_outgoing_style(tiles, nodes),
         outgoing_route: previous.outgoing_route,
       }
     None =>
-      { entry, exit: None, outgoing_label: None, outgoing_route: Forward, }
+      {
+        entry,
+        exit: None,
+        outgoing_label: None,
+        outgoing_style: None,
+        outgoing_route: Forward,
+      }
   }
 }
 
 ///|
 fn place_switch_branches(
   branches : Array[BranchTiles],
-  positions : Array[Int],
+  positions : Array[Double],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> Array[PlacedBranch] {
@@ -114,6 +127,7 @@ fn place_switch_branches(
         edges,
       ),
       label: branch.label,
+      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
     })
   }
   placed
@@ -125,8 +139,8 @@ fn place_leaf(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
 ) -> PlacedTile {
   let size = nodes[index].size(metrics, small_metrics)
@@ -135,6 +149,7 @@ fn place_leaf(
       entry: None,
       exit: None,
       outgoing_label: None,
+      outgoing_style: None,
       outgoing_route: Forward,
     }
   }
@@ -160,6 +175,7 @@ fn place_leaf(
       Some(index)
     },
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -179,12 +195,22 @@ fn place_tile(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
   match tile {
+    LoopWithBackward(body, backward, entry, exit, spec) =>
+      place_loop_backward(
+        body, backward, entry, exit, spec, nodes, metrics, small_metrics, x, y, layouts,
+        edges,
+      )
+    LoopWithBreaks(body, breaks, target, repeat) =>
+      place_loop_breaks(
+        body, breaks, target, repeat, nodes, metrics, small_metrics, x, y, layouts,
+        edges,
+      )
     Leaf(index) =>
       place_leaf(index, nodes, metrics, small_metrics, x, y, layouts)
     Noted(body, notes) =>
@@ -195,19 +221,21 @@ fn place_tile(
       layouts.push({ node_index: index, x, y, width: 0, height: 0, })
       {
         entry: Some(index),
-        exit: if tile is GotoAnchor(_) {
+        exit: if tile is GotoAnchor(_) ||
+          nodes[index] is @flow.ActivityNode::Break {
           None
         } else {
           Some(index)
         },
         outgoing_label: None,
+        outgoing_style: None,
         outgoing_route: Forward,
       }
     }
     Partition(index, tiles, end) => {
       let size = measure_tile(tile, nodes, metrics, small_metrics)
       let body = measure_sequence(tiles, nodes, metrics, small_metrics)
-      let title = metrics.measure(nodes[index].label().unwrap())
+      let title = activity_measure(metrics, nodes[index].label().unwrap())
       layouts.push({
         node_index: index,
         x,
@@ -243,6 +271,7 @@ fn place_tile(
         entry: None,
         exit: None,
         outgoing_label: None,
+        outgoing_style: None,
         outgoing_route: Forward,
       }
     IfChain(branches, exit) if if_vertical_body_index(branches, nodes)
@@ -288,8 +317,8 @@ fn place_if_down(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -361,6 +390,7 @@ fn place_if_down(
     left_body.entry,
     IfDownLeft,
     label=branches[0].label,
+    style=sequence_incoming_style(branches[0].tiles, nodes).unwrap_or(None),
   )
   append_layout_edge(
     edges,
@@ -368,6 +398,7 @@ fn place_if_down(
     right_body.entry,
     IfDownRight,
     label=branches[1].label,
+    style=sequence_incoming_style(branches[1].tiles, nodes).unwrap_or(None),
   )
   append_layout_edge(
     edges,
@@ -375,6 +406,7 @@ fn place_if_down(
     merge,
     IfEmptyDown,
     label=left_body.outgoing_label,
+    style=left_body.outgoing_style,
   )
   append_layout_edge(
     edges,
@@ -382,11 +414,13 @@ fn place_if_down(
     merge,
     IfEmptyDown,
     label=right_body.outgoing_label,
+    style=right_body.outgoing_style,
   )
   {
     entry: decision_placed.entry,
     exit: merge,
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -402,13 +436,13 @@ fn place_if_chain(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
   let branches_size = measure_if_chain(branches, nodes, metrics, small_metrics)
-  let mut decision_height = 0
+  let mut decision_height = 0.0
   for branch in branches {
     guard branch.decision is Some(decision) else { continue }
     decision_height = decision_height.max(
@@ -466,6 +500,7 @@ fn place_if_chain(
           IfEmptyDown
         },
         label=branch.label,
+        style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
       )
     } else {
       append_layout_edge(
@@ -478,9 +513,14 @@ fn place_if_chain(
           IfBypassRight(cursor_x + branch_width - previous_decision_x)
         },
         label=branch.label,
+        style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
       )
     }
-    placed.push({ tile: body, label: branch.label, })
+    placed.push({
+      tile: body,
+      label: branch.label,
+      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+    })
     cursor_x += branch_width + BRANCH_GAP
   }
   let exit_y = body_y +
@@ -508,12 +548,14 @@ fn place_if_chain(
       merge,
       IfChainMerge,
       label=branch.tile.outgoing_label,
+      style=branch.tile.outgoing_style,
     )
   }
   {
     entry: branches[0].decision,
     exit: merge,
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -525,8 +567,8 @@ fn measure_branches_height(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> Int {
-  let mut height = 0
+) -> Double {
+  let mut height = 0.0
   for branch in branches {
     let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
     height = height.max(body.height)
@@ -542,8 +584,8 @@ fn place_switch(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -613,6 +655,7 @@ fn place_switch(
       branch.tile.entry,
       route,
       label=branch.label,
+      style=branch.style,
     )
     let merge_route = if branches.length() > 1 &&
       (branch.tile.exit == first_exit || branch.tile.exit == last_exit) {
@@ -626,12 +669,14 @@ fn place_switch(
       merge,
       merge_route,
       label=branch.tile.outgoing_label,
+      style=branch.tile.outgoing_style,
     )
   }
   {
     entry: entry_placed.entry,
     exit: merge,
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -646,8 +691,8 @@ fn place_while(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -703,6 +748,7 @@ fn place_while(
       entry_placed.entry,
       BackwardRight(return_offset, drop),
       label=enter_label,
+      style=sequence_incoming_style(body, nodes).unwrap_or(None),
     )
   } else {
     append_layout_edge(
@@ -711,6 +757,7 @@ fn place_while(
       body_placed.entry,
       WhileEntry,
       label=enter_label,
+      style=sequence_incoming_style(body, nodes).unwrap_or(None),
     )
     let return_drop = layouts.fold(init=LOOP_BACK_GAP, (drop, node) => {
       if Some(node.node_index) == body_placed.exit {
@@ -725,6 +772,7 @@ fn place_while(
       entry_placed.entry,
       BackwardRight(return_offset, return_drop),
       label=body_placed.outgoing_label,
+      style=body_placed.outgoing_style,
     )
   }
   append_layout_edge(
@@ -738,6 +786,7 @@ fn place_while(
     entry: entry_placed.entry,
     exit: exit_placed.exit,
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -752,8 +801,8 @@ fn place_repeat(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -806,6 +855,7 @@ fn place_repeat(
     exit_placed.entry,
     RepeatForward,
     label=body_placed.outgoing_label,
+    style=body_placed.outgoing_style,
   )
   append_layout_edge(
     edges,
@@ -825,6 +875,7 @@ fn place_repeat(
     entry: entry_placed.entry,
     exit: exit_placed.exit,
     outgoing_label: exit_label,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -837,8 +888,8 @@ fn place_parallel(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -847,7 +898,10 @@ fn place_parallel(
   let (branches_height, incoming, outgoing) = fork_rows(
     branches, nodes, metrics, small_metrics,
   )
-  let branches_y = y + FORK_BAR_HEIGHT + VERTICAL_GAP + incoming
+  let bar_height = parallel_bar_height(nodes[entry])
+  let has_exit = !(nodes[entry] is @flow.ActivityNode::Split) ||
+    branches.any(branch => sequence_has_exit(branch.tiles, nodes))
+  let branches_y = y + bar_height + VERTICAL_GAP + incoming
   let mut cursor_x = x
   let placed = []
   for branch in branches {
@@ -865,24 +919,40 @@ fn place_parallel(
         edges,
       ),
       label: sequence_incoming_label(branch.tiles, nodes),
+      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
     })
     cursor_x += column_width
   }
+  let merge = nodes[exit] is @flow.ActivityNode::EndMerge
   let exit_y = branches_y + branches_height + VERTICAL_GAP + outgoing
   layouts.push({
     node_index: entry,
     x,
     y,
     width: block_width,
-    height: FORK_BAR_HEIGHT,
+    height: bar_height,
   })
-  layouts.push({
-    node_index: exit,
-    x,
-    y: exit_y,
-    width: block_width,
-    height: FORK_BAR_HEIGHT,
-  })
+  if has_exit {
+    layouts.push({
+      node_index: exit,
+      x: if merge {
+        x + (block_width - EXIT_SIZE) / 2
+      } else {
+        x
+      },
+      y: exit_y,
+      width: if merge {
+        EXIT_SIZE
+      } else {
+        block_width
+      },
+      height: if merge {
+        EXIT_SIZE
+      } else {
+        bar_height
+      },
+    })
+  }
   for branch in placed {
     append_layout_edge(
       edges,
@@ -890,19 +960,34 @@ fn place_parallel(
       branch.tile.entry,
       Forward,
       label=branch.label,
+      style=branch.style,
     )
     append_layout_edge(
       edges,
       branch.tile.exit,
-      Some(exit),
-      Forward,
+      if has_exit {
+        Some(exit)
+      } else {
+        None
+      },
+      if merge {
+        ForkMerge
+      } else {
+        Forward
+      },
       label=branch.tile.outgoing_label,
+      style=branch.tile.outgoing_style,
     )
   }
   {
     entry: Some(entry),
-    exit: Some(exit),
+    exit: if has_exit {
+      Some(exit)
+    } else {
+      None
+    },
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
 }
@@ -913,22 +998,22 @@ fn fork_rows(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> (Int, Int, Int) {
-  let mut height = 0
-  let mut incoming = 0
-  let mut outgoing = 0
+) -> (Double, Double, Double) {
+  let mut height = 0.0
+  let mut incoming = 0.0
+  let mut outgoing = 0.0
   for branch in branches {
     height = height.max(
       measure_sequence(branch.tiles, nodes, metrics, small_metrics).height,
     )
     incoming = incoming.max(
-      sequence_incoming_label(branch.tiles, nodes).map_or(0, text => {
-        small_metrics.measure(text).height
+      sequence_incoming_label(branch.tiles, nodes).map_or(0.0, text => {
+        activity_measure(small_metrics, text).height
       }),
     )
     outgoing = outgoing.max(
-      sequence_outgoing_label(branch.tiles, nodes).map_or(0, text => {
-        small_metrics.measure(text).height
+      sequence_outgoing_label(branch.tiles, nodes).map_or(0.0, text => {
+        activity_measure(small_metrics, text).height
       }),
     )
   }
@@ -944,10 +1029,13 @@ fn fork_branch_size(
 ) -> TileMeasure {
   let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
   let axis = sequence_axis(branch.tiles, nodes, metrics, small_metrics)
-  let incoming = sequence_incoming_label(branch.tiles, nodes).map_or(0, text => {
-    EDGE_LABEL_OFFSET + small_metrics.measure(text).width
+  let incoming = sequence_incoming_label(branch.tiles, nodes).map_or(0.0, text => {
+    EDGE_LABEL_OFFSET + activity_measure(small_metrics, text).width
   })
-  { ..body, width: body.width.max(axis + incoming), }
+  let outgoing = sequence_outgoing_label(branch.tiles, nodes).map_or(0.0, text => {
+    EDGE_LABEL_OFFSET + activity_measure(small_metrics, text).width
+  })
+  { ..body, width: body.width.max(axis + incoming.max(outgoing)), }
 }
 
 ///|
@@ -956,8 +1044,8 @@ fn measure_fork_columns(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-) -> Int {
-  let mut width = 0
+) -> Double {
+  let mut width = 0.0
   for index, branch in branches {
     let size = fork_branch_size(branch, nodes, metrics, small_metrics)
     if index > 0 {
@@ -977,9 +1065,8 @@ fn @flow.ActivityDiagram::layout(
   self : @flow.ActivityDiagram,
 ) -> ActivityLayout {
   let style = self.style
-  let family = style.font_family()
-  let metrics = style.font_metrics_for(family, font_size=ACTION_FONT)
-  let small_metrics = style.font_metrics_for(family, font_size=SMALL_FONT)
+  let metrics = activity_font_metrics(style, false)
+  let small_metrics = activity_font_metrics(style, true)
   let source_nodes = []
   let tiles = tiles_from_instructions(self.instructions, source_nodes)
   let content = measure_sequence(tiles, source_nodes, metrics, small_metrics)
@@ -991,7 +1078,7 @@ fn @flow.ActivityDiagram::layout(
   let mut title_height = REGION_HEADER_HEIGHT
   for name in lane_names {
     title_height = title_height.max(
-      metrics.measure(activity_display_text(name)).height,
+      activity_measure(metrics, activity_display_text(name)).height,
     )
   }
   let top_padding = if use_swimlanes {
@@ -1015,6 +1102,12 @@ fn @flow.ActivityDiagram::layout(
     regions.push(region)
   }
   append_goto_edges(source_nodes, layouts, edges)
+  let separation = style
+    .property("ColorArrowSeparationSpace")
+    .map_or(0.0, value => @string.parse_double(value) catch { _ => 0.0 })
+  for index, edge in edges {
+    edges[index] = { ..edge, rainbow_separation: separation, }
+  }
   let mut result : ActivityLayout = {
     nodes: layouts,
     edges,
@@ -1047,8 +1140,8 @@ fn layout_content_right(
   edges : Array[ActivityEdgeLayout],
   nodes : Array[@flow.ActivityNode],
   small_metrics : @metrics.FontMetrics,
-) -> Int {
-  let mut right = 0
+) -> Double {
+  let mut right = 0.0
   for layout in layouts {
     right = right.max(layout.x + layout.width)
   }
@@ -1068,7 +1161,7 @@ fn edge_label_extent(
   layouts : Array[ActivityNodeLayout],
   nodes : Array[@flow.ActivityNode],
   small_metrics : @metrics.FontMetrics,
-) -> Int? {
+) -> Double? {
   let from_index = edge.from_node_index
   let to_index = edge.to_node_index
   let mut from : ActivityNodeLayout? = None
@@ -1108,8 +1201,8 @@ fn place_if_vertical(
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
@@ -1158,6 +1251,7 @@ fn place_if_vertical(
     Some(body.entry.unwrap_or(exit)),
     Forward,
     label=branch.label,
+    style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
   )
   append_layout_edge(
     edges,
@@ -1165,11 +1259,12 @@ fn place_if_vertical(
     merge,
     IfEmptyDown,
     label=body.outgoing_label,
+    style=body.outgoing_style,
   )
   if if_single_terminal(side.tiles, nodes) {
     let side_size = measure_sequence(side.tiles, nodes, metrics, small_metrics)
-    let label_width = side.label.map_or(0, text => {
-      small_metrics.measure(text).width
+    let label_width = side.label.map_or(0.0, text => {
+      activity_measure(small_metrics, text).width
     })
     let side_placed = place_sequence(
       side.tiles,
@@ -1189,6 +1284,7 @@ fn place_if_vertical(
       side_placed.entry,
       IfSideTerminal,
       label=side.label,
+      style=sequence_incoming_style(side.tiles, nodes).unwrap_or(None),
     )
   } else {
     append_layout_edge(
@@ -1197,12 +1293,155 @@ fn place_if_vertical(
       merge,
       IfBypassRight(x + size.width - decision_x),
       label=side.label,
+      style=sequence_incoming_style(side.tiles, nodes).unwrap_or(None),
     )
   }
   {
     entry: entry.entry,
     exit: merge,
     outgoing_label: None,
+    outgoing_style: None,
     outgoing_route: Forward,
   }
+}
+
+///|
+/// FtileFactoryDelegatorRepeat assembles an extra exit diamond and a shared
+/// left corridor; while welding points join the existing left exit corridor.
+fn place_loop_breaks(
+  body : Tile,
+  breaks : Array[Int],
+  target : Int,
+  repeat : Bool,
+  nodes : Array[@flow.ActivityNode],
+  metrics : @metrics.FontMetrics,
+  small_metrics : @metrics.FontMetrics,
+  x : Double,
+  y : Double,
+  layouts : Array[ActivityNodeLayout],
+  edges : Array[ActivityEdgeLayout],
+) -> PlacedTile {
+  let margin = if repeat { REPEAT_SIDE_CLEARANCE } else { 0 }
+  let placed = place_tile(
+    body,
+    nodes,
+    metrics,
+    small_metrics,
+    x + margin,
+    y,
+    layouts,
+    edges,
+  )
+  if repeat {
+    let size = measure_tile(body, nodes, metrics, small_metrics)
+    let axis = tile_axis(body, nodes, metrics, small_metrics) + margin
+    let finish = place_leaf(
+      target,
+      nodes,
+      metrics,
+      small_metrics,
+      x + axis - EXIT_SIZE / 2,
+      y + size.height + VERTICAL_GAP,
+      layouts,
+    )
+    append_layout_edge(
+      edges,
+      placed.exit,
+      finish.entry,
+      Forward,
+      label=placed.outgoing_label,
+      style=placed.outgoing_style,
+    )
+  }
+  let target_x = layouts[layouts
+    .search_by(node => node.node_index == target)
+    .unwrap()].x
+  let corridor = x + (if repeat { 0 } else { DIAMOND_TEXT_PADDING / 2 })
+  for index, point in breaks {
+    append_layout_edge(
+      edges,
+      Some(point),
+      Some(target),
+      BreakLeft(corridor - target_x, repeat && index == 0),
+    )
+  }
+  {
+    ..placed,
+    exit: Some(target),
+    outgoing_label: if repeat {
+      None
+    } else {
+      placed.outgoing_label
+    },
+    outgoing_style: if repeat {
+      None
+    } else {
+      placed.outgoing_style
+    },
+  }
+}
+
+///|
+/// FtileWhile/FtileRepeat put the backward activity at the right edge, centered
+/// vertically; the upward return traverses its bottom and top contacts.
+fn place_loop_backward(
+  body : Tile,
+  backward : Int,
+  entry : Int,
+  exit : Int,
+  spec : @flow.ActivityBackward,
+  nodes : Array[@flow.ActivityNode],
+  metrics : @metrics.FontMetrics,
+  small_metrics : @metrics.FontMetrics,
+  x : Double,
+  y : Double,
+  layouts : Array[ActivityNodeLayout],
+  edges : Array[ActivityEdgeLayout],
+) -> PlacedTile {
+  let start = edges.length()
+  let placed = place_tile(
+    body, nodes, metrics, small_metrics, x, y, layouts, edges,
+  )
+  let size = measure_tile(body, nodes, metrics, small_metrics)
+  let backward_size = nodes[backward].size(metrics, small_metrics)
+  let _ = place_leaf(
+    backward,
+    nodes,
+    metrics,
+    small_metrics,
+    x + size.width,
+    y + (size.height - backward_size.height) / 2,
+    layouts,
+  )
+  let repeat = nodes[exit] is @flow.ActivityNode::RepeatWhile(_)
+  for index in start..<edges.length() {
+    let edge = edges[index]
+    guard edge.to_node_index == entry &&
+      edge.route is (BackwardRight(_) | RepeatBackRight(_) | RepeatLaneBack(_)) else {
+      continue
+    }
+    let drop = match edge.route {
+      BackwardRight(_, drop) => drop
+      _ => 0
+    }
+    edges[index] = {
+      ..edge,
+      to_node_index: backward,
+      route: BackwardActionIn(repeat, drop),
+      label: spec.incoming.text.map_or(edge.label, value => {
+        Some(activity_display_text(value))
+      }),
+      style: spec.incoming.style.map_or(edge.style, value => Some(value)),
+    }
+    append_layout_edge(
+      edges,
+      Some(backward),
+      Some(entry),
+      BackwardActionOut,
+      label=spec.outgoing.text.map(activity_display_text),
+      style=spec.outgoing.style,
+    )
+    break
+  }
+  placed
 }

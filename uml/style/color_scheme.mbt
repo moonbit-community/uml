@@ -48,7 +48,7 @@ pub extend ColorScheme with Debug::{to_repr}
 ///|
 /// Theme roles consumed by the sequence renderer. Sequence-specific fallback
 /// and skinparam precedence remain owned by the sequence package.
-pub struct SequenceColors {
+pub(all) struct SequenceColors {
   text : String
   line : String
   canvas : String
@@ -73,7 +73,7 @@ pub extend SequenceColors with Debug::{to_repr}
 /// Theme roles consumed by the class/object/component/use-case renderer.
 /// Entity-specific fallback and skinparam precedence remain owned by the
 /// entity package.
-pub struct EntityColors {
+pub(all) struct EntityColors {
   text : String
   line : String
   node : String

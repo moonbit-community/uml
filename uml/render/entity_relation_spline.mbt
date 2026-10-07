@@ -101,13 +101,20 @@ fn orient_relation_edge(
   let reversed = relation_point_distance_squared(start, right_center).sqrt() +
     relation_point_distance_squared(end, left_center).sqrt()
   guard reversed < normal else { return edge }
+  reverse_relation_edge(edge)
+}
+
+///|
+fn reverse_relation_edge(
+  edge : @graphviz.GraphvizEdge,
+) -> @graphviz.GraphvizEdge {
   let splines : Array[@graphviz.GraphvizSpline] = []
   let mut index = edge.splines.length()
   while index > 0 {
     index -= 1
     splines.push(reverse_relation_spline(edge.splines[index]))
   }
-  { ..edge, splines, }
+  { ..edge, splines, head_label: edge.tail_label, tail_label: edge.head_label, }
 }
 
 ///|

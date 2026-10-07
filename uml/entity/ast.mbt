@@ -510,3 +510,17 @@ pub fn EntityDiagram::entity(self : EntityDiagram, code : String) -> Entity? {
 pub fn EntityDiagram::has_entity(self : EntityDiagram, code : String) -> Bool {
   self.entity(code) is Some(_)
 }
+
+///|
+/// Member control tags are presentation metadata, not display text. Java
+/// Member removes them case-insensitively before recognizing visibility.
+pub fn member_display(raw : String) -> String {
+  let mut text = raw
+  for tag in ["{method}", "{field}", "{static}", "{classifier}", "{abstract}"] {
+    while text.to_lower().find(tag[:]) is Some(offset) {
+      text = text[:offset].to_owned() +
+        text[offset + tag.length():].trim_start().to_owned()
+    }
+  }
+  text.trim().to_owned()
+}

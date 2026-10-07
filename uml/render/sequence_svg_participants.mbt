@@ -2,7 +2,7 @@
 fn append_participant(
   output : SequenceDrawing,
   layout : ParticipantLayout,
-  y : Int,
+  y : Double,
   is_tail : Bool,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
@@ -24,8 +24,13 @@ fn append_participant(
             output.draw(
               Rectangle(
                 origin=sequence_point(left, y),
-                width=layout.width.to_double(),
-                height=36,
+                width=layout.width,
+                height=layout.height -
+                  (if layout.participant.typ is @seq.Collections {
+                    4
+                  } else {
+                    0
+                  }),
                 rx=Some(2),
                 ry=None,
               ),
@@ -35,7 +40,7 @@ fn append_participant(
               output,
               layout.center_x,
               y + 23,
-              layout.participant.display,
+              layout.label,
               "participant-label",
               layout.defaults,
               line_height=layout.text_metrics.participant.line_height,
@@ -52,12 +57,12 @@ fn append_participant(
 fn append_vertical_participant(
   output : SequenceDrawing,
   layout : ParticipantLayout,
-  y : Int,
+  y : Double,
   is_tail : Bool,
   fill : String,
 ) -> Unit {
-  let symbol_height = layout.participant.typ.symbol_height()
-  let symbol_y = if is_tail { y + 16 } else { y }
+  let symbol_height = layout.participant.typ.symbol_height().to_double()
+  let symbol_y = if is_tail { y + layout.height - symbol_height } else { y }
   let label_y = if is_tail { y + 13 } else { y + symbol_height + 13 }
   append_participant_symbol(
     output,
@@ -71,7 +76,7 @@ fn append_vertical_participant(
     output,
     layout.center_x,
     label_y,
-    layout.participant.display,
+    layout.label,
     "participant-label",
     layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
@@ -83,7 +88,7 @@ fn append_vertical_participant(
 fn append_queue_participant(
   output : SequenceDrawing,
   layout : ParticipantLayout,
-  y : Int,
+  y : Double,
   fill : String,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
@@ -123,7 +128,7 @@ fn append_queue_participant(
     output,
     layout.center_x,
     y + 18,
-    layout.participant.display,
+    layout.label,
     "participant-label",
     layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
@@ -135,15 +140,16 @@ fn append_queue_participant(
 fn append_collections_participant(
   output : SequenceDrawing,
   layout : ParticipantLayout,
-  y : Int,
+  y : Double,
   fill : String,
 ) -> Unit {
   let left = layout.center_x - layout.width / 2
   output.draw(
     Rectangle(
       origin=sequence_point(left + 4, y),
-      width=(layout.width - 4).to_double(),
-      height=36,
+      width=layout.width - 4,
+      height=layout.height -
+        (if layout.participant.typ is @seq.Collections { 4 } else { 0 }),
       rx=Some(2),
       ry=None,
     ),
@@ -152,8 +158,9 @@ fn append_collections_participant(
   output.draw(
     Rectangle(
       origin=sequence_point(left, y + 4),
-      width=(layout.width - 4).to_double(),
-      height=36,
+      width=layout.width - 4,
+      height=layout.height -
+        (if layout.participant.typ is @seq.Collections { 4 } else { 0 }),
       rx=Some(2),
       ry=None,
     ),
@@ -163,7 +170,7 @@ fn append_collections_participant(
     output,
     layout.center_x,
     y + 27,
-    layout.participant.display,
+    layout.label,
     "participant-label",
     layout.defaults,
     line_height=layout.text_metrics.participant.line_height,
@@ -175,8 +182,8 @@ fn append_collections_participant(
 fn append_participant_symbol(
   output : SequenceDrawing,
   typ : @seq.ParticipantType,
-  x : Int,
-  y : Int,
+  x : Double,
+  y : Double,
   fill : String,
   line : String,
 ) -> Unit {
@@ -299,13 +306,13 @@ fn append_participant_box(
   guard layouts.length() > 0 else { return }
   let first = layouts[0]
   let (left, right) = participant_box_horizontal_bounds(layouts, box)
-  let y = 4 + depth * (first.text_metrics.small_bold.line_height + 5)
+  let y = (4 + depth * (first.text_metrics.small_bold.line_height + 5)).to_double()
   let height = (diagram_layout.height - y - 5).max(22)
   output.draw(
     Rectangle(
       origin=sequence_point(left, y),
-      width=(right - left).to_double(),
-      height=height.to_double(),
+      width=right - left,
+      height~,
       rx=None,
       ry=None,
     ),

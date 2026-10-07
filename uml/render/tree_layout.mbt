@@ -1,16 +1,16 @@
 ///|
 /// The branch gap between a tree item and its packed children.
-const MINDMAP_BRANCH_GAP : Int = 30
+const MINDMAP_BRANCH_GAP : Double = 30.0
 
 ///|
 /// A positioned tree item in document coordinates, shared by the tree
 /// diagram families (mindmap, WBS, mbti).
 pub(all) struct NodeLayout {
   index : Int
-  x : Int
-  y : Int
-  width : Int
-  height : Int
+  x : Double
+  y : Double
+  width : Double
+  height : Double
 } derive(Eq, Debug)
 
 ///|
@@ -24,14 +24,14 @@ pub extend NodeLayout with Debug::{to_repr}
 pub(all) struct EdgeLayout {
   parent_index : Int
   child_index : Int
-  x1 : Int
-  y1 : Int
-  control1_x : Int
-  control1_y : Int
-  control2_x : Int
-  control2_y : Int
-  x2 : Int
-  y2 : Int
+  x1 : Double
+  y1 : Double
+  control1_x : Double
+  control1_y : Double
+  control2_x : Double
+  control2_y : Double
+  x2 : Double
+  y2 : Double
 } derive(Eq, Debug)
 
 ///|
@@ -45,8 +45,8 @@ pub extend EdgeLayout with Debug::{to_repr}
 pub(all) struct MindmapLayout {
   nodes : Array[NodeLayout]
   edges : Array[EdgeLayout]
-  width : Int
-  height : Int
+  width : Double
+  height : Double
 } derive(Eq, Debug)
 
 ///|
@@ -54,12 +54,12 @@ pub(all) struct MindmapLayout {
 /// and children per side. Both the mindmap and the mbti families build this
 /// structure and pack it with `layout_tree`.
 pub(all) struct LayoutItem {
-  width : Int
-  height : Int
-  margin_left : Int
-  margin_right : Int
-  margin_top : Int
-  margin_bottom : Int
+  width : Double
+  height : Double
+  margin_left : Double
+  margin_right : Double
+  margin_top : Double
+  margin_bottom : Double
   left_children : Array[Int]
   right_children : Array[Int]
 } derive(Eq, Debug)
@@ -78,66 +78,66 @@ pub extend MindmapLayout with Debug::{to_repr}
 
 ///|
 priv struct Tee {
-  thickness1 : Int
-  elongation1 : Int
-  thickness2 : Int
-  elongation2 : Int
+  thickness1 : Double
+  elongation1 : Double
+  thickness2 : Double
+  elongation2 : Double
 }
 
 ///|
 priv struct PositionedTee {
   tee : Tee
-  y : Int
+  y : Double
 }
 
 ///|
 priv struct Stripe {
-  start : Int
-  end : Int
-  value : Int
+  start : Double
+  end : Double
+  value : Double
 }
 
 ///|
 priv struct TetrisLayout {
   positions : Array[PositionedTee]
-  width : Int
-  height : Int
+  width : Double
+  height : Double
 }
 
 ///|
-let outer_padding_x = 10
+let outer_padding_x = 10.0
 
 ///|
-let outer_padding_y = 20
+let outer_padding_y = 20.0
 
 ///|
-fn Tee::full_thickness(self : Tee) -> Int {
+fn Tee::full_thickness(self : Tee) -> Double {
   self.thickness1.max(self.thickness2)
 }
 
 ///|
-fn Tee::full_elongation(self : Tee) -> Int {
+fn Tee::full_elongation(self : Tee) -> Double {
   self.elongation1 + self.elongation2
 }
 
 ///|
-fn PositionedTee::half_thickness(self : PositionedTee) -> Int {
-  (self.tee.full_thickness() + 1) / 2
+fn PositionedTee::half_thickness(self : PositionedTee) -> Double {
+  self.tee.full_thickness() / 2.0
 }
 
 ///|
-fn PositionedTee::min_y(self : PositionedTee) -> Int {
+fn PositionedTee::min_y(self : PositionedTee) -> Double {
   self.y - self.half_thickness()
 }
 
 ///|
-fn PositionedTee::max_y(self : PositionedTee) -> Int {
+fn PositionedTee::max_y(self : PositionedTee) -> Double {
   self.y + self.half_thickness()
 }
 
 ///|
-fn contact(frontier : Array[Stripe], start : Int, end : Int) -> Int {
-  frontier.fold(init=-1_000_000_000, (result, stripe) => {
+fn contact(frontier : Array[Stripe], start : Double, end : Double) -> Double {
+  frontier.fold(init=-1.0e9, (result, stripe) => {
     if stripe.end > start && stripe.start < end {
       result.max(stripe.value)
     } else {
@@ -149,9 +149,9 @@ fn contact(frontier : Array[Stripe], start : Int, end : Int) -> Int {
 ///|
 fn add_frontier_segment(
   frontier : Array[Stripe],
-  start : Int,
-  end : Int,
-  value : Int,
+  start : Double,
+  end : Double,
+  value : Double,
 ) -> Array[Stripe] {
   guard end > start else { frontier }
   let result = []
@@ -181,10 +181,10 @@ fn append_tee(
   tee : Tee,
   first : Bool,
 ) -> (Array[Stripe], PositionedTee) {
-  let half1 = (tee.thickness1 + 1) / 2
-  let half2 = (tee.thickness2 + 1) / 2
+  let half1 = tee.thickness1 / 2.0
+  let half2 = tee.thickness2 / 2.0
   let y = if first {
-    0
+    0.0
   } else {
     let first = contact(frontier, 0, tee.elongation1) + half1
     let second = contact(frontier, tee.elongation1, tee.full_elongation()) +
@@ -205,7 +205,7 @@ fn append_tee(
 ///|
 fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
   guard !tees.is_empty() else { { positions: [], width: 0, height: 0, } }
-  let mut frontier = [{ start: 0, end: 1_000_000_000, value: -1_000_000_000, }]
+  let mut frontier = [{ start: 0, end: 1.0e9, value: -1.0e9, }]
   let positions = []
   for tee in tees {
     let (next_frontier, positioned) = append_tee(
@@ -218,7 +218,7 @@ fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
   }
   let mut min_y = positions[0].min_y()
   let mut max_y = positions[0].max_y()
-  let mut width = 0
+  let mut width = 0.0
   for positioned in positions {
     min_y = min_y.min(positioned.min_y())
     max_y = max_y.max(positioned.max_y())
@@ -248,13 +248,13 @@ fn item_children(
 }
 
 ///|
-fn item_thickness(item : LayoutItem) -> Int {
+fn item_thickness(item : LayoutItem) -> Double {
   item.height + item.margin_top + item.margin_bottom
 }
 
 ///|
-fn item_branch_gap(item : LayoutItem) -> Int {
-  item.margin_left + item.margin_right + MINDMAP_BRANCH_GAP
+fn item_branch_gap(item : LayoutItem, gap : Double) -> Double {
+  item.margin_left + item.margin_right + gap
 }
 
 ///|
@@ -262,11 +262,12 @@ fn finger_tee(
   items : Array[LayoutItem],
   index : Int,
   direction : @tree.TreeDirection,
+  gap : Double,
 ) -> Tee {
   let item = items[index]
   let thickness = item_thickness(item)
   let child_tees = item_children(items, index, direction).map(child => {
-    finger_tee(items, child, direction)
+    finger_tee(items, child, direction, gap)
   })
   let packed = pack_tees(child_tees)
   if packed.positions.is_empty() {
@@ -281,7 +282,7 @@ fn finger_tee(
       thickness1: thickness,
       elongation1: item.width + item.margin_left,
       thickness2: packed.height,
-      elongation2: item.margin_right + MINDMAP_BRANCH_GAP + packed.width,
+      elongation2: item.margin_right + gap + packed.width,
     }
   }
 }
@@ -293,18 +294,19 @@ fn hidden_finger_tee(
   items : Array[LayoutItem],
   index : Int,
   direction : @tree.TreeDirection,
+  gap : Double,
 ) -> Tee {
   let item = items[index]
   let packed = pack_tees(
     item_children(items, index, direction).map(child => {
-      finger_tee(items, child, direction)
+      finger_tee(items, child, direction, gap)
     }),
   )
   {
     thickness1: 0,
     elongation1: item.margin_left,
     thickness2: packed.height,
-    elongation2: item.margin_right + MINDMAP_BRANCH_GAP + packed.width,
+    elongation2: item.margin_right + gap + packed.width,
   }
 }
 
@@ -313,20 +315,22 @@ fn append_finger(
   items : Array[LayoutItem],
   index : Int,
   direction : @tree.TreeDirection,
-  origin_x : Int,
-  origin_y : Int,
+  origin_x : Double,
+  origin_y : Double,
   draw_node : Bool,
   nodes : Array[NodeLayout],
   edges : Array[EdgeLayout],
+  gap : Double,
+  control : Double,
 ) -> Unit {
   let item = items[index]
   let width = item.width
   let height = item.height
   let phalanx_width = if draw_node { width } else { 0 }
-  let branch_gap = item_branch_gap(item)
+  let branch_gap = item_branch_gap(item, gap)
   let sign = match direction {
-    @tree.TreeDirection::Right => 1
-    @tree.TreeDirection::Left => -1
+    @tree.TreeDirection::Right => 1.0
+    @tree.TreeDirection::Left => -1.0
   }
   if draw_node {
     nodes.push({
@@ -343,7 +347,7 @@ fn append_finger(
   }
   let children = item_children(items, index, direction)
   let packed = pack_tees(
-    children.map(child => finger_tee(items, child, direction)),
+    children.map(child => finger_tee(items, child, direction, gap)),
   )
   for child_index, child in children {
     let child_y = origin_y + packed.positions[child_index].y
@@ -353,14 +357,16 @@ fn append_finger(
       child_index: child,
       x1: origin_x + sign * phalanx_width,
       y1: origin_y,
-      control1_x: origin_x + sign * (phalanx_width + 25),
+      control1_x: origin_x + sign * (phalanx_width + control),
       control1_y: origin_y,
-      control2_x: child_x - sign * 25,
+      control2_x: child_x - sign * control,
       control2_y: child_y,
       x2: child_x,
       y2: child_y,
     })
-    append_finger(items, child, direction, child_x, child_y, true, nodes, edges)
+    append_finger(
+      items, child, direction, child_x, child_y, true, nodes, edges, gap, control,
+    )
   }
 }
 
@@ -369,8 +375,8 @@ fn append_finger(
 /// tree layout families to place their content inside the document padding.
 pub fn translate_nodes(
   nodes : Array[NodeLayout],
-  dx : Int,
-  dy : Int,
+  dx : Double,
+  dy : Double,
 ) -> Array[NodeLayout] {
   nodes.map(node => { ..node, x: node.x + dx, y: node.y + dy, })
 }
@@ -378,8 +384,8 @@ pub fn translate_nodes(
 ///|
 fn MindmapLayout::translated(
   self : MindmapLayout,
-  dx : Int,
-  dy : Int,
+  dx : Double,
+  dy : Double,
 ) -> MindmapLayout {
   {
     ..self,
@@ -406,6 +412,8 @@ fn MindmapLayout::translated(
 pub fn layout_tree(
   items : Array[LayoutItem],
   roots : Array[Int],
+  branch_gap? : Double = MINDMAP_BRANCH_GAP,
+  curve_control? : Double = 25.0,
 ) -> MindmapLayout {
   guard !items.is_empty() else {
     {
@@ -423,15 +431,20 @@ pub fn layout_tree(
     let has_right_children = !items[root_index].right_children.is_empty()
     let left = if has_left_children {
       if has_right_children {
-        hidden_finger_tee(items, root_index, @tree.TreeDirection::Left)
+        hidden_finger_tee(
+          items,
+          root_index,
+          @tree.TreeDirection::Left,
+          branch_gap,
+        )
       } else {
-        finger_tee(items, root_index, @tree.TreeDirection::Left)
+        finger_tee(items, root_index, @tree.TreeDirection::Left, branch_gap)
       }
     } else {
       { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0, }
     }
     let right = if has_right_children || !has_left_children {
-      finger_tee(items, root_index, @tree.TreeDirection::Right)
+      finger_tee(items, root_index, @tree.TreeDirection::Right, branch_gap)
     } else {
       { thickness1: 0, elongation1: 0, thickness2: 0, elongation2: 0, }
     }
@@ -454,6 +467,8 @@ pub fn layout_tree(
         true,
         nodes,
         edges,
+        branch_gap,
+        curve_control,
       )
       append_finger(
         items,
@@ -464,6 +479,8 @@ pub fn layout_tree(
         false,
         nodes,
         edges,
+        branch_gap,
+        curve_control,
       )
     } else if has_left_children {
       append_finger(
@@ -475,6 +492,8 @@ pub fn layout_tree(
         true,
         nodes,
         edges,
+        branch_gap,
+        curve_control,
       )
     } else {
       append_finger(
@@ -486,6 +505,8 @@ pub fn layout_tree(
         true,
         nodes,
         edges,
+        branch_gap,
+        curve_control,
       )
     }
     next_y = root_y + content_half + outer_padding_y

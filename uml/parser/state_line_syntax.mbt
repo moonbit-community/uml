@@ -7,6 +7,7 @@ priv struct StateDeclarationSyntax {
   stereotype : String?
   url : String?
   color : String?
+  tags : Array[String]
   opens_group : Bool
 }
 
@@ -14,6 +15,8 @@ priv struct StateDeclarationSyntax {
 priv struct StateTransitionSyntax {
   source : String
   target : String
+  source_port : String?
+  target_port : String?
   direction : @flow.TransitionDirection
   length : Int
   line_style : String?
@@ -104,12 +107,14 @@ priv struct StateIdentifier {
 ///|
 priv enum StateMetadata {
   Stereotype(String)
+  Tag(String)
   Url(String)
   Color(String)
 }
 
 ///|
 priv struct StateMetadataValues {
+  tags : Array[String]
   stereotype : String?
   url : String?
   color : String?
@@ -147,6 +152,32 @@ fn state_color(cursor : @tokenizer.Cursor) -> String? {
 ///|
 fn state_metadata(cursor : @tokenizer.Cursor) -> StateMetadata? {
   let start = cursor.offset()
+  if cursor.consume_literal("##") {
+    let line_style = if cursor.consume('[') {
+      let value = cursor.take_while(char => char != ']')
+      guard cursor.consume(']') &&
+        ["bold", "dashed", "dotted"].contains(value.to_lower()) else {
+        ignore(cursor.restore(start))
+        return None
+      }
+      "." + value.to_lower()
+    } else {
+      ""
+    }
+    let line_color = cursor.take_while(char => {
+      char.is_ascii_alphabetic() || char.is_ascii_digit() || char == '_'
+    })
+    return Some(
+      Color(
+        "line" +
+        line_style +
+        (if line_color.is_empty() { "" } else { ":" + line_color }),
+      ),
+    )
+  }
+  if cursor.take_tag_value() is Some(value) {
+    return Some(Tag(value))
+  }
   if cursor.take_stereotype_value() is Some(value) {
     return Some(Stereotype(value))
   }
@@ -166,17 +197,20 @@ fn state_metadata(cursor : @tokenizer.Cursor) -> StateMetadata? {
 
 ///|
 fn metadata_values(metadata : Array[StateMetadata]) -> StateMetadataValues {
+  let tags = []
   let mut stereotype = None
   let mut url = None
   let mut color = None
   for entry in metadata {
     match entry {
+      Tag(value) => tags.push(value)
       Stereotype(value) => stereotype = Some(stereotype.unwrap_or("") + value)
       Url(value) => url = Some(value)
-      Color(value) => color = Some(value)
+      Color(value) =>
+        color = Some(color.map_or(value, previous => previous + ";" + value))
     }
   }
-  { stereotype, url, color, }
+  { stereotype, url, color, tags, }
 }
 
 ///|
@@ -257,6 +291,7 @@ fn declaration_syntax(
     stereotype: values.stereotype,
     url: values.url,
     color: values.color,
+    tags: values.tags,
     opens_group,
   }
 }
@@ -489,6 +524,8 @@ fn state_transition(cursor : @tokenizer.Cursor) -> StateTransitionSyntax? {
   Some({
     source,
     target,
+    source_port: None,
+    target_port: None,
     direction: arrow.direction,
     length: arrow.length,
     line_style: arrow.line_style,

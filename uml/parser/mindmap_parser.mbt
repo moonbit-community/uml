@@ -132,9 +132,9 @@ fn smart_level(
 ) -> (Int, String?) raise @tokenizer.ParseError {
   let initial = first.unwrap_or(marker)
   let normalized = if marker.has_suffix("**") {
-    marker.replace(old="\t", new=" ").trim().to_owned()
+    marker.replace_all(old="\t", new=" ").trim().to_owned()
   } else {
-    marker.replace(old="\t", new=" ")
+    marker.replace_all(old="\t", new=" ")
   }
   if !normalized.contains(" ") {
     return (marker_count(normalized) - 1, Some(initial))
@@ -209,45 +209,45 @@ fn parse_mindmap_style_block(
   lines : Array[String],
   start : Int,
   style : @tree.MindmapStyle,
+  properties : Array[@tree.WbsStyleProperty],
+  document : @style.DocumentStyle,
 ) -> Int raise @tokenizer.ParseError {
   let mut index = start + 1
-  let mut selector : String? = None
-  while index < lines.length() {
-    let line = @tokenizer.strip_line_comment(lines[index]).trim().to_owned()
-    if line.equal_ignore_ascii_case("</style>") {
-      return index + 1
-    }
-    if line.length() == 0 {
+  let closed = @style.consume_style_body(
+    () => {
+      guard index < lines.length() else { return None }
+      let line = lines[index]
       index += 1
-      continue
-    }
-    if line.has_suffix("{") {
-      selector = Some(line[:line.length() - 1].trim().to_owned())
-      index += 1
-      continue
-    }
-    if line == "}" {
-      selector = None
-      index += 1
-      continue
-    }
-    guard selector is Some(current) else {
-      index += 1
-      continue
-    }
-    let words = @tokenizer.syntax_words(line)
-    if words.length() >= 2 {
-      let key = words[0]
-      let value = words[1:].to_owned().join(" ")
-      if current.trim().equal_ignore_ascii_case("arrow") {
-        style.apply_arrow_property(key, value)
-      } else {
-        style.apply_node_property(current, key, value)
+      Some(line)
+    },
+    directive => {
+      match directive {
+        Property(key, value) if key.has_prefix("style ") => {
+          let words = @tokenizer.syntax_words(key[6:].to_owned())
+          guard words.length() >= 1 else { return }
+          let name = words[words.length() - 1]
+          let selector = words[:words.length() - 1].to_owned().join(" ")
+          properties.push({ selector, name, value, })
+          if words.length() > 1 &&
+            words[words.length() - 2].equal_ignore_ascii_case("arrow") &&
+            words[:words.length() - 1].all(word => {
+              let word = word.to_lower()
+              word == "root" ||
+              word == "element" ||
+              word == "mindmapdiagram" ||
+              word == "arrow"
+            }) {
+            style.apply_arrow_property(name, value)
+          }
+        }
+        _ => document.apply(directive)
       }
-    }
-    index += 1
+    },
+  )
+  guard closed else {
+    raise SyntaxError(start + 1, "unclosed mindmap style block")
   }
-  raise SyntaxError(start + 1, "unclosed mindmap style block")
+  index
 }
 
 ///|
@@ -264,6 +264,7 @@ pub fn parse_mindmap(
   let ideas = []
   let style = @style.DocumentStyle::empty()
   let mindmap_style = @tree.TreeStyle::default(@tree.TreeDiagramFamily::Mindmap)
+  let style_properties = []
   let mut index = 0
   let mut multiplier : Int? = None
   let mut org_first : String? = None
@@ -280,7 +281,8 @@ pub fn parse_mindmap(
       index += 1
       continue
     }
-    if trimmed.equal_ignore_ascii_case("skinparam {") {
+    if trimmed.to_lower().has_prefix("skinparam ") && trimmed.has_suffix("{") {
+      let prefix = trimmed[10:trimmed.length() - 1].trim().to_owned()
       index += 1
       let closed = @style.consume_skinparam_body(
         () => {
@@ -293,6 +295,7 @@ pub fn parse_mindmap(
           style.apply(directive)
           mindmap_style.apply_skinparam(directive)
         },
+        prefix~,
       )
       guard closed else {
         raise SyntaxError(lines.length(), "unclosed skinparam")
@@ -300,7 +303,18 @@ pub fn parse_mindmap(
       continue
     }
     if trimmed.equal_ignore_ascii_case("<style>") {
-      index = parse_mindmap_style_block(lines, index, mindmap_style)
+      index = parse_mindmap_style_block(
+        lines, index, mindmap_style, style_properties, style,
+      )
+      continue
+    }
+    let buffer : LineBuffer = { lines, index, }
+    if buffer.consume_style_block(
+        trimmed,
+        style,
+        skinparam_error_line=lines.length(),
+      ) {
+      index = buffer.index
       continue
     }
     if @style.parse_style_directive(trimmed) is Some(directive) {
@@ -310,12 +324,18 @@ pub fn parse_mindmap(
       continue
     }
     let lower = trimmed.to_lower()
-    if lower.contains("left side") || lower.contains("left direction") {
+    if lower.contains("left side") ||
+      lower.contains("left direction") ||
+      lower.contains("top side") ||
+      lower.contains("top direction") {
       default_direction = @tree.TreeDirection::Left
       index += 1
       continue
     }
-    if lower.contains("right side") || lower.contains("right direction") {
+    if lower.contains("right side") ||
+      lower.contains("right direction") ||
+      lower.contains("bottom side") ||
+      lower.contains("bottom direction") {
       default_direction = @tree.TreeDirection::Right
       index += 1
       continue
@@ -369,5 +389,5 @@ pub fn parse_mindmap(
     })
     index = last + 1
   }
-  { ideas, style, mindmap_style, }
+  { ideas, style, mindmap_style, style_properties, }
 }

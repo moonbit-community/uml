@@ -208,6 +208,11 @@ fn participant_declaration_tail(
   created : Bool,
 ) -> ParticipantDecl? {
   let start = cursor.offset()
+  cursor.skip_inline_spaces()
+  let stereotype = cursor.take_stereotype_value()
+  if stereotype is None {
+    ignore(cursor.restore(start))
+  }
   let order = optional_order(cursor)
   let url = optional_url(cursor)
   let color = optional_color(cursor)
@@ -216,7 +221,7 @@ fn participant_declaration_tail(
     ignore(cursor.restore(start))
     return None
   }
-  Some({ typ, reference, created, color, url, order, })
+  Some({ typ, reference, created, color, url, order, stereotype, })
 }
 
 ///|
@@ -570,14 +575,29 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
   ignore(cursor.restore(start))
   if take_keyword(cursor, "autonumber") {
     cursor.skip_inline_spaces()
-    let start_value = cursor.take_while(char => !is_inline_whitespace(char))
+    let start_value = if cursor.peek().map_or(false, Char::is_ascii_digit) {
+      cursor.take_while(char => {
+        char.is_ascii_digit() ||
+        (
+          !@identifier.is_identifier_char(char) &&
+          !char.is_whitespace() &&
+          char != '"'
+        )
+      })
+    } else {
+      ""
+    }
     let start_value = if start_value.length() > 0 {
+      guard start_value.to_array().last().map_or(false, Char::is_ascii_digit) else {
+        return None
+      }
       Some(start_value)
     } else {
       None
     }
     let increment = optional_digit_run(cursor)
-    let format = optional_quoted(cursor)
+    cursor.skip_inline_spaces()
+    let format = cursor.take_quoted_value()
     cursor.skip_inline_spaces()
     if cursor.is_eof() {
       return Some(@seq.Autonumber({ start: start_value, increment, format, }))
@@ -769,26 +789,32 @@ fn miscellaneous_event_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     }
   }
   ignore(cursor.restore(start))
-  ignore(cursor.consume('&'))
+  let parallel = cursor.consume('&')
   cursor.skip_inline_spaces()
   if take_keyword(cursor, "return") {
+    cursor.skip_inline_spaces()
+    let color = cursor.take_color_value()
     let value = cursor.take_rest()
-    return Some(@seq.Return({ value: @tokenizer.normalize_label(value), }))
+    return Some(
+      @seq.Return({ value: @tokenizer.normalize_label(value), parallel, color, }),
+    )
   }
   ignore(cursor.restore(start))
   match anchor(cursor) {
-    Some(_) => {
+    Some(first) => {
       cursor.skip_inline_spaces()
       if cursor.consume_literal("<->") {
         cursor.skip_inline_spaces()
-        if anchor(cursor) is Some(_) {
+        if anchor(cursor) is Some(second) {
           cursor.skip_inline_spaces()
-          if cursor.consume(':') {
-            ignore(cursor.take_rest())
+          let label = if cursor.consume(':') {
+            @tokenizer.normalize_label(cursor.take_rest())
+          } else {
+            None
           }
           cursor.skip_inline_spaces()
           if cursor.is_eof() {
-            return Some(@seq.LinkAnchor)
+            return Some(@seq.LinkAnchor({ first, second, label, }))
           }
           ignore(cursor.restore(start))
           return None

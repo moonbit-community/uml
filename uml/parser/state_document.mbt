@@ -1,16 +1,16 @@
 ///|
 /// Preserve the positioning commands separately from their text. The public
 /// document style already carries generic properties, so no AST variant is needed.
-fn Parser::set_state_document_text(
-  self : Parser,
+fn set_flow_document_text(
+  style : @style.DocumentStyle,
   kind : String,
   text : String,
   alignment : String,
   position : String,
 ) -> Unit {
-  self.style.apply(@style.TextBlock(kind, text))
-  self.style.apply(@style.Property("document" + kind + "alignment", alignment))
-  self.style.apply(@style.Property("document" + kind + "position", position))
+  style.apply(@style.TextBlock(kind, text))
+  style.apply(@style.Property("document" + kind + "alignment", alignment))
+  style.apply(@style.Property("document" + kind + "position", position))
 }
 
 ///|
@@ -18,8 +18,9 @@ fn Parser::set_state_document_text(
 /// commands. Consume their bodies before they can be mistaken for state syntax.
 /// Previously verified: inline/multiline document blocks preserve placement,
 /// replacement order and following state commands.
-fn Parser::consume_state_document(
-  self : Parser,
+fn consume_flow_document(
+  buffer : LineBuffer,
+  style : @style.DocumentStyle,
   line : String,
 ) -> Bool raise @tokenizer.ParseError {
   let cursor = @tokenizer.Cursor::new(line)
@@ -46,7 +47,7 @@ fn Parser::consume_state_document(
   cursor.skip_inline_spaces()
   let remaining = cursor.remaining()
   let default_alignment = if kind == "header" || kind == "footer" {
-    self.style
+    style
     .property("DefaultTextAlignment")
     .map(value => value.to_lower())
     .unwrap_or(if kind == "header" { "right" } else { "center" })
@@ -84,7 +85,7 @@ fn Parser::consume_state_document(
   }
   if !multiline {
     guard !remaining.is_empty() else {
-      raise @tokenizer.SyntaxError(self.line_number(), "empty document text")
+      raise @tokenizer.SyntaxError(buffer.line_number(), "empty document text")
     }
     let text = if remaining.has_prefix("\"") &&
       remaining.has_suffix("\"") &&
@@ -93,14 +94,14 @@ fn Parser::consume_state_document(
     } else {
       remaining
     }
-    self.set_state_document_text(kind, text, alignment, position)
+    set_flow_document_text(style, kind, text, alignment, position)
     return true
   }
-  let start = self.line_number()
+  let start = buffer.line_number()
   let lines : Array[String] = []
-  self.buffer.advance()
-  while !self.buffer.at_end() {
-    let raw = self.buffer.current()
+  buffer.advance()
+  while !buffer.at_end() {
+    let raw = buffer.current()
     let trimmed = raw.trim().to_owned()
     if trimmed.equal_ignore_ascii_case("end " + kind) ||
       trimmed.equal_ignore_ascii_case("end" + kind) {
@@ -112,11 +113,19 @@ fn Parser::consume_state_document(
       } else {
         state_note_block_text(lines)
       }
-      self.set_state_document_text(kind, text, alignment, position)
+      set_flow_document_text(style, kind, text, alignment, position)
       return true
     }
     lines.push(raw)
-    self.buffer.advance()
+    buffer.advance()
   }
   raise @tokenizer.SyntaxError(start, "unclosed document block")
+}
+
+///|
+fn Parser::consume_state_document(
+  self : Parser,
+  line : String,
+) -> Bool raise @tokenizer.ParseError {
+  consume_flow_document(self.buffer, self.style, line)
 }

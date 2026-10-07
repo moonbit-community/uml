@@ -652,6 +652,7 @@ fn @flow.StateDiagram::layout_scope(
     graph.set_attr("forcelabels", "true")
   }
   let node_names : Map[String, String] = Map([])
+  let node_ports : Map[String, Array[EntityNodePort]] = Map([])
   let containers : Map[String, @cgraph.Graph] = Map([])
   let cluster_codes : Map[String, String] = Map([])
   let region_images : Map[String, (StateFragment, @flow.StateRegion)] = Map([])
@@ -703,23 +704,33 @@ fn @flow.StateDiagram::layout_scope(
       continue
     }
     let node = parent.node(name)
-    let leaf_size = visible.state.leaf_size(
-      name_metrics,
-      description_metrics,
-      self.state_uses_empty_image(visible.state),
-      left_to_right~,
-      wrap_width=state_wrap_width(self.style, state=Some(visible.state)),
-      monospaced_family~,
-      stereotype_size=if visible.state.kind == @flow.Frame {
-        state_frame_stereotype_size(
-          visible.state,
-          self.style,
-          PackageStereotype,
-        )
-      } else {
-        (0.0, 0.0)
-      },
-    )
+    let leaf_size = if visible.state.standalone_note is Some(note) {
+      state_note_size(
+        note,
+        resolve_state_font(self.style, NoteLabel).metrics,
+        self.style,
+      )
+    } else if visible.state.embedded is Some(entity) {
+      state_embedded_size(entity, self.style)
+    } else {
+      visible.state.leaf_size(
+        name_metrics,
+        description_metrics,
+        self.state_uses_empty_image(visible.state),
+        left_to_right~,
+        wrap_width=state_wrap_width(self.style, state=Some(visible.state)),
+        monospaced_family~,
+        stereotype_size=if visible.state.kind == @flow.Frame {
+          state_frame_stereotype_size(
+            visible.state,
+            self.style,
+            PackageStereotype,
+          )
+        } else {
+          (0.0, 0.0)
+        },
+      )
+    }
     let (width, height) = visible.child.map_or(leaf_size, child => {
       visible.state.composite_size(
         child,
@@ -734,6 +745,22 @@ fn @flow.StateDiagram::layout_scope(
       height,
       shape=visible.state.kind.graphviz_shape(),
     )
+    if visible.state.embedded is Some(entity) {
+      let ports = entity.node_ports(
+        [],
+        ClassTextMetrics::new(self.style),
+        @entity.ClassDiagram,
+      )
+      node_ports[visible.state.code] = ports
+      if !ports.is_empty() {
+        node.set_attr(
+          "label",
+          graphviz_entity_port_label(ports, width.to_int(), height.to_int()),
+        )
+        node.set_attr("shape", "plaintext")
+        node.set_attr("margin", "0")
+      }
+    }
   }
   let transition_names : Map[Int, String] = Map([])
   for transition_index, transition in self.transitions {
@@ -770,11 +797,31 @@ fn @flow.StateDiagram::layout_scope(
       ignore(same_rank.node(tail_name))
       ignore(same_rank.node(head_name))
     }
-    let edge = graph.edge(
-      graph.node(tail_name),
-      graph.node(head_name),
-      name="t" + transition_index.to_string(),
+    let source_port = graphviz_entity_port(
+      node_ports.get(source).unwrap_or([]),
+      transition.source_port,
     )
+    let target_port = graphviz_entity_port(
+      node_ports.get(target).unwrap_or([]),
+      transition.target_port,
+    )
+    let (tail_port, head_port) = if transition.layout_reversed() {
+      (target_port, source_port)
+    } else {
+      (source_port, target_port)
+    }
+    let tail = graph.node(tail_name)
+    let head = graph.node(head_name)
+    let edge_name = "t" + transition_index.to_string()
+    let edge = match (tail_port, head_port) {
+      (Some(tail_port), Some(head_port)) =>
+        graph.edge(tail, head, name=edge_name, tail_port~, head_port~)
+      (Some(tail_port), None) =>
+        graph.edge(tail, head, name=edge_name, tail_port~)
+      (None, Some(head_port)) =>
+        graph.edge(tail, head, name=edge_name, head_port~)
+      (None, None) => graph.edge(tail, head, name=edge_name)
+    }
     transition_names[edge.id()] = transition_index.to_string()
     if transition.has_line_style("norank") {
       edge.set_attr("constraint", "false")
@@ -1132,7 +1179,7 @@ fn @flow.StateDiagram::layout(
 pub fn layout_state(
   diagram : @flow.StateDiagram,
 ) -> StateLayout raise @dot_layout.DotLayoutError {
-  diagram.layout()
+  diagram.visible_state_diagram().layout()
 }
 
 ///|

@@ -7,7 +7,15 @@ fn ParseCtx::consume_style_directive(
   guard lower != "newpage" && !lower.has_prefix("newpage ") else {
     return false
   }
-  if line.trim().to_lower() == "skinparam {" {
+  let document_buffer = LineBuffer::new(self.source.remaining())
+  if consume_flow_document(document_buffer, self.style, line) {
+    for _ in 0..<=document_buffer.index {
+      self.source.skip_line()
+    }
+    return true
+  }
+  if lower.has_prefix("skinparam ") && lower.has_suffix("{") {
+    let prefix = line.trim()[10:line.trim().length() - 1].trim().to_owned()
     self.source.skip_line()
     let closed = @style.consume_skinparam_body(
       () => {
@@ -15,8 +23,21 @@ fn ParseCtx::consume_style_directive(
         Some(@tokenizer.strip_line_comment(self.source.take_line()))
       },
       directive => self.style.apply(directive),
+      prefix~,
     )
     guard closed else { self.source.raise_parse_error("unclosed skinparam") }
+    return true
+  }
+  if lower == "<style>" {
+    self.source.skip_line()
+    let closed = @style.consume_style_body(
+      () => {
+        guard !self.source.is_eof() else { return None }
+        Some(self.source.take_line())
+      },
+      directive => self.style.apply(directive),
+    )
+    guard closed else { self.source.raise_parse_error("unclosed style") }
     return true
   }
   guard @style.parse_style_directive(line) is Some(directive) else {
@@ -84,6 +105,9 @@ pub fn parse_sequence(
       break
     }
     if ctx.consume_style_directive() {
+      continue
+    }
+    if ctx.consume_participant_block(line) {
       continue
     }
     let directive = line

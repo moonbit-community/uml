@@ -9,16 +9,16 @@
 
 ///|
 priv struct Slot {
-  start : Int
-  end : Int
+  start : Double
+  end : Double
 }
 
 ///|
 /// Shrunken gap: the 5px margin on each side survives, the middle (G-10)
 /// collapses completely.
 priv struct Gap {
-  start : Int
-  end : Int
+  start : Double
+  end : Double
 }
 
 ///|
@@ -28,7 +28,7 @@ priv struct Gap {
 fn edge_x_extent(
   edge : ActivityEdgeLayout,
   layout : ActivityLayout,
-) -> (Int, Int)? {
+) -> (Double, Double)? {
   guard layout_for(layout, edge.from_node_index) is Some(from) else {
     return None
   }
@@ -59,6 +59,11 @@ fn merge_slots(
   let ranges = []
   for node in layout.nodes {
     guard !layout.source_nodes[node.node_index].is_fork() else { continue }
+    if layout.source_nodes[node.node_index]
+      is (@flow.ActivityNode::Split | @flow.ActivityNode::EndSplit) {
+      ranges.push(activity_split_extent(layout, node))
+      continue
+    }
     guard node.width > 0 else { continue }
     ranges.push((node.x, node.x + node.width))
   }
@@ -103,8 +108,8 @@ fn merge_slots(
 /// from the slot set, so the strips next to them are compressible).
 fn compress_gaps(
   merged : Array[Slot],
-  content_min : Int,
-  content_max : Int,
+  content_min : Double,
+  content_max : Double,
 ) -> Array[Gap] {
   let gaps : Array[Gap] = []
   let mut prev_end = content_min
@@ -139,8 +144,8 @@ fn extend_extreme_slots(merged : Array[Slot]) -> Unit {
 ///|
 /// Total compression shift applied at position `v` (PlantUML
 /// `CompressionTransform.getCompressDelta`).
-fn delta(gaps : Array[Gap], v : Int) -> Int {
-  let mut result = 0
+fn delta(gaps : Array[Gap], v : Double) -> Double {
+  let mut result = 0.0
   for gap in gaps {
     if v > gap.end {
       result += gap.end - gap.start
@@ -152,7 +157,7 @@ fn delta(gaps : Array[Gap], v : Int) -> Int {
 }
 
 ///|
-fn transform(gaps : Array[Gap], v : Int) -> Int {
+fn transform(gaps : Array[Gap], v : Double) -> Double {
   v - delta(gaps, v)
 }
 
@@ -168,8 +173,8 @@ pub fn ActivityLayout::compress_x(
 ) -> ActivityLayout {
   let merged = merge_slots(self, small_metrics)
   extend_extreme_slots(merged)
-  let mut content_min = 0
-  let mut content_max = 0
+  let mut content_min = 0.0
+  let mut content_max = 0.0
   for index, node in self.nodes {
     if index == 0 {
       content_min = node.x
@@ -190,7 +195,7 @@ pub fn ActivityLayout::compress_x(
     let right = transform(gaps, region.x + region.width)
     { ..region, x, width: right - x, }
   })
-  let compress_offset = (anchor : Int, offset : Int) => {
+  let compress_offset = (anchor : Int, offset : Double) => {
     let node = layout_for(self, anchor).unwrap()
     transform(gaps, node.x + offset) - transform(gaps, node.x)
   }
@@ -218,6 +223,8 @@ pub fn ActivityLayout::compress_x(
         IfBypassRight(compress_offset(edge.from_node_index, offset))
       WhileExitLeft(offset) =>
         WhileExitLeft(compress_offset(edge.from_node_index, offset))
+      BreakLeft(offset, complete) =>
+        BreakLeft(compress_offset(edge.to_node_index, offset), complete)
       BackwardRight(offset, drop) =>
         BackwardRight(compress_offset(edge.to_node_index, offset), drop)
       RepeatBackRight(offset) =>

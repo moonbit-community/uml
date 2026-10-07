@@ -2,7 +2,7 @@
 fn position_of(
   layout : @render.ActivityLayout,
   node_index : Int,
-) -> (Int, Int)? {
+) -> (Double, Double)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
     return Some((node.x, node.y))
@@ -653,7 +653,10 @@ test "goto connects its anchor directly to the matching label anchor" {
 }
 
 ///|
-fn box_extent(layout : @render.ActivityLayout, node_index : Int) -> (Int, Int)? {
+fn box_extent(
+  layout : @render.ActivityLayout,
+  node_index : Int,
+) -> (Double, Double)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
     return Some((node.x, node.x + node.width))
@@ -662,7 +665,7 @@ fn box_extent(layout : @render.ActivityLayout, node_index : Int) -> (Int, Int)? 
 }
 
 ///|
-fn box_gap(layout : @render.ActivityLayout, left : Int, right : Int) -> Int? {
+fn box_gap(layout : @render.ActivityLayout, left : Int, right : Int) -> Double? {
   guard box_extent(layout, left) is Some((_, left_right)) else { return None }
   guard box_extent(layout, right) is Some((right_x, _)) else { return None }
   Some(right_x - left_right)
@@ -742,7 +745,7 @@ test "sequence canvas keeps its bottom margin as instructions and labels grow" {
   ]
   let margins = sources.map(source => {
     let layout = @render.layout_activity(@parser.parse_activity(source))
-    let mut bottom = 0
+    let mut bottom = 0.0
     for node in layout.nodes {
       bottom = bottom.max(node.y + node.height)
       @test.assert_eq(node.y + node.height < layout.height, true)

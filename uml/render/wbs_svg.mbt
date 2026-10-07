@@ -61,13 +61,13 @@ fn draw_wbs_node(
             origin={ x: 0.0, y: 0.0, },
             width=node.width,
             height=node.height,
-            rx=Some(style.round_corner.unwrap_or(0).to_double() / 2.0),
+            rx=Some(style.round_corner.unwrap_or(0) / 2.0),
             ry=None,
           ),
         )
         (
-          style.padding_x.unwrap_or(@tree.WBS_DEFAULT_PADDING_X).to_double(),
-          style.padding_y.unwrap_or(@tree.WBS_DEFAULT_PADDING_Y).to_double(),
+          style.padding_left.unwrap_or(@tree.WBS_DEFAULT_PADDING_X),
+          style.padding_top.unwrap_or(@tree.WBS_DEFAULT_PADDING_Y),
         )
       } else {
         (
@@ -90,8 +90,8 @@ fn draw_wbs_node(
         let dx = match style.alignment.unwrap_or(@tree.TextAlignment::Left) {
           @tree.TextAlignment::Left => 0.0
           @tree.TextAlignment::Center =>
-            (label_width - line_width).to_double() / 2.0
-          @tree.TextAlignment::Right => (label_width - line_width).to_double()
+            (label_width - line_width.to_double()) / 2.0
+          @tree.TextAlignment::Right => label_width - line_width.to_double()
         }
         draw_tree_text(
           output.translated(dx + first_line_space.to_double(), 0.0),
@@ -266,9 +266,7 @@ pub fn render_wbs_svg(
       ),
     )
   }
-  document
-  .graphic()
-  .scale_group(scale, output => {
+  handwritten_graphic(document.graphic(), diagram.style).scale_group(scale, output => {
     draw_wbs(output, diagram, layout, items)
     draw_document_text(output, diagram.style, "wbs", drawing.text)
   })

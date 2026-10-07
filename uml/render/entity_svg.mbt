@@ -19,27 +19,10 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     },
     member_states,
   }
-  let fallback_layout = self.layout(text_metrics)
-  let layout = if self.family is Mbti {
-    {
-      ..fallback_layout,
-      mindmap: Some(self.mindmap_class_layout(text_metrics)),
-    }
+  let layout : ClassLayout = if self.family is Mbti {
+    { graphviz: None, mindmap: Some(self.mindmap_class_layout(text_metrics)), }
   } else {
-    @graphviz.layout_or_fallback(
-      () => {
-        let graphviz = self.graphviz_layout(text_metrics)
-        {
-          columns: fallback_layout.columns,
-          cell_width: fallback_layout.cell_width,
-          cell_height: fallback_layout.cell_height,
-          width: fallback_layout.width,
-          graphviz: Some(graphviz),
-          mindmap: None,
-        }
-      },
-      Some(() => fallback_layout),
-    )
+    { graphviz: Some(self.graphviz_layout(text_metrics)), mindmap: None, }
   }
   let bounds = layout.content_bounds(self, text_metrics)
   let top_blocks = self.chrome_blocks(true)
@@ -64,7 +47,10 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     SVG_MARGIN_TOP.to_double() -
     top_height.to_double()
   let border_width = @svg.standard_border_stroke_width()
-  let scale = diagram_scale(self.style)
+  let scale = self.style.output_scale(
+    output_width.to_double(),
+    output_height.to_double(),
+  )
   let scaled_width = (output_width.to_double() * scale).ceil().to_int()
   let scaled_height = (output_height.to_double() * scale).ceil().to_int()
   let document = @svg.SvgDocument::empty(
@@ -136,6 +122,9 @@ fn @entity.EntityDiagram::render_svg_with_mode(
         }
       }
     }
+    if layout.graphviz is Some(graphviz) {
+      draw_relation_constraints(output, graphviz.constraints, text_metrics)
+    }
     if family_capability.renders_notes {
       draw_entity_notes(output, self, text_metrics, layout)
     }
@@ -147,20 +136,16 @@ fn @entity.EntityDiagram::render_svg_with_mode(
       text_color,
     )
   }
-  if scale != 1 {
-    document.graphic().scale_group(scale, paint)
-  } else {
-    paint(document.graphic())
-  }
+  // The viewport/viewBox ratio already scales every shape, text and stroke.
+  paint(handwritten_graphic(document.graphic(), self.style))
   document.to_string()
 }
 
 ///|
 /// Render the parsed entity graph to a standalone SVG.
 ///
-/// Node placement is deterministic so parsing and rendering can be used without
-/// an external process. The graph-layout adapter will replace these coordinates
-/// with Graphviz positions while retaining this entity and relation painter.
+/// The in-process Graphviz engine supplies all entity and relation geometry.
+/// Unsupported layouts are reported to the caller without replacing the layout.
 /// Diagram-family capabilities select parser and paint-order policy, while the
 /// entity kind selects its PlantUML image, geometry and SVG style role.
 ///
@@ -244,7 +229,7 @@ fn entity_stylesheet(style : @style.DocumentStyle, usecase : Bool) -> String {
     $|.class-stereotype{font-style:italic}
     $|.class-spot{text-anchor:middle;font-size:12px;font-weight:bold;fill:\{text_color}}
     $|.usecase-title{fill:\{text_color};text-anchor:middle}
-    $|.usecase-stereotype{text-anchor:middle;font-style:italic}
+    $|.usecase-stereotype,.component-stereotype{text-anchor:middle;font-style:italic}
     $|.member{fill:\{text_color}}
     $|.relation-label{text-anchor:middle;font-size:\{if usecase { USECASE_RELATION_LABEL_FONT_SIZE } else { RELATION_LABEL_FONT_SIZE }}px}
   )

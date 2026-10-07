@@ -36,6 +36,7 @@ pub(all) struct MindmapDiagram {
   ideas : Array[Idea]
   style : @style.DocumentStyle
   mindmap_style : MindmapStyle
+  style_properties : Array[WbsStyleProperty]
 } derive(Eq, Debug)
 
 ///|

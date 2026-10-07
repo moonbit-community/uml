@@ -354,24 +354,16 @@ fn draw_entity_notes(
       })
       .draw(Path(corner_path))
     })
-    for line_index, line in note.text.split("\n") {
-      let line_text = line.to_owned()
-      output.draw(
-        Text(
-          entity_text_run(
-            line_text,
-            {
-              x: x + NOTE_LEFT_PADDING.to_double(),
-              y: y +
-              NOTE_VERTICAL_PADDING.to_double() +
-              text_metrics.note.ascent.to_double() +
-              line_index.to_double() * text_metrics.note.line_height.to_double(),
-            },
-            text_metrics.note,
-          ),
-        ),
-        metadata={ ..Default::default(), class_name: Some("note-text"), },
-      )
-    }
+    draw_entity_text(
+      output,
+      x + NOTE_LEFT_PADDING.to_double(),
+      y +
+      NOTE_VERTICAL_PADDING.to_double() +
+      text_metrics.note.ascent.to_double(),
+      note.text,
+      text_metrics.note,
+      class_name="note-text",
+      fill=diagram.style.property_font_color("NoteFontColor"),
+    )
   }
 }

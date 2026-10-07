@@ -64,8 +64,8 @@ fn append_note(
         output.draw(
           Rectangle(
             origin=sequence_point(x, y),
-            width=component.width.to_double(),
-            height=component.height.to_double(),
+            width=component.width,
+            height=component.height,
             rx=None,
             ry=None,
           ),
@@ -101,7 +101,7 @@ fn append_divider(
   output.draw(
     Rectangle(
       origin=sequence_point((layout.width - width) / 2, y - 12),
-      width=width.to_double(),
+      width~,
       height=24,
       rx=None,
       ry=None,
@@ -162,8 +162,8 @@ fn append_reference(
   output.draw(
     Rectangle(
       origin=sequence_point(x, placement.y),
-      width=width.to_double(),
-      height=placement.height.to_double(),
+      width~,
+      height=placement.height,
       rx=None,
       ry=None,
     ),
@@ -274,8 +274,28 @@ fn append_event(
 ) -> Unit {
   guard !placement.ignored else { return }
   match event {
-    @seq.Message(message) =>
+    @seq.Message(message) => {
       append_message(output, layout, message, placement, note_url)
+      for index, code in message.multicast {
+        append_message(
+          output,
+          layout,
+          {
+            ..message,
+            to_code: code,
+            label: None,
+            multicast: [],
+            anchor: None,
+          },
+          {
+            ..placement,
+            y: placement.y + (index + 1).to_double() * 2.0,
+            number: None,
+          },
+          None,
+        )
+      }
+    }
     @seq.MessageExo(message) =>
       append_exo_message(output, layout, message, placement, note_url)
     @seq.Note(note) =>
@@ -312,7 +332,7 @@ fn append_event(
         )
       }
     }
-    @seq.LinkAnchor => ()
+    @seq.LinkAnchor(_) => () // Drawn after all message anchors have been located.
     @seq.AutoNewpage(size) =>
       output.graphic.annotate({
         ..Default::default(),

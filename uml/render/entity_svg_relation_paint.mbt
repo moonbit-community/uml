@@ -151,6 +151,7 @@ fn append_relation_spline(
     .draw(Path(@graphics.spline_segments(visible_path)), metadata={
       ..Default::default(),
       class_name: Some("relation"),
+      data: [("handwritten-path", "dot")],
     })
     if first {
       draw_relation_decoration(
@@ -273,7 +274,7 @@ fn append_relation_qualifiers(
   let font_size = text_metrics.relation_end_regular.font_size
   let font_family = text_metrics.relation_end_font_family
   if relation.left_qualifier is Some(qualifier) {
-    let metrics = text_metrics.relation_end_regular.measure(qualifier)
+    let metrics = text_metrics.relation_end_regular.entity_measure(qualifier)
     let x = left_endpoint.0 - metrics.width.to_double() - 6.0
     draw_entity_text(
       output,
@@ -287,7 +288,7 @@ fn append_relation_qualifiers(
     )
   }
   if relation.right_qualifier is Some(qualifier) {
-    let metrics = text_metrics.relation_end_regular.measure(qualifier)
+    let metrics = text_metrics.relation_end_regular.entity_measure(qualifier)
     let x = right_endpoint.0 + 6.0
     draw_entity_text(
       output,
@@ -313,14 +314,16 @@ fn append_relation(
 ) -> Unit {
   // The mindmap tree edges are painted as structure edges; every other
   // relation is dropped so non-root nodes keep exactly one edge.
-  guard layout.mindmap is None else { return }
+  guard layout.mindmap is None && !relation.has_style("hidden") else { return }
   let usecase = diagram.family.is_usecase()
   let left_index = entity_index(diagram, relation.left)
   let right_index = entity_index(diagram, relation.right)
-  if left_index is Some(index) && diagram.entities[index].is_removed {
+  if left_index is Some(index) &&
+    (diagram.entities[index].is_removed || diagram.entities[index].is_hidden) {
     return
   }
-  if right_index is Some(index) && diagram.entities[index].is_removed {
+  if right_index is Some(index) &&
+    (diagram.entities[index].is_removed || diagram.entities[index].is_hidden) {
     return
   }
   let ((x1, y1), (x2, y2)) = relation_endpoints(
@@ -383,9 +386,7 @@ fn append_relation(
   with_entity_link(output, relation.url, output => {
     let mut drew_spline = false
     match layout.graphviz {
-      Some(graphviz) if !(usecase &&
-        relation.dotted &&
-        relation.direction is Automatic) =>
+      Some(graphviz) =>
         for edge in graphviz.edges {
           if edge.index == relation_index {
             match relation_edge_first_spline_index(edge) {
@@ -449,6 +450,17 @@ fn append_relation(
         edge=None,
         relation,
       )
+    }
+    if relation.inside is Some(inside) {
+      if layout.graphviz is Some(graphviz) {
+        for edge in graphviz.edges {
+          if edge.index == relation_index {
+            draw_relation_middle(
+              output, edge, inside, relation_color, background_color,
+            )
+          }
+        }
+      }
     }
     if relation_label_layout.label is Some(text_box) {
       let x = if usecase {
