@@ -45,7 +45,15 @@ fn draw_entity_text(
         Color(fill)
       },
     })
-    rich.draw(
+    rich
+    .with_default_family(
+      if font_family.is_empty() {
+        None
+      } else {
+        Some(font_family)
+      },
+    )
+    .draw(
       styled,
       x,
       y - metrics.ascent.to_double(),
@@ -85,6 +93,7 @@ fn draw_entity_text(
   graphic
   .with_style({
     ..Default::default(),
+    inline: true,
     fill: if fill.is_empty() {
       Inherit
     } else {

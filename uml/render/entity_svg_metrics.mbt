@@ -265,6 +265,7 @@ fn @entity.Entity::header_layout(
   text_metrics : ClassTextMetrics,
   family : @entity.EntityFamily,
 ) -> ClassHeaderLayout {
+  let text_metrics = text_metrics.for_entity(self)
   let title_metrics = self.title_metrics(text_metrics)
   let title_text = if text_metrics.generic_old {
     self.generic.map_or(self.display, generic => {
@@ -546,6 +547,7 @@ fn @entity.Entity::node_ports(
   text_metrics : ClassTextMetrics,
   family : @entity.EntityFamily,
 ) -> Array[EntityNodePort] {
+  let text_metrics = text_metrics.for_entity(self)
   let capability = self.render_capability(family)
   if capability.ports is MapEntryPorts {
     let header = self.object_header_layout(text_metrics)
@@ -1079,6 +1081,7 @@ fn @entity.Entity::body_layout(
   text_metrics : ClassTextMetrics,
   family : @entity.EntityFamily,
 ) -> ClassBodyLayout {
+  let text_metrics = text_metrics.for_entity(self)
   let visible = self.members.filter(entry => {
     self.entry_visible(entry) && !entry.is_separator
   })
@@ -1148,6 +1151,7 @@ fn @entity.Entity::entry_visible(
 
 ///|
 priv struct ClassTextMetrics {
+  style : @style.DocumentStyle
   regular : @metrics.FontMetrics
   italic : @metrics.FontMetrics
   class_stereotype : @metrics.FontMetrics
@@ -1352,12 +1356,22 @@ const RELATION_LABEL_FONT_SIZE : Int = 12
 const RELATION_END_FONT_SIZE : Int = PLANTUML_RELATION_LABEL_FONT_SIZE
 
 ///|
-fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
-  let font_size = if style.font_size is None {
+fn ClassTextMetrics::new(
+  style : @style.DocumentStyle,
+  role? : String = "Class",
+) -> ClassTextMetrics {
+  let default_size = if style.font_size is None {
     14
   } else {
     style.font_size_value()
   }
+  let font_size = style.property_font_size(
+    role + "FontSize",
+    fallback=default_size,
+  )
+  let family = style.property_font_family(role + "FontName")
+  let face = style.property(role + "FontStyle").unwrap_or("").to_lower()
+  let weight = if face.contains("bold") { 700 } else { 400 }
   let usecase_font_size = @entity.usecase_font_size(style, fallback=font_size)
   let actor_font_size = @entity.actor_font_size(style, fallback=font_size)
   let usecase_font_family = @entity.usecase_font_family(style)
@@ -1368,8 +1382,19 @@ fn ClassTextMetrics::new(style : @style.DocumentStyle) -> ClassTextMetrics {
     fallback=CLASS_STEREOTYPE_FONT_SIZE,
   )
   {
-    regular: style.font_metrics(font_size~),
-    italic: style.font_metrics(font_size~, font_style=Italic),
+    style,
+    regular: style.font_metrics_for(
+      family,
+      font_size~,
+      font_weight=weight,
+      font_style=if face.contains("italic") { Italic } else { Normal },
+    ),
+    italic: style.font_metrics_for(
+      family,
+      font_size~,
+      font_weight=weight,
+      font_style=Italic,
+    ),
     class_stereotype: style.font_metrics_for(
       class_stereotype_font_family,
       font_size=class_stereotype_font_size,
@@ -1711,6 +1736,7 @@ fn @entity.Entity::node_geometry(
   text_metrics : ClassTextMetrics,
   family : @entity.EntityFamily,
 ) -> NodeGeometry {
+  let text_metrics = text_metrics.for_entity(self)
   let capability = self.render_capability(family)
   match (capability.header, capability.body, capability.renderer) {
     (ObjectHeader, OrderedMembers, ObjectRenderer) => {

@@ -47,7 +47,6 @@ fn append_state_output(
     metadata=state_class("state-canvas"),
   )
   let paint = (output : @graphics.Graphic) => {
-    let output = handwritten_graphic(output, diagram.style)
     append_state_layout(
       output,
       diagram,

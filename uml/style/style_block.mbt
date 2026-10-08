@@ -92,25 +92,33 @@ fn apply_style_selector(
   value : String,
   apply : (StyleDirective) -> Unit,
 ) -> Unit {
-  let words = @tokenizer.syntax_words(path.to_lower())
+  let words : Array[String] = []
+  for word in @tokenizer.syntax_words(path.to_lower()) {
+    let parts = word.split(".").map(StringView::to_owned).to_array()
+    if !parts[0].is_empty() {
+      words.push(parts[0])
+    }
+    for part in parts[1:] {
+      words.push("." + part)
+    }
+  }
   let mut prefix = ""
+  let mut family_prefix = ""
+  let mut labels = ""
   let mut stereotype = false
   let mut sequence = false
   for word in words {
     match word {
       "root" | "element" | "document" => ()
       "sequencediagram" => sequence = true
-      "classdiagram"
-      | "objectdiagram"
-      | "activitydiagram"
-      | "statediagram"
-      | "componentdiagram"
-      | "deploymentdiagram"
-      | "usecasediagram"
-      | "mindmapdiagram"
-      | "wbsdiagram"
-      | "jsondiagram"
-      | "yamldiagram" => ()
+      "classdiagram" => family_prefix = "Class"
+      "objectdiagram" => family_prefix = "Object"
+      "activitydiagram" => family_prefix = "Activity"
+      "statediagram" => family_prefix = "State"
+      "componentdiagram" => family_prefix = "Component"
+      "deploymentdiagram" => family_prefix = "Node"
+      "usecasediagram" => family_prefix = "Usecase"
+      "mindmapdiagram" | "wbsdiagram" | "jsondiagram" | "yamldiagram" => ()
       "stereotype" => stereotype = true
       "arrow" => prefix = if sequence { "SequenceArrow" } else { "Arrow" }
       "participant" => prefix = "Participant"
@@ -128,6 +136,7 @@ fn apply_style_selector(
       "usecase" => prefix = "Usecase"
       "state" => prefix = "State"
       "activity" => prefix = "Activity"
+      "activitybar" => prefix = "ActivityBar"
       "note" => prefix = "Note"
       "package" => prefix = "Package"
       "node" => prefix = "Node"
@@ -136,11 +145,27 @@ fn apply_style_selector(
       "header" => prefix = "Header"
       "footer" => prefix = "Footer"
       "legend" => prefix = "Legend"
+      _ if word.has_prefix(".") && word.length() > 1 =>
+        labels += "<<" + word[1:].to_owned() + ">>"
       _ => return
     }
   }
   if stereotype {
     prefix += "Stereotype"
+  }
+  if !labels.is_empty() && prefix.is_empty() {
+    if !family_prefix.is_empty() {
+      prefix = family_prefix
+    } else {
+      for
+        role in [
+          "class", "object", "state", "activity", "actor", "usecase", "component",
+          "node", "note", "participant", "package", "arrow",
+        ] {
+        apply_style_selector(role + " " + path, property, value, apply)
+      }
+      return
+    }
   }
   if prefix.is_empty() {
     match property.to_lower() {
@@ -187,9 +212,9 @@ fn apply_style_selector(
     apply(
       Property(
         if prefix == "Class" && key == "MinimumWidth" {
-          "MinClassWidth"
+          "MinClassWidth" + labels
         } else {
-          prefix + key
+          prefix + key + labels
         },
         value,
       ),

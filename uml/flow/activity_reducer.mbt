@@ -352,12 +352,20 @@ fn reduce_flow(
         index = emit(instructions, ActivityInstruction::Kill, index)
       ActivityNode::Action(label) =>
         index = emit(instructions, ActivityInstruction::Action(label), index)
+      ActivityNode::StyledAction(action) =>
+        index = emit(
+          instructions,
+          ActivityInstruction::StyledAction(action),
+          index,
+        )
       ActivityNode::Note(label, side) =>
         index = emit(
           instructions,
           ActivityInstruction::Note(label, side),
           index,
         )
+      ActivityNode::StyledNote(note) =>
+        index = emit(instructions, ActivityInstruction::StyledNote(note), index)
       ActivityNode::Arrow(value) =>
         index = emit(
           instructions,

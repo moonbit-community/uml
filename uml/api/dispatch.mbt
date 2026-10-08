@@ -3,7 +3,7 @@ fn meaningful_source_lines(input : String) -> Array[String] {
   let result : Array[String] = []
   let mut terminator : String? = None
   let mut body_depth = 0
-  for raw in @tokenizer.preprocess(input).split("\n") {
+  for raw in @tokenizer.preprocess(input).split("\n").to_array() {
     let line = @tokenizer.strip_line_comment(raw.to_owned()).trim().to_owned()
     let lower = line.to_lower()
     if terminator is Some(ending) {
@@ -473,7 +473,11 @@ pub fn is_activity_source(input : String) -> Bool {
     let lower = line.to_lower()
     activity_commands.contains(lower) ||
     activity_command_prefixes.any(prefix => lower.has_prefix(prefix)) ||
-    (line.has_prefix(":") && line.has_suffix(";"))
+    (
+      (line.has_prefix(":") || line.has_prefix("<<") || line.has_prefix("#")) &&
+      line.contains(":") &&
+      line.contains(";")
+    )
   })
 }
 

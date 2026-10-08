@@ -100,6 +100,7 @@ fn append_state_text_at_top(
   data? : Array[(String, String)] = [],
   monospaced_family? : String = STATE_MONOSPACED_FAMILY,
   literal_newlines? : Bool = false,
+  font_family? : String? = None,
 ) -> Unit {
   let metadata = {
     ..state_class(class_name),
@@ -113,13 +114,15 @@ fn append_state_text_at_top(
       literal_newlines~,
     )
     is Some(rich) {
-    rich.draw(output, x, top, metrics, metadata, anchor, line_alignment)
+    rich
+    .with_default_family(font_family)
+    .draw(output, x, top, metrics, metadata, anchor, line_alignment)
     return
   }
   let display = state_display(text, literal_newlines~).wrap(metrics, wrap_width)
   let (x, anchor) = display.anchor_position(x, anchor, metrics, line_alignment~)
   output.draw(
-    TextBlock(
+    StyledTextBlock(
       @svg.layout_multiline_text(
         x,
         top + metrics.ascent.to_double(),
@@ -129,6 +132,12 @@ fn append_state_text_at_top(
         text_anchor=anchor,
         text_metrics=Some(metrics),
       ),
+      {
+        font_size: Some(metrics.font_size.to_double()),
+        font_family,
+        italic: Some(metrics.style == @metrics.FontStyle::Italic),
+        weight: Some(metrics.font_weight),
+      },
     ),
     metadata~,
   )

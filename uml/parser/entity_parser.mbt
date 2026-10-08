@@ -11,6 +11,10 @@ fn EntityParser::parse_line(
 ) -> Unit raise @tokenizer.ParseError {
   let line = @tokenizer.strip_line_comment(line).trim().to_owned()
   guard line.length() > 0 else { return }
+  if self.current_entity is Some(entity_index) {
+    self.consume_entity_body_line(entity_index, line)
+    return
+  }
   if line.equal_ignore_ascii_case("<style>") {
     let start = self.line_number()
     self.buffer.advance()
@@ -55,10 +59,6 @@ fn EntityParser::parse_line(
   let marker = line.to_lower()
   guard marker != "@startuml" && marker != "@enduml" else { return }
   guard !@style.is_preprocessor_directive(line) else { return }
-  if self.current_entity is Some(entity_index) {
-    self.consume_entity_body_line(entity_index, line)
-    return
-  }
   guard parse_class_line(line) is Some(syntax) else {
     self.raise_parse_error(line)
   }

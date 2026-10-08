@@ -191,6 +191,7 @@ fn place_if_merge(
 ) -> Unit {
   layouts.push({
     node_index: index,
+    note_pointer_offset: None,
     x: center_x - size.width / 2,
     y,
     width: size.width,

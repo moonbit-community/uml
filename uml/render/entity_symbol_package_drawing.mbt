@@ -78,33 +78,31 @@ fn append_symbol_package(
     stroke_attributes: { ..entity_line_style(None), stroke: Color(stroke), },
   }
   output.group({ ..Default::default(), class_name: Some("symbol-package"), }, graphic => {
-    with_entity_link(graphic, group.url, graphic => {
-      let symbol_ctx = { ..symbol_ctx, output: graphic, }
-      match symbol {
-        "node" => symbol_ctx.append_node()
-        "frame" => symbol_ctx.append_frame()
-        "cloud" => symbol_ctx.append_cloud()
-        "database" => symbol_ctx.append_database()
-        "queue" => symbol_ctx.append_queue()
-        "stack" => symbol_ctx.append_stack()
-        "storage" => symbol_ctx.append_storage()
-        "artifact" => symbol_ctx.append_artifact()
-        "card" => symbol_ctx.append_card()
-        "file" => symbol_ctx.append_file()
-        "hexagon" => symbol_ctx.append_hexagon()
-        "rectangle" => symbol_ctx.append_rectangle()
-        "action" => symbol_ctx.append_action()
-        "process" => symbol_ctx.append_process()
-        "component" =>
-          if text_metrics.component_style == "rectangle" {
-            symbol_ctx.append_rectangle()
-          } else {
-            symbol_ctx.append_component()
-          }
-        "folder" => symbol_ctx.append_folder()
-        _ => ()
-      }
-    })
+    let symbol_ctx = { ..symbol_ctx, output: graphic, }
+    match symbol {
+      "node" => symbol_ctx.append_node()
+      "frame" => symbol_ctx.append_frame()
+      "cloud" => symbol_ctx.append_cloud()
+      "database" => symbol_ctx.append_database()
+      "queue" => symbol_ctx.append_queue()
+      "stack" => symbol_ctx.append_stack()
+      "storage" => symbol_ctx.append_storage()
+      "artifact" => symbol_ctx.append_artifact()
+      "card" => symbol_ctx.append_card()
+      "file" => symbol_ctx.append_file()
+      "hexagon" => symbol_ctx.append_hexagon()
+      "rectangle" => symbol_ctx.append_rectangle()
+      "action" => symbol_ctx.append_action()
+      "process" => symbol_ctx.append_process()
+      "component" =>
+        if text_metrics.component_style == "rectangle" {
+          symbol_ctx.append_rectangle()
+        } else {
+          symbol_ctx.append_component()
+        }
+      "folder" => symbol_ctx.append_folder()
+      _ => ()
+    }
   })
 }
 

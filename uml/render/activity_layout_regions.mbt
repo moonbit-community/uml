@@ -174,6 +174,7 @@ fn reposition_swimlanes(
     shifts[layout.node_index] = shift
     layouts[index] = {
       node_index: layout.node_index,
+      note_pointer_offset: layout.note_pointer_offset,
       x: layout.x + shift,
       y: layout.y,
       width: layout.width,

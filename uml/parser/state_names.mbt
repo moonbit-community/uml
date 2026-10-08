@@ -107,6 +107,18 @@ fn Parser::resolve_state_name_from(
   raw : String,
   allow_current~ : Bool,
 ) -> Int raise @tokenizer.ParseError {
+  if self.style.property("LegacyActivity") == Some("true") {
+    guard !raw.is_empty() else {
+      raise SyntaxError(self.line_number(), "empty activity name")
+    }
+    let matches = self.state_names.filter(name => name.part == Identifier(raw))
+    if matches.length() == 1 &&
+      self.state_names.search_by(name => name.part == Identifier(raw))
+      is Some(index) {
+      return index
+    }
+    return self.state_name_child(current, Identifier(raw))
+  }
   guard !raw.is_empty() && !raw.has_suffix(".") && !raw.contains("..") else {
     raise SyntaxError(self.line_number(), "invalid state namespace name")
   }

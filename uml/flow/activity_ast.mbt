@@ -20,6 +20,7 @@ pub(all) enum ActivityNode {
   Break
   Backward(ActivityBackward)
   Action(String)
+  StyledAction(ActivityAction)
   Arrow(String)
   If(String)
   ElseIf(String)
@@ -44,6 +45,7 @@ pub(all) enum ActivityNode {
   Partition(String)
   EndPartition
   Note(String, ActivityNoteSide)
+  StyledNote(ActivityNote)
   Label(String)
   Goto(String)
 } derive(Eq, Debug)
@@ -175,7 +177,9 @@ pub(all) enum ActivityInstruction {
   Break
   Backward(ActivityBackward)
   Action(String)
+  StyledAction(ActivityAction)
   Note(String, ActivityNoteSide)
+  StyledNote(ActivityNote)
   Edge(ActivityEdgeLabel)
   IfChain(ActivityIfChain)
   While(ActivityWhile)
@@ -209,6 +213,35 @@ pub extend ActivityDiagram with Eq::{not_equal, equal}
 
 ///|
 pub extend ActivityDiagram with Debug::{to_repr}
+
+///|
+pub(all) struct ActivityAction {
+  label : String
+  stereotype : String?
+  style : @style.DocumentStyle
+} derive(Eq, Debug)
+
+///|
+pub extend ActivityAction with Eq::{not_equal, equal}
+
+///|
+pub extend ActivityAction with Debug::{to_repr}
+
+///|
+pub(all) struct ActivityNote {
+  text : String
+  side : ActivityNoteSide
+  floating : Bool
+  color : String?
+  stereotype : String?
+  style : @style.DocumentStyle
+} derive(Eq, Debug)
+
+///|
+pub extend ActivityNote with Eq::{not_equal, equal}
+
+///|
+pub extend ActivityNote with Debug::{to_repr}
 
 ///|
 pub(all) struct ActivityBackward {

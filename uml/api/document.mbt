@@ -3,6 +3,7 @@
 pub enum Diagram {
   Sequence(@seq.SequenceDiagram)
   Activity(@flow.ActivityDiagram)
+  LegacyActivity(@flow.StateDiagram)
   Entity(@entity.EntityDiagram)
   State(@flow.StateDiagram)
   Mindmap(@tree.MindmapDiagram)
@@ -74,41 +75,17 @@ pub fn Document::render_svg(
 /// MBTI defaults come from its render options; class members default closed.
 pub fn render_svg(
   source : String,
-  resources? : Map[String, String] = Map([]),
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible? : Bool = false,
   member_states? : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
-  parse(source, resources~).render_svg(
+  parse(source).render_svg(
     color_scheme~,
     class_member_collapsible~,
     member_states~,
     mbti_render_options~,
   )
-}
-
-///|
-/// Export all sequence pages selected by `newpage`. Other diagram families
-/// produce one SVG. The single-image API returns the first page.
-pub fn render_svg_pages(
-  source : String,
-  resources? : Map[String, String] = Map([]),
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> Array[String] raise {
-  parse(source, resources~).render_svg_pages(color_scheme~)
-}
-
-///|
-pub fn Document::render_svg_pages(
-  self : Document,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-) -> Array[String] raise {
-  match self.diagram {
-    Sequence(diagram) =>
-      @render.render_sequence_svg_pages(diagram, color_scheme~)
-    _ => [self.render_svg(color_scheme~)]
-  }
 }
 
 ///|
@@ -127,6 +104,8 @@ pub fn Diagram::render_svg(
   match self {
     Sequence(diagram) => @render.render_sequence_svg(diagram, color_scheme~)
     Activity(diagram) => @render.render_activity_svg(diagram, color_scheme~)
+    LegacyActivity(diagram) =>
+      @render.render_legacy_activity_svg(diagram, color_scheme~)
     Entity(diagram) =>
       @render.render_entity_svg(
         diagram,
@@ -156,7 +135,7 @@ pub fn Diagram::render_svg(
 pub fn Document::kind(self : Document) -> DiagramKind {
   match self.diagram {
     Sequence(_) => Sequence
-    Activity(_) => Activity
+    Activity(_) | LegacyActivity(_) => Activity
     Entity(diagram) =>
       match diagram.family {
         ClassDiagram => Class
@@ -184,11 +163,7 @@ pub fn Document::kind(self : Document) -> DiagramKind {
 /// The `is_*_source` heuristics run in priority order, mirroring PlantUML's
 /// per-diagram factory selection; the entity-grammar facades are selected by
 /// one classifier scan. A source matching none of them fails.
-pub fn parse(
-  source : String,
-  resources? : Map[String, String] = Map([]),
-) -> Document raise {
-  let source = @tokenizer.preprocess_checked(source, resources~)
+pub fn parse(source : String) -> Document raise {
   match () {
     _ if @parser.is_mbti_source(source) =>
       { diagram: Mbti(@parser.parse_mbti(source)), }
@@ -207,7 +182,18 @@ pub fn parse(
     _ if try_parse_sequence(source) is Some(diagram) =>
       { diagram: Sequence(diagram), }
     _ if meaningful_source_lines(source).any(is_mixing_directive) =>
-      { diagram: Entity(@parser.parse_entity(source, family=ClassDiagram)), }
+      {
+        diagram: Entity(
+          @parser.parse_entity(source, family=@entity.ClassDiagram),
+        ),
+      }
+    _ if @parser.is_legacy_activity(meaningful_source_lines(source).join("\n")) =>
+      { diagram: LegacyActivity(@parser.parse_legacy_activity(source)), } catch {
+        error => {
+          guard is_state_source(source) else { raise error }
+          { diagram: State(@parser.parse_state(source)), }
+        }
+      }
     _ if is_activity_source(source) =>
       { diagram: Activity(@parser.parse_activity(source)), }
     _ if is_state_source(source) =>

@@ -64,74 +64,69 @@ fn append_packages(
       let bottom = y + package_layout.height
       let border_color = @entity.package_border_color(diagram.style)
       output.group({ ..Default::default(), class_name: Some("package"), }, output => {
-        with_entity_link(output, group.url, output => {
-          output
-          .with_style({
-            ..Default::default(),
-            stroke: Color(border_color),
-            inline: true,
-            fill: Color(fill),
-          })
-          .draw(
-            Path([
-              MoveTo({ x: x + 2.5, y, }),
-              LineTo({ x: x + tab_width - 9.0, y, }),
-              QuadraticTo({ x: x + tab_width - 6.5, y, }, {
-                x: x + tab_width - 5.5,
-                y: y + 2.5,
-              }),
-              LineTo({ x: x + tab_width + 1.5, y: y + PACKAGE_TAB_HEIGHT, }),
-              LineTo({ x: right - 2.5, y: y + PACKAGE_TAB_HEIGHT, }),
-              QuadraticTo({ x: right, y: y + PACKAGE_TAB_HEIGHT, }, {
-                x: right,
-                y: y + PACKAGE_TAB_HEIGHT + 2.5,
-              }),
-              LineTo({ x: right, y: bottom - 2.5, }),
-              QuadraticTo({ x: right, y: bottom, }, {
-                x: right - 2.5,
-                y: bottom,
-              }),
-              LineTo({ x: x + 2.5, y: bottom, }),
-              QuadraticTo({ x, y: bottom, }, { x, y: bottom - 2.5, }),
-              LineTo({ x, y: y + 2.5, }),
-              QuadraticTo({ x, y, }, { x: x + 2.5, y, }),
-            ]),
-          )
-          output
-          .with_style({
-            ..Default::default(),
-            stroke: Color(border_color),
-            inline: true,
-          })
-          .draw(
-            Line({ x, y: y + PACKAGE_TAB_HEIGHT, }, {
-              x: x + tab_width + 1.5,
-              y: y + PACKAGE_TAB_HEIGHT,
+        output
+        .with_style({
+          ..Default::default(),
+          stroke: Color(border_color),
+          inline: true,
+          fill: Color(fill),
+        })
+        .draw(
+          Path([
+            MoveTo({ x: x + 2.5, y, }),
+            LineTo({ x: x + tab_width - 9.0, y, }),
+            QuadraticTo({ x: x + tab_width - 6.5, y, }, {
+              x: x + tab_width - 5.5,
+              y: y + 2.5,
             }),
-          )
+            LineTo({ x: x + tab_width + 1.5, y: y + PACKAGE_TAB_HEIGHT, }),
+            LineTo({ x: right - 2.5, y: y + PACKAGE_TAB_HEIGHT, }),
+            QuadraticTo({ x: right, y: y + PACKAGE_TAB_HEIGHT, }, {
+              x: right,
+              y: y + PACKAGE_TAB_HEIGHT + 2.5,
+            }),
+            LineTo({ x: right, y: bottom - 2.5, }),
+            QuadraticTo({ x: right, y: bottom, }, { x: right - 2.5, y: bottom, }),
+            LineTo({ x: x + 2.5, y: bottom, }),
+            QuadraticTo({ x, y: bottom, }, { x, y: bottom - 2.5, }),
+            LineTo({ x, y: y + 2.5, }),
+            QuadraticTo({ x, y, }, { x: x + 2.5, y, }),
+          ]),
+        )
+        output
+        .with_style({
+          ..Default::default(),
+          stroke: Color(border_color),
+          inline: true,
+        })
+        .draw(
+          Line({ x, y: y + PACKAGE_TAB_HEIGHT, }, {
+            x: x + tab_width + 1.5,
+            y: y + PACKAGE_TAB_HEIGHT,
+          }),
+        )
+        draw_entity_text(
+          output,
+          x + 4.0,
+          y + 16.0,
+          group.display,
+          text_metrics.regular,
+          class_name="package-title",
+        )
+        if group.stereotype is Some(stereotype) {
+          let display = @tokenizer.display_stereotype(stereotype)
+          let metrics = text_metrics.italic.entity_measure(display)
+          let stereotype_x = x +
+            (package_layout.width - metrics.width.to_double()) / 2.0
           draw_entity_text(
             output,
-            x + 4.0,
-            y + 16.0,
-            group.display,
-            text_metrics.regular,
-            class_name="package-title",
+            stereotype_x,
+            y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double(),
+            display,
+            text_metrics.italic,
+            class_name="package-stereotype",
           )
-          if group.stereotype is Some(stereotype) {
-            let display = @tokenizer.display_stereotype(stereotype)
-            let metrics = text_metrics.italic.entity_measure(display)
-            let stereotype_x = x +
-              (package_layout.width - metrics.width.to_double()) / 2.0
-            draw_entity_text(
-              output,
-              stereotype_x,
-              y + PACKAGE_TAB_HEIGHT + 2.0 + metrics.ascent.to_double(),
-              display,
-              text_metrics.italic,
-              class_name="package-stereotype",
-            )
-          }
-        })
+        }
       })
     }
   }
@@ -144,6 +139,12 @@ fn EntityPaintContext::append_entity_image(
   index : Int,
   layout : ClassLayout,
 ) -> Unit {
+  let text_metrics = self.text_metrics.for_entity(entity)
+  let self = {
+    ..self,
+    diagram: { ..self.diagram, style: text_metrics.style, },
+    text_metrics,
+  }
   match entity.render_capability(self.diagram.family).renderer {
     ClassRenderer => self.append_entity(entity, index, layout)
     ObjectRenderer | MapRenderer | JsonRenderer =>
@@ -470,6 +471,7 @@ fn EntityPaintContext::append_object_header(
     entity.display,
     capability.title_class(),
     self.text_metrics.regular,
+    font_family=self.diagram.style.font_family(),
     fill=text_color,
   )
   self.output

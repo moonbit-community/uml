@@ -3,7 +3,7 @@
 A MoonBit project that converts UML strings to SVG, aiming to align with PlantUML's behavior, including its layout.
 
 See [compatibility notes](./COMPATIBILITY.md) for the documented upstream
-differences, resource and pagination APIs, verification scope, and explicitly
+differences, deferred peripheral features, verification scope, and explicitly
 deferred formula embedding.
 
 | Sequence | Class |

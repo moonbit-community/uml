@@ -110,10 +110,7 @@ fn @seq.SequenceDiagram::paint_sequence_svg(
   )
   let output = {
     ..output,
-    graphic: handwritten_graphic(
-      output.graphic.translated(decoration.dx, decoration.dy),
-      self.style,
-    ),
+    graphic: output.graphic.translated(decoration.dx, decoration.dy),
   }
   append_groups(output, layout)
   append_participant_boxes(output, layout)
@@ -215,6 +212,5 @@ pub fn render_sequence_svg(
     ..diagram,
     style: diagram.style.with_color_scheme(color_scheme),
   }
-  let page = sequence_pages(diagram, diagram.layout())[0]
-  diagram.paint_sequence_svg(page.layout)
+  diagram.paint_sequence_svg(diagram.layout())
 }

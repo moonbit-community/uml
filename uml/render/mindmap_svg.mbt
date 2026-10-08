@@ -188,7 +188,9 @@ fn @tree.MindmapDiagram::render_svg(
       ),
     )
   }
-  handwritten_graphic(document.graphic(), self.style).scale_group(scale, graphic => {
+  document
+  .graphic()
+  .scale_group(scale, graphic => {
     let output = graphic.translated(decoration.dx, decoration.dy)
     layout.edges.each(edge => {
       let style = mindmap_properties(self, edge.parent_index, true).fold(

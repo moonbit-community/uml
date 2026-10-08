@@ -67,6 +67,7 @@ fn Parser::resolve_state_transition(
     source_port: syntax.source_port,
     target_port: syntax.target_port,
     label: syntax.label,
+    target_label: None,
     direction: syntax.direction,
     length: syntax.length,
     line_style: syntax.line_style,

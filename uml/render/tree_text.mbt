@@ -315,8 +315,6 @@ fn tree_rich_text(
                 color: None,
                 family: None,
                 decoration: Default::default(),
-                url: None,
-                media: None,
               },
             ],
             metrics,
@@ -333,9 +331,6 @@ fn tree_rich_text(
     None => return None
   }
   let lines = rich.lines.mapi((index, line) => {
-    if line.block is Some(_) {
-      return line
-    }
     let extra = if index == 0 && rich.lines.length() > 1 {
       plantuml_space_advance(metrics.font_size).to_double()
     } else {
@@ -344,9 +339,6 @@ fn tree_rich_text(
     {
       ..line,
       width: line.spans.fold(init=extra, (width, span) => {
-        if span.resolved_media(metrics) is Some(media) {
-          return width + media.width
-        }
         width +
         plantuml_measure(span.metrics(metrics), span.text).advance_width.to_double()
       }),
@@ -373,20 +365,6 @@ fn draw_tree_rich_text(
 ) -> Unit {
   let mut top = top
   for index, line in rich.lines {
-    if line.block is Some(block) {
-      block.draw(
-        output,
-        x - state_text_anchor_offset(anchor, rich.width),
-        top,
-        rich.width,
-        line.height,
-        metrics,
-        { ..Default::default(), class_name: Some(class_name), },
-      )
-      top += line.height
-      continue
-    }
-
     let alignment = rich.alignment.unwrap_or(anchor)
     let mut x = x -
       state_text_anchor_offset(anchor, rich.width) +
@@ -395,24 +373,6 @@ fn draw_tree_rich_text(
       x += plantuml_space_advance(metrics.font_size).to_double()
     }
     for span in line.spans {
-      if span.resolved_media(metrics) is Some(media) {
-        draw_rich_link(output, span.url, output => {
-          media.draw(
-            output,
-            x,
-            top + line.height - media.height,
-            span.color,
-            if span.decoration.background {
-              span.decoration.color
-            } else {
-              None
-            },
-            { ..Default::default(), class_name: Some(class_name), },
-          )
-        })
-        x += media.width
-        continue
-      }
       let font = span.metrics(metrics)
       let full_width = plantuml_measure(font, span.text).advance_width
       let (text, leading, _) = split_whitespace(span.text)
@@ -441,27 +401,25 @@ fn draw_tree_rich_text(
           ),
         )
       }
-      draw_rich_link(graphic, span.url, graphic => {
-        graphic.draw(
-          StyledText(
-            {
-              text,
-              position: { x: run_x, y: baseline, },
-              advance: Some(measured.advance_width.to_double()),
-              anchor: Start,
-              font_size: font.font_size.to_double(),
-              font_family: span.family.map_or(family, name => Some(name)),
-              strike: span.decoration.strike,
-            },
-            {
-              ..Default::default(),
-              weight: Some(span.face.weight),
-              italic: Some(span.face.style == @metrics.FontStyle::Italic),
-            },
-          ),
-          metadata={ ..Default::default(), class_name: Some(class_name), },
-        )
-      })
+      graphic.draw(
+        StyledText(
+          {
+            text,
+            position: { x: run_x, y: baseline, },
+            advance: Some(measured.advance_width.to_double()),
+            anchor: Start,
+            font_size: font.font_size.to_double(),
+            font_family: span.family.map_or(family, name => Some(name)),
+            strike: span.decoration.strike,
+          },
+          {
+            ..Default::default(),
+            weight: Some(span.face.weight),
+            italic: Some(span.face.style == @metrics.FontStyle::Italic),
+          },
+        ),
+        metadata={ ..Default::default(), class_name: Some(class_name), },
+      )
       if span.decoration.underline {
         graphic
         .with_style({

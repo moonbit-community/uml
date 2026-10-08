@@ -88,6 +88,10 @@ fn append_state_node(
   cluster_title_top? : Double? = None,
 ) -> Unit {
   guard diagram.state(layout.code) is Some(state) else { return }
+  if state.kind is @flow.LegacyActivity {
+    append_legacy_activity_node(output, diagram.style, state, layout)
+    return
+  }
   if state.standalone_note is Some(note) {
     append_state_note(output, { ..diagram, notes: [note], }, {
       note_index: 0,
@@ -366,6 +370,7 @@ fn append_state_node_body(
         metadata=state_shadow_metadata(state_class("state-choice"), shadow),
       )
     @flow.StateKind::Frame => () // Drawn above with its group/package style.
+    @flow.StateKind::LegacyActivity => ()
     @flow.StateKind::Normal => {
       output
       .with_style(
@@ -547,8 +552,21 @@ fn @flow.StateDiagram::render_svg(
   let document = @svg.SvgDocument::empty(
     size.width,
     size.height,
-    "State diagram",
+    if self.style.property("LegacyActivity") == Some("true") {
+      "Activity diagram"
+    } else {
+      "State diagram"
+    },
   )
+  if self.style.property("LegacyActivity") == Some("true") {
+    let metrics = legacy_activity_metrics(self.style)
+    let family = self.style
+      .property("ActivityFontName")
+      .unwrap_or(self.style.font_family())
+    document.stylesheet(
+      ".legacy-activity-label{font-family:\{family};font-size:\{metrics.font_size}px;font-weight:\{metrics.font_weight}}",
+    )
+  }
   if self.states.any(state => state.embedded is Some(_)) {
     document.stylesheet(entity_stylesheet(self.style, false))
   }
@@ -776,7 +794,7 @@ fn append_state_frame(
   } else {
     state_text_size(stereo_text, stereo_metrics, monospaced_family~)
   }
-  let symbol = if composite {
+  let symbol = if composite && style.property("LegacyActivity") != Some("true") {
     "frame"
   } else {
     style.property("PackageStyle").unwrap_or("folder").to_lower()

@@ -1,6 +1,7 @@
 ///|
 pub(all) enum StateKind {
   Normal
+  LegacyActivity
   Frame
   Initial
   Final
@@ -67,6 +68,7 @@ pub(all) struct StateTransition {
   source_port : String?
   target_port : String?
   label : String?
+  target_label : String?
   direction : TransitionDirection
   /// PlantUML link queue length, with horizontal directions reduced to one.
   length : Int

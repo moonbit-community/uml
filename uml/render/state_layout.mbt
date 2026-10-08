@@ -18,6 +18,7 @@ pub(all) struct StateEdgeLayout {
   transition_index : Int
   paths : Array[Array[(Double, Double)]]
   label : (Double, Double)?
+  target_label : (Double, Double)?
 } derive(Eq, Debug)
 
 ///|
@@ -140,7 +141,7 @@ fn @flow.StateKind::graphviz_shape(self : @flow.StateKind) -> String {
   match self {
     Initial | Final | History | DeepHistory => "circle"
     Choice => "diamond"
-    Normal | Frame | Synchronization => "box"
+    Normal | LegacyActivity | Frame | Synchronization => "box"
   }
 }
 
@@ -182,8 +183,17 @@ fn @flow.StateDiagram::graphviz_spacing(
   scope : String?,
   region_index : Int,
 ) -> (Double, Double) {
-  let mut nodesep = STATE_MIN_NODESEP
-  let mut ranksep = STATE_MIN_RANKSEP
+  let legacy = self.style.property("LegacyActivity") == Some("true")
+  let mut nodesep = if legacy {
+    LEGACY_ACTIVITY_NODESEP
+  } else {
+    STATE_MIN_NODESEP
+  }
+  let mut ranksep = if legacy {
+    LEGACY_ACTIVITY_RANKSEP
+  } else {
+    STATE_MIN_RANKSEP
+  }
   for transition_index, transition in self.transitions {
     guard self.transition_scope(transition) == scope &&
       self.transition_region_index(transition, scope) == region_index else {
@@ -246,6 +256,7 @@ fn shift_state_edge(
       path.map(point => (point.0 + dx, point.1 + dy))
     }),
     label: edge.label.map(point => (point.0 + dx, point.1 + dy)),
+    target_label: edge.target_label.map(point => (point.0 + dx, point.1 + dy)),
   }
 }
 
@@ -537,6 +548,13 @@ fn @flow.StateNode::leaf_size(
       } else {
         (STATE_SYNC_WIDTH, STATE_SYNC_HEIGHT)
       }
+    @flow.StateKind::LegacyActivity => {
+      let size = state_text_size(self.display, name_metrics)
+      (
+        size.0 + LEGACY_ACTIVITY_MARGIN * 2.0,
+        size.1 + LEGACY_ACTIVITY_MARGIN * 2.0,
+      )
+    }
     @flow.StateKind::Normal => {
       let name = state_text_size(
         self.display,
@@ -658,7 +676,11 @@ fn @flow.StateDiagram::layout_scope(
   let region_images : Map[String, (StateFragment, @flow.StateRegion)] = Map([])
   let left_to_right = self.style.layout_direction is Some(LeftToRight)
   for index, visible in visible_nodes {
-    let name_metrics = resolve_state_node_font(self, visible.state, StateLabel).metrics
+    let name_metrics = if visible.state.kind is @flow.LegacyActivity {
+      legacy_activity_metrics(self.style)
+    } else {
+      resolve_state_node_font(self, visible.state, StateLabel).metrics
+    }
     let description_metrics = resolve_state_font(
         self.style,
         StateDescription,
@@ -743,7 +765,15 @@ fn @flow.StateDiagram::layout_scope(
       node,
       width,
       height,
-      shape=visible.state.kind.graphviz_shape(),
+      shape=if visible.state.kind is @flow.LegacyActivity &&
+        state_style_property(visible.state, self.style, "ActivityShape").map_or(
+          false,
+          value => value.equal_ignore_ascii_case("octagon"),
+        ) {
+        "octagon"
+      } else {
+        visible.state.kind.graphviz_shape()
+      },
     )
     if visible.state.embedded is Some(entity) {
       let ports = entity.node_ports(
@@ -838,6 +868,26 @@ fn @flow.StateDiagram::layout_scope(
           "label"
         },
         @cgraph.Html(state_transition_label(label.width, label.height)),
+      )
+    }
+    if transition.target_label is Some(text) {
+      let metrics = legacy_activity_arrow_metrics(self.style)
+      let (width, height) = state_text_size(text, metrics)
+      edge.set_attr_value(
+        if transition.layout_reversed() {
+          "taillabel"
+        } else {
+          "headlabel"
+        },
+        @cgraph.Html(state_transition_label(width, height)),
+      )
+      edge.set_attr(
+        "labeldistance",
+        self.style.property("labeldistance").unwrap_or("1.7"),
+      )
+      edge.set_attr(
+        "labelangle",
+        self.style.property("labelangle").unwrap_or("25"),
       )
     }
     // Link.getLinkStrategy / LinkType.getSpecificDecorationSvek: PlantUML
@@ -1002,6 +1052,11 @@ fn @flow.StateDiagram::layout_scope(
     }
     output.edges.push({
       transition_index: edge.index,
+      target_label: (if self.transitions[edge.index].layout_reversed() {
+        edge.tail_label
+      } else {
+        edge.head_label
+      }).map(point => (point.x, point.y)),
       paths: edge.splines.map(spline => {
         let points = spline.points.map(point => point.pair())
         let transition = self.transitions[edge.index]

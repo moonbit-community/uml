@@ -109,7 +109,7 @@ fn Parser::consume_state_embedded(
     is_removed: false,
     is_hidden: false,
     stereotype: entity.stereotype,
-    url: entity.url.map(url => self.state_url(url)),
+    url: entity.url,
     color: entity.color,
   })
   self.queue_state_command(Focus(location.code))

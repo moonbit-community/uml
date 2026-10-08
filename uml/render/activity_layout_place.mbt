@@ -155,13 +155,14 @@ fn place_leaf(
   }
   layouts.push({
     node_index: index,
+    note_pointer_offset: None,
     x,
     y,
     width: size.width,
     height: size.height,
   })
   {
-    entry: if nodes[index] is @flow.ActivityNode::Note(_) {
+    entry: if nodes[index].is_note() {
       None
     } else {
       Some(index)
@@ -169,7 +170,8 @@ fn place_leaf(
     exit: if nodes[index]
       is (@flow.ActivityNode::Stop
       | @flow.ActivityNode::End
-      | @flow.ActivityNode::Note(_)) {
+      | @flow.ActivityNode::Note(_)
+      | @flow.ActivityNode::StyledNote(_)) {
       None
     } else {
       Some(index)
@@ -218,7 +220,14 @@ fn place_tile(
         body, notes, nodes, metrics, small_metrics, x, y, layouts, edges,
       )
     FlowAnchor(index) | GotoAnchor(index) => {
-      layouts.push({ node_index: index, x, y, width: 0, height: 0, })
+      layouts.push({
+        node_index: index,
+        note_pointer_offset: None,
+        x,
+        y,
+        width: 0,
+        height: 0,
+      })
       {
         entry: Some(index),
         exit: if tile is GotoAnchor(_) ||
@@ -238,6 +247,7 @@ fn place_tile(
       let title = activity_measure(metrics, nodes[index].label().unwrap())
       layouts.push({
         node_index: index,
+        note_pointer_offset: None,
         x,
         y,
         width: size.width,
@@ -256,6 +266,7 @@ fn place_tile(
       if placed.entry is None && sequence_has_exit(tiles, nodes) {
         layouts.push({
           node_index: end,
+          note_pointer_offset: None,
           x: x + size.width / 2,
           y: y + partition_header_height(title.height),
           width: 0,
@@ -927,6 +938,7 @@ fn place_parallel(
   let exit_y = branches_y + branches_height + VERTICAL_GAP + outgoing
   layouts.push({
     node_index: entry,
+    note_pointer_offset: None,
     x,
     y,
     width: block_width,
@@ -935,6 +947,7 @@ fn place_parallel(
   if has_exit {
     layouts.push({
       node_index: exit,
+      note_pointer_offset: None,
       x: if merge {
         x + (block_width - EXIT_SIZE) / 2
       } else {

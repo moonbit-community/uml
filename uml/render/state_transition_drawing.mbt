@@ -144,10 +144,9 @@ fn append_state_edge(
     )
     output
     .with_style(paint)
-    .draw(
-      Path(@graphics.spline_segments(shortened)),
-      metadata=state_class("state-transition"),
-    )
+    .draw(Path(@graphics.spline_segments(shortened)), metadata={
+      ..state_class("state-transition"),
+    })
     if transition.has_cross_start {
       append_state_cross(output, diagram.style, source, paint)
     }
@@ -179,6 +178,20 @@ fn append_state_edge(
         metadata=state_class("state-circle-end"),
       )
     }
+  }
+  if transition.target_label is Some(label) &&
+    edge.target_label is Some(position) {
+    let metrics = legacy_activity_arrow_metrics(diagram.style)
+    append_state_label(
+      output,
+      label,
+      position.0,
+      position.1 +
+      metrics.ascent.to_double() -
+      metrics.line_height.to_double() / 2.0,
+      "state-transition-label",
+      metrics,
+    )
   }
   guard transition.label is Some(label) && edge.label is Some(position) else {
     return

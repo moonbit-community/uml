@@ -726,7 +726,9 @@ pub fn render_structured_svg(
       ),
     )
   }
-  handwritten_graphic(document.graphic(), style).scale_group(scale, graphic => {
+  document
+  .graphic()
+  .scale_group(scale, graphic => {
     let output = graphic.translated(
       decoration.dx + STRUCTURED_CANVAS_PADDING.to_double(),
       decoration.dy + STRUCTURED_CANVAS_PADDING.to_double(),

@@ -137,7 +137,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     )
   }
   // The viewport/viewBox ratio already scales every shape, text and stroke.
-  paint(handwritten_graphic(document.graphic(), self.style))
+  paint(document.graphic())
   document.to_string()
 }
 

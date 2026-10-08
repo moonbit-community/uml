@@ -92,7 +92,7 @@ fn state_style_property(
   style : @style.DocumentStyle,
   key : String,
 ) -> String? {
-  style.property(state_style_property_key(state, style, key))
+  style.with_stereotypes(state.stereotype).property(key)
 }
 
 ///|
@@ -286,13 +286,22 @@ fn resolve_state_font(
   role : StateFontRole,
   state? : @flow.StateNode? = None,
 ) -> ResolvedStateFont {
+  let style = style.with_stereotypes(state.bind(state => state.stereotype))
   let (prefix, fallback) = match role {
     StateLabel | StateDescription => ("State", STATE_LABEL_FONT_SIZE)
     StateStereotype => ("StateStereotype", STATE_LABEL_FONT_SIZE)
     FrameLabel => ("Frame", STATE_LABEL_FONT_SIZE)
     PackageLabel => ("Package", STATE_LABEL_FONT_SIZE)
     PackageStereotype => ("PackageStereotype", STATE_LABEL_FONT_SIZE)
-    TransitionLabel => ("Arrow", STATE_TRANSITION_FONT_SIZE)
+    TransitionLabel =>
+      (
+        "Arrow",
+        if style.property("LegacyActivity") == Some("true") {
+          LEGACY_ACTIVITY_ARROW_FONT
+        } else {
+          STATE_TRANSITION_FONT_SIZE
+        },
+      )
     DiamondLabel => ("ActivityDiamond", STATE_LABEL_FONT_SIZE)
     NoteLabel => ("Note", STATE_NOTE_FONT_SIZE)
     TitleLabel => ("Title", STATE_LABEL_FONT_SIZE)

@@ -151,7 +151,6 @@ fn append_relation_spline(
     .draw(Path(@graphics.spline_segments(visible_path)), metadata={
       ..Default::default(),
       class_name: Some("relation"),
-      data: [("handwritten-path", "dot")],
     })
     if first {
       draw_relation_decoration(

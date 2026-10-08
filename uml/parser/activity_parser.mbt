@@ -137,18 +137,50 @@ pub fn parse_activity(
       buffer.advance()
       continue
     }
-    if lower == "note" || lower.has_prefix("note ") || lower.has_prefix("note:") {
+    if lower == "note" ||
+      lower.has_prefix("note ") ||
+      lower.has_prefix("note:") ||
+      lower.has_prefix("floating note") {
       let (text, end) = if line.find(":") is Some(colon) {
         (line[colon + 1:].trim().to_owned(), buffer.index)
       } else {
         parse_note(buffer, buffer.index)
       }
-      let side : @flow.ActivityNoteSide = if lower.has_prefix("note right") {
+      let header = line.split(":").nth(0).unwrap_or("").to_owned()
+      let note_cursor = @tokenizer.Cursor::new(header)
+      let floating = note_cursor.consume_literal("floating")
+      note_cursor.skip_inline_spaces()
+      ignore(note_cursor.consume_literal("note"))
+      note_cursor.skip_inline_spaces()
+      let side : @flow.ActivityNoteSide = if note_cursor.consume_literal(
+          "right",
+        ) {
         Right
       } else {
+        ignore(note_cursor.consume_literal("left"))
         Left
       }
-      nodes.push(@flow.ActivityNode::Note(text, side))
+      note_cursor.skip_inline_spaces()
+      let color = note_cursor.take_color_value()
+      note_cursor.skip_inline_spaces()
+      while note_cursor.take_tag_value() is Some(_) {
+        note_cursor.skip_inline_spaces()
+      }
+      let stereotype = note_cursor.take_stereotype_value()
+      if floating || color is Some(_) || stereotype is Some(_) {
+        nodes.push(
+          @flow.ActivityNode::StyledNote({
+            text,
+            side,
+            floating,
+            color,
+            stereotype,
+            style,
+          }),
+        )
+      } else {
+        nodes.push(@flow.ActivityNode::Note(text, side))
+      }
       buffer.index = end + 1
       continue
     }
@@ -168,19 +200,10 @@ pub fn parse_activity(
         raise SyntaxError(line_number, "backward without enclosing loop")
       }
       nodes.push(Backward(parse_activity_backward(buffer, line)))
-    } else if line.has_prefix(":") {
-      let lines = [line[1:].to_owned()]
-      while !lines.last().unwrap().trim_end().has_suffix(";") {
-        buffer.advance()
-        guard !buffer.at_end() else {
-          raise SyntaxError(line_number, "unclosed activity")
-        }
-        lines.push(buffer.current_stripped())
-      }
-      let last = lines.length() - 1
-      let ending = lines[last].trim_end().to_owned()
-      lines[last] = ending[:ending.length() - 1].to_owned()
-      nodes.push(@flow.ActivityNode::Action(lines.join("\n").trim().to_owned()))
+    } else if line.has_prefix(":") ||
+      line.has_prefix("<<") ||
+      line.has_prefix("#") {
+      nodes.push(parse_activity_action(buffer, style))
     } else if lower.has_prefix("if ") {
       stack.push(BlockKind::Conditional)
       nodes.push(If(command_text(line, "if")))

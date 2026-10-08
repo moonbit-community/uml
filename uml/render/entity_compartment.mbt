@@ -10,7 +10,6 @@ const CLASS_COMPARTMENT_TITLE_MARGIN : Int = 8
 ///|
 priv enum ClassCompartmentItem {
   MemberRow(@entity.Member, Int)
-  RichRows(StateRichText)
 }
 
 ///|
@@ -29,7 +28,6 @@ priv struct ClassCompartment {
 fn ClassCompartmentItem::height(self : ClassCompartmentItem) -> Int {
   match self {
     MemberRow(_, height) => height
-    RichRows(rich) => rich.height.ceil().to_int()
   }
 }
 
@@ -59,36 +57,14 @@ fn build_class_compartment(
   let mut index = 0
   while index < entries.length() {
     let entry = entries[index]
-    if state_is_table_line(entry.raw) {
-      let table : Array[String] = []
-      while index < entries.length() && state_is_table_line(entries[index].raw) {
-        table.push(entries[index].raw)
-        index += 1
-      }
-      let rich = state_rich_text(
-        table.join("\n"),
-        metrics.regular,
-        0.0,
-        literal_newlines=true,
-      ).unwrap()
-      items.push(RichRows(rich))
-      width = width.max(rich.width.ceil().to_int())
-      height += rich.height.ceil().to_int()
-    } else {
-      let row_height = entry.rendered_height(metrics)
-      items.push(MemberRow(entry, row_height))
-      let font = if entry.is_abstract {
-        metrics.italic
-      } else {
-        metrics.regular
-      }
-      width = width.max(
-        font.entity_measure(entry.display_without_visibility()).width +
-        icon_width,
-      )
-      height += row_height
-      index += 1
-    }
+    let row_height = entry.rendered_height(metrics)
+    items.push(MemberRow(entry, row_height))
+    let font = if entry.is_abstract { metrics.italic } else { metrics.regular }
+    width = width.max(
+      font.entity_measure(entry.display_without_visibility()).width + icon_width,
+    )
+    height += row_height
+    index += 1
   }
   let title_size = title.map(value => metrics.regular.entity_measure(value))
   let title_height = title_size.map_or(0, size => size.height)
@@ -112,17 +88,13 @@ fn build_class_compartment(
 }
 
 ///|
-/// BodyEnhanced1 retains source order once a separator or table appears;
+/// BodyEnhanced1 retains source order once a separator appears;
 /// ordinary classes continue to use their automatic fields/methods sections.
 fn @entity.Entity::custom_compartments(
   self : @entity.Entity,
   metrics : ClassTextMetrics,
 ) -> Array[ClassCompartment]? {
-  guard self.members.any(entry => {
-    entry.is_separator || state_is_table_line(entry.raw)
-  }) else {
-    return None
-  }
+  guard self.members.any(entry => entry.is_separator) else { return None }
   let result : Array[ClassCompartment] = []
   let mut entries : Array[@entity.Member] = []
   let mut separator = '_'
@@ -241,21 +213,6 @@ fn draw_class_compartments(
             output, entry, text_x, baseline, "member", metrics, text_color,
           )
           row_top += height
-        }
-        RichRows(rich) => {
-          rich.draw(
-            output.with_style({ ..Default::default(), fill: Color(text_color), }),
-            (x + CLASS_COMPARTMENT_MARGIN_X).to_double(),
-            row_top.to_double(),
-            metrics.regular,
-            {
-              ..Default::default(),
-              class_name: Some("class-compartment-content"),
-            },
-            Start,
-            None,
-          )
-          row_top += rich.height.ceil().to_int()
         }
       }
     }

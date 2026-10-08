@@ -137,13 +137,6 @@ pub fn XmlWriter::draw_command(
     Annotation(metadata) =>
       self.empty("metadata", attributes=metadata_attributes(metadata))
     Draw(shape, style, translation, metadata) => {
-      let text = shape
-        is (Text(_) | StyledText(_, _) | TextBlock(_) | StyledTextBlock(_, _))
-      let style = {
-        ..style,
-        fill: self.gradient_paint(style.fill, text),
-        stroke: self.gradient_paint(style.stroke, text || shape is Line(_, _)),
-      }
       let attributes = [
         ..match shape {
           StyledTextBlock(_, font) => text_style_attributes(font)
@@ -163,19 +156,6 @@ pub fn XmlWriter::draw_command(
         },
       ]
       match shape {
-        Image(origin~, width~, height~, href~) =>
-          self.empty(
-            "image",
-            attributes=[
-              ("x", (origin.x + translation.x).to_string()),
-              ("y", (origin.y + translation.y).to_string()),
-              ("width", width.to_string()),
-              ("height", height.to_string()),
-              ("href", href),
-              ("preserveAspectRatio", "none"),
-              ..attributes,
-            ],
-          )
         ToggleArea(origin~, width~, height~, label~, expanded~) =>
           self.empty(
             "rect",

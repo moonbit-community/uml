@@ -30,7 +30,13 @@ fn draw_class_text(
     font_family~,
     font_size~,
     anchor~,
-    text_style=Some({ ..Default::default(), italic, }),
+    text_style=Some({
+      ..Default::default(),
+      italic: Some(
+        italic.unwrap_or(metrics.style == @metrics.FontStyle::Italic),
+      ),
+      weight: Some(metrics.font_weight),
+    }),
   )
 }
 
@@ -76,25 +82,23 @@ fn ClassDrawing::draw_class(
       data: [("code", entity.qualified_code)],
     },
     graphic => {
-      with_entity_link(graphic, entity.url, graphic => {
-        graphic
-        .with_style({ ..line_style, fill: Color(fill), })
-        .draw(
-          Rectangle(
-            origin=class_point(x, y),
-            width=width.to_double(),
-            height=height.to_double(),
-            rx=None,
-            ry=None,
-          ),
-        )
-        let self = { ..self, graphic, }
-        self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
-        self.append_class_header(entity, x, y, width, placement, header)
-        self.append_class_members(
-          entity, x, y, width, header, body, line_style, entity_colors,
-        )
-      })
+      graphic
+      .with_style({ ..line_style, fill: Color(fill), })
+      .draw(
+        Rectangle(
+          origin=class_point(x, y),
+          width=width.to_double(),
+          height=height.to_double(),
+          rx=None,
+          ry=None,
+        ),
+      )
+      let self = { ..self, graphic, }
+      self.append_class_spot(entity, x, y, placement, spot_text, spot_fill)
+      self.append_class_header(entity, x, y, width, placement, header)
+      self.append_class_members(
+        entity, x, y, width, header, body, line_style, entity_colors,
+      )
     },
   )
 }
@@ -190,6 +194,7 @@ fn ClassDrawing::append_class_header(
     header.title_text,
     "class-title",
     entity.title_metrics(text_metrics),
+    font_family=self.diagram.style.font_family(),
     fill=self.diagram.style.property_font_color("ClassFontColor"),
     italic=if italic { Some(true) } else { None },
   )
@@ -449,7 +454,8 @@ fn draw_member_text(
     text,
     class_name,
     font,
-    italic=Some(entry.is_abstract),
+    italic=if entry.is_abstract { Some(true) } else { None },
+    font_family=metrics.style.font_family(),
     fill=color,
   )
   if entry.is_static {

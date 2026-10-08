@@ -5,6 +5,7 @@ fn sequence_style_property(
   key : String,
   stereotype? : String? = None,
 ) -> String? {
+  let style = style.with_stereotypes(stereotype)
   if stereotype is Some(stereotype) {
     if style.property("Sequence" + role + key + stereotype) is Some(value) {
       return Some(value)

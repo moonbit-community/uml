@@ -84,6 +84,9 @@ fn state_drawing_font(
   diagram : @flow.StateDiagram,
   metadata : @graphics.Metadata,
 ) -> @metrics.FontMetrics {
+  if metadata.class_name == Some("legacy-activity-label") {
+    return legacy_activity_metrics(diagram.style)
+  }
   let metadata = metadata.data
     .search_by(entry => entry.0 == "rich-role")
     .map_or(metadata, index => {
@@ -145,10 +148,6 @@ fn StateDrawingBounds::draw(
   let adjustment = STATE_LIMIT_SHAPE_ADJUSTMENT
   let shadow_extent = 2.0 * state_metadata_shadow(metadata)
   match shape {
-    Image(origin~, width~, height~, ..) => {
-      point(origin)
-      point({ x: origin.x + width, y: origin.y + height, })
-    }
     Rectangle(origin~, width~, height~, ..) => {
       if metadata.class_name == Some("state-package-empty-extent") {
         point(origin)
@@ -185,7 +184,7 @@ fn StateDrawingBounds::draw(
         point({ x: p.x + STATE_LIMIT_POLYGON_MARGIN, y: p.y, })
       }
     Path(segments) => self.include_path(segments, translation)
-    TextBlock(block) => {
+    TextBlock(block) | StyledTextBlock(block, _) => {
       let metrics = state_drawing_font(diagram, metadata)
       let mut baseline = block.position.y
       for line in block.lines {

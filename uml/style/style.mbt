@@ -246,7 +246,8 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
   if lower == "footbox" ||
     lower == "newpage" ||
     lower.has_prefix("newpage ") ||
-    lower == "layout newline" {
+    lower == "layout newline" ||
+    lower == "layout_new_line" {
     return Some(Property(lower.to_owned(), "true"))
   }
   if lower.has_prefix(SCALE_PREFIX) {

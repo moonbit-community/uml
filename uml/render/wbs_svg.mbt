@@ -266,7 +266,9 @@ pub fn render_wbs_svg(
       ),
     )
   }
-  handwritten_graphic(document.graphic(), diagram.style).scale_group(scale, output => {
+  document
+  .graphic()
+  .scale_group(scale, output => {
     draw_wbs(output, diagram, layout, items)
     draw_document_text(output, diagram.style, "wbs", drawing.text)
   })

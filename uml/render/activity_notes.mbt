@@ -61,7 +61,7 @@ fn measure_note_columns(
   let mut right : TileMeasure = { width: 0, height: 0, }
   for index in notes {
     let size = nodes[index].size(metrics, small_metrics)
-    let is_left = nodes[index] is @flow.ActivityNode::Note(_, Left)
+    let is_left = nodes[index].note_left()
     let column = if is_left { left } else { right }
     let column : TileMeasure = {
       width: column.width.max(
@@ -86,6 +86,8 @@ fn tile_axis(
   small_metrics : @metrics.FontMetrics,
 ) -> Double {
   match tile {
+    Leaf(index) =>
+      nodes[index].flow_axis(nodes[index].size(metrics, small_metrics).width)
     LoopWithBackward(body, _, _, _, _) =>
       tile_axis(body, nodes, metrics, small_metrics)
     LoopWithBreaks(body, _, _, repeat) =>
@@ -179,7 +181,7 @@ fn place_noted(
   let mut right_y = y + (height - right.height) / 2 + margin
   for index in notes {
     let size = nodes[index].size(metrics, small_metrics)
-    let is_left = nodes[index] is @flow.ActivityNode::Note(_, Left)
+    let is_left = nodes[index].note_left()
     let note_x = if margin > 0 {
       let column_x = if is_left { x } else { x + left.width + body_size.width }
       let column_width = if is_left { left.width } else { right.width }
@@ -195,6 +197,13 @@ fn place_noted(
     }
     layouts.push({
       node_index: index,
+      note_pointer_offset: if notes.length() == 1 &&
+        nodes[index] is @flow.StyledNote(note) &&
+        !note.floating {
+        Some(if is_left { NOTE_GAP } else { -NOTE_GAP })
+      } else {
+        None
+      },
       x: note_x,
       y: if is_left {
         left_y

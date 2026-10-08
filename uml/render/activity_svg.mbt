@@ -69,9 +69,11 @@ fn append_edge(
 ) -> Unit {
   guard layout_for(layout, edge.from_node_index) is Some(from) else { return }
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return }
-  let x = from.x + from.width / 2
+  let x = from.x +
+    layout.source_nodes[edge.from_node_index].flow_axis(from.width)
   let y1 = from.y + from.height
-  let target_x = to.x + to.width / 2
+  let target_x = to.x +
+    layout.source_nodes[edge.to_node_index].flow_axis(to.width)
   let y2 = to.y
   let from_center_y = from.y + from.height / 2
   let from_is_decision = layout.source_nodes[edge.from_node_index].is_decision()
@@ -527,6 +529,14 @@ fn activity_append_node(
   small_metrics : @metrics.FontMetrics,
 ) -> Unit {
   let node = layout.source_nodes[node_layout.node_index]
+  if node is @flow.StyledAction(action) {
+    draw_activity_action(output, action, node_layout)
+    return
+  }
+  if node is @flow.StyledNote(note) {
+    draw_activity_styled_note(output, note, node_layout)
+    return
+  }
   // Chains and conditionals with only one continuing branch use flow anchors.
   guard !(node is @flow.ActivityNode::EndIf && node_layout.width == 0) else {
     return
@@ -751,7 +761,26 @@ fn @flow.ActivityDiagram::render_svg(
   self : @flow.ActivityDiagram,
   color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
+  let nodes : Array[@flow.ActivityNode] = self.nodes.map(node => {
+    match node {
+      @flow.StyledAction(action) =>
+        @flow.StyledAction({
+          ..action,
+          style: action.style.with_color_scheme(color_scheme),
+        })
+      @flow.StyledNote(note) =>
+        @flow.StyledNote({
+          ..note,
+          style: note.style.with_color_scheme(color_scheme),
+        })
+      _ => node
+    }
+  })
+  let self : @flow.ActivityDiagram = {
+    nodes,
+    instructions: @flow.reduce(nodes),
+    style: self.style.with_color_scheme(color_scheme),
+  }
   let layout = self.layout()
   let decoration = decorate_document_text(
     self.style,
@@ -832,10 +861,7 @@ fn @flow.ActivityDiagram::render_svg(
         ry=None,
       ),
     )
-    let content = handwritten_graphic(
-      output.translated(decoration.dx, decoration.dy),
-      self.style,
-    )
+    let content = output.translated(decoration.dx, decoration.dy)
     layout.regions.each(region => append_region(content, region, font_metrics))
     for index, edge in layout.edges {
       if edge.style.map_or(false, value => value.contains(";")) {

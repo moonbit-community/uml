@@ -1,8 +1,5 @@
 ///|
-fn Parser::consume_state_control(
-  self : Parser,
-  line : String,
-) -> Bool raise @tokenizer.ParseError {
+fn Parser::consume_state_control(self : Parser, line : String) -> Bool {
   if line.to_lower() == "hide footbox" || line.to_lower() == "show footbox" {
     return true
   }
@@ -34,31 +31,7 @@ fn Parser::consume_state_control(
     )
     return true
   }
-  guard command == "url" && cursor.skip_inline_whitespace() > 0 else {
-    return false
-  }
-  let saved = cursor.offset()
-  let word = cursor.take_while(char => char.is_ascii_alphabetic()).to_lower()
-  if word == "of" || word == "for" {
-    cursor.skip_inline_spaces()
-  } else {
-    ignore(cursor.restore(saved))
-  }
-  guard state_identifier(cursor) is Some(identifier) else { return false }
-  guard cursor.skip_inline_whitespace() > 0 else { return false }
-  if cursor.consume_literal("is") {
-    cursor.skip_inline_spaces()
-  }
-  guard cursor.take_url_value() is Some(url) else { return false }
-  cursor.skip_inline_spaces()
-  guard cursor.is_eof() else { return false }
-  let name = self.resolve_state_name(identifier.value, allow_current=true)
-  guard self.state_names[name].code is Some(code) &&
-    self.states.search_by(state => state.code == code) is Some(index) else {
-    raise SyntaxError(self.line_number(), "URL refers to an unknown state")
-  }
-  self.states[index] = { ..self.states[index], url: Some(self.state_url(url)), }
-  true
+  false
 }
 
 ///|
@@ -136,17 +109,6 @@ fn Parser::apply_state_removals(self : Parser) -> Unit {
       is_removed: self.state_rule_value(state, self.removals),
       is_hidden: self.state_rule_value(state, self.hides),
     }
-  }
-}
-
-///|
-fn Parser::state_url(self : Parser, url : String) -> String {
-  if url.has_prefix("http:") ||
-    url.has_prefix("https:") ||
-    url.has_prefix("file:") {
-    url
-  } else {
-    self.style.property("topurl").unwrap_or("") + url
   }
 }
 

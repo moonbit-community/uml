@@ -2,6 +2,7 @@
 /// Geometry for one visible activity instruction.
 pub(all) struct ActivityNodeLayout {
   node_index : Int
+  note_pointer_offset : Double?
   x : Double
   y : Double
   width : Double
@@ -344,11 +345,21 @@ fn tiles_from_instructions(
         tiles.push(
           Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Action(label))),
         )
+      @flow.ActivityInstruction::StyledAction(action) =>
+        tiles.push(
+          Tile::Leaf(
+            add_layout_node(nodes, @flow.ActivityNode::StyledAction(action)),
+          ),
+        )
       @flow.ActivityInstruction::Note(label, side) => {
         let index = add_layout_node(
           nodes,
           @flow.ActivityNode::Note(label, side),
         )
+        attach_activity_note(tiles, nodes, index)
+      }
+      @flow.ActivityInstruction::StyledNote(note) => {
+        let index = add_layout_node(nodes, @flow.ActivityNode::StyledNote(note))
         attach_activity_note(tiles, nodes, index)
       }
       @flow.ActivityInstruction::Edge(label) =>
@@ -609,6 +620,8 @@ fn activity_display_text(value : String) -> String {
 ///|
 fn @flow.ActivityNode::label(self : @flow.ActivityNode) -> String? {
   match self {
+    StyledAction(action) => Some(activity_display_text(action.label))
+    StyledNote(note) => Some(activity_display_text(note.text))
     Action(label)
     | Note(label, _)
     | RepeatAction(label)
@@ -645,6 +658,8 @@ fn @flow.ActivityNode::size(
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   match self {
+    StyledAction(action) => activity_action_measure(action)
+    StyledNote(note) => activity_styled_note_size(note)
     Start => { width: TERMINAL_SIZE, height: TERMINAL_SIZE, }
     Stop => { width: STOP_SIZE, height: STOP_SIZE, }
     End => { width: END_SIZE, height: END_SIZE, }
@@ -1084,7 +1099,8 @@ fn sequence_has_exit(
           is (@flow.ActivityNode::Stop
           | @flow.ActivityNode::End
           | @flow.ActivityNode::Kill
-          | @flow.ActivityNode::Note(_)))
+          | @flow.ActivityNode::Note(_)
+          | @flow.ActivityNode::StyledNote(_)))
       }
       Noted(body, _) => return sequence_has_exit([body], nodes)
       Partition(_, body, _) => return sequence_has_exit(body, nodes)
