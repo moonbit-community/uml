@@ -79,7 +79,14 @@
     "04-parallel-work.uml",
     "05-switch-cases.uml",
     "06-partitions-and-swimlanes.uml",
-    "07-flow-targets.uml"
+    "07-flow-targets.uml",
+    "08-container-symbols.uml",
+    "09-connectors-and-list-actions.uml",
+    "10-decision-styles.uml",
+    "11-empty-diamond-and-hline.uml",
+    "12-legacy-octagon.uml",
+    "13-legacy-octagon-horizontal.uml",
+    "14-style-cascade.uml"
   ],
   "dot": [
     "01-basic.uml",
@@ -110,6 +117,14 @@
     "06-history-and-synchronization.uml",
     "07-notes-and-metadata.uml",
     "08-frame-and-aliases.uml",
-    "09-reverse-and-decorated-transitions.uml"
+    "09-reverse-and-decorated-transitions.uml",
+    "10-metadata-styles.uml"
+  ],
+  "deployment": [
+    "01-basic.uml",
+    "02-containers.uml",
+    "03-relationships.uml",
+    "04-ports.uml",
+    "05-metadata-and-symbols.uml"
   ]
 }

@@ -1,0 +1,13 @@
+@startuml
+title Empty diamond and horizontal merge
+skinparam ConditionStyle Diamond
+skinparam ConditionEndStyle hline
+start
+if (Payment approved by the provider?) then (yes) <<#lightyellow>>
+  :Confirm booking;
+else (no)
+  :Request another payment method;
+endif
+:Notify customer;
+stop
+@enduml

@@ -1,0 +1,27 @@
+@startuml
+title Activity stereotypes and container styles
+<style>
+activityDiagram {
+  .review {
+    BackgroundColor lightyellow
+    LineColor darkorange
+    FontColor darkred
+  }
+  composite {
+    BackgroundColor aliceblue
+    LineColor navy
+    FontColor navy
+  }
+}
+</style>
+start
+partition "Review queue" {
+  :Read submission; <<input>>
+  if (Manual review needed?) then (yes) <<review>>
+    :Review submission; <<review>>
+  else (no)
+    :Accept automatically;
+  endif
+}
+stop
+@enduml

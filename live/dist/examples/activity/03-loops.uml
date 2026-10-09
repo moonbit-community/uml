@@ -1,15 +1,14 @@
 @startuml
+title Batch processing and delivery retries
 start
 :Open batch;
-
 while (More records?) is (yes)
-  :Read record;
-  :Process record;
-endwhile (no)
-
-repeat
+  :Read record; <<input>>
+  :Process record; <<procedure>>
+end while (no)
+repeat :Prepare delivery; <<output>> <<#lightblue>>
   :Attempt delivery;
-repeat while (Delivery failed?) is (retry) not (done)
-
+  backward :Wait before retry; <<procedure>> <<#wheat>>
+repeat while (Delivery failed?) is (retry) not (done) <<#lightyellow>>
 stop
 @enduml

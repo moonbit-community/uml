@@ -1,0 +1,19 @@
+@startuml
+title Activity container symbols
+start
+partition "Order processing" #aliceblue {
+  package "Intake" #honeydew {
+    :Read request;
+  }
+  rectangle "Validation" #lightyellow {
+    :Check required fields;
+  }
+  card "Work item" #mistyrose {
+    :Assign owner;
+  }
+  group "Delivery" #lavender {
+    :Send confirmation;
+  }
+}
+stop
+@enduml

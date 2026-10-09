@@ -1,19 +1,21 @@
 @startuml
-|Customer|
+title Order fulfilment across named swimlanes
+|#lightblue|customer|Customer
 start
 :Submit order;
-
-|Store|
-partition Fulfilment {
+|#honeydew|store|Store
+partition Fulfilment #ivory {
   :Validate order;
   :Reserve inventory;
 }
-
-|Customer|
+|customer|
 :Receive confirmation;
 note right
-  Confirmation is sent only
-  after inventory is reserved.
+  Returning to customer reuses the same lane.
 end note
+|#aliceblue|store|Fulfilment team
+:Dispatch order;
+|customer|
+:Receive parcel;
 stop
 @enduml

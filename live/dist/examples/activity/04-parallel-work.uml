@@ -1,15 +1,14 @@
 @startuml
-start
+title Release checks and join specification
+start <<#green>>
 :Prepare release;
-
-fork
+fork <<#navy>>
   :Build package;
 fork again
   :Run test suite;
 fork again
   :Generate documentation;
-end fork
-
+end fork {all checks passed}
 :Publish release;
-stop
+stop <<#green>>
 @enduml

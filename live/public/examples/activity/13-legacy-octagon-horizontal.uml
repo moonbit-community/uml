@@ -1,0 +1,9 @@
+@startuml
+title Horizontal legacy activity octagons
+left to right direction
+skinparam ActivityShape octagon
+(*) --> "Receive request"
+"Receive request" --> "Validate request"
+"Validate request" --> "Save result"
+"Save result" --> (*)
+@enduml

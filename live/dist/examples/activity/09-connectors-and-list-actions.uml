@@ -1,0 +1,19 @@
+@startuml
+title Connectors, list actions and multiline arrows
+start
+- Receive request
+* Check required fields
+-[#blue]-> validation complete
+ready for processing;
+#lightblue:(A);
+if (Request accepted?) then (-[#green]-> yes)
+  :Process request;
+else (-[#red]-> no)
+  :Hand off to manual review;
+  detach
+endif
+(B)
+:Record result;
+link #green
+stop
+@enduml

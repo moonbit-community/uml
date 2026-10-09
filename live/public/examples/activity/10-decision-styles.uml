@@ -1,0 +1,16 @@
+@startuml
+title Diamond conditions with styled branches
+skinparam ConditionStyle InsideDiamond
+skinparam ActivityDiamondFontSize 16
+skinparam ActivityDiamondBorderColor navy
+start
+if (Account exists
+and is enabled?) then (-[#green]-> yes) <<#lightyellow>>
+  :Sign in;
+else if (Guest access allowed?) then (-[#blue]-> guest) <<#lightblue>>
+  :Create guest session;
+else (-[#red]-> no)
+  :Show registration prompt;
+endif <<#honeydew>>
+stop
+@enduml

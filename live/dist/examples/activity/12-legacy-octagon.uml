@@ -1,0 +1,12 @@
+@startuml
+title Legacy activity octagons in nested partitions
+skinparam ActivityShape octagon
+(*) --> "Receive request"
+partition Processing {
+  partition Validation {
+    "Receive request" --> "Check fields"
+  }
+  "Check fields" --> "Persist result"
+}
+"Persist result" --> (*)
+@enduml
