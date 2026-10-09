@@ -1,12 +1,11 @@
 ///|
 /// Network and rendering access for the app: fetching the example manifest
 /// and sources, and turning a source into a theme-aware SVG.
-let base_url : String = "" // "/uml"
 
 ///|
 /// Fetch the example manifest and schedule a load for every listed source.
 fn fetch_manifest_cmd(emit : @rabbita.Emit[Msg]) -> @cmd.Cmd {
-  @http.get(base_url + "/examples-manifest.json").expect_json(result => {
+  @http.get("./examples-manifest.json").expect_json(result => {
     emit(ManifestLoaded(result.map_err(error => "\{error}")))
   })
 }
@@ -21,7 +20,7 @@ fn fetch_sources_cmd(
     for file in files {
       let path = "\{cat}/\{file}"
       cmds.push(
-        @http.get(base_url + "/examples/\{path}").expect_text(result => {
+        @http.get("./examples/\{path}").expect_text(result => {
           emit(SourceLoaded(path, result.map_err(error => "\{error}")))
         }),
       )
