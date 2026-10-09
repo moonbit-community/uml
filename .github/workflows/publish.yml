@@ -1,5 +1,5 @@
 # Publishes workspace modules to mooncakes.io. Triggered manually from the
-# Actions tab; credentials for both owners must be configured.
+# Actions tab; credentials for the moonbit-community owner must be configured.
 name: publish
 
 on:
@@ -36,11 +36,11 @@ jobs:
           moon test
           moon -C uml-cli cram test --release cram
 
-      # The library must go first: uml-cli resolves kokic/uml from the
+      # The library must go first: uml-cli resolves moonbit-community/uml from the
       # registry at publish time.
-      - name: publish kokic/uml
+      - name: publish moonbit-community/uml
         env:
-          MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_KOKIC_CREDENTIALS }}
+          MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
         run: moon -C uml publish
 
       # Validate outside moon.work so the CLI resolves exactly the version

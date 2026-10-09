@@ -1,7 +1,7 @@
 # uml-cli
 
 A command-line tool to render PlantUML diagrams as SVG, built on
-[`kokic/uml`](https://mooncakes.io/docs/kokic/uml).
+[`moonbit-community/uml`](https://mooncakes.io/docs/moonbit-community/uml).
 
 ## Run without installing
 

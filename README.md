@@ -15,7 +15,7 @@ deferred formula embedding.
 | ![Mindmap diagram](./uml/__snapshot__/mindmap.svg) | ![JSON diagram](./uml/__snapshot__/json.svg) |
 
 Every image above is a snapshot of an executable example in the
-[library README](./uml/README.mbt.md). Run `moon test -p kokic/uml --update`
+[library README](./uml/README.mbt.md). Run `moon test -p moonbit-community/uml --update`
 from the `uml/` directory to update [`uml/__snapshot__/`](./uml/__snapshot__/)
 using the local implementation. See the library README for the full gallery
 and API walkthrough.
@@ -80,7 +80,7 @@ PlantUML has dedicated syntax for 11 of the 14 standard UML diagram types.
 | JCCKit | planned |
 
 WBS sources use `@startwbs` / `@endwbs` and render through
-`kokic/uml/api.render_svg`. The main SVG pipeline includes the root fork,
+`moonbit-community/uml/api.render_svg`. The main SVG pipeline includes the root fork,
 left/right subtrees, boxed and boxless nodes, pseudo nodes, multiline labels,
 sibling auto width, cross links, and document text. Its layout follows
 PlantUML's `Fork`, `ITFComposed`, and `ITFLeaf`; this status does not claim full
