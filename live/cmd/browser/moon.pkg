@@ -5,9 +5,9 @@ import {
   "moonbit-community/rabbita/dom",
   "moonbit-community/rabbita/http",
   "moonbit-community/rui",
-  "kokic/uml/api",
-  "kokic/uml/style",
-  "kokic/uml/entity",
+  "moonbit-community/uml/api",
+  "moonbit-community/uml/style",
+  "moonbit-community/uml/entity",
 }
 
 supported_targets = "js"

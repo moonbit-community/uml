@@ -1,4 +1,4 @@
 import {
-  "kokic/uml/tokenizer",
+  "moonbit-community/uml/tokenizer",
   "moonbitlang/core/test",
 }

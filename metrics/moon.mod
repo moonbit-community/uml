@@ -4,7 +4,7 @@ version = "0.1.1"
 
 readme = "README.md"
 
-repository = "https://github.com/kokic/uml"
+repository = "https://github.com/moonbit-community/uml"
 
 license = "Apache-2.0"
 

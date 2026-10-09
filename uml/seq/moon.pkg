@@ -1,4 +1,4 @@
 import {
   "moonbitlang/core/string",
-  "kokic/uml/style",
+  "moonbit-community/uml/style",
 }

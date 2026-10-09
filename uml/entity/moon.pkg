@@ -1,4 +1,4 @@
 import {
-  "kokic/uml/bodierjson",
-  "kokic/uml/style",
+  "moonbit-community/uml/bodierjson",
+  "moonbit-community/uml/style",
 }

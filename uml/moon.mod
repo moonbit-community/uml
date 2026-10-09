@@ -1,4 +1,4 @@
-name = "kokic/uml"
+name = "moonbit-community/uml"
 
 version = "0.4.2"
 
@@ -15,7 +15,7 @@ import {
 
 readme = "README.md"
 
-repository = "https://github.com/kokic/uml"
+repository = "https://github.com/moonbit-community/uml"
 
 license = "Apache-2.0"
 

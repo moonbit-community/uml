@@ -1,5 +1,5 @@
 import {
-  "kokic/uml/style",
+  "moonbit-community/uml/style",
   "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/geom",
   "moonbit-community/graphviz/layout/dot" @dot_layout,
