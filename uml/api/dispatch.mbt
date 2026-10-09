@@ -472,6 +472,10 @@ pub fn is_activity_source(input : String) -> Bool {
   lines.any(line => {
     let lower = line.to_lower()
     activity_commands.contains(lower) ||
+    [
+      "if(", "elseif(", "while(", "repeat while(", "switch(", "case(", "swimlane ",
+      "|", "- ", "* ",
+    ].any(prefix => lower.has_prefix(prefix)) ||
     activity_command_prefixes.any(prefix => lower.has_prefix(prefix)) ||
     (
       (line.has_prefix(":") || line.has_prefix("<<") || line.has_prefix("#")) &&
@@ -566,7 +570,7 @@ pub let class_relation_arrows : FixedArray[String] = [
 pub let activity_commands : FixedArray[String] = [
   "start", "stop", "endif", "endwhile", "repeat", "fork", "fork again", "end fork",
   "endfork", "endswitch", "else", "split", "split again", "end split", "end merge",
-  "break",
+  "break", "detach", "end if", "end while", "while end", "whileend",
 ]
 
 ///|

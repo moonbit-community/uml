@@ -131,6 +131,12 @@ fn tile_axis(
       )
       axis
     }
+    Parallel(_, branches, _) =>
+      (
+        measure_fork_columns(branches, nodes, metrics, small_metrics) +
+        FORK_COLUMN_MARGIN * 2
+      ) /
+      2
     _ => measure_tile(tile, nodes, metrics, small_metrics).width / 2
   }
 }

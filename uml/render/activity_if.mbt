@@ -174,6 +174,15 @@ fn if_merge_size(
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
 ) -> TileMeasure {
+  if branches.length() == 2 &&
+    branches[1].decision is None &&
+    branches[0].decision is Some(index) &&
+    nodes[index].activity_decision() is Some(decision) &&
+    decision.style
+    .property("ConditionEndStyle")
+    .map_or(false, value => value.equal_ignore_ascii_case("hline")) {
+    return { width: 0, height: DIAMOND_TEXT_PADDING / 2, }
+  }
   if branches.all(branch => sequence_has_exit(branch.tiles, nodes)) {
     { width: EXIT_SIZE, height: EXIT_SIZE, }
   } else {
@@ -208,7 +217,7 @@ fn if_single_terminal(
   let visible = tiles.filter(tile => !tile_is_flow_decoration(tile, nodes))
   match visible {
     [Leaf(index)] =>
-      nodes[index] is (@flow.ActivityNode::Stop | @flow.ActivityNode::End)
+      nodes[index] is (@flow.ActivityNode::Stop(_) | @flow.ActivityNode::End(_))
     [Leaf(index), Leaf(last)] =>
       nodes[index] is @flow.ActivityNode::Action(_) &&
       nodes[last] is @flow.ActivityNode::Kill

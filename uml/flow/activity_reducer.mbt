@@ -21,6 +21,9 @@ pub fn edge_label(value : String) -> ActivityEdgeLabel {
     guard value.has_prefix("(") && value.has_suffix(")") else { value }
     value[1:value.length() - 1].trim().to_owned()
   }
+  if text.has_prefix("->") || text.has_prefix("-[") {
+    return arrow_label(text)
+  }
   { style: None, text: if text.length() == 0 { None } else { Some(text) }, }
 }
 
@@ -47,47 +50,51 @@ fn split_test_and_label(
   value : String,
   separator : String,
 ) -> (String, ActivityEdgeLabel) {
-  activity_label_separator(value, separator).map_or(
-    (edge_label(value).text.unwrap_or(""), { style: None, text: None, }),
-    index => {
-      (
+  let value = value.trim().to_owned()
+  let value = if value.has_suffix(";") {
+    value[:value.length() - 1].trim_end().to_owned()
+  } else {
+    value
+  }
+  let separators = if separator == " then " {
+    [" then ", " is ", " equals ", " equal "]
+  } else {
+    [separator, " equals ", " equal "]
+  }
+  for candidate in separators {
+    if activity_label_separator(value, candidate) is Some(index) {
+      let mut label = value[index + candidate.length():].trim().to_owned()
+      if label.has_prefix("when ") {
+        label = label[5:].to_owned()
+      }
+      if label.has_suffix(" then") {
+        label = label[:label.length() - 5].trim_end().to_owned()
+      }
+      return (
         edge_label(value[:index].to_owned()).text.unwrap_or(""),
-        edge_label(value[index + separator.length():].to_owned()),
+        edge_label(label),
       )
-    },
-  )
+    }
+  }
+  let value = if value.has_suffix(" then") {
+    value[:value.length() - 5].trim_end().to_owned()
+  } else {
+    value
+  }
+  (edge_label(value).text.unwrap_or(""), { style: None, text: None, })
 }
 
 ///|
 fn repeat_labels(
   value : String,
 ) -> (String, ActivityEdgeLabel, ActivityEdgeLabel) {
-  guard activity_label_separator(value, " is ") is Some(is_index) else {
-    return (
-      edge_label(value).text.unwrap_or(""),
-      { style: None, text: None, },
-      { style: None, text: None, },
-    )
-  }
-  let condition = edge_label(value[:is_index].to_owned()).text.unwrap_or("")
-  let rest = value[is_index + 4:].trim().to_owned()
-  guard rest.length() > 0 else {
-    return (
-      condition,
-      { style: None, text: None, },
-      { style: None, text: None, },
-    )
-  }
-  activity_label_separator(rest, " not ").map_or(
-    (condition, edge_label(rest), { style: None, text: None, }),
-    index => {
-      (
-        condition,
-        edge_label(rest[:index].to_owned()),
-        edge_label(rest[index + 5:].to_owned()),
-      )
-    },
-  )
+  let exit_at = activity_label_separator(value, " not ")
+  let retry_source = exit_at.map_or(value, index => value[:index].to_owned())
+  let (condition, retry) = split_test_and_label(retry_source, " is ")
+  let exit = exit_at.map_or({ style: None, text: None, }, index => {
+    edge_label(value[index + 5:].to_owned())
+  })
+  (condition, retry, exit)
 }
 
 ///|
@@ -117,16 +124,16 @@ fn matches_reduction_boundary(
   (node, boundary)
   is ((ActivityNode::ElseIf(_), ElseIf)
   | (ActivityNode::Else(_), Else)
-  | (ActivityNode::EndIf, EndIf)
+  | (ActivityNode::EndIf(_), EndIf)
   | (ActivityNode::EndWhile(_), EndWhile)
   | (ActivityNode::RepeatWhile(_), RepeatWhile)
   | (ActivityNode::ForkAgain, ForkAgain)
-  | (ActivityNode::EndFork, EndFork)
-  | (ActivityNode::EndMerge, EndFork)
+  | (ActivityNode::EndFork(_), EndFork)
+  | (ActivityNode::EndMerge(_), EndFork)
   | (ActivityNode::SplitAgain, SplitAgain)
   | (ActivityNode::EndSplit, EndSplit)
   | (ActivityNode::Case(_), Case)
-  | (ActivityNode::EndSwitch, EndSwitch)
+  | (ActivityNode::EndSwitch(_), EndSwitch)
   | (ActivityNode::EndPartition, EndPartition))
 }
 
@@ -204,11 +211,22 @@ fn reduce_flow(
               let (condition, incoming) = match header {
                 ActivityNode::If(value) | ActivityNode::ElseIf(value) => {
                   let (condition, incoming) = split_test_and_label(
-                    value, " then ",
+                    value.text,
+                    " then ",
                   )
-                  (Some(condition), incoming)
+                  (Some({ ..value, text: condition, }), incoming)
                 }
-                ActivityNode::Else(value) => (None, edge_label(value))
+                ActivityNode::Else(value) =>
+                  (
+                    None,
+                    edge_label(
+                      if value.has_prefix("when ") {
+                        value[5:].to_owned()
+                      } else {
+                        value
+                      },
+                    ),
+                  )
                 _ => (None, { style: None, text: None, })
               }
               { condition, incoming, instructions: body, }
@@ -219,7 +237,12 @@ fn reduce_flow(
                 _ => None
               }
             },
-            (branches, _) => ActivityInstruction::IfChain({ branches, }),
+            (branches, terminal) => {
+              guard terminal is ActivityNode::EndIf(merge) else {
+                abort("if requires endif")
+              }
+              ActivityInstruction::IfChain({ branches, merge, })
+            },
           )
           is Some(next_index) else {
           break
@@ -229,14 +252,14 @@ fn reduce_flow(
       ActivityNode::While(raw) => {
         let (body, end) = reduce_flow(nodes, index + 1, [EndWhile])
         guard end < nodes.length() else { break }
-        let (condition, enter) = split_test_and_label(raw, " is ")
+        let (condition, enter) = split_test_and_label(raw.text, " is ")
         let exit = match nodes[end] {
           ActivityNode::EndWhile(value) => edge_label(value)
           _ => { style: None, text: None, }
         }
         instructions.push(
           ActivityInstruction::While({
-            condition,
+            condition: { ..raw, text: condition, },
             enter,
             exit,
             instructions: body,
@@ -244,15 +267,29 @@ fn reduce_flow(
         )
         index = end + 1
       }
-      ActivityNode::Repeat | ActivityNode::RepeatAction(_) => {
+      ActivityNode::Repeat(_) | ActivityNode::RepeatAction(_) => {
         let (body, end) = reduce_flow(nodes, index + 1, [RepeatWhile])
         guard end < nodes.length() else { break }
         let (condition, retry, exit) = match nodes[end] {
-          ActivityNode::RepeatWhile(value) => repeat_labels(value)
-          _ => ("", { style: None, text: None, }, { style: None, text: None, })
+          ActivityNode::RepeatWhile(value) => {
+            let (condition, retry, exit) = repeat_labels(value.text)
+            ({ ..value, text: condition, }, retry, exit)
+          }
+          _ => abort("repeat reducer requires a closing condition")
         }
         instructions.push(
           ActivityInstruction::Repeat({
+            entry: match node {
+              ActivityNode::Repeat(entry) => entry
+              ActivityNode::RepeatAction(action) =>
+                {
+                  text: "",
+                  stereotype: action.stereotype,
+                  color: None,
+                  style: action.style,
+                }
+              _ => abort("invalid repeat entry")
+            },
             start: match node {
               ActivityNode::RepeatAction(text) => Some(text)
               _ => None
@@ -265,7 +302,7 @@ fn reduce_flow(
         )
         index = end + 1
       }
-      ActivityNode::Fork | ActivityNode::Split => {
+      ActivityNode::Fork(_) | ActivityNode::Split => {
         guard reduce_chain(
             instructions,
             nodes,
@@ -281,11 +318,24 @@ fn reduce_flow(
             },
             (branches, terminal) => {
               if node is ActivityNode::Split {
-                ActivityInstruction::Split({ branches, merge: false, })
+                ActivityInstruction::Split({
+                  branches,
+                  merge: false,
+                  stereotype: None,
+                  label: None,
+                })
               } else {
                 ActivityInstruction::Fork({
                   branches,
-                  merge: terminal is ActivityNode::EndMerge,
+                  merge: terminal is ActivityNode::EndMerge(_),
+                  stereotype: match node {
+                    ActivityNode::Fork(stereotype) => stereotype
+                    _ => None
+                  },
+                  label: match terminal {
+                    ActivityNode::EndFork(label, _) => label
+                    _ => None
+                  },
                 })
               }
             },
@@ -317,9 +367,16 @@ fn reduce_flow(
                     _ => None
                   }
                 },
-                (branches, _) => {
+                (branches, terminal) => {
+                  guard terminal is ActivityNode::EndSwitch(merge) else {
+                    abort("switch requires endswitch")
+                  }
                   ActivityInstruction::Switch({
-                    condition: edge_label(raw).text.unwrap_or(""),
+                    merge,
+                    condition: {
+                      ..raw,
+                      text: edge_label(raw.text).text.unwrap_or(""),
+                    },
                     branches,
                   })
                 },
@@ -331,19 +388,29 @@ fn reduce_flow(
           }
           _ => break
         }
-      ActivityNode::Partition(label) => {
+      ActivityNode::Partition(group) => {
         let (body, end) = reduce_flow(nodes, index + 1, [EndPartition])
         instructions.push(
-          ActivityInstruction::Partition({ label, instructions: body, }),
+          ActivityInstruction::Partition({ group, instructions: body, }),
         )
         index = if end < nodes.length() { end + 1 } else { end }
       }
-      ActivityNode::Start =>
-        index = emit(instructions, ActivityInstruction::Start, index)
-      ActivityNode::Stop =>
-        index = emit(instructions, ActivityInstruction::Stop, index)
-      ActivityNode::End =>
-        index = emit(instructions, ActivityInstruction::End, index)
+      ActivityNode::Spot(text, color) =>
+        index = emit(
+          instructions,
+          ActivityInstruction::Spot(text, color),
+          index,
+        )
+      ActivityNode::Start(stereotype) =>
+        index = emit(
+          instructions,
+          ActivityInstruction::Start(stereotype),
+          index,
+        )
+      ActivityNode::Stop(stereotype) =>
+        index = emit(instructions, ActivityInstruction::Stop(stereotype), index)
+      ActivityNode::End(stereotype) =>
+        index = emit(instructions, ActivityInstruction::End(stereotype), index)
       ActivityNode::Backward(value) =>
         index = emit(instructions, ActivityInstruction::Backward(value), index)
       ActivityNode::Break =>

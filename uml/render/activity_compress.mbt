@@ -41,7 +41,7 @@ fn edge_x_extent(
     (
       from_source.is_fork() ||
       to_source.is_fork() ||
-      to_source is @flow.ActivityNode::EndSwitch
+      to_source is @flow.ActivityNode::EndSwitch(_)
     )) else {
     return None
   }
@@ -58,6 +58,25 @@ fn merge_slots(
 ) -> Array[Slot] {
   let ranges = []
   for node in layout.nodes {
+    if activity_decision_label_bounds(
+        layout.source_nodes[node.node_index],
+        node,
+      )
+      is Some(bounds) {
+      ranges.push(bounds)
+    }
+    let label_width = activity_fork_label_width(
+      layout.source_nodes[node.node_index],
+      small_metrics,
+    )
+    if label_width > 0 {
+      ranges.push(
+        (
+          node.x + node.width + ACTIVITY_FORK_LABEL_MARGIN,
+          node.x + node.width + label_width,
+        ),
+      )
+    }
     guard !layout.source_nodes[node.node_index].is_fork() else { continue }
     if layout.source_nodes[node.node_index]
       is (@flow.ActivityNode::Split | @flow.ActivityNode::EndSplit) {

@@ -12,15 +12,11 @@ fn has_action(diagram : @flow.ActivityDiagram, label : String) -> Bool {
 fn has_control(diagram : @flow.ActivityDiagram, label : String) -> Bool {
   diagram.nodes.any(node => {
     match node {
-      If(value)
-      | ElseIf(value)
-      | Else(value)
-      | While(value)
-      | RepeatWhile(value)
-      | Case(value)
-      | Swimlane(value)
-      | Partition(value)
-      | Goto(value) => value == label
+      If(value) | ElseIf(value) | While(value) | RepeatWhile(value) =>
+        value.text == label
+      Else(value) | Case(value) | Goto(value) => value == label
+      Swimlane(lane) => lane.name == label
+      Partition(group) => group.label == label
       _ => false
     }
   })
@@ -83,8 +79,8 @@ test "rejects unmatched and unclosed control-flow blocks" {
 }
 
 ///|
-test "rejects arbitrary dash-prefixed lines as arrows" {
-  @test.assert_raise(() => {
-    ignore(@parser.parse_activity("@startuml\n- not an arrow\n@enduml"))
-  })
+test "dash-prefixed list items are activities rather than arrows" {
+  let diagram = @parser.parse_activity("@startuml\n- not an arrow\n@enduml")
+  @test.assert_eq(has_action(diagram, "not an arrow"), true)
+  @test.assert_eq(diagram.nodes.any(node => node is Arrow(_)), false)
 }

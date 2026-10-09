@@ -10,10 +10,10 @@ Run `moon test --update` from this directory to refresh them.
 ## Quick start
 
 ```bash
-moon add kokic/uml
+moon add moonbit-community/uml
 ```
 
-The facade package is `kokic/uml/api`. Its entry points are:
+The facade package is `moonbit-community/uml/api`. Its entry points are:
 
 - `@api.render_svg(source)` — parse a PlantUML source and render it to SVG in
   one call.
@@ -211,7 +211,7 @@ test "json diagram" (it : @test.Test) {
   let source =
     #|@startjson
     #|{
-    #|  "name": "kokic/uml",
+    #|  "name": "moonbit-community/uml",
     #|  "version": "0.1.2",
     #|  "targets": ["wasm", "js", "native"],
     #|  "diagrams": {
@@ -388,7 +388,7 @@ Run from the `uml/` directory:
 
 ```bash
 moon test                       # run tests, including gallery snapshots
-moon test -p kokic/uml --update  # update __snapshot__/*.svg from README examples
+moon test -p moonbit-community/uml --update  # update __snapshot__/*.svg from README examples
 ```
 
 The gallery tests render the examples directly, including theme settings,

@@ -1,5 +1,7 @@
 ///|
 pub(all) struct StateNodeLayout {
+  /// Node-local outline supplied by Graphviz, preserved through fragment shifts.
+  outline : Array[@graphics.Point]?
   code : String
   x : Double
   y : Double
@@ -966,6 +968,9 @@ fn @flow.StateDiagram::layout_scope(
     let (nodesep, ranksep) = self.graphviz_spacing(scope, region_index)
     @graphviz.layout_dot(graph, self.style, nodesep, ranksep)
   }
+  if laid_out.nodes.any(node => node.node.get_attr("shape") == Some("octagon")) {
+    @xdot.attach_xdot_attrs(laid_out)
+  }
   let bbox = laid_out.bbox
   let output : StateFragment = {
     width: bbox.urx - bbox.llx,
@@ -1006,6 +1011,12 @@ fn @flow.StateDiagram::layout_scope(
       )
       output.nodes.push({
         code: visible.state.code,
+        outline: if visible.state.kind is @flow.LegacyActivity &&
+          node_layout.node.get_attr("shape") == Some("octagon") {
+          Some(legacy_activity_outline(node_layout, bbox))
+        } else {
+          None
+        },
         x: node_x,
         y: node_y,
         width,
@@ -1369,6 +1380,7 @@ fn append_state_cluster_layouts(
     let bbox = layout.bbox
     output.nodes.push({
       code,
+      outline: None,
       x: bbox.llx - root_bbox.llx,
       y: root_bbox.ury - bbox.ury,
       width: bbox.urx - bbox.llx,

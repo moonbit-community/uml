@@ -70,7 +70,7 @@ fn swimlane_for_node(
 ) -> String? {
   for index = node_index.min(nodes.length() - 1); index >= 0; index = index - 1 {
     guard nodes[index] is @flow.ActivityNode::Swimlane(name) else { continue }
-    return Some(name)
+    return Some(name.name)
   }
   None
 }
@@ -80,8 +80,8 @@ fn swimlane_names(nodes : Array[@flow.ActivityNode]) -> Array[String] {
   let names = []
   for node in nodes {
     guard node is @flow.ActivityNode::Swimlane(name) else { continue }
-    guard !names.contains(name) else { continue }
-    names.push(name)
+    guard !names.contains(name.name) else { continue }
+    names.push(name.name)
   }
   names
 }
@@ -116,9 +116,14 @@ fn reposition_swimlanes(
       continue
     }
     let index = swimlane_index(names, name).unwrap()
+    let right = activity_node_drawn_right(
+      nodes[layout.node_index],
+      layout,
+      small_metrics,
+    )
     bounds[index] = Some(
-      bounds[index].map_or((layout.x, layout.x + layout.width), extent => {
-        (extent.0.min(layout.x), extent.1.max(layout.x + layout.width))
+      bounds[index].map_or((layout.x, right), extent => {
+        (extent.0.min(layout.x), extent.1.max(right))
       }),
     )
   }
@@ -146,7 +151,10 @@ fn reposition_swimlanes(
     let extent = bounds[index].unwrap()
     bounds[index] = Some((extent.0.min(left), extent.1.max(right)))
   }
-  let titles = names.map(activity_display_text)
+  let lanes = names.map(name => activity_lane(nodes, name))
+  let titles = lanes.map(lane => {
+    activity_display_text(lane.label.unwrap_or(lane.name))
+  })
   let widths = []
   for index, _ in names {
     let content_width = bounds[index].map_or(0.0, extent => extent.1 - extent.0)
@@ -204,6 +212,8 @@ fn reposition_swimlanes(
     regions.push({
       kind: Swimlane,
       label: title,
+      group: None,
+      color: lanes[index].color,
       x: positions[index],
       y: CANVAS_TOP,
       width: widths[index],
@@ -221,12 +231,14 @@ fn partition_regions(
   let regions = []
   for index, node in nodes {
     match node {
-      Partition(_) =>
+      Partition(group) =>
         for layout in layouts {
           guard layout.node_index == index else { continue }
           regions.push({
             kind: Partition,
             label: node.label().unwrap(),
+            group: Some(group),
+            color: group.color,
             x: layout.x,
             y: layout.y,
             width: layout.width,

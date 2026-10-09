@@ -74,18 +74,33 @@ fn append_legacy_activity_node(
     1.5,
     value => @string.parse_double(value) catch { _ => 1.5 },
   )
+  // EntityImageActivity.drawOctagon uses Graphviz's polygon, translated to
+  // the activity's local origin, and its fixed outline stroke.
+  let shape : @graphics.Shape = match layout.outline {
+    Some(points) => Polygon(points)
+    None =>
+      Rectangle(
+        origin={ x: 0, y: 0, },
+        width=layout.width,
+        height=layout.height,
+        rx=Some(LEGACY_ACTIVITY_CORNER / 2.0),
+        ry=None,
+      )
+  }
   output
-  .with_style(state_paint(Color(background), Color(border), width))
-  .draw(
-    Rectangle(
-      origin={ x: layout.x, y: layout.y, },
-      width=layout.width,
-      height=layout.height,
-      rx=Some(LEGACY_ACTIVITY_CORNER / 2.0),
-      ry=Some(LEGACY_ACTIVITY_CORNER / 2.0),
+  .translated(layout.x, layout.y)
+  .with_style(
+    state_paint(
+      Color(background),
+      Color(border),
+      if layout.outline is Some(_) {
+        LEGACY_ACTIVITY_OCTAGON_STROKE
+      } else {
+        width
+      },
     ),
-    metadata=state_class("legacy-activity-node"),
   )
+  .draw(shape, metadata=state_class("legacy-activity-node"))
   append_state_text_at_top(
     output.with_style({
       ..Default::default(),
@@ -116,3 +131,7 @@ pub fn render_legacy_activity_svg(
 ) -> String raise @dot_layout.DotLayoutError {
   diagram.render_svg(color_scheme~)
 }
+
+///|
+/// EntityImageActivity.drawOctagon uses UStroke.withThickness(1.5).
+const LEGACY_ACTIVITY_OCTAGON_STROKE : Double = 1.5

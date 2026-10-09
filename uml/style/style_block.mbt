@@ -124,7 +124,30 @@ fn apply_style_selector(
       "participant" => prefix = "Participant"
       "lifeline" => prefix = "SequenceLifeLine"
       "activation" => prefix = "SequenceLifeLine"
-      "group" => prefix = "SequenceGroup"
+      "group" =>
+        prefix = if family_prefix == "Activity" {
+          "Group"
+        } else {
+          "SequenceGroup"
+        }
+      "partition" => prefix = "Partition"
+      "rectangle" => prefix = "Rectangle"
+      "card" => prefix = "Card"
+      "swimlane" => prefix = "Swimlane"
+      "composite" if family_prefix == "Activity" =>
+        if prefix.is_empty() {
+          for role in ["partition", "package", "rectangle", "card", "group"] {
+            apply_style_selector(
+              words
+              .map(word => if word == "composite" { role } else { word })
+              .join(" "),
+              property,
+              value,
+              apply,
+            )
+          }
+          return
+        }
       "reference" => prefix = "SequenceReference"
       "separator" => prefix = "SequenceDivider"
       "diamond" => prefix = "ActivityDiamond"
@@ -154,6 +177,21 @@ fn apply_style_selector(
     prefix += "Stereotype"
   }
   if !labels.is_empty() && prefix.is_empty() {
+    if family_prefix == "Activity" {
+      for
+        role in [
+          "activity", "diamond", "activitybar", "partition", "package", "rectangle",
+          "card", "group", "circle", "note",
+        ] {
+        apply_style_selector(
+          "activityDiagram " + role + " " + path,
+          property,
+          value,
+          apply,
+        )
+      }
+      return
+    }
     if !family_prefix.is_empty() {
       prefix = family_prefix
     } else {

@@ -8,6 +8,8 @@ fn activity_edge_label_position_base(
   nodes : Array[@flow.ActivityNode],
   small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double, @graphics.TextAnchor) {
+  let from = activity_connection_box(nodes[edge.from_node_index], from)
+  let to = activity_connection_box(nodes[edge.to_node_index], to)
   let x = from.x + from.width / 2
   let y1 = from.y + from.height
   let target_x = to.x + to.width / 2
@@ -16,7 +18,7 @@ fn activity_edge_label_position_base(
   let from_is_decision = nodes[edge.from_node_index].is_decision()
   let to_is_fork = nodes[edge.to_node_index].is_parallel_bar()
   let to_is_switch_exit = nodes[edge.to_node_index]
-    is @flow.ActivityNode::EndSwitch
+    is @flow.ActivityNode::EndSwitch(_)
   match edge.route {
     ForkSequence
     | IfEmptyDown

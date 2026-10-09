@@ -127,7 +127,9 @@ fn place_switch_branches(
         edges,
       ),
       label: branch.label,
-      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(
+        branch.style,
+      ),
     })
   }
   placed
@@ -168,8 +170,8 @@ fn place_leaf(
       Some(index)
     },
     exit: if nodes[index]
-      is (@flow.ActivityNode::Stop
-      | @flow.ActivityNode::End
+      is (@flow.ActivityNode::Stop(_)
+      | @flow.ActivityNode::End(_)
       | @flow.ActivityNode::Note(_)
       | @flow.ActivityNode::StyledNote(_)) {
       None
@@ -243,8 +245,10 @@ fn place_tile(
     }
     Partition(index, tiles, end) => {
       let size = measure_tile(tile, nodes, metrics, small_metrics)
-      let body = measure_sequence(tiles, nodes, metrics, small_metrics)
-      let title = activity_measure(metrics, nodes[index].label().unwrap())
+      let inner_width = activity_group_inner_width(
+        tiles, nodes, metrics, small_metrics,
+      )
+      let title = activity_partition_title(nodes[index], metrics)
       layouts.push({
         node_index: index,
         note_pointer_offset: None,
@@ -258,7 +262,7 @@ fn place_tile(
         nodes,
         metrics,
         small_metrics,
-        x + (size.width - body.width) / 2,
+        x + (size.width - inner_width) / 2 + ACTIVITY_GROUP_MARGIN,
         y + partition_header_height(title.height),
         layouts,
         edges,
@@ -401,7 +405,9 @@ fn place_if_down(
     left_body.entry,
     IfDownLeft,
     label=branches[0].label,
-    style=sequence_incoming_style(branches[0].tiles, nodes).unwrap_or(None),
+    style=sequence_incoming_style(branches[0].tiles, nodes).unwrap_or(
+      branches[0].style,
+    ),
   )
   append_layout_edge(
     edges,
@@ -409,7 +415,9 @@ fn place_if_down(
     right_body.entry,
     IfDownRight,
     label=branches[1].label,
-    style=sequence_incoming_style(branches[1].tiles, nodes).unwrap_or(None),
+    style=sequence_incoming_style(branches[1].tiles, nodes).unwrap_or(
+      branches[1].style,
+    ),
   )
   append_layout_edge(
     edges,
@@ -511,7 +519,9 @@ fn place_if_chain(
           IfEmptyDown
         },
         label=branch.label,
-        style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+        style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(
+          branch.style,
+        ),
       )
     } else {
       append_layout_edge(
@@ -524,13 +534,17 @@ fn place_if_chain(
           IfBypassRight(cursor_x + branch_width - previous_decision_x)
         },
         label=branch.label,
-        style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+        style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(
+          branch.style,
+        ),
       )
     }
     placed.push({
       tile: body,
       label: branch.label,
-      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(
+        branch.style,
+      ),
     })
     cursor_x += branch_width + BRANCH_GAP
   }
@@ -930,11 +944,13 @@ fn place_parallel(
         edges,
       ),
       label: sequence_incoming_label(branch.tiles, nodes),
-      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+      style: sequence_incoming_style(branch.tiles, nodes).unwrap_or(
+        branch.style,
+      ),
     })
     cursor_x += column_width
   }
-  let merge = nodes[exit] is @flow.ActivityNode::EndMerge
+  let merge = nodes[exit] is @flow.ActivityNode::EndMerge(_)
   let exit_y = branches_y + branches_height + VERTICAL_GAP + outgoing
   layouts.push({
     node_index: entry,
@@ -1088,10 +1104,16 @@ fn @flow.ActivityDiagram::layout(
   let content_x = CANVAS_LEFT
   let lane_names = swimlane_names(source_nodes)
   let use_swimlanes = lane_names.length() > 1
+  let lane_metrics = activity_role_metrics(style, "Swimlane", 18)
   let mut title_height = REGION_HEADER_HEIGHT
   for name in lane_names {
     title_height = title_height.max(
-      activity_measure(metrics, activity_display_text(name)).height,
+      activity_measure(
+        lane_metrics,
+        activity_display_text(
+          activity_lane(source_nodes, name).label.unwrap_or(name),
+        ),
+      ).height,
     )
   }
   let top_padding = if use_swimlanes {
@@ -1107,7 +1129,7 @@ fn @flow.ActivityDiagram::layout(
     source_nodes,
     layouts,
     edges,
-    metrics,
+    lane_metrics,
     small_metrics,
     content.height + top_padding - CANVAS_TOP + REGION_PADDING,
   )
@@ -1156,7 +1178,9 @@ fn layout_content_right(
 ) -> Double {
   let mut right = 0.0
   for layout in layouts {
-    right = right.max(layout.x + layout.width)
+    right = right.max(
+      activity_node_drawn_right(nodes[layout.node_index], layout, small_metrics),
+    )
   }
   for edge in edges {
     if edge_label_extent(edge, layouts, nodes, small_metrics) is Some(end) {
@@ -1264,7 +1288,7 @@ fn place_if_vertical(
     Some(body.entry.unwrap_or(exit)),
     Forward,
     label=branch.label,
-    style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(None),
+    style=sequence_incoming_style(branch.tiles, nodes).unwrap_or(branch.style),
   )
   append_layout_edge(
     edges,

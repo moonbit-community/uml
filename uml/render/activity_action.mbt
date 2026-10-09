@@ -10,6 +10,9 @@ const ACTIVITY_CONTINUOUS_INSET : Double = 5.0
 
 ///|
 fn activity_box_style(action : @flow.ActivityAction) -> String {
+  if action.box_style is Some(box) {
+    return box
+  }
   let cursor = @tokenizer.Cursor::new(action.stereotype.unwrap_or(""))
   while cursor.take_stereotype_value() is Some(label) {
     let label = label[2:label.length() - 2]
@@ -125,7 +128,7 @@ fn @flow.ActivityNode::flow_axis(
 ) -> Double {
   (
     width -
-    (if self is StyledAction(action) {
+    (if self is (StyledAction(action) | RepeatAction(action)) {
       activity_box_shield(action)
     } else {
       0.0

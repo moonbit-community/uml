@@ -43,6 +43,7 @@ fn parse_activity_action(
         return @flow.StyledAction({
           label,
           stereotype: Some(stereotype),
+          box_style: None,
           style,
         })
       }
@@ -52,4 +53,21 @@ fn parse_activity_action(
     text += "\n" + buffer.current_stripped()
   }
   raise SyntaxError(start, "unclosed activity")
+}
+
+///|
+fn parse_activity_single_action(
+  source : String,
+  style : @style.DocumentStyle,
+  line : Int,
+) -> @flow.ActivityAction raise @tokenizer.ParseError {
+  let buffer = LineBuffer::new(source)
+  let node = parse_activity_action(buffer, style) catch {
+    SyntaxError(_, message) => raise SyntaxError(line, message)
+  }
+  match node {
+    @flow.Action(label) => { label, stereotype: None, box_style: None, style, }
+    @flow.StyledAction(action) => action
+    _ => raise SyntaxError(line, "invalid activity action")
+  }
 }

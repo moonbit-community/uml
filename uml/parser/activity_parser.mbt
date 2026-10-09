@@ -50,7 +50,12 @@ fn pop_block(
 
 ///|
 fn command_text(line : String, prefix : String) -> String {
-  line[prefix.length():].trim().to_owned()
+  let value = line[prefix.length():].trim().to_owned()
+  if value.has_suffix(";") {
+    value[:value.length() - 1].trim_end().to_owned()
+  } else {
+    value
+  }
 }
 
 ///|
@@ -95,7 +100,8 @@ pub fn parse_activity(
   let style = @style.DocumentStyle::empty()
   while !buffer.at_end() {
     let line_number = buffer.line_number()
-    let line = buffer.current_clean()
+    let (first, leading_color) = activity_control_color(buffer.current_clean())
+    let line = activity_control_source(buffer, first)
     let lower = line.to_lower()
     let control = if lower.has_suffix(";") {
       lower[:lower.length() - 1].trim_end().to_owned()
@@ -184,57 +190,151 @@ pub fn parse_activity(
       buffer.index = end + 1
       continue
     }
-    if control == "start" {
-      nodes.push(@flow.ActivityNode::Start)
-    } else if control == "stop" {
-      nodes.push(@flow.ActivityNode::Stop)
-    } else if control == "end" {
-      nodes.push(@flow.ActivityNode::End)
+    if parse_activity_list(line, style) is Some(action) {
+      nodes.push(action)
+    } else if parse_activity_spot(line) is Some((text, color)) {
+      nodes.push(@flow.Spot(text, color))
+    } else if control == "start" ||
+      lower.has_prefix("start <<") ||
+      lower.has_prefix("start;") ||
+      lower.has_prefix("start<<") {
+      nodes.push(
+        @flow.ActivityNode::Start(
+          activity_command_stereotype(command_text(line, "start"), line_number),
+        ),
+      )
+    } else if control == "stop" ||
+      lower.has_prefix("stop <<") ||
+      lower.has_prefix("stop;") ||
+      lower.has_prefix("stop<<") {
+      nodes.push(
+        @flow.ActivityNode::Stop(
+          activity_command_stereotype(command_text(line, "stop"), line_number),
+        ),
+      )
+    } else if control == "end" ||
+      lower.has_prefix("end <<") ||
+      lower.has_prefix("end;") ||
+      lower.has_prefix("end<<") {
+      nodes.push(
+        @flow.ActivityNode::End(
+          activity_command_stereotype(command_text(line, "end"), line_number),
+        ),
+      )
     } else if lower == "break" || lower == "break;" {
       nodes.push(@flow.ActivityNode::Break)
-    } else if control == "kill" {
+    } else if control == "kill" || control == "detach" {
       nodes.push(@flow.ActivityNode::Kill)
     } else if lower.has_prefix("backward") ||
       (lower.has_prefix("(") && lower.contains("backward")) {
       guard stack.last() is Some(WhileLoop | RepeatLoop) else {
         raise SyntaxError(line_number, "backward without enclosing loop")
       }
-      nodes.push(Backward(parse_activity_backward(buffer, line)))
+      nodes.push(Backward(parse_activity_backward(buffer, line, style)))
     } else if line.has_prefix(":") ||
       line.has_prefix("<<") ||
       line.has_prefix("#") {
       nodes.push(parse_activity_action(buffer, style))
     } else if lower.has_prefix("if ") {
       stack.push(BlockKind::Conditional)
-      nodes.push(If(command_text(line, "if")))
+      nodes.push(
+        If(
+          parse_activity_decision(
+            command_text(line, "if"),
+            style,
+            leading_color,
+            "if",
+          ),
+        ),
+      )
     } else if lower.has_prefix("elseif ") {
       require_block(stack, BlockKind::Conditional, line_number, "elseif")
-      nodes.push(ElseIf(command_text(line, "elseif")))
+      nodes.push(
+        ElseIf(
+          parse_activity_decision(
+            command_text(line, "elseif"),
+            style,
+            leading_color,
+            "elseif",
+          ),
+        ),
+      )
     } else if lower == "else" || lower.has_prefix("else ") {
       require_block(stack, BlockKind::Conditional, line_number, "else")
       nodes.push(Else(command_text(line, "else")))
-    } else if lower == "endif" {
+    } else if control == "endif" ||
+      control == "end if" ||
+      lower.has_prefix("endif ") ||
+      lower.has_prefix("end if ") {
       pop_block(stack, BlockKind::Conditional, line_number, "endif")
-      nodes.push(EndIf)
+      nodes.push(
+        EndIf(
+          parse_activity_decision(
+            command_text(
+              line,
+              if lower.has_prefix("end if") {
+                "end if"
+              } else {
+                "endif"
+              },
+            ),
+            style,
+            None,
+            "endif",
+          ),
+        ),
+      )
     } else if lower.has_prefix("while ") {
       stack.push(BlockKind::WhileLoop)
-      nodes.push(While(command_text(line, "while")))
-    } else if lower == "endwhile" || lower.has_prefix("endwhile ") {
+      nodes.push(
+        While(
+          parse_activity_decision(
+            command_text(line, "while"),
+            style,
+            leading_color,
+            "while",
+          ),
+        ),
+      )
+    } else if control == "endwhile" || lower.has_prefix("endwhile ") {
       pop_block(stack, BlockKind::WhileLoop, line_number, "endwhile")
       nodes.push(EndWhile(command_text(line, "endwhile")))
-    } else if lower.has_prefix("repeat :") && line.has_suffix(";") {
+    } else if lower.has_prefix("repeat :") {
       stack.push(RepeatLoop)
       nodes.push(
         RepeatAction(
-          line["repeat :".length():line.length() - 1].trim().to_owned(),
+          parse_activity_single_action(
+            line["repeat ".length():].to_owned(),
+            style,
+            line_number,
+          ),
         ),
       )
-    } else if lower == "repeat" {
+    } else if control == "repeat" ||
+      (lower.has_prefix("repeat ") && !lower.has_prefix("repeat while")) {
       stack.push(RepeatLoop)
-      nodes.push(Repeat)
+      nodes.push(
+        Repeat(
+          parse_activity_decision(
+            command_text(line, "repeat"),
+            style,
+            None,
+            "repeat",
+          ),
+        ),
+      )
     } else if lower.has_prefix("repeat while ") {
       pop_block(stack, RepeatLoop, line_number, "repeat while")
-      nodes.push(RepeatWhile(command_text(line, "repeat while")))
+      nodes.push(
+        RepeatWhile(
+          parse_activity_decision(
+            command_text(line, "repeat while"),
+            style,
+            leading_color,
+            "repeat while",
+          ),
+        ),
+      )
     } else if control == "split" || lower == "split;" {
       stack.push(SplitBlock)
       nodes.push(Split)
@@ -246,41 +346,64 @@ pub fn parse_activity(
       lower == "end split;" {
       pop_block(stack, SplitBlock, line_number, "end split")
       nodes.push(EndSplit)
-    } else if control == "fork" {
+    } else if control == "fork" ||
+      lower.has_prefix("fork <<") ||
+      lower.has_prefix("fork;") ||
+      lower.has_prefix("fork<<") {
       stack.push(ForkBlock)
-      nodes.push(Fork)
+      nodes.push(
+        Fork(
+          activity_command_stereotype(command_text(line, "fork"), line_number),
+        ),
+      )
     } else if control == "fork again" {
       require_block(stack, ForkBlock, line_number, "fork again")
       nodes.push(ForkAgain)
-    } else if control == "end merge" {
-      pop_block(stack, ForkBlock, line_number, "end merge")
-      nodes.push(EndMerge)
-    } else if control == "end fork" ||
-      control == "endfork" ||
-      control == "fork end" {
+    } else if parse_activity_fork_end(line) is Some((merge, label)) {
       pop_block(stack, ForkBlock, line_number, "end fork")
-      nodes.push(EndFork)
+      nodes.push(if merge { EndMerge(None) } else { EndFork(label, None) })
     } else if lower.has_prefix("switch ") {
       stack.push(SwitchBlock)
-      nodes.push(Switch(command_text(line, "switch")))
+      nodes.push(
+        Switch(
+          parse_activity_decision(
+            command_text(line, "switch"),
+            style,
+            leading_color,
+            "switch",
+          ),
+        ),
+      )
     } else if lower.has_prefix("case ") {
       require_block(stack, SwitchBlock, line_number, "case")
       nodes.push(Case(command_text(line, "case")))
-    } else if lower == "endswitch" {
+    } else if control == "endswitch" || lower.has_prefix("endswitch ") {
       pop_block(stack, SwitchBlock, line_number, "endswitch")
-      nodes.push(EndSwitch)
-    } else if line.has_prefix("|") && line.has_suffix("|") {
-      nodes.push(Swimlane(line[1:line.length() - 1].trim().to_owned()))
-    } else if lower.has_prefix("partition ") && line.has_suffix("{") {
+      nodes.push(
+        EndSwitch(
+          parse_activity_decision(
+            command_text(line, "endswitch"),
+            style,
+            None,
+            "endswitch",
+          ),
+        ),
+      )
+    } else if parse_activity_swimlane(line) is Some(lane) {
+      nodes.push(Swimlane(lane))
+    } else if parse_activity_group(line, style) is Some(group) {
       stack.push(PartitionBlock)
-      nodes.push(Partition(line[9:line.length() - 1].trim().to_owned()))
-    } else if line == "}" {
-      pop_block(stack, PartitionBlock, line_number, "}")
+      nodes.push(Partition(group))
+    } else if line == "}" ||
+      ["end group", "endgroup", "group end", "groupend"].contains(control) {
+      pop_block(stack, PartitionBlock, line_number, line)
       nodes.push(EndPartition)
     } else if lower.has_prefix("label ") {
       nodes.push(Label(command_text(line, "label")))
     } else if lower.has_prefix("goto ") {
       nodes.push(Goto(command_text(line, "goto")))
+    } else if lower.has_prefix("link #") {
+      nodes.push(Arrow("-[" + command_text(line, "link") + "]->"))
     } else if control == "nolink" {
       nodes.push(Arrow("-[hidden]->"))
     } else if is_activity_arrow(line) {
@@ -313,6 +436,7 @@ fn activity_backward_link(value : String) -> @flow.ActivityEdgeLabel {
 fn parse_activity_backward(
   buffer : LineBuffer,
   line : String,
+  style : @style.DocumentStyle,
 ) -> @flow.ActivityBackward raise @tokenizer.ParseError {
   let keyword = line.to_lower().find("backward").unwrap()
   let incoming = activity_backward_link(line[:keyword].trim().to_owned())
@@ -331,9 +455,27 @@ fn parse_activity_backward(
   let last = lines.length() - 1
   let ending = lines[last]
   let semicolon = ending.find(";").unwrap()
-  let outgoing = activity_backward_link(
-    ending[semicolon + 1:].trim().to_owned(),
-  )
+  let suffix = @tokenizer.Cursor::new(ending[semicolon + 1:].trim().to_owned())
+  let stereotypes = StringBuilder()
+  while suffix.take_stereotype_value() is Some(label) {
+    stereotypes.write_string(label)
+    suffix.skip_inline_spaces()
+  }
+  let outgoing = activity_backward_link(suffix.take_rest_trimmed())
   lines[last] = ending[:semicolon].to_owned()
-  { label: lines.join("\n").trim().to_owned(), incoming, outgoing, }
+  let stereotype = stereotypes.to_string()
+  {
+    action: {
+      label: lines.join("\n").trim().to_owned(),
+      stereotype: if stereotype.is_empty() {
+        None
+      } else {
+        Some(stereotype)
+      },
+      box_style: None,
+      style,
+    },
+    incoming,
+    outgoing,
+  }
 }

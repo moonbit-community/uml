@@ -1,9 +1,9 @@
 @startuml '.mbti
 // Generated using `moon info`, DON'T EDIT IT
-package "kokic/uml/flow"
+package "moonbit-community/uml/flow"
 
 import {
-  "kokic/uml/style",
+  "moonbit-community/uml/style",
   "moonbitlang/core/debug",
 }
 

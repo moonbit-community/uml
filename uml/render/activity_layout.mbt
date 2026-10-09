@@ -85,6 +85,8 @@ pub extend ActivityRegionKind with Debug::{to_repr}
 pub(all) struct ActivityRegionLayout {
   kind : ActivityRegionKind
   label : String
+  group : @flow.ActivityGroup?
+  color : String?
   x : Double
   y : Double
   width : Double
@@ -133,6 +135,7 @@ priv enum Tile {
 
 ///|
 priv struct BranchTiles {
+  style : String?
   decision : Int?
   tiles : Array[Tile]
   label : String?
@@ -326,14 +329,30 @@ fn tiles_from_instructions(
   let tiles = []
   for instruction in instructions {
     match instruction {
-      @flow.ActivityInstruction::Start =>
+      @flow.ActivityInstruction::Spot(text, color) =>
         tiles.push(
-          Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Start)),
+          Tile::Leaf(
+            add_layout_node(nodes, @flow.ActivityNode::Spot(text, color)),
+          ),
         )
-      @flow.ActivityInstruction::Stop =>
-        tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::Stop)))
-      @flow.ActivityInstruction::End =>
-        tiles.push(Tile::Leaf(add_layout_node(nodes, @flow.ActivityNode::End)))
+      @flow.ActivityInstruction::Start(stereotype) =>
+        tiles.push(
+          Tile::Leaf(
+            add_layout_node(nodes, @flow.ActivityNode::Start(stereotype)),
+          ),
+        )
+      @flow.ActivityInstruction::Stop(stereotype) =>
+        tiles.push(
+          Tile::Leaf(
+            add_layout_node(nodes, @flow.ActivityNode::Stop(stereotype)),
+          ),
+        )
+      @flow.ActivityInstruction::End(stereotype) =>
+        tiles.push(
+          Tile::Leaf(
+            add_layout_node(nodes, @flow.ActivityNode::End(stereotype)),
+          ),
+        )
       @flow.ActivityInstruction::Backward(_) => ()
       @flow.ActivityInstruction::Break =>
         tiles.push(
@@ -385,7 +404,10 @@ fn tiles_from_instructions(
             add_layout_node(nodes, @flow.ActivityNode::If(condition))
           })
         })
-        let exit = add_layout_node(nodes, @flow.ActivityNode::EndIf)
+        let exit = add_layout_node(
+          nodes,
+          @flow.ActivityNode::EndIf(chain.merge),
+        )
         let is_long = decisions.filter(decision => decision is Some(_)).length() >
           1
         let branches = chain.branches.mapi((index, branch) => {
@@ -396,25 +418,38 @@ fn tiles_from_instructions(
           )
           if is_long && sequence_is_empty(tiles, nodes) {
             tiles.push(
-              FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndIf)),
+              FlowAnchor(
+                add_layout_node(nodes, @flow.ActivityNode::EndIf(chain.merge)),
+              ),
             )
           }
-          { decision: decisions[index], tiles, label, }
+          {
+            decision: decisions[index],
+            tiles,
+            label,
+            style: branch.incoming.style,
+          }
         })
         if branches[branches.length() - 1].decision is Some(_) {
           let tiles = if is_long {
-            [FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndIf))]
+            [
+              FlowAnchor(
+                add_layout_node(nodes, @flow.ActivityNode::EndIf(chain.merge)),
+              ),
+            ]
           } else {
             []
           }
-          branches.push({ decision: None, tiles, label: None, })
+          branches.push({ decision: None, tiles, label: None, style: None, })
         }
         // ConditionalBuilder keeps two empty branches in the two-column layout.
         if !is_long &&
           branches.all(branch => sequence_is_empty(branch.tiles, nodes)) {
           for branch in branches {
             branch.tiles.push(
-              FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::EndIf)),
+              FlowAnchor(
+                add_layout_node(nodes, @flow.ActivityNode::EndIf(chain.merge)),
+              ),
             )
           }
         }
@@ -456,9 +491,10 @@ fn tiles_from_instructions(
       @flow.ActivityInstruction::Repeat(repeat_instruction) => {
         let entry = add_layout_node(
           nodes,
-          repeat_instruction.start.map_or(@flow.ActivityNode::Repeat, text => {
-            @flow.ActivityNode::RepeatAction(text)
-          }),
+          repeat_instruction.start.map_or(
+            @flow.ActivityNode::Repeat(repeat_instruction.entry),
+            text => @flow.ActivityNode::RepeatAction(text),
+          ),
         )
         let body = tiles_from_instructions(
           repeat_instruction.instructions,
@@ -496,7 +532,13 @@ fn tiles_from_instructions(
             LoopWithBreaks(
               loop_tile,
               breaks,
-              add_layout_node(nodes, @flow.ActivityNode::EndIf),
+              add_layout_node(
+                nodes,
+                @flow.ActivityNode::EndIf({
+                  ..repeat_instruction.condition,
+                  text: "",
+                }),
+              ),
               true,
             )
           },
@@ -510,7 +552,7 @@ fn tiles_from_instructions(
           if split {
             @flow.ActivityNode::Split
           } else {
-            @flow.ActivityNode::Fork
+            @flow.ActivityNode::Fork(fork.stereotype)
           },
         )
         let branches = fork.branches.map(branch => {
@@ -520,16 +562,16 @@ fn tiles_from_instructions(
               FlowAnchor(add_layout_node(nodes, @flow.ActivityNode::ForkAgain)),
             )
           }
-          { decision: None, tiles, label: None, }
+          { decision: None, tiles, label: None, style: None, }
         })
         let exit = add_layout_node(
           nodes,
           if split {
             @flow.ActivityNode::EndSplit
           } else if fork.merge {
-            @flow.ActivityNode::EndMerge
+            @flow.ActivityNode::EndMerge(fork.stereotype)
           } else {
-            @flow.ActivityNode::EndFork
+            @flow.ActivityNode::EndFork(fork.label, fork.stereotype)
           },
         )
         tiles.push(Tile::Parallel(entry, branches, exit))
@@ -539,7 +581,10 @@ fn tiles_from_instructions(
           nodes,
           @flow.ActivityNode::Switch(switch.condition),
         )
-        let exit = add_layout_node(nodes, @flow.ActivityNode::EndSwitch)
+        let exit = add_layout_node(
+          nodes,
+          @flow.ActivityNode::EndSwitch(switch.merge),
+        )
         let branches = switch.branches.map(branch => {
           let tiles = tiles_from_instructions(branch.instructions, nodes)
           let label = sequence_incoming_label(tiles, nodes).map_or(
@@ -557,14 +602,14 @@ fn tiles_from_instructions(
               ),
             )
           }
-          { decision: None, tiles, label, }
+          { decision: None, tiles, label, style: branch.incoming.style, }
         })
         tiles.push(Tile::Switch(entry, branches, exit))
       }
       @flow.ActivityInstruction::Partition(partition) => {
         let index = add_layout_node(
           nodes,
-          @flow.ActivityNode::Partition(partition.label),
+          @flow.ActivityNode::Partition(partition.group),
         )
         let body = tiles_from_instructions(partition.instructions, nodes)
         let end = add_layout_node(nodes, @flow.ActivityNode::EndPartition)
@@ -620,35 +665,35 @@ fn activity_display_text(value : String) -> String {
 ///|
 fn @flow.ActivityNode::label(self : @flow.ActivityNode) -> String? {
   match self {
-    StyledAction(action) => Some(activity_display_text(action.label))
+    Partition(group) => Some(activity_display_text(group.label))
+    Swimlane(lane) =>
+      Some(activity_display_text(lane.label.unwrap_or(lane.name)))
+    StyledAction(action) | RepeatAction(action) =>
+      Some(activity_display_text(action.label))
     StyledNote(note) => Some(activity_display_text(note.text))
-    Action(label)
-    | Note(label, _)
-    | RepeatAction(label)
-    | Partition(label)
-    | Swimlane(label)
-    | If(label)
-    | ElseIf(label)
-    | Switch(label)
-    | While(label)
-    | RepeatWhile(label) => Some(activity_display_text(label))
+    Action(label) | Note(label, _) => Some(activity_display_text(label))
+    If(decision)
+    | ElseIf(decision)
+    | Switch(decision)
+    | While(decision)
+    | RepeatWhile(decision) => Some(activity_display_text(decision.text))
     _ => None
   }
 }
 
 ///|
 fn @flow.ActivityNode::is_decision(self : @flow.ActivityNode) -> Bool {
-  self is (If(_) | While(_) | Repeat | RepeatWhile(_) | Switch(_))
+  self is (If(_) | While(_) | Repeat(_) | RepeatWhile(_) | Switch(_))
 }
 
 ///|
 fn @flow.ActivityNode::is_parallel_bar(self : @flow.ActivityNode) -> Bool {
-  self is (Fork | EndFork | Split | EndSplit)
+  self is (Fork(_) | EndFork(_) | Split | EndSplit)
 }
 
 ///|
 fn @flow.ActivityNode::is_exit(self : @flow.ActivityNode) -> Bool {
-  self is (EndIf | EndSwitch | EndMerge)
+  self is (EndIf(_) | EndSwitch(_) | EndMerge(_))
 }
 
 ///|
@@ -658,18 +703,43 @@ fn @flow.ActivityNode::size(
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   match self {
-    StyledAction(action) => activity_action_measure(action)
+    StyledAction(action) | RepeatAction(action) =>
+      activity_action_measure(action)
     StyledNote(note) => activity_styled_note_size(note)
-    Start => { width: TERMINAL_SIZE, height: TERMINAL_SIZE, }
-    Stop => { width: STOP_SIZE, height: STOP_SIZE, }
-    End => { width: END_SIZE, height: END_SIZE, }
+    Spot(_, _) => { width: ACTIVITY_SPOT_SIZE, height: ACTIVITY_SPOT_SIZE, }
+    Start(_) => { width: TERMINAL_SIZE, height: TERMINAL_SIZE, }
+    Stop(_) => { width: STOP_SIZE, height: STOP_SIZE, }
+    End(_) => { width: END_SIZE, height: END_SIZE, }
     Kill => { width: 0, height: 0, }
     _ if self.is_exit() => { width: EXIT_SIZE, height: EXIT_SIZE, }
-    Repeat => { width: EXIT_SIZE, height: EXIT_SIZE, }
+    Repeat(_) => { width: EXIT_SIZE, height: EXIT_SIZE, }
     _ if self.is_parallel_bar() =>
       { width: 0, height: parallel_bar_height(self), }
     _ if self.is_decision() => {
-      let text = activity_measure(small_metrics, self.label().unwrap_or(""))
+      let font = self
+        .activity_decision()
+        .map_or(small_metrics, activity_decision_metrics)
+      let text = activity_measure(font, self.label().unwrap_or(""))
+      if self.condition_shape() == EmptyDiamond {
+        return {
+          width: DIAMOND_TEXT_PADDING,
+          height: DIAMOND_HEIGHT + text.height,
+        }
+      }
+      if self.condition_shape() == InsideDiamond {
+        return {
+          width: if text.width == 0 {
+            DIAMOND_TEXT_PADDING
+          } else {
+            text.width + DIAMOND_TEXT_PADDING
+          },
+          height: if text.width == 0 {
+            DIAMOND_HEIGHT
+          } else {
+            text.height + DIAMOND_HEIGHT
+          },
+        }
+      }
       {
         width: if text.width == 0 {
           DIAMOND_TEXT_PADDING
@@ -679,7 +749,7 @@ fn @flow.ActivityNode::size(
         height: text.height.max(DIAMOND_HEIGHT),
       }
     }
-    Note(_, _) | Action(_) | RepeatAction(_) => {
+    Note(_, _) | Action(_) => {
       let text = activity_measure(metrics, self.label().unwrap())
       {
         width: text.width + TEXT_PADDING * 2,
@@ -918,12 +988,15 @@ fn measure_tile(
     FlowAnchor(_) | GotoAnchor(_) => { width: 0, height: 0, }
     Partition(index, tiles, _) => {
       let body = measure_sequence(tiles, nodes, metrics, small_metrics)
-      let title = activity_measure(metrics, nodes[index].label().unwrap())
+      let inner_width = activity_group_inner_width(
+        tiles, nodes, metrics, small_metrics,
+      )
+      let title = activity_partition_title(nodes[index], metrics)
       {
-        width: body.width.max(title.width) + TEXT_PADDING * 2,
+        width: inner_width.max(title.width + ACTIVITY_GROUP_MARGIN * 2),
         height: body.height +
         partition_header_height(title.height) +
-        REGION_PADDING,
+        ACTIVITY_GROUP_BOTTOM,
       }
     }
     Swimlane(_) => { width: 0, height: 0, }
@@ -1016,7 +1089,9 @@ fn measure_tile(
         branches, nodes, metrics, small_metrics,
       )
       {
-        width: branches_width + FORK_COLUMN_MARGIN * 2,
+        width: branches_width +
+        FORK_COLUMN_MARGIN * 2 +
+        activity_fork_label_width(nodes[exit], small_metrics),
         height: parallel_bar_height(nodes[entry]) +
         VERTICAL_GAP +
         incoming +
@@ -1026,7 +1101,7 @@ fn measure_tile(
         (if nodes[entry] is @flow.ActivityNode::Split &&
           !branches.any(branch => sequence_has_exit(branch.tiles, nodes)) {
           0.0
-        } else if nodes[exit] is @flow.ActivityNode::EndMerge {
+        } else if nodes[exit] is @flow.ActivityNode::EndMerge(_) {
           EXIT_SIZE
         } else {
           parallel_bar_height(nodes[entry])
@@ -1096,8 +1171,8 @@ fn sequence_has_exit(
           continue
         }
         return !(nodes[index]
-          is (@flow.ActivityNode::Stop
-          | @flow.ActivityNode::End
+          is (@flow.ActivityNode::Stop(_)
+          | @flow.ActivityNode::End(_)
           | @flow.ActivityNode::Kill
           | @flow.ActivityNode::Note(_)
           | @flow.ActivityNode::StyledNote(_)))
@@ -1121,7 +1196,7 @@ fn sequence_has_exit(
 ///|
 /// Reserve the title block before placing the partition's child flow.
 fn partition_header_height(text_height : Double) -> Double {
-  REGION_HEADER_HEIGHT.max(text_height) + REGION_PADDING
+  ACTIVITY_GROUP_MIN_HEADER.max(text_height + ACTIVITY_GROUP_BOTTOM)
 }
 
 ///|
@@ -1242,7 +1317,7 @@ fn activity_backward_tile(
     Some(value) =>
       LoopWithBackward(
         body,
-        add_layout_node(nodes, @flow.ActivityNode::Action(value.label)),
+        add_layout_node(nodes, @flow.ActivityNode::StyledAction(value.action)),
         entry,
         exit,
         value,
@@ -1276,14 +1351,14 @@ fn parallel_bar_height(node : @flow.ActivityNode) -> Double {
 
 ///|
 fn @flow.ActivityNode::is_parallel_entry(self : @flow.ActivityNode) -> Bool {
-  self is (Fork | Split)
+  self is (Fork(_) | Split)
 }
 
 ///|
 /// Only synchronization bars carry ignoreForCompression; FtileThinSplit lines
 /// remain occupied geometry and therefore keep the space between branches.
 fn @flow.ActivityNode::is_fork(self : @flow.ActivityNode) -> Bool {
-  self is (Fork | EndFork)
+  self is (Fork(_) | EndFork(_))
 }
 
 ///|

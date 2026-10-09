@@ -48,9 +48,12 @@ fn anchor_index(
 ///|
 fn control_index(layout : @render.ActivityLayout, condition : String) -> Int? {
   for index, node in layout.source_nodes {
-    guard (node is @flow.ActivityNode::While(value) && value == condition) ||
-      (node is @flow.ActivityNode::RepeatWhile(value) && value == condition) ||
-      (node is @flow.ActivityNode::If(value) && value == condition) else {
+    guard (node is @flow.ActivityNode::While(value) && value.text == condition) ||
+      (
+        node is @flow.ActivityNode::RepeatWhile(value) &&
+        value.text == condition
+      ) ||
+      (node is @flow.ActivityNode::If(value) && value.text == condition) else {
       continue
     }
     return Some(index)
@@ -137,14 +140,16 @@ test "parallel branches are horizontal and converge at the ending fork" {
       @test.assert_eq(
         layout.edges.any(edge => {
           edge.to_node_index == branch.node_index &&
-          layout.source_nodes[edge.from_node_index] is @flow.ActivityNode::Fork
+          layout.source_nodes[edge.from_node_index]
+          is @flow.ActivityNode::Fork(_)
         }),
         true,
       )
       @test.assert_eq(
         layout.edges.any(edge => {
           edge.from_node_index == branch.node_index &&
-          layout.source_nodes[edge.to_node_index] is @flow.ActivityNode::EndFork
+          layout.source_nodes[edge.to_node_index]
+          is @flow.ActivityNode::EndFork(_)
         }),
         true,
       )
@@ -361,7 +366,8 @@ test "conditional and switch labels belong to incoming branch edges" {
     switch_layout.source_nodes[node.node_index] is @flow.ActivityNode::Switch(_)
   })
   let merges = switch_layout.nodes.filter(node => {
-    switch_layout.source_nodes[node.node_index] is @flow.ActivityNode::EndSwitch
+    switch_layout.source_nodes[node.node_index]
+    is @flow.ActivityNode::EndSwitch(_)
   })
   let decision = decisions[0]
   let merge = merges[0]
@@ -394,7 +400,7 @@ test "conditional and switch labels belong to incoming branch edges" {
     @test.assert_eq(outgoing.length(), 1)
     let merge = outgoing[0].to_node_index
     @test.assert_eq(
-      layout.source_nodes[merge] is @flow.ActivityNode::EndSwitch,
+      layout.source_nodes[merge] is @flow.ActivityNode::EndSwitch(_),
       true,
     )
     @test.assert_eq(
@@ -815,8 +821,8 @@ test "terminal branches do not expose an outgoing flow or merge" {
     @test.assert_eq(
       layout.edges.any(edge => {
         layout.source_nodes[edge.from_node_index]
-        is (@flow.ActivityNode::Stop
-        | @flow.ActivityNode::End
+        is (@flow.ActivityNode::Stop(_)
+        | @flow.ActivityNode::End(_)
         | @flow.ActivityNode::Kill
         | @flow.ActivityNode::Action("Terminated"))
       }),
@@ -825,8 +831,8 @@ test "terminal branches do not expose an outgoing flow or merge" {
     @test.assert_eq(
       layout.nodes.any(node => {
         layout.source_nodes[node.node_index]
-        is (@flow.ActivityNode::EndIf
-        | @flow.ActivityNode::EndSwitch
+        is (@flow.ActivityNode::EndIf(_)
+        | @flow.ActivityNode::EndSwitch(_)
         | @flow.ActivityNode::Kill)
       }),
       false,
@@ -891,14 +897,14 @@ test "side notes preserve the activity flow and its axis" {
   @test.assert_eq((left + right - next_left - next_right).abs() <= 1, true)
   for node in layout.nodes {
     if layout.source_nodes[node.node_index]
-      is (@flow.ActivityNode::Repeat
+      is (@flow.ActivityNode::Repeat(_)
       | @flow.ActivityNode::RepeatWhile(_)
       | @flow.ActivityNode::If(_)
-      | @flow.ActivityNode::EndIf
+      | @flow.ActivityNode::EndIf(_)
       | @flow.ActivityNode::While(_)
       | @flow.ActivityNode::EndWhile(_)
-      | @flow.ActivityNode::Start
-      | @flow.ActivityNode::Stop) {
+      | @flow.ActivityNode::Start(_)
+      | @flow.ActivityNode::Stop(_)) {
       @test.assert_eq(node.x + node.width / 2, left + (right - left) / 2)
     }
   }

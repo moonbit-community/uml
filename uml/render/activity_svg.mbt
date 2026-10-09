@@ -69,6 +69,11 @@ fn append_edge(
 ) -> Unit {
   guard layout_for(layout, edge.from_node_index) is Some(from) else { return }
   guard layout_for(layout, edge.to_node_index) is Some(to) else { return }
+  let from = activity_connection_box(
+    layout.source_nodes[edge.from_node_index],
+    from,
+  )
+  let to = activity_connection_box(layout.source_nodes[edge.to_node_index], to)
   let x = from.x +
     layout.source_nodes[edge.from_node_index].flow_axis(from.width)
   let y1 = from.y + from.height
@@ -79,10 +84,10 @@ fn append_edge(
   let from_is_decision = layout.source_nodes[edge.from_node_index].is_decision()
   let from_is_fork = layout.source_nodes[edge.from_node_index].is_parallel_bar()
   let to_is_continuation = layout.source_nodes[edge.to_node_index]
-    is @flow.ActivityNode::EndIf &&
+    is @flow.ActivityNode::EndIf(_) &&
     to.width == 0
   let to_is_switch_exit = layout.source_nodes[edge.to_node_index]
-    is @flow.ActivityNode::EndSwitch
+    is @flow.ActivityNode::EndSwitch(_)
   let to_is_fork = layout.source_nodes[edge.to_node_index].is_parallel_bar()
   let path : Array[@graphics.PathSegment] = if (from_is_fork || to_is_fork) &&
     edge.route is Forward {
@@ -398,7 +403,17 @@ fn append_edge(
     }) {
     None
   } else if edge.route is (WhileExitLeft(_) | IfChainMerge) ||
-    (edge.route is IfEmptyDown && to_is_continuation) {
+    (edge.route is IfEmptyDown && to_is_continuation) ||
+    (
+      to_is_continuation &&
+      layout.source_nodes[edge.to_node_index]
+      .activity_decision()
+      .map_or(false, decision => {
+        decision.style
+        .property("ConditionEndStyle")
+        .map_or(false, value => value.equal_ignore_ascii_case("hline"))
+      })
+    ) {
     None
   } else {
     Some(arrow)
@@ -481,7 +496,28 @@ fn append_region(
   output : @graphics.Graphic,
   region : ActivityRegionLayout,
   font_metrics : @metrics.FontMetrics,
+  style : @style.DocumentStyle,
 ) -> Unit {
+  if region.group is Some(group) {
+    draw_activity_group(output, region, group)
+    return
+  }
+  let output = output.with_style({
+    ..output.drawing_style(),
+    fill: Color(
+      @svg.svg_color(
+        region.color,
+        style.property_color("SwimlaneBackgroundColor", "transparent"),
+      ),
+    ),
+    stroke: Color(
+      style.property_color("SwimlaneBorderColor", style.diagram_line_color()),
+    ),
+    stroke_width: Some(
+      activity_style_number(style, "SwimlaneBorderThickness", 1.5),
+    ),
+    inline: true,
+  })
   let class = match region.kind {
     ActivityRegionKind::Partition => "activity-partition"
     ActivityRegionKind::Swimlane => "activity-swimlane"
@@ -527,9 +563,14 @@ fn activity_append_node(
   node_layout : ActivityNodeLayout,
   font_metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
+  style : @style.DocumentStyle,
 ) -> Unit {
   let node = layout.source_nodes[node_layout.node_index]
-  if node is @flow.StyledAction(action) {
+  if node is @flow.Spot(text, color) {
+    draw_activity_spot(output, node_layout, text, color, style)
+    return
+  }
+  if node is (@flow.StyledAction(action) | @flow.RepeatAction(action)) {
     draw_activity_action(output, action, node_layout)
     return
   }
@@ -537,8 +578,76 @@ fn activity_append_node(
     draw_activity_styled_note(output, note, node_layout)
     return
   }
+  let output = match node {
+    @flow.Start(Some(stereotype))
+    | @flow.Stop(Some(stereotype))
+    | @flow.End(Some(stereotype)) => {
+      let cursor = @tokenizer.Cursor::new(stereotype)
+      let mut paint = output.drawing_style()
+      while cursor.take_stereotype_value() is Some(label) {
+        let value = label[2:label.length() - 2].trim().to_owned()
+        if value.has_prefix("#") {
+          if state_inline_color(Some(value), "back") is Some(color) {
+            paint = {
+              ..paint,
+              fill: Color(@svg.svg_color(Some(color), "transparent")),
+            }
+          }
+          if state_inline_color(Some(value), "line") is Some(color) {
+            paint = {
+              ..paint,
+              stroke: Color(
+                @svg.svg_color(Some(color), style.diagram_line_color()),
+              ),
+            }
+          }
+        }
+        cursor.skip_inline_spaces()
+      }
+      output.with_style({ ..paint, inline: true, })
+    }
+    @flow.Fork(stereotype) | @flow.EndFork(_, stereotype) => {
+      let selected = style.with_stereotypes(stereotype)
+      let cursor = @tokenizer.Cursor::new(stereotype.unwrap_or(""))
+      let mut color = selected.property_color(
+        "ActivityBarBackgroundColor", "#555555",
+      )
+      while cursor.take_stereotype_value() is Some(label) {
+        let inner = label[2:label.length() - 2].trim().to_owned()
+        if inner.has_prefix("#") &&
+          state_inline_color(Some(inner), "back") is Some(value) {
+          color = @svg.svg_color(Some(value), color)
+        }
+        cursor.skip_inline_spaces()
+      }
+      output.with_style({
+        ..Default::default(),
+        fill: Color(color),
+        stroke: Color(color),
+        inline: true,
+      })
+    }
+    @flow.EndMerge(_) =>
+      output.with_style({
+        ..Default::default(),
+        fill: Color(
+          style.property_color("ActivityBackgroundColor", style.defaults().node),
+        ),
+        stroke: Color(
+          style.property_color(
+            "ActivityBorderColor",
+            style.diagram_line_color(),
+          ),
+        ),
+        stroke_width: Some(
+          activity_style_number(style, "ActivityBorderThickness", 0.5),
+        ),
+        inline: true,
+      })
+    _ => output
+  }
   // Chains and conditionals with only one continuing branch use flow anchors.
-  guard !(node is @flow.ActivityNode::EndIf && node_layout.width == 0) else {
+  guard !(node is @flow.ActivityNode::EndIf(_) && node_layout.width == 0) else {
     return
   }
   let x = node_layout.x
@@ -555,13 +664,15 @@ fn activity_append_node(
     },
     output => {
       match node {
-        Start =>
+        Start(_) =>
           output.draw(
             Circle(center~, radius=height / 2),
             metadata=activity_class("activity-start"),
           )
-        End => {
-          output.draw(
+        End(_) => {
+          output
+          .with_style({ ..output.drawing_style(), fill: None, inline: true, })
+          .draw(
             Circle(center~, radius=height / 2.0),
             metadata=activity_class("activity-end-circle"),
           )
@@ -579,8 +690,10 @@ fn activity_append_node(
             metadata=activity_class("activity-end-cross"),
           )
         }
-        Stop => {
-          output.draw(
+        Stop(_) => {
+          output
+          .with_style({ ..output.drawing_style(), fill: None, inline: true, })
+          .draw(
             Circle(center~, radius=height / 2),
             metadata=activity_class("activity-stop-outer"),
           )
@@ -605,7 +718,7 @@ fn activity_append_node(
             metadata=activity_class("activity-edge"),
           )
         }
-        _ if node.is_parallel_bar() =>
+        _ if node.is_parallel_bar() => {
           output.draw(
             Rectangle(
               origin=activity_point(x, y),
@@ -616,10 +729,58 @@ fn activity_append_node(
             ),
             metadata=activity_class("activity-fork"),
           )
+          if node is @flow.EndFork(Some(label), _) {
+            let size = activity_measure(small_metrics, label)
+            append_state_text_at_top(
+              output,
+              label,
+              x + width + ACTIVITY_FORK_LABEL_MARGIN,
+              y - size.height / 2,
+              "activity-fork-label",
+              small_metrics,
+              anchor=Start,
+            )
+          }
+        }
         _ if node.is_exit() || node.is_decision() => {
+          let body = activity_connection_box(node, node_layout)
+          let y = body.y
+          let height = body.height
+          let center_y = y + height / 2
+          let decision_style = node
+            .activity_decision()
+            .map(activity_decision_style)
+          let decision_metrics = node
+            .activity_decision()
+            .map_or(small_metrics, activity_decision_metrics)
+          let output = decision_style.map_or(output, selected => {
+            output.with_style({
+              ..Default::default(),
+              fill: Color(
+                selected.property_color(
+                  "ActivityDiamondBackgroundColor",
+                  selected.defaults().node,
+                ),
+              ),
+              stroke: Color(
+                selected.property_color(
+                  "ActivityDiamondBorderColor",
+                  selected.diagram_line_color(),
+                ),
+              ),
+              stroke_width: Some(
+                activity_style_number(
+                  selected, "ActivityDiamondBorderThickness", 0.5,
+                ),
+              ),
+              inline: true,
+            })
+          })
           output.draw(
             Path(
-              if node.label() is Some(label) && label.length() > 0 {
+              if node.condition_shape() == Hexagon &&
+                node.label() is Some(label) &&
+                label.length() > 0 {
                 let side = DIAMOND_TEXT_PADDING / 2
                 [
                   MoveTo(activity_point(x + side, y)),
@@ -649,7 +810,44 @@ fn activity_append_node(
             ),
           )
           if !node.is_exit() && node.label() is Some(label) {
-            append_label(output, center_x, center_y + 4, label, small_metrics)
+            let text = decision_style.map_or(output, selected => {
+              output.with_style({
+                ..Default::default(),
+                fill: Color(
+                  selected.property_color(
+                    "ActivityDiamondFontColor",
+                    selected.diagram_text_color(),
+                  ),
+                ),
+              })
+            })
+            let size = activity_measure(decision_metrics, label)
+            append_state_text_at_top(
+              text,
+              label,
+              if node.condition_shape() == EmptyDiamond {
+                x + DIAMOND_TEXT_PADDING * 3 / 4
+              } else {
+                center_x
+              },
+              if node.condition_shape() == EmptyDiamond {
+                node_layout.y
+              } else {
+                center_y - size.height / 2
+              },
+              "activity-decision-label",
+              decision_metrics,
+              font_family=decision_style.map(selected => {
+                selected
+                .property("ActivityDiamondFontName")
+                .unwrap_or(selected.font_family())
+              }),
+              anchor=if node.condition_shape() == EmptyDiamond {
+                Start
+              } else {
+                Middle
+              },
+            )
           }
         }
         Note(_, _) => {
@@ -763,10 +961,68 @@ fn @flow.ActivityDiagram::render_svg(
 ) -> String {
   let nodes : Array[@flow.ActivityNode] = self.nodes.map(node => {
     match node {
+      @flow.Repeat(value) =>
+        @flow.Repeat({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.EndIf(value) =>
+        @flow.EndIf({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.EndSwitch(value) =>
+        @flow.EndSwitch({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.If(value) =>
+        @flow.If({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.ElseIf(value) =>
+        @flow.ElseIf({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.While(value) =>
+        @flow.While({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.RepeatWhile(value) =>
+        @flow.RepeatWhile({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.Switch(value) =>
+        @flow.Switch({
+          ..value,
+          style: value.style.with_color_scheme(color_scheme),
+        })
+      @flow.RepeatAction(action) =>
+        @flow.RepeatAction({
+          ..action,
+          style: action.style.with_color_scheme(color_scheme),
+        })
+      @flow.Backward(backward) =>
+        @flow.Backward({
+          ..backward,
+          action: {
+            ..backward.action,
+            style: backward.action.style.with_color_scheme(color_scheme),
+          },
+        })
       @flow.StyledAction(action) =>
         @flow.StyledAction({
           ..action,
           style: action.style.with_color_scheme(color_scheme),
+        })
+      @flow.Partition(group) =>
+        @flow.Partition({
+          ..group,
+          style: group.style.with_color_scheme(color_scheme),
         })
       @flow.StyledNote(note) =>
         @flow.StyledNote({
@@ -862,7 +1118,14 @@ fn @flow.ActivityDiagram::render_svg(
       ),
     )
     let content = output.translated(decoration.dx, decoration.dy)
-    layout.regions.each(region => append_region(content, region, font_metrics))
+    layout.regions.each(region => {
+      append_region(
+        content,
+        region,
+        activity_role_metrics(self.style, "Swimlane", 18),
+        self.style,
+      )
+    })
     for index, edge in layout.edges {
       if edge.style.map_or(false, value => value.contains(";")) {
         append_activity_rainbow(
@@ -892,7 +1155,14 @@ fn @flow.ActivityDiagram::render_svg(
       )
     }
     layout.nodes.each(node => {
-      activity_append_node(content, layout, node, font_metrics, small_metrics)
+      activity_append_node(
+        content,
+        layout,
+        node,
+        font_metrics,
+        small_metrics,
+        self.style,
+      )
     })
     draw_document_text(output, self.style, "activity-document", decoration.text)
   })

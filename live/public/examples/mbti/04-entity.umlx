@@ -1,10 +1,10 @@
 @startuml '.mbti
 // Generated using `moon info`, DON'T EDIT IT
-package "kokic/uml/entity"
+package "moonbit-community/uml/entity"
 
 import {
-  "kokic/uml/bodierjson",
-  "kokic/uml/style",
+  "moonbit-community/uml/bodierjson",
+  "moonbit-community/uml/style",
   "moonbitlang/core/debug",
 }
 

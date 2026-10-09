@@ -112,7 +112,14 @@ fn append_empty_concurrent_region(
       output,
       diagram,
       state,
-      { code: state.code, x: region.x, y: region.y, width, height, },
+      {
+        code: state.code,
+        outline: None,
+        x: region.x,
+        y: region.y,
+        width,
+        height,
+      },
       composite=false,
       empty_description=false,
     )
