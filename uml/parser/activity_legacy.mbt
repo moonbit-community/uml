@@ -21,13 +21,13 @@ priv struct LegacyActivityParser {
   state : Parser
   mut last : String?
   conditions : Array[String]
-  mut sequence : Int
+  mut sequence : Int32
 }
 
 ///|
 priv struct LegacyActivityArrow {
   direction : @flow.TransitionDirection
-  length : Int
+  length : Int32
   label : String?
   style : String?
 }

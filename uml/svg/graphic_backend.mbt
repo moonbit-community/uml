@@ -89,7 +89,7 @@ fn translated_point(
 /// apply to endpoints/control points only, never radii, rotations or flags.
 pub fn path_data(
   segments : Array[@graphics.PathSegment],
-  translation? : @graphics.Point = @graphics.Point::default(),
+  translation~ : @graphics.Point = @graphics.Point::default(),
 ) -> String {
   segments
   .map(segment => {
@@ -299,8 +299,8 @@ fn text_anchor_value(anchor : @graphics.TextAnchor) -> String {
 pub fn XmlWriter::text_run(
   self : XmlWriter,
   run : @graphics.TextRun,
-  translation? : @graphics.Point = @graphics.Point::default(),
-  attributes? : Array[(String, String)] = [],
+  translation~ : @graphics.Point = @graphics.Point::default(),
+  attributes~ : Array[(String, String)] = [],
   anchor? : String,
 ) -> Unit {
   self.text(

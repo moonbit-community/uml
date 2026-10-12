@@ -336,7 +336,7 @@ pub(all) struct Note {
   position : NotePosition
   text : String
   target_kind : NoteTargetKind
-  relation_index : Int?
+  relation_index : Int32?
   member_name : String?
   code : String?
   color : String?
@@ -353,8 +353,8 @@ pub extend Note with Debug::{to_repr}
 
 ///|
 pub(all) struct LinkConstraint {
-  first_relation : Int
-  second_relation : Int
+  first_relation : Int32
+  second_relation : Int32
   text : String
   color : String?
 } derive(Eq, Debug)

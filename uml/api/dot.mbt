@@ -92,7 +92,7 @@ fn apply_subgraph_defaults(
 /// Render the raw DOT source with the shared graphviz engine.
 pub fn DotDiagram::render_svg(
   self : DotDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise {
   let graph = @gv_dot.parse_dot(self.source)
   graph.apply_theme_defaults(color_scheme)

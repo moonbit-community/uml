@@ -20,7 +20,7 @@ pub extend RelationTextBox with Debug::{to_repr}
 ///|
 /// Final positions for every textual part of one class relation.
 pub struct RelationLabelLayout {
-  relation_index : Int
+  relation_index : Int32
   label : RelationTextBox?
   left_cardinality : RelationTextBox?
   right_cardinality : RelationTextBox?
@@ -471,7 +471,7 @@ fn relation_entry_box(
 
 ///|
 fn relation_label_layout_from_geometry(
-  relation_index : Int,
+  relation_index : Int32,
   relation : @entity.Relation,
   text_metrics : ClassTextMetrics,
   usecase : Bool,
@@ -642,7 +642,7 @@ fn build_relation_label_layouts(
 fn fallback_relation_label_layout(
   layout : ClassLayout,
   diagram : @entity.EntityDiagram,
-  relation_index : Int,
+  relation_index : Int32,
   relation : @entity.Relation,
   text_metrics : ClassTextMetrics,
 ) -> RelationLabelLayout {
@@ -693,7 +693,7 @@ fn fallback_relation_label_layout(
 fn ClassLayout::relation_label_layout(
   self : ClassLayout,
   diagram : @entity.EntityDiagram,
-  relation_index : Int,
+  relation_index : Int32,
   relation : @entity.Relation,
   text_metrics : ClassTextMetrics,
 ) -> RelationLabelLayout {

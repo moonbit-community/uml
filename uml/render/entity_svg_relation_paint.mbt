@@ -69,7 +69,7 @@ fn draw_relation_decoration(
   adjacent : (Double, Double),
   color : String,
   background : String,
-  side? : RelationContactSide? = None,
+  side~ : RelationContactSide? = None,
 ) -> Unit {
   guard end.decoration_geometry(endpoint, adjacent, side~) is Some(geometry) else {
     return
@@ -230,7 +230,7 @@ fn append_relation_path(
   style : @graphics.DrawingStyle,
   relation_color : String,
   background_color : String,
-  edge? : @graphviz.GraphvizEdge? = None,
+  edge~ : @graphviz.GraphvizEdge? = None,
   relation : @entity.Relation,
 ) -> Unit {
   if edge is Some(edge) {
@@ -306,7 +306,7 @@ fn append_relation_qualifiers(
 fn append_relation(
   output : @graphics.Graphic,
   diagram : @entity.EntityDiagram,
-  relation_index : Int,
+  relation_index : Int32,
   relation : @entity.Relation,
   text_metrics : ClassTextMetrics,
   layout : ClassLayout,

@@ -1,14 +1,14 @@
 ///|
 /// Portable text measurement used by the built-in SVG renderers.
 pub struct TextMetrics {
-  width : Int
-  advance_width : Int
-  height : Int
-  ascent : Int
-  descent : Int
-  baseline : Int
-  ink_left : Int
-  ink_right : Int
+  width : Int32
+  advance_width : Int32
+  height : Int32
+  ascent : Int32
+  descent : Int32
+  baseline : Int32
+  ink_left : Int32
+  ink_right : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -22,7 +22,7 @@ pub extend TextMetrics with Debug::{to_repr}
 /// compensate the built-in width table (e.g. the mindmap's space advance).
 pub fn TextMetrics::with_extra_advance(
   self : TextMetrics,
-  extra : Int,
+  extra : Int32,
 ) -> TextMetrics {
   {
     ..self,
@@ -66,35 +66,35 @@ pub extend FontStyle with Debug::{to_repr}
 pub struct FontMetrics {
   profile : FontProfile
   style : FontStyle
-  font_size : Int
-  font_weight : Int
-  line_height : Int
-  ascent : Int
-  descent : Int
-  line_gap : Int
-  letter_spacing : Int
-  word_spacing : Int
-  tab_size : Int
-  kerning_scale : Int
-  font_stretch : Int
-  italic_width_scale : Int
-  italic_overhang : Int
-  width_scale : Int
-  uppercase_width_scale : Int
-  lowercase_width_scale : Int
-  digit_width_scale : Int
-  punctuation_width_scale : Int
-  wide_width_scale : Int
-  emoji_width_scale : Int
-  bold_width_scale : Int
-  space_width : Int
-  narrow_width : Int
-  normal_width : Int
-  wide_width : Int
-  uppercase_width : Int
-  digit_width : Int
-  cjk_width : Int
-  emoji_width : Int
+  font_size : Int32
+  font_weight : Int32
+  line_height : Int32
+  ascent : Int32
+  descent : Int32
+  line_gap : Int32
+  letter_spacing : Int32
+  word_spacing : Int32
+  tab_size : Int32
+  kerning_scale : Int32
+  font_stretch : Int32
+  italic_width_scale : Int32
+  italic_overhang : Int32
+  width_scale : Int32
+  uppercase_width_scale : Int32
+  lowercase_width_scale : Int32
+  digit_width_scale : Int32
+  punctuation_width_scale : Int32
+  wide_width_scale : Int32
+  emoji_width_scale : Int32
+  bold_width_scale : Int32
+  space_width : Int32
+  narrow_width : Int32
+  normal_width : Int32
+  wide_width : Int32
+  uppercase_width : Int32
+  digit_width : Int32
+  cjk_width : Int32
+  emoji_width : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -115,29 +115,29 @@ pub extend FontMetrics with Default::{default}
 /// Creates deterministic metrics from one of the built-in profiles.
 /// Percentage parameters use 100 as their neutral value.
 pub fn FontMetrics::from_defaults(
-  profile? : FontProfile = Sans,
-  style? : FontStyle = Normal,
-  font_size? : Int = 13,
-  font_weight? : Int = 400,
-  line_height? : Int = 0,
-  ascent? : Int = 0,
-  descent? : Int = 0,
-  line_gap? : Int = 0,
-  width_scale? : Int = 100,
-  uppercase_width_scale? : Int = 100,
-  lowercase_width_scale? : Int = 100,
-  digit_width_scale? : Int = 100,
-  punctuation_width_scale? : Int = 100,
-  wide_width_scale? : Int = 100,
-  emoji_width_scale? : Int = 100,
-  font_stretch? : Int = 100,
-  bold_width_scale? : Int = 110,
-  italic_width_scale? : Int = 103,
-  italic_overhang? : Int = 1,
-  kerning_scale? : Int = 100,
-  letter_spacing? : Int = 0,
-  word_spacing? : Int = 0,
-  tab_size? : Int = 4,
+  profile~ : FontProfile = Sans,
+  style~ : FontStyle = Normal,
+  font_size~ : Int32 = 13,
+  font_weight~ : Int32 = 400,
+  line_height~ : Int32 = 0,
+  ascent~ : Int32 = 0,
+  descent~ : Int32 = 0,
+  line_gap~ : Int32 = 0,
+  width_scale~ : Int32 = 100,
+  uppercase_width_scale~ : Int32 = 100,
+  lowercase_width_scale~ : Int32 = 100,
+  digit_width_scale~ : Int32 = 100,
+  punctuation_width_scale~ : Int32 = 100,
+  wide_width_scale~ : Int32 = 100,
+  emoji_width_scale~ : Int32 = 100,
+  font_stretch~ : Int32 = 100,
+  bold_width_scale~ : Int32 = 110,
+  italic_width_scale~ : Int32 = 103,
+  italic_overhang~ : Int32 = 1,
+  kerning_scale~ : Int32 = 100,
+  letter_spacing~ : Int32 = 0,
+  word_spacing~ : Int32 = 0,
+  tab_size~ : Int32 = 4,
 ) -> FontMetrics {
   let font_size = font_size.max(1)
   let ascent = if ascent > 0 { ascent } else { font_size * 10 / 13 }

@@ -1,7 +1,7 @@
 ///|
 /// document styles in plantuml.skin; TextBlockBordered adds one point to
 /// its measured size after padding, independently of border visibility.
-const DOCUMENT_TEXT_SMALL_FONT_SIZE : Int = 10
+const DOCUMENT_TEXT_SMALL_FONT_SIZE : Int32 = 10
 
 ///|
 const DOCUMENT_TEXT_BORDER_EXTENT : Double = 1.0

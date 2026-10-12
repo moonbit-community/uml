@@ -8,7 +8,7 @@ import {
   "moonbit-community/unicode@0.5.2",
   "moonbit-community/graphviz@0.1.10",
   "moonbitlang/lexer@0.4.0",
-  "moonbitlang/parser@0.4.1",
+  "moonbitlang/parser@0.4.4",
   "moonbitlang/x@0.5.5",
   "kokic/metrics@0.1.1",
 }

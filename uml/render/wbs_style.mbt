@@ -9,7 +9,7 @@ priv struct WbsArrowPaint {
 }
 
 ///|
-fn wbs_has_children(diagram : @tree.WbsDiagram, index : Int) -> Bool {
+fn wbs_has_children(diagram : @tree.WbsDiagram, index : Int32) -> Bool {
   diagram.nodes.any(node => node.parent == Some(index))
 }
 
@@ -23,7 +23,7 @@ fn wbs_stereotype(value : String) -> String {
 fn wbs_selector_matches(
   selector : String,
   diagram : @tree.WbsDiagram,
-  index : Int,
+  index : Int32,
   arrow : Bool,
   stereotype : String?,
 ) -> Bool {
@@ -61,11 +61,11 @@ fn wbs_selector_matches(
 /// Preserve source order among equally specific selectors.
 fn wbs_properties(
   diagram : @tree.WbsDiagram,
-  index : Int,
+  index : Int32,
   arrow : Bool,
   stereotype : String?,
 ) -> Array[@tree.WbsStyleProperty] {
-  let selected : Array[(Int, Int, @tree.WbsStyleProperty)] = []
+  let selected : Array[(Int32, Int32, @tree.WbsStyleProperty)] = []
   for order, property in diagram.style_properties {
     guard wbs_selector_matches(
       property.selector,
@@ -101,7 +101,7 @@ fn wbs_properties(
 ///|
 fn wbs_node_style(
   diagram : @tree.WbsDiagram,
-  index : Int,
+  index : Int32,
 ) -> @tree.TreeNodeStyle {
   let base = @tree.TreeStyle::default(Wbs)
   for key, value in diagram.style.properties {
@@ -121,7 +121,7 @@ fn wbs_node_style(
 ///|
 fn wbs_arrow_style(
   diagram : @tree.WbsDiagram,
-  index : Int,
+  index : Int32,
   stereotype : String?,
 ) -> WbsArrowPaint {
   let base = @tree.TreeStyle::default(Wbs)
@@ -141,7 +141,7 @@ fn wbs_arrow_style(
 ///|
 fn wbs_line_thickness(
   diagram : @tree.WbsDiagram,
-  index : Int,
+  index : Int32,
   arrow : Bool,
   stereotype : String?,
 ) -> Double {

@@ -44,7 +44,7 @@ fn activity_group_role(group : @flow.ActivityGroup) -> String {
 fn activity_role_metrics(
   style : @style.DocumentStyle,
   role : String,
-  size : Int,
+  size : Int32,
 ) -> @metrics.FontMetrics {
   let face = style.property(role + "FontStyle").unwrap_or("").to_lower()
   style.font_metrics_for(

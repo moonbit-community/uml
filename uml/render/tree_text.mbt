@@ -52,16 +52,16 @@ pub fn tree_visible_text(label : String) -> String {
 /// vendored width table stores zero for it (faithful to PlantUML's own
 /// table). Tree diagrams add the reference space advance back: 4.43px at
 /// font size 14, derived from the reference SVGs.
-pub const PLANTUML_SPACE_ADVANCE_PER_14 : Int = 443
+pub const PLANTUML_SPACE_ADVANCE_PER_14 : Int32 = 443
 
 ///|
 /// The width table measures a few percent narrower than PlantUML's real
 /// font. Tree diagrams scale the measured advance only, leaving the line
 /// heights untouched.
-pub const PLANTUML_WIDTH_SCALE : Int = 110
+pub const PLANTUML_WIDTH_SCALE : Int32 = 110
 
 ///|
-pub fn plantuml_space_advance(font_size : Int) -> Int {
+pub fn plantuml_space_advance(font_size : Int32) -> Int32 {
   font_size * PLANTUML_SPACE_ADVANCE_PER_14 / 14 / 100
 }
 
@@ -93,7 +93,7 @@ pub(all) struct TreeLabelMetrics {
 pub fn tree_label_metrics(
   metrics : @metrics.FontMetrics,
   label : String,
-  wrap_width? : Double = 0.0,
+  wrap_width~ : Double = 0.0,
 ) -> TreeLabelMetrics {
   if tree_rich_text(label, metrics, wrap_width) is Some(rich) {
     return { width: rich.width, height: rich.height, }
@@ -108,9 +108,9 @@ pub fn tree_label_metrics(
 /// and offsets the first line of text.
 pub fn tree_label_width(
   metrics : @metrics.FontMetrics,
-  font_size : Int,
+  font_size : Int32,
   label : String,
-  wrap_width? : Double = 0.0,
+  wrap_width~ : Double = 0.0,
 ) -> Double {
   if tree_rich_text(label, metrics, wrap_width) is Some(rich) {
     return rich.width
@@ -153,13 +153,13 @@ fn split_whitespace(value : String) -> (String, String, String) {
 /// SVGs).
 pub fn append_tree_text(
   output : @svg.XmlWriter,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   label : String,
-  line_height : Int,
+  line_height : Int32,
   anchor : String,
   fill : String,
-  font_size : Int,
+  font_size : Int32,
   text_metrics : @metrics.FontMetrics,
   class_name : String,
 ) -> Unit {
@@ -184,11 +184,11 @@ pub fn append_tree_text(
 /// Position creole runs using exactly the metrics and whitespace rules used
 /// for tree layout. Both drawing interfaces consume this one layout result.
 fn layout_tree_text(
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   label : String,
-  line_height : Int,
-  font_size : Int,
+  line_height : Int32,
+  font_size : Int32,
   text_metrics : @metrics.FontMetrics,
   anchor : @graphics.TextAnchor,
 ) -> Array[@graphics.TextRun] {
@@ -238,14 +238,14 @@ fn draw_tree_text_at(
   x : Double,
   y : Double,
   label : String,
-  line_height : Int,
+  line_height : Int32,
   anchor : @graphics.TextAnchor,
   fill : String,
-  font_size : Int,
+  font_size : Int32,
   text_metrics : @metrics.FontMetrics,
   class_name : String,
-  wrap_width? : Double = 0.0,
-  font_family? : String? = None,
+  wrap_width~ : Double = 0.0,
+  font_family~ : String? = None,
 ) -> Unit {
   let output = output.with_style({
     ..@graphics.DrawingStyle::default(),
@@ -451,13 +451,13 @@ fn draw_tree_rich_text(
 ///|
 fn draw_tree_text(
   output : @graphics.Graphic,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   label : String,
-  line_height : Int,
+  line_height : Int32,
   anchor : @graphics.TextAnchor,
   fill : String,
-  font_size : Int,
+  font_size : Int32,
   text_metrics : @metrics.FontMetrics,
   class_name : String,
 ) -> Unit {

@@ -1,31 +1,31 @@
 ///|
-const CLASS_COMPARTMENT_MARGIN_X : Int = 6
+const CLASS_COMPARTMENT_MARGIN_X : Int32 = 6
 
 ///|
-const CLASS_COMPARTMENT_MARGIN_Y : Int = 4
+const CLASS_COMPARTMENT_MARGIN_Y : Int32 = 4
 
 ///|
-const CLASS_COMPARTMENT_TITLE_MARGIN : Int = 8
+const CLASS_COMPARTMENT_TITLE_MARGIN : Int32 = 8
 
 ///|
 priv enum ClassCompartmentItem {
-  MemberRow(@entity.Member, Int)
+  MemberRow(@entity.Member, Int32)
 }
 
 ///|
 priv struct ClassCompartment {
   separator : Char
   title : String?
-  title_height : Int
+  title_height : Int32
   items : Array[ClassCompartmentItem]
-  width : Int
-  height : Int
-  content_top : Int
+  width : Int32
+  height : Int32
+  content_top : Int32
   has_visibility : Bool
 }
 
 ///|
-fn ClassCompartmentItem::height(self : ClassCompartmentItem) -> Int {
+fn ClassCompartmentItem::height(self : ClassCompartmentItem) -> Int32 {
   match self {
     MemberRow(_, height) => height
   }
@@ -35,7 +35,7 @@ fn ClassCompartmentItem::height(self : ClassCompartmentItem) -> Int {
 fn @entity.Member::rendered_height(
   self : @entity.Member,
   metrics : ClassTextMetrics,
-) -> Int {
+) -> Int32 {
   let font = if self.is_abstract { metrics.italic } else { metrics.regular }
   font.entity_measure(self.display_without_visibility()).height.max(
     metrics.row_height(),
@@ -122,9 +122,9 @@ fn @entity.Entity::custom_compartments(
 fn draw_class_compartments(
   output : @graphics.Graphic,
   sections : Array[ClassCompartment],
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   metrics : ClassTextMetrics,
   colors : @style.EntityColors,
   text_color : String,

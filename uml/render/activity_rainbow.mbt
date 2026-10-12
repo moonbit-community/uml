@@ -33,7 +33,7 @@ fn activity_mutation_vector(code : Char, delta : Double) -> @graphics.Point {
 ///|
 fn activity_rainbow_paths(
   path : Array[@graphics.PathSegment],
-  count : Int,
+  count : Int32,
   separation : Double,
 ) -> (Array[Array[@graphics.PathSegment]], Bool, Double) {
   let points : Array[@graphics.Point] = []
@@ -167,7 +167,7 @@ fn append_activity_rainbow(
   edge : ActivityEdgeLayout,
   metrics : @metrics.FontMetrics,
   default_color : String,
-  index : Int,
+  index : Int32,
 ) -> Unit {
   let colors = edge.style
     .unwrap_or("")

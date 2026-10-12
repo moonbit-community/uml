@@ -20,7 +20,7 @@ fn SequenceDrawing::draw(
   self : SequenceDrawing,
   shape : @graphics.Shape,
   class_name? : String,
-  fill? : @graphics.Paint = Inherit,
+  fill~ : @graphics.Paint = Inherit,
 ) -> Unit {
   self.graphic
   .with_style({ ..self.line_style, fill, })

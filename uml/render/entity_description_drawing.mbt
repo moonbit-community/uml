@@ -7,10 +7,10 @@
 priv struct DescriptionSymbolContext {
   output : @graphics.Graphic
   description : DescriptionImageLayout
-  x : Int
-  y : Int
-  width : Int
-  height : Int
+  x : Int32
+  y : Int32
+  width : Int32
+  height : Int32
   fill : String
   stroke : String
   stroke_attributes : @graphics.DrawingStyle

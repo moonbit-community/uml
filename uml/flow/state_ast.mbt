@@ -38,7 +38,7 @@ pub(all) struct StateNode {
   display : String
   kind : StateKind
   parent : String?
-  region_index : Int
+  region_index : Int32
   description : String?
   embedded : @entity.Entity?
   standalone_note : StateNote?
@@ -71,7 +71,7 @@ pub(all) struct StateTransition {
   target_label : String?
   direction : TransitionDirection
   /// PlantUML link queue length, with horizontal directions reduced to one.
-  length : Int
+  length : Int32
   line_style : String?
   has_cross_start : Bool
   has_circle_end : Bool
@@ -101,7 +101,7 @@ pub(all) struct StateRegion {
   /// Effective separator direction of the containing state; None for its
   /// initial region. All later regions share the container's orientation.
   separator : StateRegionSeparator?
-  index : Int
+  index : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -113,8 +113,8 @@ pub extend StateRegion with Debug::{to_repr}
 ///|
 pub(all) enum StateNoteTarget {
   StateNote(String)
-  NoteNote(Int)
-  TransitionNote(Int)
+  NoteNote(Int32)
+  TransitionNote(Int32)
 } derive(Eq, Debug)
 
 ///|
@@ -154,7 +154,7 @@ pub(all) struct StateNote {
   target : StateNoteTarget
   /// Notes belong to their declaration scope, which may differ from the target.
   parent : String?
-  region_index : Int
+  region_index : Int32
   /// Block notes preserve backslash escapes; inline notes decode them for display.
   text_mode : StateNoteTextMode
   text : String

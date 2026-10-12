@@ -34,7 +34,7 @@ fn TimingDrawing::line(
   x2 : Double,
   y2 : Double,
   paint : @graphics.DrawingStyle,
-  class_name? : String = "timing-wave",
+  class_name~ : String = "timing-wave",
 ) -> Unit {
   self.point(x1, y1)
   self.point(x2, y2)
@@ -51,8 +51,8 @@ fn TimingDrawing::polygon(
   self : TimingDrawing,
   points : Array[@graphics.Point],
   paint : @graphics.DrawingStyle,
-  class_name? : String = "timing-ribbon",
-  closed? : Bool = true,
+  class_name~ : String = "timing-ribbon",
+  closed~ : Bool = true,
 ) -> Unit {
   guard !points.is_empty() else { return }
   for point in points {
@@ -80,7 +80,7 @@ fn TimingDrawing::rect(
   width : Double,
   height : Double,
   paint : @graphics.DrawingStyle,
-  class_name? : String = "timing-region",
+  class_name~ : String = "timing-region",
 ) -> Unit {
   self.point(x, y)
   self.point(x + width, y + height)
@@ -99,7 +99,7 @@ fn TimingDrawing::text(
   x : Double,
   y : Double,
   role : String,
-  anchor? : @graphics.TextAnchor = Start,
+  anchor~ : @graphics.TextAnchor = Start,
 ) -> Unit {
   guard !text.is_empty() else { return }
   let appearance = timing_appearance(self.style, role)

@@ -11,7 +11,7 @@ fn @flow.StateDiagram::visible_state_diagram(
   }
   let states = self.states.filter(state => visible(state.code))
   let transitions = []
-  let transition_indices : Map[Int, Int] = Map([])
+  let transition_indices : Map[Int32, Int32] = Map([])
   for index, transition in self.transitions {
     if visible(transition.source) && visible(transition.target) {
       transition_indices[index] = transitions.length()
@@ -19,7 +19,7 @@ fn @flow.StateDiagram::visible_state_diagram(
     }
   }
   let notes = []
-  let note_indices : Map[Int, Int] = Map([])
+  let note_indices : Map[Int32, Int32] = Map([])
   for index, note in self.notes {
     guard note.parent.map_or(true, visible) else { continue }
     let target = match note.target {
@@ -62,7 +62,7 @@ fn @flow.StateDiagram::state_is_hidden(
 ///|
 fn @flow.StateDiagram::note_is_hidden(
   self : @flow.StateDiagram,
-  index : Int,
+  index : Int32,
 ) -> Bool {
   let note = self.notes[index]
   if note.parent.map_or(false, code => self.state_is_hidden(code)) {

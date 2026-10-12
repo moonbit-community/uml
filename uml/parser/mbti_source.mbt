@@ -13,7 +13,7 @@ pub fn is_mbti_source(input : String) -> Bool {
 /// Extract the source between the `@startuml '.mbti` and `@enduml` lines,
 /// verbatim. Returns the body and the 1-based source line where it begins so
 /// mbti parser diagnostics can be mapped back to the original source.
-fn mbti_body(input : String) -> (String, Int)? {
+fn mbti_body(input : String) -> (String, Int32)? {
   let lines = input.split("\n").map(StringView::to_owned).to_array()
   let mut start_line = -1
   let mut end_line = lines.length()
@@ -55,7 +55,7 @@ fn has_mbti_marker(line : String) -> Bool {
 /// back to the original source; pass 0 when `body` is the whole source.
 fn parse_mbti_body_at(
   body : String,
-  line_offset : Int,
+  line_offset : Int32,
   standalone_alias : Bool,
   options : @entity.MbtiOptions,
 ) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
@@ -86,8 +86,8 @@ fn parse_mbti_body_at(
 /// `options` controls which structural connections become graph relations.
 pub fn parse_mbti_body(
   body : String,
-  standalone_alias? : Bool = false,
-  options? : @entity.MbtiOptions = @entity.MbtiOptions::default(),
+  standalone_alias~ : Bool = false,
+  options~ : @entity.MbtiOptions = @entity.MbtiOptions::default(),
 ) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
   parse_mbti_body_at(body, 0, standalone_alias, options)
 }
@@ -103,8 +103,8 @@ pub fn parse_mbti_body(
 /// `options` controls which structural connections become graph relations.
 pub fn parse_mbti(
   input : String,
-  standalone_alias? : Bool = false,
-  options? : @entity.MbtiOptions = @entity.MbtiOptions::default(),
+  standalone_alias~ : Bool = false,
+  options~ : @entity.MbtiOptions = @entity.MbtiOptions::default(),
 ) -> @entity.MbtiDiagram raise @tokenizer.ParseError {
   match mbti_body(input) {
     None => raise @tokenizer.SyntaxError(1, "expected @startuml '.mbti")

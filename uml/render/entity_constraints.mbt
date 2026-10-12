@@ -1,7 +1,7 @@
 ///|
 /// SvekEdge reserves a square label for an otherwise unlabelled constrained
 /// link, then elects its perimeter point nearest to the routed path.
-const ENTITY_CONSTRAINT_SPOT : Int = 10
+const ENTITY_CONSTRAINT_SPOT : Int32 = 10
 
 ///|
 pub struct RelationConstraintLayout {
@@ -85,7 +85,7 @@ fn @entity.EntityDiagram::relation_constraint_layouts(
   edges : Array[@graphviz.GraphvizEdge],
 ) -> Array[RelationConstraintLayout] {
   let output : Array[RelationConstraintLayout] = []
-  let anchors : Map[Int, (Double, Double)] = Map([])
+  let anchors : Map[Int32, (Double, Double)] = Map([])
   for edge in edges {
     let relation = self.relations[edge.index]
     guard self.relation_visible(relation) else { continue }

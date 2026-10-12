@@ -2,7 +2,7 @@
 priv enum StateNamePart {
   Root
   Identifier(String)
-  Concurrent(Int)
+  Concurrent(Int32)
 } derive(Eq)
 
 ///|
@@ -11,7 +11,7 @@ priv enum StateNamePart {
 priv struct StateName {
   part : StateNamePart
   qualified : String
-  parent : Int?
+  parent : Int32?
   code : String?
   group : Bool
 }
@@ -21,7 +21,7 @@ priv struct StateNameLocation {
   code : String
   display : String
   parent : String?
-  region_index : Int
+  region_index : Int32
 }
 
 ///|
@@ -32,9 +32,9 @@ fn state_root_name() -> StateName {
 ///|
 fn Parser::state_name_child(
   self : Parser,
-  parent : Int,
+  parent : Int32,
   part : StateNamePart,
-) -> Int {
+) -> Int32 {
   if self.state_names.search_by(name => {
       name.parent == Some(parent) && name.part == part
     })
@@ -63,17 +63,20 @@ fn Parser::state_name_child(
 }
 
 ///|
-fn Parser::state_name_for_code(self : Parser, code : String) -> Int? {
+fn Parser::state_name_for_code(self : Parser, code : String) -> Int32? {
   self.state_names.search_by(name => name.code == Some(code))
 }
 
 ///|
-fn Parser::current_state_namespace(self : Parser) -> Int {
+fn Parser::current_state_namespace(self : Parser) -> Int32 {
   self.state_namespace_for_scope(self.stack.last())
 }
 
 ///|
-fn Parser::state_namespace_for_scope(self : Parser, scope : StateScope?) -> Int {
+fn Parser::state_namespace_for_scope(
+  self : Parser,
+  scope : StateScope?,
+) -> Int32 {
   guard scope is Some(scope) else { return 0 }
   let index = self.state_name_for_code(scope.code).unwrap()
   guard self.concurrent_region_at(scope.region_index) is Some(region) else {
@@ -92,7 +95,7 @@ fn Parser::resolve_state_name(
   self : Parser,
   raw : String,
   allow_current~ : Bool,
-) -> Int raise @tokenizer.ParseError {
+) -> Int32 raise @tokenizer.ParseError {
   self.resolve_state_name_from(
     self.current_state_namespace(),
     raw,
@@ -103,10 +106,10 @@ fn Parser::resolve_state_name(
 ///|
 fn Parser::resolve_state_name_from(
   self : Parser,
-  current : Int,
+  current : Int32,
   raw : String,
   allow_current~ : Bool,
-) -> Int raise @tokenizer.ParseError {
+) -> Int32 raise @tokenizer.ParseError {
   if self.style.property("LegacyActivity") == Some("true") {
     guard !raw.is_empty() else {
       raise SyntaxError(self.line_number(), "empty activity name")
@@ -177,7 +180,7 @@ fn Parser::mark_state_group(self : Parser, code : String) -> Unit {
 /// qualified name, or its absolute spelling for a root/short-name collision.
 fn Parser::assign_state_code(
   self : Parser,
-  index : Int,
+  index : Int32,
   preferred : String,
 ) -> String {
   let name = self.state_names[index]
@@ -202,7 +205,7 @@ fn Parser::assign_state_code(
 /// containers. All references to their children use the same name entries.
 fn Parser::ensure_state_container(
   self : Parser,
-  index : Int,
+  index : Int32,
 ) -> Unit raise @tokenizer.ParseError {
   let name = self.state_names[index]
   guard name.part is Identifier(_) else { return }
@@ -237,7 +240,7 @@ fn Parser::ensure_state_container(
 ///|
 fn Parser::state_name_location(
   self : Parser,
-  index : Int,
+  index : Int32,
   preferred : String,
   create_parents~ : Bool,
 ) -> StateNameLocation raise @tokenizer.ParseError {

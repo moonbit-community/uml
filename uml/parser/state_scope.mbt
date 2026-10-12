@@ -8,7 +8,7 @@ fn Parser::existing_state_display(self : Parser, code : String) -> String? {
 ///|
 /// Reopening a group reuses its initial scope. It does not introduce a new
 /// concurrent region; only a separator creates a later region.
-fn Parser::initial_state_region(self : Parser, code : String) -> Int {
+fn Parser::initial_state_region(self : Parser, code : String) -> Int32 {
   self.regions
   .search_by(region => region.parent == code && region.separator is None)
   .map_or_else(() => self.open_region(code, None), index => {
@@ -34,7 +34,7 @@ fn Parser::open_concurrent_region(
   self : Parser,
   parent : String,
   separator : @flow.StateRegionSeparator,
-) -> Int {
+) -> Int32 {
   let orientation = self.regions
     .get(self.region_index())
     .bind(region => region.separator)
@@ -50,7 +50,7 @@ fn Parser::open_concurrent_region(
 ///|
 /// StateDiagram.concurrentState creates CONCURRENT_STATE groups after a
 /// separator. The initial contents retain the containing STATE group.
-fn Parser::concurrent_region_at(self : Parser, index : Int) -> Int? {
+fn Parser::concurrent_region_at(self : Parser, index : Int32) -> Int32? {
   guard self.regions.get(index) is Some(region) && region.separator is Some(_) else {
     return None
   }
@@ -80,7 +80,7 @@ fn Parser::check_state_reference(
 ///|
 /// StateDiagram.getGroupParentIfItIsConcurrentState walks ancestors, so a
 /// nested ordinary state still inherits the surrounding concurrent boundary.
-fn Parser::state_concurrent_parent(self : Parser, code : String) -> Int? {
+fn Parser::state_concurrent_parent(self : Parser, code : String) -> Int32? {
   let mut current = Some(code)
   while current is Some(code) {
     guard self.states.search_by(state => state.code == code) is Some(index) else {
@@ -96,7 +96,10 @@ fn Parser::state_concurrent_parent(self : Parser, code : String) -> Int? {
 }
 
 ///|
-fn Parser::scope_concurrent_parent(self : Parser, scope : StateScope?) -> Int? {
+fn Parser::scope_concurrent_parent(
+  self : Parser,
+  scope : StateScope?,
+) -> Int32? {
   guard scope is Some(scope) else { return None }
   self
   .concurrent_region_at(scope.region_index)

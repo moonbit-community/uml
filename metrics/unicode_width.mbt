@@ -4,7 +4,7 @@
 /// Values are tenths of a point, grouped by the high byte of each code point.
 /// A one-value block applies that value to every low byte; other blocks use
 /// their 256-entry low-byte table.
-let plantuml_sans_serif_widths : Array[Array[Int]] = [
+let plantuml_sans_serif_widths : Array[Array[Int32]] = [
   [
     120, 120, 120, 120, 120, 120, 120, 120, 120, 0, 0, 0, 0, 0, 120, 120, 120, 120,
     120, 120, 120, 120, 120, 120, 120, 120, 120, 120, 120, 0, 120, 120, 0, 44, 57,

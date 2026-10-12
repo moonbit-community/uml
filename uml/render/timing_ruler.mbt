@@ -76,7 +76,7 @@ fn timing_ruler(diagram : @flow.TimingDiagram) -> TimingRulerLayout {
 }
 
 ///|
-fn TimingRulerLayout::tick_count(self : TimingRulerLayout) -> Int {
+fn TimingRulerLayout::tick_count(self : TimingRulerLayout) -> Int32 {
   (1.0 + (self.maximum.trunc() - self.minimum.trunc()) / self.unit)
   .to_int()
   .min(TIMING_MAX_TICKS)

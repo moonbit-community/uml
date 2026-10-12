@@ -1,7 +1,7 @@
 ///|
 priv struct StateScope {
   code : String
-  region_index : Int
+  region_index : Int32
 }
 
 ///|
@@ -41,7 +41,7 @@ fn Parser::new(input : String) -> Parser {
 }
 
 ///|
-fn Parser::line_number(self : Parser) -> Int {
+fn Parser::line_number(self : Parser) -> Int32 {
   self.buffer.line_number()
 }
 
@@ -51,7 +51,7 @@ fn Parser::parent(self : Parser) -> String? {
 }
 
 ///|
-fn Parser::region_index(self : Parser) -> Int {
+fn Parser::region_index(self : Parser) -> Int32 {
   self.stack.last().map_or(-1, scope => scope.region_index)
 }
 
@@ -60,7 +60,7 @@ fn Parser::open_region(
   self : Parser,
   parent : String,
   separator : @flow.StateRegionSeparator?,
-) -> Int {
+) -> Int32 {
   let index = self.regions.length()
   self.regions.push({ parent, separator, index, })
   index
@@ -142,7 +142,7 @@ fn Parser::ensure_endpoint(
 fn Parser::upsert_state(
   self : Parser,
   state : @flow.StateNode,
-  group? : Bool = false,
+  group~ : Bool = false,
 ) -> Unit {
   for index, existing in self.states {
     if existing.code == state.code {
@@ -256,7 +256,7 @@ fn Parser::consume_entity_note(
 fn Parser::consume_note_body(
   self : Parser,
   body : StateNoteBody,
-  allow_empty_block? : Bool = true,
+  allow_empty_block~ : Bool = true,
 ) -> (String, @flow.StateNoteTextMode) raise @tokenizer.ParseError {
   let terminates = match body {
     Inline(text) => return (text, @flow.InlineText)

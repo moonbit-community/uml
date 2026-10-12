@@ -167,8 +167,8 @@ pub(all) struct TimingPlayer {
   pulse : String?
   offset : String?
   mut bounds : (String, String)?
-  mut ticks_every : Int?
-  mut height : Int?
+  mut ticks_every : Int32?
+  mut height : Int32?
 }
 
 ///|

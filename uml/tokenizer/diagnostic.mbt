@@ -17,19 +17,19 @@ pub extend ParseDiagnostic with Debug::{to_repr}
 /// This is shared by every PlantUML diagram parser so callers can handle
 /// malformed source independently of the selected diagram family.
 pub(all) suberror ParseError {
-  SyntaxError(Int, String)
+  SyntaxError(Int32, String)
 } derive(Debug)
 
 ///|
 pub extend ParseError with Debug::{to_repr}
 
 ///|
-pub fn ParseDiagnostic::line_number(self : ParseDiagnostic) -> Int {
+pub fn ParseDiagnostic::line_number(self : ParseDiagnostic) -> Int32 {
   self.span.line
 }
 
 ///|
-pub fn diagnostic_at_line(line : Int, message : String) -> ParseDiagnostic {
+pub fn diagnostic_at_line(line : Int32, message : String) -> ParseDiagnostic {
   { span: line_span(line), message, }
 }
 

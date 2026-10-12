@@ -14,7 +14,7 @@ fn state_graphviz_routing(style : @style.DocumentStyle) -> String {
 
 ///|
 /// DotPath.simulateCompound uses eight cubic subdivisions at a cluster edge.
-const STATE_CLUSTER_CLIP_SUBDIVISIONS : Int = 8
+const STATE_CLUSTER_CLIP_SUBDIVISIONS : Int32 = 8
 
 ///|
 priv struct StateCubic {

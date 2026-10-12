@@ -5,7 +5,7 @@
 /// Previously verified: common indentation, tabs, NBSP, trailing spaces and
 /// blank lines; empty block link notes differ from explicit empty inline notes.
 fn state_note_block_text(lines : Array[String]) -> String {
-  let columns : Int? = lines.fold(init=None, (columns, line) => {
+  let columns : Int32? = lines.fold(init=None, (columns, line) => {
     let trimmed = line.trim_start(chars=" \t")
     guard !trimmed.is_empty() else { return columns }
     let leading = line.length() - trimmed.length()

@@ -196,7 +196,7 @@ fn draw_wbs_links(
 }
 
 ///|
-fn wbs_layout_node(layout : WbsLayout, index : Int) -> WbsNodeLayout? {
+fn wbs_layout_node(layout : WbsLayout, index : Int32) -> WbsNodeLayout? {
   for node in layout.nodes {
     guard node.index == index else { continue }
     return Some(node)
@@ -240,7 +240,7 @@ fn draw_wbs(
 /// Render a work breakdown structure using its dedicated Fork/ITF layout.
 pub fn render_wbs_svg(
   diagram : @tree.WbsDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let diagram = {
     ..diagram,

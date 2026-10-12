@@ -31,7 +31,7 @@ fn append_line(
   x2 : Double,
   y2 : Double,
   class_name : String,
-  fill? : @graphics.Paint = None,
+  fill~ : @graphics.Paint = None,
 ) -> Unit {
   output.draw(
     Line(sequence_point(x1, y1), sequence_point(x2, y2)),
@@ -48,9 +48,9 @@ fn append_text(
   text : String,
   class_name : String,
   defaults : @style.SequenceColors,
-  anchor? : @graphics.TextAnchor = Middle,
-  line_height? : Int = 15,
-  font_metrics? : @metrics.FontMetrics? = None,
+  anchor~ : @graphics.TextAnchor = Middle,
+  line_height~ : Int32 = 15,
+  font_metrics~ : @metrics.FontMetrics? = None,
 ) -> Unit {
   let text_metrics = font_metrics.unwrap_or(
     @metrics.FontMetrics::from_defaults(

@@ -3,7 +3,7 @@
 const MAX_DIAGRAM_SCALE : Double = 4.0
 
 ///|
-const DIAGRAM_DEFAULT_DPI : Int = 96
+const DIAGRAM_DEFAULT_DPI : Int32 = 96
 
 ///|
 enum ScaleDimension {
@@ -22,7 +22,7 @@ pub struct DiagramScale {
 
 ///|
 fn scale_number(cursor : @tokenizer.Cursor) -> Double? {
-  let token = cursor.take_while(char => char is ('0'..='9' | '.'))
+  let token = cursor.take_while(char => char is ('0'..<='9' | '.'))
   Some(@string.parse_double(token)) catch {
     _ => None
   }
@@ -101,7 +101,7 @@ pub fn DocumentStyle::output_scale(
   let dpi = self
     .property("dpi")
     .map_or(DIAGRAM_DEFAULT_DPI, value => {
-      guard !value.is_empty() && value.iter().all(char => char is ('0'..='9')) else {
+      guard !value.is_empty() && value.iter().all(char => char is ('0'..<='9')) else {
         return DIAGRAM_DEFAULT_DPI
       }
       let dpi = @string.parse_int(value) catch {

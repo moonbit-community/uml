@@ -30,11 +30,11 @@ fn draw_entity_text(
   text : String,
   metrics : @metrics.FontMetrics,
   class_name? : String,
-  fill? : String = "",
-  font_family? : String = "",
-  font_size? : Int = 0,
-  anchor? : @graphics.TextAnchor = Start,
-  text_style? : @graphics.TextStyle? = None,
+  fill~ : String = "",
+  font_family~ : String = "",
+  font_size~ : Int32 = 0,
+  anchor~ : @graphics.TextAnchor = Start,
+  text_style~ : @graphics.TextStyle? = None,
 ) -> Unit {
   if state_rich_text(text, metrics, 0.0, literal_newlines=true) is Some(rich) {
     let styled = graphic.with_style({
@@ -111,9 +111,9 @@ fn entity_text_run(
   text : String,
   position : @graphics.Point,
   metrics : @metrics.FontMetrics,
-  anchor? : @graphics.TextAnchor = Start,
-  font_family? : String = "",
-  font_size? : Int = 0,
+  anchor~ : @graphics.TextAnchor = Start,
+  font_family~ : String = "",
+  font_size~ : Int32 = 0,
 ) -> @graphics.TextRun {
   let measured = metrics.entity_measure(text)
   {
@@ -137,11 +137,11 @@ fn entity_text_run(
 
 ///|
 priv struct EntityTextSize {
-  width : Int
-  height : Int
-  baseline : Int
-  ascent : Int
-  advance_width : Int
+  width : Int32
+  height : Int32
+  baseline : Int32
+  ascent : Int32
+  advance_width : Int32
 }
 
 ///|

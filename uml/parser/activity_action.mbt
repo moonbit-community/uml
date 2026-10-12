@@ -59,7 +59,7 @@ fn parse_activity_action(
 fn parse_activity_single_action(
   source : String,
   style : @style.DocumentStyle,
-  line : Int,
+  line : Int32,
 ) -> @flow.ActivityAction raise @tokenizer.ParseError {
   let buffer = LineBuffer::new(source)
   let node = parse_activity_action(buffer, style) catch {

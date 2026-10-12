@@ -15,14 +15,14 @@ const PACKAGE_TAB_HEIGHT : Double = 22.0
 /// `textLength`, matching how PlantUML serializes every text run.
 fn append_paint_text(
   output : @graphics.Graphic,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   text : String,
   class_name : String,
   metrics : @metrics.FontMetrics,
-  fill? : String = "",
-  font_family? : String = "",
-  font_size? : Int = 0,
+  fill~ : String = "",
+  font_family~ : String = "",
+  font_size~ : Int32 = 0,
 ) -> Unit {
   draw_class_text(
     output,
@@ -136,7 +136,7 @@ fn append_packages(
 fn EntityPaintContext::append_entity_image(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   let text_metrics = self.text_metrics.for_entity(entity)
@@ -165,7 +165,7 @@ fn EntityPaintContext::append_entity_image(
 fn lollipop_attachment_direction(
   diagram : @entity.EntityDiagram,
   code : String,
-  center : (Int, Int),
+  center : (Int32, Int32),
   layout : ClassLayout,
   text_metrics : ClassTextMetrics,
 ) -> (Double, Double) {
@@ -196,8 +196,8 @@ fn lollipop_attachment_direction(
 /// Half-lollipop arc bulging toward the attached entity: the curved side
 /// faces the entity while the flat side opens away from it.
 fn lollipop_half_arc(
-  center_x : Int,
-  center_y : Int,
+  center_x : Int32,
+  center_y : Int32,
   direction : (Double, Double),
 ) -> Array[@graphics.PathSegment] {
   let radius = (LOLLIPOP_SIZE / 2).to_double()
@@ -235,7 +235,7 @@ fn lollipop_half_arc(
 fn EntityPaintContext::append_lollipop(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
@@ -320,7 +320,7 @@ fn EntityPaintContext::append_lollipop(
 fn EntityPaintContext::append_point(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
@@ -356,7 +356,7 @@ fn EntityPaintContext::append_point(
 fn EntityPaintContext::append_object_like(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
@@ -441,11 +441,11 @@ fn EntityPaintContext::append_object_header(
   self : EntityPaintContext,
   capability : @entity.EntityRenderCapability,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   header : ObjectHeaderLayout,
-  placement : (Int, Int, (Int, Int)?),
+  placement : (Int32, Int32, (Int32, Int32)?),
   text_color : String,
   line_attributes : @graphics.DrawingStyle,
 ) -> Unit {
@@ -488,9 +488,9 @@ fn EntityPaintContext::append_object_header(
 fn EntityPaintContext::append_map_body(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   header : ObjectHeaderLayout,
   separator_attributes : @graphics.DrawingStyle,
   text_color : String,
@@ -586,9 +586,9 @@ fn EntityPaintContext::append_map_body(
 fn EntityPaintContext::append_object_body(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   header : ObjectHeaderLayout,
   separator_attributes : @graphics.DrawingStyle,
 ) -> Unit {
@@ -647,8 +647,8 @@ fn EntityPaintContext::append_object_body(
 fn EntityPaintContext::append_json_body(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   header : ObjectHeaderLayout,
   stroke : String,
   text_color : String,
@@ -739,7 +739,7 @@ fn EntityPaintContext::append_json_body(
 fn EntityPaintContext::append_entity(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   let drawing = {
@@ -754,7 +754,7 @@ fn EntityPaintContext::append_entity(
 fn EntityPaintContext::append_usecase(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
@@ -817,10 +817,10 @@ fn EntityPaintContext::append_usecase(
 fn EntityPaintContext::append_usecase_body(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
   capability : @entity.EntityRenderCapability,
   fill : String,
   stroke : String,
@@ -906,9 +906,9 @@ fn EntityPaintContext::append_usecase_body(
 fn EntityPaintContext::append_actor_body(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   capability : @entity.EntityRenderCapability,
   fill : String,
   stroke : String,
@@ -1177,10 +1177,10 @@ fn EntityPaintContext::append_actor_body(
 fn EntityPaintContext::append_component_body(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
   capability : @entity.EntityRenderCapability,
   fill : String,
   stroke : String,
@@ -1294,7 +1294,7 @@ fn EntityPaintContext::append_component_body(
 fn EntityPaintContext::append_association_diamond(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }

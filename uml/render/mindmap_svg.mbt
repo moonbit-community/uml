@@ -152,7 +152,7 @@ fn append_mindmap_node(
 /// Render a parsed mindmap as an SVG document.
 fn @tree.MindmapDiagram::render_svg(
   self : @tree.MindmapDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   let layout = self.layout()
@@ -215,7 +215,7 @@ fn @tree.MindmapDiagram::render_svg(
 /// Render a parsed mindmap to SVG.
 pub fn render_mindmap_svg(
   diagram : @tree.MindmapDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   diagram.render_svg(color_scheme~)
 }

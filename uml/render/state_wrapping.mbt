@@ -11,7 +11,7 @@ priv struct StateWrapToken {
   text : String
   kind : StateWrapKind
   width : Double
-  source : Int
+  source : Int32
 }
 
 ///|
@@ -32,7 +32,7 @@ fn state_wrap_value(value : String) -> Double {
 ///|
 fn state_wrap_width(
   style : @style.DocumentStyle,
-  state? : @flow.StateNode? = None,
+  state~ : @flow.StateNode? = None,
 ) -> Double {
   let value = state.map_or_else(() => style.property("WrapWidth"), state => {
     state_style_property(state, style, "WrapWidth")
@@ -54,19 +54,19 @@ fn state_transition_wrap_width(style : @style.DocumentStyle) -> Double {
 /// Character.isWhitespace excludes nonbreaking spaces. Neutron treats the
 /// listed CJK/Japanese ranges as individual breakable characters.
 fn state_wrap_kind(char : Char) -> StateWrapKind {
-  if char is ('\u0009'..='\u000d') ||
-    char is ('\u001c'..='\u0020') ||
+  if char is ('\u0009'..<='\u000d') ||
+    char is ('\u001c'..<='\u0020') ||
     char == '\u1680' ||
-    char is ('\u2000'..='\u2006') ||
-    char is ('\u2008'..='\u200a') ||
-    char is ('\u2028'..='\u2029') ||
+    char is ('\u2000'..<='\u2006') ||
+    char is ('\u2008'..<='\u200a') ||
+    char is ('\u2028'..<='\u2029') ||
     char == '\u205f' ||
     char == '\u3000' {
     Space
-  } else if char is ('\u4e00'..='\u9fff') ||
-    char is ('\u3040'..='\u30ff') ||
-    char is ('\u3000'..='\u303f') ||
-    char is ('\uff65'..='\uff9f') {
+  } else if char is ('\u4e00'..<='\u9fff') ||
+    char is ('\u3040'..<='\u30ff') ||
+    char is ('\u3000'..<='\u303f') ||
+    char is ('\uff65'..<='\uff9f') {
     Cjk
   } else {
     Word
@@ -144,7 +144,7 @@ fn state_wrap_split(
   limit : Double,
 ) -> Array[Array[StateWrapToken]] {
   let lines : Array[(Array[StateWrapToken], Bool)] = []
-  let finish = (line : Array[Int]) => {
+  let finish = (line : Array[Int32]) => {
     let mut start = 0
     let mut end = line.length()
     while start < end && tokens[line[start]].kind == Break {
@@ -166,7 +166,7 @@ fn state_wrap_split(
     }
     lines.push((content, white))
   }
-  let mut line : Array[Int] = []
+  let mut line : Array[Int32] = []
   let mut width = 0.0
   let mut cursor = 0
   while cursor < tokens.length() {

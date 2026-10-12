@@ -58,7 +58,7 @@ const FREE_FUNCTIONS_CODE : String = "<free>"
 ///|
 priv struct Adapter {
   entities : Array[@entity.Entity]
-  entity_indices : Map[String, Int]
+  entity_indices : Map[String, Int32]
   relations : Array[@entity.Relation]
   options : @entity.MbtiOptions
 }
@@ -69,7 +69,7 @@ fn Adapter::new(options : @entity.MbtiOptions) -> Adapter {
 }
 
 ///|
-fn Adapter::entity_index(self : Adapter, code : String) -> Int? {
+fn Adapter::entity_index(self : Adapter, code : String) -> Int32? {
   self.entity_indices.get(code)
 }
 
@@ -81,8 +81,8 @@ fn Adapter::ensure_entity(
   self : Adapter,
   code : String,
   kind : @entity.EntityKind,
-  stereotype? : String? = None,
-) -> Int {
+  stereotype~ : String? = None,
+) -> Int32 {
   match self.entity_index(code) {
     Some(index) => index
     None => {
@@ -322,7 +322,7 @@ fn Adapter::push_association(
 fn Adapter::apply_func(
   adapter : Adapter,
   sig : @mbti_ast.FuncSig,
-  free_display? : String = "", // Text [Free] 
+  free_display~ : String = "", // Text [Free] 
 ) -> Unit {
   guard adapter.options.show_methods else { return }
   let index = if sig.type_name is Some(type_name) {

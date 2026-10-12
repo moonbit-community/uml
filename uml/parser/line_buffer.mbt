@@ -8,7 +8,7 @@
 /// `LineBuffer` rather than carrying their own `lines` array and `index`.
 priv struct LineBuffer {
   lines : Array[String]
-  mut index : Int
+  mut index : Int32
 }
 
 ///|
@@ -24,13 +24,13 @@ fn LineBuffer::new(input : String) -> LineBuffer {
 
 ///|
 /// The 1-based number of the current line.
-fn LineBuffer::line_number(self : LineBuffer) -> Int {
+fn LineBuffer::line_number(self : LineBuffer) -> Int32 {
   self.index + 1
 }
 
 ///|
 /// The total number of lines in the buffer.
-fn LineBuffer::length(self : LineBuffer) -> Int {
+fn LineBuffer::length(self : LineBuffer) -> Int32 {
   self.lines.length()
 }
 
@@ -79,9 +79,9 @@ fn LineBuffer::take_next(self : LineBuffer) -> String? {
 fn LineBuffer::consume_skinparam(
   self : LineBuffer,
   style : @style.DocumentStyle,
-  error_line : Int,
-  prefix? : String = "",
-  apply? : ((@style.StyleDirective) -> Unit)? = None,
+  error_line : Int32,
+  prefix~ : String = "",
+  apply~ : ((@style.StyleDirective) -> Unit)? = None,
 ) -> Unit raise @tokenizer.ParseError {
   self.advance()
   guard @style.consume_skinparam_body(
@@ -104,8 +104,8 @@ fn LineBuffer::consume_style_block(
   self : LineBuffer,
   line : String,
   style : @style.DocumentStyle,
-  mainframe? : Bool = false,
-  skinparam_error_line~ : Int,
+  mainframe~ : Bool = false,
+  skinparam_error_line~ : Int32,
 ) -> Bool raise @tokenizer.ParseError {
   let lower = line.to_lower()
   if lower == "skinparam {" {

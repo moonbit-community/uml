@@ -14,7 +14,7 @@ fn layout_node(
 ///|
 fn layout_edge(
   layout : @render.StateLayout,
-  transition_index : Int,
+  transition_index : Int32,
 ) -> @render.StateEdgeLayout {
   for edge in layout.edges {
     if edge.transition_index == transition_index {
@@ -141,7 +141,7 @@ test "entity notes land on the requested side of their anchor" {
     let node = layout.nodes.filter(node => node.code == code)[0]
     (node.x + node.width / 2.0, node.y + node.height / 2.0)
   }
-  let note_center = (index : Int) => {
+  let note_center = (index : Int32) => {
     let note = layout.notes[index]
     (note.x + note.width / 2.0, note.y + note.height / 2.0)
   }

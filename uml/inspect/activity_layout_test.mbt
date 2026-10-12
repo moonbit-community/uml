@@ -1,7 +1,7 @@
 ///|
 fn position_of(
   layout : @render.ActivityLayout,
-  node_index : Int,
+  node_index : Int32,
 ) -> (Double, Double)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
@@ -11,7 +11,7 @@ fn position_of(
 }
 
 ///|
-fn action_index(layout : @render.ActivityLayout, label : String) -> Int? {
+fn action_index(layout : @render.ActivityLayout, label : String) -> Int32? {
   for index, node in layout.source_nodes {
     guard node is @flow.ActivityNode::Action(candidate) && candidate == label else {
       continue
@@ -26,7 +26,7 @@ fn anchor_index(
   layout : @render.ActivityLayout,
   name : String,
   is_label : Bool,
-) -> Int? {
+) -> Int32? {
   for index, node in layout.source_nodes {
     guard (
         is_label &&
@@ -46,7 +46,7 @@ fn anchor_index(
 }
 
 ///|
-fn control_index(layout : @render.ActivityLayout, condition : String) -> Int? {
+fn control_index(layout : @render.ActivityLayout, condition : String) -> Int32? {
   for index, node in layout.source_nodes {
     guard (node is @flow.ActivityNode::While(value) && value.text == condition) ||
       (
@@ -661,7 +661,7 @@ test "goto connects its anchor directly to the matching label anchor" {
 ///|
 fn box_extent(
   layout : @render.ActivityLayout,
-  node_index : Int,
+  node_index : Int32,
 ) -> (Double, Double)? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
@@ -671,7 +671,11 @@ fn box_extent(
 }
 
 ///|
-fn box_gap(layout : @render.ActivityLayout, left : Int, right : Int) -> Double? {
+fn box_gap(
+  layout : @render.ActivityLayout,
+  left : Int32,
+  right : Int32,
+) -> Double? {
   guard box_extent(layout, left) is Some((_, left_right)) else { return None }
   guard box_extent(layout, right) is Some((right_x, _)) else { return None }
   Some(right_x - left_right)

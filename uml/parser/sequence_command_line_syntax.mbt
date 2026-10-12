@@ -146,7 +146,7 @@ fn optional_color(cursor : @tokenizer.Cursor) -> String? {
 
 ///|
 /// Matches an optional digit run introduced by a single space.
-fn optional_digit_run(cursor : @tokenizer.Cursor) -> Int? {
+fn optional_digit_run(cursor : @tokenizer.Cursor) -> Int32? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() {
     let digits = cursor.take_while(Char::is_ascii_digit)
@@ -225,7 +225,7 @@ fn participant_declaration_tail(
 }
 
 ///|
-fn optional_order(cursor : @tokenizer.Cursor) -> Int? {
+fn optional_order(cursor : @tokenizer.Cursor) -> Int32? {
   let saved = cursor.offset()
   if cursor.skip_inline_space1() &&
     take_keyword(cursor, "order") &&
@@ -530,7 +530,7 @@ fn hspace_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
 ///|
 /// Parse an optional digit-run: an empty run means `None`, otherwise the
 /// parsed value (callers guarantee the run is digit-only).
-fn optional_digits(value : String) -> Int? {
+fn optional_digits(value : String) -> Int32? {
   guard value.length() > 0 else { None }
   Some(@string.parse_int(value) catch { _ => 0 })
 }

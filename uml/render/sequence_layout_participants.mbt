@@ -1,7 +1,7 @@
 ///|
 fn constrain_message_gap(
-  constraints : Map[(Int, Int), Double],
-  participant_index : Map[String, Int],
+  constraints : Map[(Int32, Int32), Double],
+  participant_index : Map[String, Int32],
   message : @seq.Message,
   number : String?,
   text_metrics : SequenceTextMetrics,
@@ -19,8 +19,8 @@ fn constrain_message_gap(
 
 ///|
 fn constrain_note_gap(
-  constraints : Map[(Int, Int), Double],
-  participant_index : Map[String, Int],
+  constraints : Map[(Int32, Int32), Double],
+  participant_index : Map[String, Int32],
   note : @seq.Note,
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
@@ -40,10 +40,10 @@ fn constrain_note_gap(
 
 ///|
 fn constrain_participant_box_gap(
-  constraints : Map[(Int, Int), Double],
+  constraints : Map[(Int32, Int32), Double],
   layouts : Array[ParticipantLayout],
-  start : Int,
-  end : Int,
+  start : Int32,
+  end : Int32,
   box : @seq.ParticipantBox,
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
@@ -59,7 +59,7 @@ fn constrain_participant_box_gap(
 
 ///|
 fn constrain_participant_box_gaps(
-  constraints : Map[(Int, Int), Double],
+  constraints : Map[(Int32, Int32), Double],
   layouts : Array[ParticipantLayout],
   text_metrics : SequenceTextMetrics,
 ) -> Unit {
@@ -141,12 +141,12 @@ fn initial_participant_layout(
 fn layout_participants(
   diagram : @seq.SequenceDiagram,
   text_metrics : SequenceTextMetrics,
-) -> (Array[ParticipantLayout], Map[String, Int], Double) {
+) -> (Array[ParticipantLayout], Map[String, Int32], Double) {
   let layouts = initial_participant_layout(diagram, text_metrics)
   let index = participant_code_index(layouts)
   guard layouts.length() > 0 else { (layouts, index, horizontal_margin * 2) }
 
-  let constraints : Map[(Int, Int), Double] = Map([])
+  let constraints : Map[(Int32, Int32), Double] = Map([])
   for participant_index in 0..<(layouts.length() - 1) {
     let left = layouts[participant_index]
     let right = layouts[participant_index + 1]

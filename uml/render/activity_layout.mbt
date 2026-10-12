@@ -1,7 +1,7 @@
 ///|
 /// Geometry for one visible activity instruction.
 pub(all) struct ActivityNodeLayout {
-  node_index : Int
+  node_index : Int32
   note_pointer_offset : Double?
   x : Double
   y : Double
@@ -55,8 +55,8 @@ pub extend ActivityEdgeRoute with Debug::{to_repr}
 ///|
 /// A directed connector between visible activity instructions.
 pub(all) struct ActivityEdgeLayout {
-  from_node_index : Int
-  to_node_index : Int
+  from_node_index : Int32
+  to_node_index : Int32
   route : ActivityEdgeRoute
   label : String?
   style : String?
@@ -118,25 +118,25 @@ pub extend ActivityLayout with Debug::{to_repr}
 
 ///|
 priv enum Tile {
-  Leaf(Int)
-  Noted(Tile, Array[Int])
-  LoopWithBreaks(Tile, Array[Int], Int, Bool)
-  LoopWithBackward(Tile, Int, Int, Int, @flow.ActivityBackward)
-  FlowAnchor(Int)
-  GotoAnchor(Int)
-  Partition(Int, Array[Tile], Int)
+  Leaf(Int32)
+  Noted(Tile, Array[Int32])
+  LoopWithBreaks(Tile, Array[Int32], Int32, Bool)
+  LoopWithBackward(Tile, Int32, Int32, Int32, @flow.ActivityBackward)
+  FlowAnchor(Int32)
+  GotoAnchor(Int32)
+  Partition(Int32, Array[Tile], Int32)
   Swimlane
-  IfChain(Array[BranchTiles], Int)
-  WhileLoop(Int, Array[Tile], Int, String?, String?)
-  RepeatLoop(Int, Array[Tile], Int, String?, String?)
-  Parallel(Int, Array[BranchTiles], Int)
-  Switch(Int, Array[BranchTiles], Int)
+  IfChain(Array[BranchTiles], Int32)
+  WhileLoop(Int32, Array[Tile], Int32, String?, String?)
+  RepeatLoop(Int32, Array[Tile], Int32, String?, String?)
+  Parallel(Int32, Array[BranchTiles], Int32)
+  Switch(Int32, Array[BranchTiles], Int32)
 }
 
 ///|
 priv struct BranchTiles {
   style : String?
-  decision : Int?
+  decision : Int32?
   tiles : Array[Tile]
   label : String?
 }
@@ -149,8 +149,8 @@ priv struct TileMeasure {
 
 ///|
 priv struct PlacedTile {
-  entry : Int?
-  exit : Int?
+  entry : Int32?
+  exit : Int32?
   outgoing_label : String?
   outgoing_style : String?
   outgoing_route : ActivityEdgeRoute
@@ -292,12 +292,12 @@ const FORK_COLUMN_MARGIN : Double = 14
 /// Font size used for activity labels. PlantUML's skin sets `FontSize 12`
 /// for the real sans-serif font; the built-in metric table is calibrated at
 /// 13px, so 13 is the matching emulation size.
-const ACTION_FONT : Int = 13
+const ACTION_FONT : Int32 = 13
 
 ///|
 /// Font size used for arrow, branch, and diamond labels (emulates the skin
 /// `FontSize 11` with the built-in metric table).
-const SMALL_FONT : Int = 12
+const SMALL_FONT : Int32 = 12
 
 ///|
 const REGION_PADDING : Double = 12
@@ -312,7 +312,7 @@ const SWIMLANE_GAP : Double = 24
 fn add_layout_node(
   nodes : Array[@flow.ActivityNode],
   node : @flow.ActivityNode,
-) -> Int {
+) -> Int32 {
   let index = nodes.length()
   nodes.push(node)
   index
@@ -1270,7 +1270,7 @@ fn sequence_outgoing_style(
 fn activity_break_points(
   tiles : Array[Tile],
   nodes : Array[@flow.ActivityNode],
-) -> Array[Int] {
+) -> Array[Int32] {
   let points = []
   for tile in tiles {
     match tile {
@@ -1302,8 +1302,8 @@ fn activity_break_points(
 fn activity_backward_tile(
   body : Tile,
   instructions : Array[@flow.ActivityInstruction],
-  entry : Int,
-  exit : Int,
+  entry : Int32,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
 ) -> Tile {
   let mut backward = None

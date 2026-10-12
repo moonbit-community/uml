@@ -108,7 +108,7 @@ fn Parser::apply_state_font_default(
   self : Parser,
   property : String,
   value : String,
-  stereotype? : String = "",
+  stereotype~ : String = "",
 ) -> Unit {
   for
     prefix in [

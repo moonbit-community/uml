@@ -55,7 +55,7 @@ fn @entity.Member::display_without_visibility(self : @entity.Member) -> String {
 /// Horizontal offset of the member text from the class rect's left edge.
 /// PlantUML starts unadorned members (e.g. enum values) at x+5 with no
 /// placeholder, while visibility-prefixed members reserve x+20 for the icon.
-fn @entity.Member::member_text_x(self : @entity.Member) -> Int {
+fn @entity.Member::member_text_x(self : @entity.Member) -> Int32 {
   if self.visibility is Unknown {
     5
   } else {
@@ -67,8 +67,8 @@ fn @entity.Member::member_text_x(self : @entity.Member) -> Int {
 fn @entity.Member::draw_visibility_icon(
   self : @entity.Member,
   graphic : @graphics.Graphic,
-  x : Int,
-  baseline_y : Int,
+  x : Int32,
+  baseline_y : Int32,
   defaults : @style.EntityColors,
 ) -> Unit {
   if self.visibility is Unknown {
@@ -129,40 +129,40 @@ fn @entity.Member::draw_visibility_icon(
 }
 
 ///|
-fn ClassTextMetrics::row_height(self : ClassTextMetrics) -> Int {
+fn ClassTextMetrics::row_height(self : ClassTextMetrics) -> Int32 {
   self.regular.line_height.max(17)
 }
 
 ///|
 priv struct ClassHeaderLayout {
-  width : Int
-  height : Int
-  circle_width : Int
-  circle_height : Int
+  width : Int32
+  height : Int32
+  circle_width : Int32
+  circle_height : Int32
   /// Half width of the spot glyph: the circle radius for class diagrams, or
   /// half the measured kind word for the mbti family.
-  spot_half_width : Int
-  title_width : Int
-  title_height : Int
+  spot_half_width : Int32
+  title_width : Int32
+  title_height : Int32
   title_text : String
   generic : String?
-  generic_width : Int
-  generic_height : Int
-  stereotype_width : Int
-  stereotype_height : Int
+  generic_width : Int32
+  generic_height : Int32
+  stereotype_width : Int32
+  stereotype_height : Int32
   stereotype : String?
-  annotation_width : Int
-  annotation_height : Int
+  annotation_width : Int32
+  annotation_height : Int32
   annotation : String?
 }
 
 ///|
 priv struct ClassHeaderPlacement {
-  circle_center : (Int, Int)?
-  title_x : Int
-  title_baseline : Int
-  stereotype_position : (Int, Int)?
-  annotation_position : (Int, Int)?
+  circle_center : (Int32, Int32)?
+  title_x : Int32
+  title_baseline : Int32
+  stereotype_position : (Int32, Int32)?
+  annotation_position : (Int32, Int32)?
 }
 
 ///|
@@ -170,8 +170,8 @@ priv struct ClassBodyLayout {
   compartments : Array[ClassCompartment]?
   fields : Array[@entity.Member]
   methods : Array[@entity.Member]
-  fields_height : Int
-  methods_height : Int
+  fields_height : Int32
+  methods_height : Int32
   fields_collapsed : Bool
   methods_collapsed : Bool
 }
@@ -181,12 +181,12 @@ priv struct ClassBodyLayout {
 /// centered stack.  Keeping this layout separate prevents class-only header
 /// geometry from leaking into object diagrams.
 priv struct ObjectHeaderLayout {
-  width : Int
-  height : Int
-  title_width : Int
-  title_height : Int
-  stereotype_width : Int
-  stereotype_height : Int
+  width : Int32
+  height : Int32
+  title_width : Int32
+  title_height : Int32
+  stereotype_width : Int32
+  stereotype_height : Int32
   stereotype : String?
 }
 
@@ -197,7 +197,7 @@ priv struct ObjectHeaderLayout {
 priv struct ObjectBodyLayout {
   compartments : Array[ClassCompartment]?
   entries : Array[@entity.Member]
-  height : Int
+  height : Int32
   has_visibility : Bool
 }
 
@@ -207,8 +207,8 @@ priv struct ObjectBodyLayout {
 priv struct MapRowLayout {
   entry : @entity.MapEntry
   key : String
-  top : Int
-  height : Int
+  top : Int32
+  height : Int32
   port_id : String
 }
 
@@ -217,17 +217,17 @@ priv struct MapRowLayout {
 /// linked rows span the resulting total width.
 priv struct MapBodyLayout {
   rows : Array[MapRowLayout]
-  key_column_width : Int
-  value_column_width : Int
-  width : Int
-  height : Int
+  key_column_width : Int32
+  value_column_width : Int32
+  width : Int32
+  height : Int32
 }
 
 ///|
 fn body_section_height(
   entries : Array[@entity.Member],
   text_metrics : ClassTextMetrics,
-) -> Int {
+) -> Int32 {
   if entries.is_empty() {
     8
   } else {
@@ -240,7 +240,7 @@ fn body_section_height(
 }
 
 ///|
-fn member_rows_height(count : Int, text_metrics : ClassTextMetrics) -> Int {
+fn member_rows_height(count : Int32, text_metrics : ClassTextMetrics) -> Int32 {
   7 + count * text_metrics.row_height()
 }
 
@@ -253,8 +253,8 @@ fn member_rows_height(count : Int, text_metrics : ClassTextMetrics) -> Int {
 fn measure_header_label(
   display : String,
   metrics : @metrics.FontMetrics,
-  horizontal_padding : Int,
-) -> (String?, Int, Int) {
+  horizontal_padding : Int32,
+) -> (String?, Int32, Int32) {
   let measured = metrics.entity_measure(display)
   (Some(display), measured.width + horizontal_padding, measured.height)
 }
@@ -510,13 +510,13 @@ fn MapBodyLayout::row(self : MapBodyLayout, key : String) -> MapRowLayout? {
 ///|
 priv struct EntityNodePort {
   name : String
-  top : Int
-  height : Int
-  score : Int
+  top : Int32
+  height : Int32
+  score : Int32
 }
 
 ///|
-fn member_port_score(text : String, name : String) -> Int {
+fn member_port_score(text : String, name : String) -> Int32 {
   guard text.contains(name) else { return 0 }
   let chars = text.to_array()
   let word = name.to_array()
@@ -570,7 +570,7 @@ fn @entity.Entity::node_ports(
       length
     }
   })
-  let rows : Array[(@entity.Member, Int)] = []
+  let rows : Array[(@entity.Member, Int32)] = []
   if capability.body is OrderedMembers {
     let mut top = self.object_header_layout(text_metrics).height
     let body = self.object_body_layout(text_metrics)
@@ -665,8 +665,8 @@ fn graphviz_entity_port(
 /// Graphviz HTML table, matching SvekNode.appendLabelHtmlSpecialForLink.
 fn graphviz_entity_port_label(
   ports : Array[EntityNodePort],
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
 ) -> String {
   let output = StringBuilder()
   output <+
@@ -697,11 +697,11 @@ fn @entity.Entity::map_port_endpoint(
   self : @entity.Entity,
   port : String?,
   text_metrics : ClassTextMetrics,
-  x : Int,
-  y : Int,
-  width : Int,
-  target_x : Int,
-) -> (Int, Int)? {
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  target_x : Int32,
+) -> (Int32, Int32)? {
   guard self.kind is Map else { return None }
   guard port is Some(key) else { return None }
   guard self.map_body_layout(text_metrics).row(key) is Some(row) else {
@@ -722,34 +722,34 @@ fn @entity.Entity::map_port_endpoint(
 priv struct JsonRowLayout {
   key : String?
   value : String?
-  top : Int
+  top : Int32
   hline : Bool
-  hline_from : Int
-  hline_width : Int
-  value_x : Int
+  hline_from : Int32
+  hline_width : Int32
+  value_x : Int32
 }
 
 ///|
 /// Vertical divider of one JSON object body, spanning the object's rows.
 priv struct JsonDividerLayout {
-  x : Int
-  top : Int
-  height : Int
+  x : Int32
+  top : Int32
+  height : Int32
 }
 
 ///|
 priv struct JsonBodyLayout {
   rows : Array[JsonRowLayout]
   dividers : Array[JsonDividerLayout]
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
 }
 
 ///|
 priv struct JsonNodeSize {
-  key_column_width : Int
-  width : Int
-  height : Int
+  key_column_width : Int32
+  width : Int32
+  height : Int32
 }
 
 ///|
@@ -813,9 +813,9 @@ fn build_json_rows(
   text_metrics : ClassTextMetrics,
   rows : Array[JsonRowLayout],
   dividers : Array[JsonDividerLayout],
-  origin_x : Int,
-  hline_width : Int,
-  top : Int,
+  origin_x : Int32,
+  hline_width : Int32,
+  top : Int32,
 ) -> Unit {
   match node {
     JsonObject(members) => {
@@ -931,8 +931,8 @@ fn @entity.Entity::json_header_layout(
 ///|
 fn ObjectHeaderLayout::json_placement(
   self : ObjectHeaderLayout,
-  rect_width : Int,
-) -> (Int, Int, (Int, Int)?) {
+  rect_width : Int32,
+) -> (Int32, Int32, (Int32, Int32)?) {
   let (title_x, title_baseline, stereotype_position) = self.placement(
     rect_width,
   )
@@ -942,8 +942,8 @@ fn ObjectHeaderLayout::json_placement(
 ///|
 fn ObjectHeaderLayout::placement(
   self : ObjectHeaderLayout,
-  rect_width : Int,
-) -> (Int, Int, (Int, Int)?) {
+  rect_width : Int32,
+) -> (Int32, Int32, (Int32, Int32)?) {
   let content_width = self.title_width.max(self.stereotype_width)
   let content_x = ((rect_width - content_width).to_double() / 2.0)
     .max(0.0)
@@ -985,7 +985,7 @@ fn @entity.Entity::title_metrics(
 /// class width using PlantUML HeaderLayout's surplus-width split.
 fn ClassHeaderLayout::placement(
   self : ClassHeaderLayout,
-  rect_width : Int,
+  rect_width : Int32,
 ) -> ClassHeaderPlacement {
   let content_width = self.title_width
     .max(self.stereotype_width)
@@ -1173,7 +1173,7 @@ priv struct ClassTextMetrics {
   actor_style : String
   component_style : String
   generic_old : Bool
-  minimum_class_width : Int
+  minimum_class_width : Int32
   member_interaction : Bool
   member_defaults : @entity.ClassMemberState
   member_states : Map[String, @entity.ClassMemberState]
@@ -1188,8 +1188,8 @@ priv enum ActorAppearance {
 
 ///|
 priv struct NodeGeometry {
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   shape : @entity.NodeShape
 }
 
@@ -1197,54 +1197,54 @@ priv struct NodeGeometry {
 const TEXT_BLOCK_ELLIPSE_MARGIN : Double = 6.0
 
 ///|
-const CLASS_NAME_HORIZONTAL_MARGIN : Int = 3
+const CLASS_NAME_HORIZONTAL_MARGIN : Int32 = 3
 
 ///|
-const CLASS_STEREOTYPE_HORIZONTAL_MARGIN : Int = 1
+const CLASS_STEREOTYPE_HORIZONTAL_MARGIN : Int32 = 1
 
 ///|
-const CLASS_STEREOTYPE_FONT_SIZE : Int = 12
+const CLASS_STEREOTYPE_FONT_SIZE : Int32 = 12
 
 ///|
-const CLASS_HEADER_VERTICAL_PADDING : Int = 10
+const CLASS_HEADER_VERTICAL_PADDING : Int32 = 10
 
 ///|
-const CLASS_SPOT_RADIUS : Int = 11
+const CLASS_SPOT_RADIUS : Int32 = 11
 
 ///|
-const CLASS_SPOT_LEFT_MARGIN : Int = 4
+const CLASS_SPOT_LEFT_MARGIN : Int32 = 4
 
 ///|
-const CLASS_SPOT_RIGHT_MARGIN : Int = 0
+const CLASS_SPOT_RIGHT_MARGIN : Int32 = 0
 
 ///|
-const CLASS_SPOT_VERTICAL_MARGIN : Int = 5
+const CLASS_SPOT_VERTICAL_MARGIN : Int32 = 5
 
 ///|
 /// Font size of the class spot, matching the `.class-spot` CSS rule.
-const CLASS_SPOT_FONT_SIZE : Int = 12
+const CLASS_SPOT_FONT_SIZE : Int32 = 12
 
 ///|
-const CLASS_TEXT_BASELINE_BOTTOM_GAP : Int = 3
+const CLASS_TEXT_BASELINE_BOTTOM_GAP : Int32 = 3
 
 ///|
 /// Object image tokens mirror PlantUML's object style padding and body rows.
-const OBJECT_TEXT_HORIZONTAL_PADDING : Int = 5
+const OBJECT_TEXT_HORIZONTAL_PADDING : Int32 = 5
 
 ///|
-const OBJECT_HEADER_VERTICAL_PADDING : Int = 2
+const OBJECT_HEADER_VERTICAL_PADDING : Int32 = 2
 
 ///|
-const OBJECT_TEXT_BASELINE_BOTTOM_GAP : Int = 3
+const OBJECT_TEXT_BASELINE_BOTTOM_GAP : Int32 = 3
 
 ///|
-const OBJECT_BODY_BOTTOM_PADDING : Int = 7
+const OBJECT_BODY_BOTTOM_PADDING : Int32 = 7
 
 ///|
-const OBJECT_EMPTY_BODY_HEIGHT : Int = 16
+const OBJECT_EMPTY_BODY_HEIGHT : Int32 = 16
 
 ///|
-const OBJECT_SEPARATOR_HEIGHT : Int = 7
+const OBJECT_SEPARATOR_HEIGHT : Int32 = 7
 
 ///|
 const OBJECT_ROUND_CORNER : Double = 2.5
@@ -1252,113 +1252,113 @@ const OBJECT_ROUND_CORNER : Double = 2.5
 ///|
 /// `TextBlockMap` wraps cell text with a 5px horizontal and 2px vertical
 /// margin. Linked entries use its 7px point block for the second column.
-const MAP_CELL_HORIZONTAL_PADDING : Int = 5
+const MAP_CELL_HORIZONTAL_PADDING : Int32 = 5
 
 ///|
-const MAP_CELL_VERTICAL_PADDING : Int = 2
+const MAP_CELL_VERTICAL_PADDING : Int32 = 2
 
 ///|
-const MAP_LINK_VALUE_DIAMETER : Int = 7
+const MAP_LINK_VALUE_DIAMETER : Int32 = 7
 
 ///|
-const USECASE_BODY_HORIZONTAL_MARGIN : Int = 12
+const USECASE_BODY_HORIZONTAL_MARGIN : Int32 = 12
 
 ///|
-const ACTOR_FIGURE_WIDTH : Int = 29
+const ACTOR_FIGURE_WIDTH : Int32 = 29
 
 ///|
-const ACTOR_FIGURE_HEIGHT : Int = 62
+const ACTOR_FIGURE_HEIGHT : Int32 = 62
 
 ///|
-const ACTOR_AWESOME_WIDTH : Int = 57
+const ACTOR_AWESOME_WIDTH : Int32 = 57
 
 ///|
-const ACTOR_AWESOME_HEIGHT : Int = 62
+const ACTOR_AWESOME_HEIGHT : Int32 = 62
 
 ///|
-const ACTOR_HOLLOW_WIDTH : Int = 28
+const ACTOR_HOLLOW_WIDTH : Int32 = 28
 
 ///|
-const ACTOR_HOLLOW_HEIGHT : Int = 35
+const ACTOR_HOLLOW_HEIGHT : Int32 = 35
 
 ///|
-const COMPONENT_TAB_WIDTH : Int = 15
+const COMPONENT_TAB_WIDTH : Int32 = 15
 
 ///|
-const COMPONENT_TAB_HEIGHT : Int = 10
+const COMPONENT_TAB_HEIGHT : Int32 = 10
 
 ///|
-const COMPONENT_TAB_INSET : Int = 5
+const COMPONENT_TAB_INSET : Int32 = 5
 
 ///|
-const COMPONENT_TAB_MARK_WIDTH : Int = 4
+const COMPONENT_TAB_MARK_WIDTH : Int32 = 4
 
 ///|
-const COMPONENT_TAB_MARK_HEIGHT : Int = 2
+const COMPONENT_TAB_MARK_HEIGHT : Int32 = 2
 
 ///|
-const COMPONENT_TAB_MARK_LEFT_OFFSET : Int = 2
+const COMPONENT_TAB_MARK_LEFT_OFFSET : Int32 = 2
 
 ///|
-const COMPONENT_TAB_MARK_TOP_OFFSET : Int = 2
+const COMPONENT_TAB_MARK_TOP_OFFSET : Int32 = 2
 
 ///|
-const COMPONENT_TAB_MARK_GAP : Int = 4
+const COMPONENT_TAB_MARK_GAP : Int32 = 4
 
 ///|
 /// `EntityImageLollipopInterface` is a fixed 10x10 circle image with the
 /// interface name centered below the circle.
-const LOLLIPOP_SIZE : Int = 10
+const LOLLIPOP_SIZE : Int32 = 10
 
 ///|
 /// `EntityImageAssociationPoint` is a fixed 4x4 filled circle.
-const ASSOCIATION_POINT_SIZE : Int = 4
+const ASSOCIATION_POINT_SIZE : Int32 = 4
 
 ///|
 /// `EntityImagePort`: a fixed 12x12 square with the name above or below.
-const PORT_SIZE : Int = 12
+const PORT_SIZE : Int32 = 12
 
 ///|
-const USECASE_RELATION_LABEL_FONT_SIZE : Int = 13
+const USECASE_RELATION_LABEL_FONT_SIZE : Int32 = 13
 
 ///|
-const NOTE_FONT_SIZE : Int = 13
+const NOTE_FONT_SIZE : Int32 = 13
 
 ///|
-const NOTE_LEFT_PADDING : Int = 6
+const NOTE_LEFT_PADDING : Int32 = 6
 
 ///|
-const NOTE_RIGHT_PADDING : Int = 15
+const NOTE_RIGHT_PADDING : Int32 = 15
 
 ///|
-const NOTE_VERTICAL_PADDING : Int = 5
+const NOTE_VERTICAL_PADDING : Int32 = 5
 
 ///|
 /// PlantUML SvekResult canvas margins: the drawn content is shifted so its
 /// top-left corner sits at (6, 6) and the canvas extends 15px beyond the
 /// content's bottom-right corner.
-const SVG_MARGIN_LEFT : Int = 6
+const SVG_MARGIN_LEFT : Int32 = 6
 
 ///|
-const SVG_MARGIN_TOP : Int = 6
+const SVG_MARGIN_TOP : Int32 = 6
 
 ///|
-const SVG_MARGIN_RIGHT : Int = 15
+const SVG_MARGIN_RIGHT : Int32 = 15
 
 ///|
-const SVG_MARGIN_BOTTOM : Int = 15
+const SVG_MARGIN_BOTTOM : Int32 = 15
 
 ///|
-const RELATION_LABEL_FONT_SIZE : Int = 12
+const RELATION_LABEL_FONT_SIZE : Int32 = 12
 
 ///|
 /// Class relation endpoint labels use PlantUML's cardinality font role.
-const RELATION_END_FONT_SIZE : Int = PLANTUML_RELATION_LABEL_FONT_SIZE
+const RELATION_END_FONT_SIZE : Int32 = PLANTUML_RELATION_LABEL_FONT_SIZE
 
 ///|
 fn ClassTextMetrics::new(
   style : @style.DocumentStyle,
-  role? : String = "Class",
+  role~ : String = "Class",
 ) -> ClassTextMetrics {
   let default_size = if style.font_size is None {
     14
@@ -1468,7 +1468,7 @@ fn actor_appearance(style : String) -> ActorAppearance {
 fn actor_figure_geometry(
   appearance : ActorAppearance,
   business~ : Bool,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   if business {
     return (ACTOR_FIGURE_WIDTH, ACTOR_FIGURE_HEIGHT)
   }
@@ -1484,7 +1484,7 @@ fn @entity.Entity::class_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
   family : @entity.EntityFamily,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   let header = self.header_layout(text_metrics, family)
   let body = self.body_layout(text_metrics, family)
   let mut width = header.width.max(text_metrics.minimum_class_width)
@@ -1515,7 +1515,7 @@ fn @entity.Entity::class_node_size(
 fn @entity.Entity::object_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   let header = self.object_header_layout(text_metrics)
   let body = self.object_body_layout(text_metrics)
   if body.compartments is Some(sections) {
@@ -1541,7 +1541,7 @@ fn @entity.Entity::object_node_size(
 fn @entity.Entity::map_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   let header = self.object_header_layout(text_metrics)
   let body = self.map_body_layout(text_metrics)
   (header.width.max(body.width), header.height + body.height)
@@ -1551,7 +1551,7 @@ fn @entity.Entity::map_node_size(
 fn @entity.Entity::json_node_size(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   let header = self.json_header_layout(text_metrics)
   let body = self.json_body_layout(text_metrics)
   (header.width.max(body.width), header.height + body.height)
@@ -1561,7 +1561,7 @@ fn @entity.Entity::json_node_size(
 fn @entity.Entity::usecase_content_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> (Int, Int, String?) {
+) -> (Int32, Int32, String?) {
   let title = text_metrics.usecase_regular.entity_measure(self.display)
   // BodyEnhanced1 uses TextBlockUtils.withMargin(block, 6, 0), which adds
   // 6px to both horizontal sides. Its UEmpty footprint participates in sizing.
@@ -1585,7 +1585,10 @@ fn @entity.Entity::usecase_content_layout(
 ///|
 /// Matches TextBlockInEllipse: calculate the smallest ellipse containing the
 /// text footprint, then expand it by UEllipse.bigger(6).
-fn text_block_in_ellipse_geometry(width : Int, height : Int) -> (Int, Int) {
+fn text_block_in_ellipse_geometry(
+  width : Int32,
+  height : Int32,
+) -> (Int32, Int32) {
   let width = width.max(1).to_double()
   let height = height.max(1).to_double()
   let alpha = (height / width).max(0.2).min(0.8)
@@ -1607,8 +1610,8 @@ const BUSINESS_MARK_ACTOR_ANGLE : Double = 21.0 * @math.PI / 64.0
 
 ///|
 fn ellipse_point_at_angle(
-  center_x : Int,
-  center_y : Int,
+  center_x : Int32,
+  center_y : Int32,
   radius_x : Double,
   radius_y : Double,
   angle : Double,
@@ -1623,10 +1626,10 @@ fn ellipse_point_at_angle(
 /// Mirrors EntityImageUseCase.specialBusiness: a short chord along the
 /// ellipse's upper-right perimeter, leaving the display text unobscured.
 fn usecase_business_mark(
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> ((Double, Double), (Double, Double)) {
   let radius_x = width.to_double() / 2.0
   let radius_y = height.to_double() / 2.0
@@ -1667,9 +1670,9 @@ fn usecase_business_mark(
 ///|
 /// Mirrors ActorStickMan.specialBusiness with chord endpoints on the head.
 fn actor_business_mark(
-  center_x : Int,
-  center_y : Int,
-  radius : Int,
+  center_x : Int32,
+  center_y : Int32,
+  radius : Int32,
 ) -> ((Double, Double), (Double, Double)) {
   let radius = radius.to_double()
   (
@@ -1694,7 +1697,7 @@ fn actor_business_mark(
 fn @entity.Entity::actor_content_layout(
   self : @entity.Entity,
   text_metrics : ClassTextMetrics,
-) -> (Int, Int, String?) {
+) -> (Int32, Int32, String?) {
   let title = text_metrics.actor_regular.entity_measure(self.display)
   let (figure_width, figure_height) = actor_figure_geometry(
     actor_appearance(text_metrics.actor_style),
@@ -1805,7 +1808,7 @@ fn @entity.Entity::node_geometry(
 ///|
 /// USymbolComponent1/USymbolRectangle use equal ten-pixel margins;
 /// USymbolComponent2 reserves the icon at the top right.
-fn component_margins(style : String) -> (Int, Int, Int, Int) {
+fn component_margins(style : String) -> (Int32, Int32, Int32, Int32) {
   match style {
     "uml1" | "rectangle" => (10, 10, 10, 10)
     _ => (15, 25, 20, 10)
@@ -1814,19 +1817,19 @@ fn component_margins(style : String) -> (Int, Int, Int, Int) {
 
 ///|
 /// EntityImageAssociation.SIZE is the half diagonal of the diamond.
-const ASSOCIATION_DIAMOND_SIZE : Int = 24
+const ASSOCIATION_DIAMOND_SIZE : Int32 = 24
 
 ///|
-const CLASS_GENERIC_MARGIN : Int = 1
+const CLASS_GENERIC_MARGIN : Int32 = 1
 
 ///|
-const CLASS_GENERIC_OVERHANG : Int = 4
+const CLASS_GENERIC_OVERHANG : Int32 = 4
 
 ///|
 fn ClassHeaderLayout::generic_rect(
   self : ClassHeaderLayout,
-  width : Int,
-) -> (Int, Int, Int, Int) {
+  width : Int32,
+) -> (Int32, Int32, Int32, Int32) {
   (
     width - self.generic_width + CLASS_GENERIC_OVERHANG + CLASS_GENERIC_MARGIN,
     -CLASS_GENERIC_OVERHANG + CLASS_GENERIC_MARGIN,

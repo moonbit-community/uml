@@ -4,7 +4,7 @@
 fn EntityPaintContext::append_description(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
@@ -70,10 +70,10 @@ fn append_description_text(
   entity : @entity.Entity,
   text_metrics : ClassTextMetrics,
   text_color : String,
-  x : Int,
-  y : Int,
-  label_position : (Int, Int),
-  stereotype_position : (Int, Int)?,
+  x : Int32,
+  y : Int32,
+  label_position : (Int32, Int32),
+  stereotype_position : (Int32, Int32)?,
   text : DescriptionTextLayout,
 ) -> Unit {
   if stereotype_position is Some((stereotype_x, stereotype_baseline)) {
