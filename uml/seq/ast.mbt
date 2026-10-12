@@ -24,11 +24,11 @@ pub(all) struct Participant {
   code : String
   display : String
   typ : ParticipantType
-  order : Int?
+  order : Int32?
   color : String?
   url : String?
   boxes : Array[ParticipantBox]
-  position : Int
+  position : Int32
   stereotype : String?
 }
 
@@ -194,7 +194,7 @@ pub(all) struct Divider {
 
 ///|
 pub(all) struct HSpace {
-  pixels : Int?
+  pixels : Int32?
 }
 
 ///|
@@ -217,13 +217,13 @@ pub(all) struct BoxStart {
 ///|
 pub(all) struct Autonumber {
   start : String?
-  increment : Int?
+  increment : Int32?
   format : String?
 }
 
 ///|
 pub(all) struct AutonumberResume {
-  increment : Int?
+  increment : Int32?
   format : String?
 }
 
@@ -277,7 +277,7 @@ pub(all) enum Event {
   Url(String, String)
   DeactivateLatest
   IgnoreNewpage
-  AutoNewpage(Int?)
+  AutoNewpage(Int32?)
 }
 
 ///|

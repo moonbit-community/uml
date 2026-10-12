@@ -58,7 +58,7 @@ fn take_quoted_or_ident(cursor : @tokenizer.Cursor) -> String? {
 
 ///|
 /// Matches an optionally negative run of digits.
-fn take_signed_integer(cursor : @tokenizer.Cursor) -> Int? {
+fn take_signed_integer(cursor : @tokenizer.Cursor) -> Int32? {
   lexmatch cursor.remaining_view() {
     (re"^-?[0-9]+" as value, after=_) => {
       ignore(cursor.restore(cursor.offset() + value.char_length()))

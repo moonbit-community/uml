@@ -3,7 +3,7 @@ fn sequence_style_property(
   style : @style.DocumentStyle,
   role : String,
   key : String,
-  stereotype? : String? = None,
+  stereotype~ : String? = None,
 ) -> String? {
   let style = style.with_stereotypes(stereotype)
   if stereotype is Some(stereotype) {
@@ -25,7 +25,7 @@ fn sequence_style_color(
   role : String,
   key : String,
   fallback : String,
-  stereotype? : String? = None,
+  stereotype~ : String? = None,
 ) -> String {
   @svg.svg_color(
     sequence_style_property(style, role, key, stereotype~),
@@ -37,10 +37,10 @@ fn sequence_style_color(
 fn sequence_font(
   style : @style.DocumentStyle,
   role : String,
-  size : Int,
-  weight? : Int = 400,
-  italic? : Bool = false,
-  stereotype? : String? = None,
+  size : Int32,
+  weight~ : Int32 = 400,
+  italic~ : Bool = false,
+  stereotype~ : String? = None,
 ) -> @metrics.FontMetrics {
   let family = sequence_style_property(style, role, "FontName", stereotype~).unwrap_or(
     style.font_family(),

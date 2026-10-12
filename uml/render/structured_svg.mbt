@@ -1,7 +1,7 @@
 ///|
 priv struct StructuredPaint {
-  font_size : Int
-  font_weight : Int
+  font_size : Int32
+  font_weight : Int32
   italic : Bool
   font_family : String
   font_color : String
@@ -20,24 +20,24 @@ priv struct StructuredCell {
   paint : StructuredPaint
   metrics : @metrics.FontMetrics
   rich : StateRichText?
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
 }
 
 ///|
 priv struct StructuredRowLayout {
   key : StructuredCell?
   value : StructuredCell
-  height : Int
+  height : Int32
   highlight : StructuredPaint?
 }
 
 ///|
 priv struct StructuredBlock {
   rows : Array[StructuredRowLayout]
-  key_width : Int
-  width : Int
-  height : Int
+  key_width : Int32
+  width : Int32
+  height : Int32
 }
 
 ///|
@@ -48,19 +48,19 @@ priv struct StructuredPlacement {
 }
 
 ///|
-const STRUCTURED_FONT_SIZE : Int = 14
+const STRUCTURED_FONT_SIZE : Int32 = 14
 
 ///|
-const STRUCTURED_CELL_PADDING_X : Int = 5
+const STRUCTURED_CELL_PADDING_X : Int32 = 5
 
 ///|
-const STRUCTURED_CELL_PADDING_Y : Int = 2
+const STRUCTURED_CELL_PADDING_Y : Int32 = 2
 
 ///|
-const STRUCTURED_COLUMN_MIN_WIDTH : Int = 30
+const STRUCTURED_COLUMN_MIN_WIDTH : Int32 = 30
 
 ///|
-const STRUCTURED_CANVAS_PADDING : Int = 10
+const STRUCTURED_CANVAS_PADDING : Int32 = 10
 
 ///|
 const STRUCTURED_SPOT_BACK : Double = 13.0
@@ -212,7 +212,7 @@ fn structured_paint(
     Yaml => "yamldiagram"
     Toml => "tomldiagram"
   }
-  let selected : Array[(Int, Int, @structured.StructuredStyleProperty)] = []
+  let selected : Array[(Int32, Int32, @structured.StructuredStyleProperty)] = []
   for order, property in diagram.styles {
     let mut specificity = 0
     let matches = property.selector
@@ -393,7 +393,7 @@ fn structured_graph_node(
   scheme : @style.ColorScheme,
   graph : @cgraph.Graph,
   blocks : Array[StructuredBlock],
-  edges : Map[Int, String],
+  edges : Map[Int32, String],
 ) -> @cgraph.Node {
   let index = blocks.length()
   let block = structured_block(diagram, node, path, scheme)
@@ -670,13 +670,13 @@ fn draw_structured_edges(
 /// Layout errors are propagated; there is no geometric fallback.
 pub fn render_structured_svg(
   diagram : @structured.StructuredDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   let graph = @cgraph.Graph::new(Directed, name="structured", strict=false)
   graph.set_attr("rankdir", "LR")
   graph.set_attr("splines", "spline")
   let blocks = []
-  let edge_names : Map[Int, String] = Map([])
+  let edge_names : Map[Int32, String] = Map([])
   ignore(
     structured_graph_node(
       diagram,

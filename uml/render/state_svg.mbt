@@ -36,9 +36,9 @@ fn append_state_label(
   y : Double,
   class_name : String,
   text_metrics : @metrics.FontMetrics,
-  line_alignment? : @graphics.TextAnchor? = None,
-  wrap_width? : Double = 0.0,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  line_alignment~ : @graphics.TextAnchor? = None,
+  wrap_width~ : Double = 0.0,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> Unit {
   if state_rich_text(text, text_metrics, wrap_width, monospaced_family~)
     is Some(rich) {
@@ -85,7 +85,7 @@ fn append_state_node(
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateNodeLayout,
-  cluster_title_top? : Double? = None,
+  cluster_title_top~ : Double? = None,
 ) -> Unit {
   guard diagram.state(layout.code) is Some(state) else { return }
   if state.kind is @flow.LegacyActivity {
@@ -175,7 +175,7 @@ fn append_state_node_body(
   layout : StateNodeLayout,
   composite~ : Bool,
   empty_description~ : Bool,
-  cluster_title_top? : Double? = None,
+  cluster_title_top~ : Double? = None,
 ) -> Unit {
   let x = layout.x
   let y = layout.y
@@ -492,7 +492,7 @@ fn append_state_note(
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateNoteLayout,
-  connection? : StateNoteConnection? = None,
+  connection~ : StateNoteConnection? = None,
 ) -> Unit {
   guard layout.note_index < diagram.notes.length() else { return }
   let note = diagram.notes[layout.note_index]
@@ -540,7 +540,7 @@ fn append_state_note(
 ///|
 fn @flow.StateDiagram::render_svg(
   self : @flow.StateDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   let self = {
     ..self.visible_state_diagram(),
@@ -658,9 +658,9 @@ fn append_state_layout(
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateLayout,
-  note_connections? : Array[StateNoteConnection] = [],
-  cluster_titles? : Map[String, Double] = Map([]),
-  include_hidden? : Bool = false,
+  note_connections~ : Array[StateNoteConnection] = [],
+  cluster_titles~ : Map[String, Double] = Map([]),
+  include_hidden~ : Bool = false,
 ) -> Unit {
   for region in layout.regions {
     if (include_hidden || !diagram.state_is_hidden(region.parent)) &&
@@ -723,7 +723,7 @@ fn append_state_layout(
 /// Render a parsed state diagram to SVG.
 pub fn render_state_svg(
   diagram : @flow.StateDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   diagram.render_svg(color_scheme~)
 }

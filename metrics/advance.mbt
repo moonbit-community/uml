@@ -1,10 +1,10 @@
 ///|
-fn Float::ceil_pixels(self : Float) -> Int {
+fn Float::ceil_pixels(self : Float) -> Int32 {
   (self / 1000.0).ceil().to_int()
 }
 
 ///|
-fn FontMetrics::profile_scale(self : FontMetrics) -> Int {
+fn FontMetrics::profile_scale(self : FontMetrics) -> Int32 {
   match self.profile {
     Sans => 1000
     Serif => 1020
@@ -65,7 +65,7 @@ fn FontMetrics::table_advance(self : FontMetrics, char : Char) -> Float? {
 /// Match PlantUML's UnicodeBlock representation: one-value blocks are
 /// constant, full blocks are direct lookup tables, and shorter blocks store
 /// `(count, value)` RLE pairs.
-fn unicode_block_width(widths : Array[Int], low_byte : Int) -> Int {
+fn unicode_block_width(widths : Array[Int32], low_byte : Int32) -> Int32 {
   if widths.length() == 1 {
     widths[0]
   } else if widths.length() == 256 {
@@ -84,12 +84,12 @@ fn unicode_block_width(widths : Array[Int], low_byte : Int) -> Int {
 }
 
 ///|
-fn FontMetrics::glyph_width_scale(self : FontMetrics, char : Char) -> Int {
+fn FontMetrics::glyph_width_scale(self : FontMetrics, char : Char) -> Int32 {
   guard self.profile != Monospace else { 100 }
   match char {
-    'A'..='Z' => self.uppercase_width_scale
-    'a'..='z' => self.lowercase_width_scale
-    '0'..='9' => self.digit_width_scale
+    'A'..<='Z' => self.uppercase_width_scale
+    'a'..<='z' => self.lowercase_width_scale
+    '0'..<='9' => self.digit_width_scale
     ' ' | '\t' => 100
     _ if char.is_ascii() => self.punctuation_width_scale
     _ if char.is_emoji() => self.emoji_width_scale
@@ -118,8 +118,8 @@ fn FontMetrics::base_char_width(self : FontMetrics, char : Char) -> Float {
     'i' | 'l' | 'I' | '!' | '|' | '.' | ',' | ':' | ';' | '\'' => 3.0
     'f' | 'j' | 'r' | 't' | '(' | ')' | '[' | ']' => 5.0
     'm' | 'w' | 'M' | 'W' | '@' | '%' => 11.0
-    'A'..='Z' => 8.0
-    '0'..='9' => self.digit_base_width(char)
+    'A'..<='Z' => 8.0
+    '0'..<='9' => self.digit_base_width(char)
     _ if char.is_emoji() || char.is_wide() => 14.0
     _ => 7.0
   }
@@ -147,7 +147,7 @@ fn FontMetrics::char_advance(self : FontMetrics, char : Char) -> Float {
 }
 
 ///|
-pub fn FontMetrics::char_width(self : FontMetrics, char : Char) -> Int {
+pub fn FontMetrics::char_width(self : FontMetrics, char : Char) -> Int32 {
   self.char_advance(char).ceil_pixels()
 }
 

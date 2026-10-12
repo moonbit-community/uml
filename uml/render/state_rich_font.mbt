@@ -8,15 +8,15 @@ fn state_monospaced_family(style : @style.DocumentStyle) -> String {
 
 ///|
 priv struct StateRichFontTag {
-  length : Int
+  length : Int32
   family : String?
-  size : Int?
+  size : Int32?
   color : String?
 }
 
 ///|
 fn state_font_tag_space(char : Char) -> Bool {
-  char == ' ' || char == '\u00a0' || char is ('\u0009'..='\u000d')
+  char == ' ' || char == '\u00a0' || char is ('\u0009'..<='\u000d')
 }
 
 ///|
@@ -46,7 +46,7 @@ fn state_rich_font_attributes(cursor : @tokenizer.Cursor) -> StateRichFontTag? {
       size = Some(@string.parse_int(digits) catch { _ => return None })
     } else if cursor.consume_literal("#") {
       let hex = cursor.take_while(char => {
-        char.is_ascii_digit() || char is ('a'..='f') || char is ('A'..='F')
+        char.is_ascii_digit() || char is ('a'..<='f') || char is ('A'..<='F')
       })
       guard hex.length() == 6 else { return None }
       color = Some("#" + hex)
@@ -75,7 +75,7 @@ fn state_rich_font_open(text : String) -> StateRichFontTag? {
   }
   guard !cursor
     .take_while(char => {
-      char == ':' || char == ' ' || char is ('\u0009'..='\u000d')
+      char == ':' || char == ' ' || char is ('\u0009'..<='\u000d')
     })
     .is_empty() else {
     return None

@@ -16,7 +16,7 @@ pub extend GraphvizNodeLayout with Debug::{to_repr}
 
 ///|
 pub struct GraphvizPackageLayout {
-  package_index : Int
+  package_index : Int32
   x : Double
   y : Double
   width : Double
@@ -56,7 +56,7 @@ const PLANTUML_MIN_NODESEP_IN : Double = 35.0 / @graphviz.GRAPHVIZ_DPI
 const PLANTUML_MIN_RANKSEP_IN : Double = 60.0 / @graphviz.GRAPHVIZ_DPI
 
 ///|
-const PLANTUML_RELATION_LABEL_FONT_SIZE : Int = 13
+const PLANTUML_RELATION_LABEL_FONT_SIZE : Int32 = 13
 
 ///|
 /// Defaults returned by CucaDiagram#getLabeldistance/getLabelangle.
@@ -66,7 +66,7 @@ const PLANTUML_LABEL_DISTANCE : String = "1.7"
 const PLANTUML_LABEL_ANGLE : String = "25"
 
 ///|
-fn graphviz_node_name(index : Int) -> String {
+fn graphviz_node_name(index : Int32) -> String {
   "n\{index}"
 }
 
@@ -78,7 +78,7 @@ const LINK_NOTE_GAP : Double = 12.0
 const GROUP_POINT_TITLE_HEIGHT : Double = 16.0
 
 ///|
-fn graphviz_cluster_name(index : Int) -> String {
+fn graphviz_cluster_name(index : Int32) -> String {
   "cluster_package\{index}"
 }
 
@@ -86,7 +86,7 @@ fn graphviz_cluster_name(index : Int) -> String {
 fn graphviz_entity_index(
   diagram : @entity.EntityDiagram,
   node_name : String,
-) -> Int? {
+) -> Int32? {
   for index, entity in diagram.entities {
     if !entity.is_removed && graphviz_node_name(index) == node_name {
       return Some(index)
@@ -117,7 +117,7 @@ fn append_package_layouts(
   output : Array[GraphvizPackageLayout],
   layout : @dot_layout.DotLayoutGraph,
   root_bbox : @geom.Rect,
-  package_indices : Map[String, Int],
+  package_indices : Map[String, Int32],
 ) -> Unit {
   if layout.graph.name() is Some(name) {
     if package_indices.get(name) is Some(package_index) {
@@ -140,7 +140,7 @@ fn append_package_layouts(
 fn note_size(
   note : @entity.Note,
   text_metrics : ClassTextMetrics,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   let measured = text_metrics.note.entity_measure(note.text)
   (
     measured.width + NOTE_LEFT_PADDING + NOTE_RIGHT_PADDING,
@@ -153,7 +153,7 @@ fn note_size(
 /// dash whenever an explicit left/right direction word is present, so those
 /// links always carry dot `minlen=0`. Every other link counts its stroke
 /// characters (`-=~.`) and maps `queue.length()` to `minlen = length - 1`.
-fn @entity.Relation::graphviz_minlen(self : @entity.Relation) -> Int {
+fn @entity.Relation::graphviz_minlen(self : @entity.Relation) -> Int32 {
   if self.direction is Leftward || self.direction is Rightward {
     0
   } else {
@@ -192,7 +192,7 @@ fn @entity.EntityDiagram::graphviz_layout(
   graph.set_attr("remincross", "true")
   graph.set_attr("searchsize", "500")
   let package_content_graphs : Map[String, @cgraph.Graph] = Map([])
-  let package_indices : Map[String, Int] = Map([])
+  let package_indices : Map[String, Int32] = Map([])
   for package_index, group in self.packages {
     let parent = package_content_graphs.get(group.parent).unwrap_or(graph)
     let cluster_name = graphviz_cluster_name(package_index)
@@ -308,7 +308,7 @@ fn @entity.EntityDiagram::graphviz_layout(
       node.set_attr("margin", "0")
     }
   }
-  let relation_names : Map[Int, String] = Map([])
+  let relation_names : Map[Int32, String] = Map([])
   let source_ports : Map[String, Array[String]] = Map([])
   let sink_ports : Map[String, Array[String]] = Map([])
   for index, entity in self.entities {
@@ -563,8 +563,8 @@ fn @entity.EntityDiagram::graphviz_layout(
     edge.set_attr("minlen", "\{minlen}")
     edge.set_attr("dir", "none")
   }
-  let note_names : Map[String, Int] = Map([])
-  let note_edge_names : Map[Int, String] = Map([])
+  let note_names : Map[String, Int32] = Map([])
+  let note_edge_names : Map[Int32, String] = Map([])
   for note_index, note in self.notes {
     if note.target_kind is @entity.NoteTargetKind::LinkNote {
       continue
@@ -729,7 +729,7 @@ fn @entity.EntityDiagram::graphviz_layout(
 
 ///|
 /// The Graphviz `minlen` of a relation, mirroring `LinkDecor.getMinlen`.
-pub fn relation_graphviz_minlen(relation : @entity.Relation) -> Int {
+pub fn relation_graphviz_minlen(relation : @entity.Relation) -> Int32 {
   relation.graphviz_minlen()
 }
 

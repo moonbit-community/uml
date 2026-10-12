@@ -186,8 +186,8 @@ pub fn DocumentStyle::property_font_color(
 pub fn DocumentStyle::property_font_size(
   self : DocumentStyle,
   key : String,
-  fallback~ : Int,
-) -> Int {
+  fallback~ : Int32,
+) -> Int32 {
   guard self.property(key) is Some(value) else { return fallback }
   parse_font_size(value, fallback~)
 }
@@ -324,7 +324,7 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
 pub fn consume_skinparam_body(
   next_line : () -> String?,
   apply : (StyleDirective) -> Unit,
-  prefix? : String = "",
+  prefix~ : String = "",
 ) -> Bool {
   let context = [prefix]
   while next_line() is Some(raw) {
@@ -369,14 +369,14 @@ pub fn DocumentStyle::font_size(self : DocumentStyle) -> String {
 ///|
 pub fn DocumentStyle::font_size_value(
   self : DocumentStyle,
-  fallback? : Int = 13,
-) -> Int {
+  fallback~ : Int32 = 13,
+) -> Int32 {
   guard self.font_size is Some(value) else { return fallback }
   parse_font_size(value, fallback~)
 }
 
 ///|
-fn parse_font_size(value : String, fallback~ : Int) -> Int {
+fn parse_font_size(value : String, fallback~ : Int32) -> Int32 {
   let normalized = value.to_lower()
   let raw = normalized.trim_end(chars="pxt").trim()
   let parsed = @string.parse_int(raw) catch { _ => fallback }
@@ -426,7 +426,7 @@ pub fn font_size(style : DocumentStyle) -> String {
 
 ///|
 /// Compatibility wrapper for the original top-level style API.
-pub fn font_size_value(style : DocumentStyle, fallback? : Int = 13) -> Int {
+pub fn font_size_value(style : DocumentStyle, fallback~ : Int32 = 13) -> Int32 {
   style.font_size_value(fallback~)
 }
 
@@ -440,10 +440,10 @@ pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
 /// Builds metrics from the document font settings plus a concrete text role.
 pub fn DocumentStyle::font_metrics(
   self : DocumentStyle,
-  font_size? : Int = 0,
-  font_weight? : Int = 400,
-  font_style? : @metrics.FontStyle = Normal,
-  line_height? : Int = 0,
+  font_size~ : Int32 = 0,
+  font_weight~ : Int32 = 400,
+  font_style~ : @metrics.FontStyle = Normal,
+  line_height~ : Int32 = 0,
 ) -> @metrics.FontMetrics {
   self.font_metrics_for(
     self.font_family(),
@@ -458,10 +458,10 @@ pub fn DocumentStyle::font_metrics(
 pub fn DocumentStyle::font_metrics_for(
   self : DocumentStyle,
   family : String,
-  font_size? : Int = 0,
-  font_weight? : Int = 400,
-  font_style? : @metrics.FontStyle = Normal,
-  line_height? : Int = 0,
+  font_size~ : Int32 = 0,
+  font_weight~ : Int32 = 400,
+  font_style~ : @metrics.FontStyle = Normal,
+  line_height~ : Int32 = 0,
 ) -> @metrics.FontMetrics {
   let resolved_size = if font_size > 0 {
     font_size

@@ -32,7 +32,7 @@ fn state_display_raw_boundary(cursor : @tokenizer.Cursor) -> (String, Bool)? {
 /// inside the measured title block.
 fn state_display(
   text : String,
-  literal_newlines? : Bool = false,
+  literal_newlines~ : Bool = false,
 ) -> StateDisplay {
   if literal_newlines {
     return { text, alignment: None, }
@@ -93,7 +93,7 @@ fn StateDisplay::anchor_position(
   x : Double,
   anchor : @graphics.TextAnchor,
   metrics : @metrics.FontMetrics,
-  line_alignment? : @graphics.TextAnchor? = None,
+  line_alignment~ : @graphics.TextAnchor? = None,
 ) -> (Double, @graphics.TextAnchor) {
   let alignment = self.alignment.unwrap_or(line_alignment.unwrap_or(anchor))
   guard alignment != anchor else { return (x, anchor) }

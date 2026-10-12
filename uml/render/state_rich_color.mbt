@@ -3,12 +3,12 @@
 /// unknown color, retaining the surrounding color in that case.
 /// Verified 2026-09-16: delimiters/case, invalid syntax, unknown names, EOL
 /// scope, outer-color restoration, nested faces/sizes, and escaped tags passed.
-fn state_rich_color_open(text : String) -> (Int, String)? {
+fn state_rich_color_open(text : String) -> (Int32, String)? {
   let cursor = @tokenizer.Cursor::new(text.to_lower())
   guard cursor.consume_literal("<color") else { return None }
   guard !cursor
     .take_while(char => {
-      char == ':' || char == ' ' || char is ('\u0009'..='\u000d')
+      char == ':' || char == ' ' || char is ('\u0009'..<='\u000d')
     })
     .is_empty() else {
     return None
@@ -25,7 +25,7 @@ fn state_rich_color_open(text : String) -> (Int, String)? {
   let value = cursor.slice(start, cursor.offset())
   ignore(
     cursor.take_while(char => {
-      char == ' ' || char == '\u00a0' || char is ('\u0009'..='\u000d')
+      char == ' ' || char == '\u00a0' || char is ('\u0009'..<='\u000d')
     }),
   )
   guard cursor.consume_literal(">") else { return None }
@@ -58,7 +58,7 @@ fn state_automatic_contrast(background : String) -> String {
   let color = state_gradient_color(state_first_gradient_color(background)).unwrap_or(
     "#000000",
   )
-  let channel = (start : Int) => {
+  let channel = (start : Int32) => {
     @string.parse_int(color[start:start + 2], base=16) catch {
       _ => 0
     }

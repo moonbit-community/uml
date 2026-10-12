@@ -2,7 +2,7 @@
 priv struct StateRichSpan {
   text : String
   face : StateFontFace
-  size : Int?
+  size : Int32?
   color : String?
   family : String?
   decoration : StateRichDecoration
@@ -29,7 +29,7 @@ fn state_rich_escapable(char : Char) -> Bool {
 }
 
 ///|
-fn state_rich_end(text : String, closing : String, nonempty~ : Bool) -> Int? {
+fn state_rich_end(text : String, closing : String, nonempty~ : Bool) -> Int32? {
   let cursor = @tokenizer.Cursor::new(text)
   while !cursor.is_eof() {
     if (!nonempty || cursor.offset() > 0) &&
@@ -57,11 +57,11 @@ fn state_rich_end(text : String, closing : String, nonempty~ : Bool) -> Int? {
 fn state_rich_spans(
   text : String,
   face : StateFontFace,
-  size? : Int? = None,
-  color? : String? = None,
-  family? : String? = None,
-  decoration? : StateRichDecoration = Default::default(),
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  size~ : Int32? = None,
+  color~ : String? = None,
+  family~ : String? = None,
+  decoration~ : StateRichDecoration = Default::default(),
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> (Array[StateRichSpan], Bool) {
   let spans = []
   let cursor = @tokenizer.Cursor::new(text)
@@ -105,7 +105,7 @@ fn state_rich_spans(
     if state_rich_decoration_open(cursor.remaining()) is Some(tag) {
       let start = cursor.offset() + tag.length
       let body = cursor.slice(start, text.length())
-      let mut ending : (Int, Int)? = None
+      let mut ending : (Int32, Int32)? = None
       for close in tag.closing {
         if state_rich_end(body, close, nonempty=tag.paired) is Some(index) &&
           ending.map_or(true, previous => index < previous.0) {
@@ -299,11 +299,11 @@ fn state_rich_spans(
 /// and trailing whitespace including NBSP, with case-insensitive tag names.
 /// Verified 2026-09-16: case/separators, rejected signed/unit/decimal values,
 /// EOL scope, outer-size restoration, nested faces, and escaped opening tags.
-fn state_rich_size_open(text : String) -> (Int, Int)? {
+fn state_rich_size_open(text : String) -> (Int32, Int32)? {
   let cursor = @tokenizer.Cursor::new(text.to_lower())
   guard cursor.consume_literal("<size") else { return None }
   let separator = cursor.take_while(char => {
-    char == ':' || char == ' ' || char is ('\u0009'..='\u000d')
+    char == ':' || char == ' ' || char is ('\u0009'..<='\u000d')
   })
   guard !separator.is_empty() else { return None }
   let digits = cursor.take_while(char => char.is_ascii_digit())
@@ -311,7 +311,7 @@ fn state_rich_size_open(text : String) -> (Int, Int)? {
   let size = @string.parse_int(digits) catch { _ => return None }
   ignore(
     cursor.take_while(char => {
-      char == ' ' || char == '\u00a0' || char is ('\u0009'..='\u000d')
+      char == ' ' || char == '\u00a0' || char is ('\u0009'..<='\u000d')
     }),
   )
   guard cursor.consume_literal(">") else { return None }
@@ -368,8 +368,8 @@ fn state_rich_text(
   text : String,
   metrics : @metrics.FontMetrics,
   wrap_width : Double,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
-  literal_newlines? : Bool = false,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
+  literal_newlines~ : Bool = false,
 ) -> StateRichText? {
   let display = state_display(text, literal_newlines~)
   let face : StateFontFace = {
@@ -592,7 +592,7 @@ priv enum StateRichDecorationKind {
 
 ///|
 priv struct StateRichDecorationTag {
-  length : Int
+  length : Int32
   kind : StateRichDecorationKind
   closing : Array[String]
   paired : Bool
@@ -647,7 +647,7 @@ fn state_rich_decoration_open(text : String) -> StateRichDecorationTag? {
       if cursor.consume('#') {
         cursor
         .take_while(char => {
-          char.is_ascii_digit() || char is ('a'..='f' | 'A'..='F')
+          char.is_ascii_digit() || char is ('a'..<='f' | 'A'..<='F')
         })
         .length() ==
         6

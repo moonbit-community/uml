@@ -4,7 +4,7 @@
 /// font; restoring the original face retains every metric. Temporary tests removed.
 pub fn FontMetrics::with_face(
   self : FontMetrics,
-  weight : Int,
+  weight : Int32,
   style : FontStyle,
 ) -> FontMetrics {
   { ..self, font_weight: weight, style, }
@@ -37,7 +37,7 @@ pub fn FontMetrics::with_profile(
 /// Zero size resets vertical metrics. Verified 2026-09-16: positive resizing
 /// matches an equivalently configured font; zero-size text has no glyph extent.
 /// Temporary property tests removed after verification.
-pub fn FontMetrics::with_size(self : FontMetrics, size : Int) -> FontMetrics {
+pub fn FontMetrics::with_size(self : FontMetrics, size : Int32) -> FontMetrics {
   let size = size.max(0)
   guard size != self.font_size else { return self }
   let resized = FontMetrics::from_defaults(

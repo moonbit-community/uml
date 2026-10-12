@@ -259,7 +259,7 @@ fn EntityParser::apply_entity_rules(self : EntityParser) -> Unit {
 ///|
 fn EntityParser::set_portion_state(
   self : EntityParser,
-  entity_index : Int,
+  entity_index : Int32,
   rule : @entity.PortionRule,
 ) -> Unit {
   let hidden = !rule.show

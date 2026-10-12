@@ -28,7 +28,7 @@ fn TimingParser::new(input : String) -> TimingParser {
 }
 
 ///|
-fn TimingParser::line_number(self : TimingParser) -> Int {
+fn TimingParser::line_number(self : TimingParser) -> Int32 {
   self.buffer.line_number()
 }
 

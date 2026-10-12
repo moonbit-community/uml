@@ -17,7 +17,7 @@ pub extend StateNodeLayout with Debug::{to_repr}
 
 ///|
 pub(all) struct StateEdgeLayout {
-  transition_index : Int
+  transition_index : Int32
   paths : Array[Array[(Double, Double)]]
   label : (Double, Double)?
   target_label : (Double, Double)?
@@ -32,7 +32,7 @@ pub extend StateEdgeLayout with Debug::{to_repr}
 ///|
 pub(all) struct StateRegionLayout {
   parent : String
-  region_index : Int
+  region_index : Int32
   separator : @flow.StateRegionSeparator?
   x : Double
   y : Double
@@ -48,7 +48,7 @@ pub extend StateRegionLayout with Debug::{to_repr}
 
 ///|
 pub(all) struct StateNoteLayout {
-  note_index : Int
+  note_index : Int32
   x : Double
   y : Double
   width : Double
@@ -183,7 +183,7 @@ fn state_spacing_override(
 fn @flow.StateDiagram::graphviz_spacing(
   self : @flow.StateDiagram,
   scope : String?,
-  region_index : Int,
+  region_index : Int32,
 ) -> (Double, Double) {
   let legacy = self.style.property("LegacyActivity") == Some("true")
   let mut nodesep = if legacy {
@@ -225,7 +225,7 @@ fn @flow.StateDiagram::graphviz_spacing(
 }
 
 ///|
-fn state_graphviz_node_name(index : Int) -> String {
+fn state_graphviz_node_name(index : Int32) -> String {
   "s" + index.to_string()
 }
 
@@ -386,7 +386,7 @@ fn @flow.StateDiagram::is_state_cluster(
 fn @flow.StateDiagram::state_graph_scope(
   self : @flow.StateDiagram,
   code : String,
-) -> (String?, Int) {
+) -> (String?, Int32) {
   guard self.state(code) is Some(state) else { return (None, -1) }
   self.location_graph_scope(state.parent, state.region_index)
 }
@@ -395,8 +395,8 @@ fn @flow.StateDiagram::state_graph_scope(
 fn @flow.StateDiagram::location_graph_scope(
   self : @flow.StateDiagram,
   parent : String?,
-  region_index : Int,
-) -> (String?, Int) {
+  region_index : Int32,
+) -> (String?, Int32) {
   let mut current = parent
   let mut region_index = region_index
   while current is Some(parent) {
@@ -426,7 +426,7 @@ fn @flow.StateDiagram::transition_region_index(
   self : @flow.StateDiagram,
   transition : @flow.StateTransition,
   _scope : String?,
-) -> Int {
+) -> Int32 {
   self.state_graph_scope(transition.source).1
 }
 
@@ -452,7 +452,7 @@ fn @flow.StateDiagram::note_region_index(
   self : @flow.StateDiagram,
   note : @flow.StateNote,
   scope : String?,
-) -> Int {
+) -> Int32 {
   match note.target {
     @flow.StateNote(_) | @flow.NoteNote(_) =>
       self.location_graph_scope(note.parent, note.region_index).1
@@ -482,9 +482,9 @@ fn @flow.StateDiagram::note_anchor(
 fn state_text_size(
   text : String,
   metrics : @metrics.FontMetrics,
-  wrap_width? : Double = 0.0,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
-  literal_newlines? : Bool = false,
+  wrap_width~ : Double = 0.0,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
+  literal_newlines~ : Bool = false,
 ) -> (Double, Double) {
   if state_rich_text(
       text,
@@ -522,9 +522,9 @@ fn @flow.StateNode::leaf_size(
   description_metrics : @metrics.FontMetrics,
   hide_empty_description : Bool,
   left_to_right~ : Bool,
-  wrap_width? : Double = 0.0,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
-  stereotype_size? : (Double, Double) = (0.0, 0.0),
+  wrap_width~ : Double = 0.0,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
+  stereotype_size~ : (Double, Double) = (0.0, 0.0),
 ) -> (Double, Double) {
   match self.kind {
     @flow.StateKind::Frame => {
@@ -600,7 +600,7 @@ fn @flow.StateDiagram::composite_fragment(
 fn @flow.StateDiagram::visible_nodes_for_scope(
   self : @flow.StateDiagram,
   scope : String?,
-  region_index : Int,
+  region_index : Int32,
 ) -> Array[StateVisibleNode] raise @dot_layout.DotLayoutError {
   let output : Array[StateVisibleNode] = []
   for state in self.states {
@@ -660,7 +660,7 @@ fn append_shifted_fragment(
 fn @flow.StateDiagram::layout_scope(
   self : @flow.StateDiagram,
   scope : String?,
-  region_index : Int,
+  region_index : Int32,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
   let monospaced_family = state_monospaced_family(self.style)
   let visible_nodes = self.visible_nodes_for_scope(scope, region_index)
@@ -794,7 +794,7 @@ fn @flow.StateDiagram::layout_scope(
       }
     }
   }
-  let transition_names : Map[Int, String] = Map([])
+  let transition_names : Map[Int32, String] = Map([])
   for transition_index, transition in self.transitions {
     let route_scope = self.transition_scope(transition)
     guard route_scope == scope else { continue }
@@ -898,8 +898,8 @@ fn @flow.StateDiagram::layout_scope(
     edge.set_attr("arrowhead", "none")
     edge.set_attr("arrowtail", "none")
   }
-  let note_names : Map[String, Int] = Map([])
-  let note_edge_names : Map[Int, String] = Map([])
+  let note_names : Map[String, Int32] = Map([])
+  let note_edge_names : Map[Int32, String] = Map([])
   let note_metrics = resolve_state_font(self.style, NoteLabel).metrics
   for note_index, note in self.notes {
     guard !(note.target is @flow.TransitionNote(_)) else { continue }

@@ -17,12 +17,12 @@ pub extend NodeShape with Debug::{to_repr}
 pub(all) struct WbsNode {
   code : String?
   label : String
-  level : Int
+  level : Int32
   direction : TreeDirection
   shape : NodeShape
   background_color : String?
   stereotype : String?
-  parent : Int?
+  parent : Int32?
 } derive(Eq, Debug)
 
 ///|
@@ -34,8 +34,8 @@ pub extend WbsNode with Debug::{to_repr}
 ///|
 /// A non-tree WBS arrow between two coded nodes.
 pub(all) struct WbsLink {
-  source : Int
-  target : Int
+  source : Int32
+  target : Int32
   color : String?
   stereotype : String?
   label : String?

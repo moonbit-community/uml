@@ -106,7 +106,7 @@ fn parse_with_family(
 /// symbols, so diagram-family packages no longer wrap this entry point.
 pub fn parse_entity(
   input : String,
-  family? : @entity.EntityFamily = ClassDiagram,
+  family~ : @entity.EntityFamily = ClassDiagram,
 ) -> @entity.EntityDiagram raise @tokenizer.ParseError {
   parse_with_family(input, family)
 }
@@ -116,8 +116,8 @@ priv struct EntityParser {
   buffer : LineBuffer
   package_stack : Array[String]
   entities : Array[@entity.Entity]
-  entity_indices : Map[String, Int]
-  entity_code_indices : Map[String, Int]
+  entity_indices : Map[String, Int32]
+  entity_code_indices : Map[String, Int32]
   ambiguous_entity_codes : Map[String, Unit]
   relations : Array[@entity.Relation]
   packages : Array[@entity.Package]
@@ -126,21 +126,21 @@ priv struct EntityParser {
   entity_rules : Array[@entity.EntityRule]
   portion_rules : Array[@entity.PortionRule]
   style : @style.DocumentStyle
-  mut current_entity : Int?
+  mut current_entity : Int32?
   mut last_entity : String?
   mut namespace_separator : String?
   mut allow_mixing : Bool
   family : @entity.EntityFamily
-  mut body_depth : Int
-  mut synthetic_sequence : Int
+  mut body_depth : Int32
+  mut synthetic_sequence : Int32
   together_groups : Array[Array[String]]
 }
 
 ///|
 fn EntityParser::new(
   input : String,
-  allow_mixing? : Bool = false,
-  family? : @entity.EntityFamily = ClassDiagram,
+  allow_mixing~ : Bool = false,
+  family~ : @entity.EntityFamily = ClassDiagram,
 ) -> EntityParser {
   {
     buffer: LineBuffer::new(input),
@@ -173,7 +173,7 @@ fn EntityParser::current_package(self : EntityParser) -> String {
 }
 
 ///|
-fn EntityParser::line_number(self : EntityParser) -> Int {
+fn EntityParser::line_number(self : EntityParser) -> Int32 {
   @tokenizer.line_span(self.buffer.line_number()).line
 }
 

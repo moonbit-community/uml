@@ -26,9 +26,9 @@
 /// default and overridden by any explicit attribute.
 pub fn render_package_dep_svg(
   source : String,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Neighborhood,
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  keep_node~ : (InOutDegrees) -> Bool = default_keep_node,
+  related_edges~ : RelatedEdges = Neighborhood,
 ) -> String raise @dot_layout.DotLayoutError {
   let graph = parse_package_dep_graph(source, keep_node~, related_edges~)
   graph.apply_theme_defaults(color_scheme)
@@ -45,12 +45,12 @@ pub fn render_package_dep_svg(
 /// The in/out degree of a node and the graph-wide minima and maxima, as seen
 /// by `keep_node`.
 pub struct InOutDegrees {
-  in_degree : Int
-  out_degree : Int
-  min_in : Int
-  min_out : Int
-  max_in : Int
-  max_out : Int
+  in_degree : Int32
+  out_degree : Int32
+  min_in : Int32
+  min_out : Int32
+  max_in : Int32
+  max_out : Int32
 }
 
 ///|
@@ -75,8 +75,8 @@ pub(all) enum RelatedEdges {
 /// keeping only nodes whose `source.kind` is `"local"` with a non-empty `rel`.
 fn parse_package_dep_graph(
   source : String,
-  keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Neighborhood,
+  keep_node~ : (InOutDegrees) -> Bool = default_keep_node,
+  related_edges~ : RelatedEdges = Neighborhood,
 ) -> @cgraph.Graph raise @dot_layout.DotLayoutError {
   let filtered = filter_package_dep_graph(source, keep_node~, related_edges~)
   let graph = @cgraph.Graph::new(@cgraph.Directed, name="packages")
@@ -99,7 +99,7 @@ fn parse_package_dep_graph(
 priv struct FilteredPackageDepGraph {
   rels : Array[String]
   modules : Array[String]
-  edges : Array[(Int, Int)]
+  edges : Array[(Int32, Int32)]
 }
 
 ///|
@@ -109,8 +109,8 @@ priv struct FilteredPackageDepGraph {
 /// edges are those between selected nodes or within their neighbourhood.
 fn filter_package_dep_graph(
   source : String,
-  keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Neighborhood,
+  keep_node~ : (InOutDegrees) -> Bool = default_keep_node,
+  related_edges~ : RelatedEdges = Neighborhood,
 ) -> FilteredPackageDepGraph raise @dot_layout.DotLayoutError {
   let collected = collect_package_dep_graph(source)
   select_nodes(
@@ -132,7 +132,7 @@ fn collect_package_dep_graph(
       raise @dot_layout.DotLayoutError::InvalidGraph(message=error.to_string())
   }
   let nodes = root.required_array("nodes")
-  let local_index : Map[Int, Int] = Map([])
+  let local_index : Map[Int32, Int32] = Map([])
   let rels : Array[String] = []
   let modules : Array[String] = []
   for index, node in nodes {
@@ -143,7 +143,7 @@ fn collect_package_dep_graph(
     rels.push(rel)
     modules.push(node.required_string("module"))
   }
-  let edges : Array[(Int, Int)] = []
+  let edges : Array[(Int32, Int32)] = []
   for edge in root.required_array("edges") {
     let from = edge.required_int("from")
     let to = edge.required_int("to")
@@ -164,19 +164,22 @@ fn collect_package_dep_graph(
 ///|
 /// The in/out degrees of every node and the graph-wide minima and maxima.
 priv struct NodeDegrees {
-  in_degree : Array[Int]
-  out_degree : Array[Int]
-  min_in : Int
-  min_out : Int
-  max_in : Int
-  max_out : Int
+  in_degree : Array[Int32]
+  out_degree : Array[Int32]
+  min_in : Int32
+  min_out : Int32
+  max_in : Int32
+  max_out : Int32
 }
 
 ///|
 /// Compute every node's in/out degree and the graph-wide minima and maxima.
-fn node_degrees(edges : Array[(Int, Int)], node_count : Int) -> NodeDegrees {
-  let in_degree : Array[Int] = Array::make(node_count, 0)
-  let out_degree : Array[Int] = Array::make(node_count, 0)
+fn node_degrees(
+  edges : Array[(Int32, Int32)],
+  node_count : Int32,
+) -> NodeDegrees {
+  let in_degree : Array[Int32] = Array::make(node_count, 0)
+  let out_degree : Array[Int32] = Array::make(node_count, 0)
   for edge in edges {
     let (from, to) = edge
     in_degree[to] = in_degree[to] + 1
@@ -200,10 +203,10 @@ fn node_degrees(edges : Array[(Int, Int)], node_count : Int) -> NodeDegrees {
 ///|
 /// The in/out degree minima and maxima of the collected dependency graph.
 pub struct PackageDepStats {
-  min_in : Int
-  min_out : Int
-  max_in : Int
-  max_out : Int
+  min_in : Int32
+  min_out : Int32
+  max_in : Int32
+  max_out : Int32
 }
 
 ///|
@@ -228,7 +231,7 @@ pub fn package_dep_stats(
 fn select_nodes(
   rels : Array[String],
   modules : Array[String],
-  edges : Array[(Int, Int)],
+  edges : Array[(Int32, Int32)],
   keep_node : (InOutDegrees) -> Bool,
   related_edges : RelatedEdges,
 ) -> FilteredPackageDepGraph {
@@ -255,7 +258,7 @@ fn select_nodes(
       }
     }
   }
-  let kept_index : Map[Int, Int] = Map([])
+  let kept_index : Map[Int32, Int32] = Map([])
   let kept_rels : Array[String] = []
   let kept_modules : Array[String] = []
   for index in 0..<node_count {
@@ -264,7 +267,7 @@ fn select_nodes(
     kept_rels.push(rels[index])
     kept_modules.push(modules[index])
   }
-  let kept_edges : Array[(Int, Int)] = []
+  let kept_edges : Array[(Int32, Int32)] = []
   for edge in edges {
     let (from, to) = edge
     let draw = match related_edges {
@@ -286,8 +289,8 @@ fn select_nodes(
 /// follows `keep_node` and `related_edges`, as in `render_package_dep_svg`.
 pub fn render_package_dep_d2(
   source : String,
-  keep_node? : (InOutDegrees) -> Bool = default_keep_node,
-  related_edges? : RelatedEdges = Neighborhood,
+  keep_node~ : (InOutDegrees) -> Bool = default_keep_node,
+  related_edges~ : RelatedEdges = Neighborhood,
 ) -> String raise @dot_layout.DotLayoutError {
   let filtered = filter_package_dep_graph(source, keep_node~, related_edges~)
   let sb = StringBuilder()
@@ -373,7 +376,7 @@ fn Json::required_string(
 fn Json::required_int(
   self : Json,
   key : String,
-) -> Int raise @dot_layout.DotLayoutError {
+) -> Int32 raise @dot_layout.DotLayoutError {
   let value = self.required_member(key)
   guard value is Number(number, ..) else {
     raise @dot_layout.DotLayoutError::InvalidGraph(

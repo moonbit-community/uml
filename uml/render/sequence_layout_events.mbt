@@ -1,15 +1,15 @@
 ///|
 fn activation_depth(
-  active : Map[String, Array[Int]],
+  active : Map[String, Array[Int32]],
   participant_code : String,
-) -> Int {
+) -> Int32 {
   active.get(participant_code).map_or(0, spans => spans.length())
 }
 
 ///|
 fn start_activation(
   activations : Array[ActivationSpan],
-  active : Map[String, Array[Int]],
+  active : Map[String, Array[Int32]],
   participant_code : String,
   caller_code : String?,
   y : Double,
@@ -32,7 +32,7 @@ fn start_activation(
 ///|
 fn finish_activation(
   activations : Array[ActivationSpan],
-  active : Map[String, Array[Int]],
+  active : Map[String, Array[Int32]],
   participant_code : String,
   y : Double,
 ) -> Bool {
@@ -71,7 +71,7 @@ fn apply_activation_spec(
   y : Double,
   color : String?,
   activations : Array[ActivationSpan],
-  active : Map[String, Array[Int]],
+  active : Map[String, Array[Int32]],
   destroys : Array[DestroyMark],
 ) -> Unit {
   match spec {
@@ -94,7 +94,7 @@ fn apply_activation_spec(
 ///|
 fn layout_events(
   diagram : @seq.SequenceDiagram,
-  participant_index : Map[String, Int],
+  participant_index : Map[String, Int32],
   start_y : Double,
   text_metrics : SequenceTextMetrics,
 ) -> (
@@ -109,7 +109,7 @@ fn layout_events(
   let activations = []
   let groups = []
   let destroys = []
-  let active : Map[String, Array[Int]] = Map([])
+  let active : Map[String, Array[Int32]] = Map([])
   let group_stack = []
   let mut current_y = start_y
   let mut previous_top = current_y

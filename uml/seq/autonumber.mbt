@@ -43,8 +43,8 @@ fn join_autonumber(
 ///|
 pub fn increment_autonumber_at(
   value : String,
-  index : Int,
-  increment : Int,
+  index : Int32,
+  increment : Int32,
 ) -> String {
   let (numbers, separators) = autonumber_parts(value)
   guard numbers.length() > 0 else { return increment.to_string() }
@@ -55,7 +55,7 @@ pub fn increment_autonumber_at(
 }
 
 ///|
-pub fn increment_autonumber(value : String, increment : Int) -> String {
+pub fn increment_autonumber(value : String, increment : Int32) -> String {
   increment_autonumber_at(
     value,
     autonumber_parts(value).0.length() - 1,
@@ -146,7 +146,7 @@ pub fn format_autonumber(format : String, value : String) -> String {
 pub fn increment_autonumber_part(
   value : String,
   position : String?,
-  _increment : Int,
+  _increment : Int32,
 ) -> String {
   let (parts, separators) = autonumber_parts(value)
   guard parts.length() > 0 else { return increment_autonumber(value, 1) }
@@ -174,7 +174,7 @@ pub fn increment_autonumber_part(
 pub(all) struct AutonumberState {
   mut enabled : Bool
   mut next : String
-  mut increment : Int
+  mut increment : Int32
   mut format : String?
 }
 

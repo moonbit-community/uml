@@ -6,7 +6,7 @@ const MINDMAP_BRANCH_GAP : Double = 30.0
 /// A positioned tree item in document coordinates, shared by the tree
 /// diagram families (mindmap, WBS, mbti).
 pub(all) struct NodeLayout {
-  index : Int
+  index : Int32
   x : Double
   y : Double
   width : Double
@@ -22,8 +22,8 @@ pub extend NodeLayout with Debug::{to_repr}
 ///|
 /// A cubic parent-to-child connector in document coordinates.
 pub(all) struct EdgeLayout {
-  parent_index : Int
-  child_index : Int
+  parent_index : Int32
+  child_index : Int32
   x1 : Double
   y1 : Double
   control1_x : Double
@@ -60,8 +60,8 @@ pub(all) struct LayoutItem {
   margin_right : Double
   margin_top : Double
   margin_bottom : Double
-  left_children : Array[Int]
-  right_children : Array[Int]
+  left_children : Array[Int32]
+  right_children : Array[Int32]
 } derive(Eq, Debug)
 
 ///|
@@ -238,9 +238,9 @@ fn pack_tees(tees : Array[Tee]) -> TetrisLayout {
 ///|
 fn item_children(
   items : Array[LayoutItem],
-  index : Int,
+  index : Int32,
   direction : @tree.TreeDirection,
-) -> Array[Int] {
+) -> Array[Int32] {
   match direction {
     @tree.TreeDirection::Left => items[index].left_children
     @tree.TreeDirection::Right => items[index].right_children
@@ -260,7 +260,7 @@ fn item_branch_gap(item : LayoutItem, gap : Double) -> Double {
 ///|
 fn finger_tee(
   items : Array[LayoutItem],
-  index : Int,
+  index : Int32,
   direction : @tree.TreeDirection,
   gap : Double,
 ) -> Tee {
@@ -292,7 +292,7 @@ fn finger_tee(
 /// phalanx is hidden, but its children still participate in packing.
 fn hidden_finger_tee(
   items : Array[LayoutItem],
-  index : Int,
+  index : Int32,
   direction : @tree.TreeDirection,
   gap : Double,
 ) -> Tee {
@@ -313,7 +313,7 @@ fn hidden_finger_tee(
 ///|
 fn append_finger(
   items : Array[LayoutItem],
-  index : Int,
+  index : Int32,
   direction : @tree.TreeDirection,
   origin_x : Double,
   origin_y : Double,
@@ -411,9 +411,9 @@ fn MindmapLayout::translated(
 /// lists the item indices with no parent, stacked vertically.
 pub fn layout_tree(
   items : Array[LayoutItem],
-  roots : Array[Int],
-  branch_gap? : Double = MINDMAP_BRANCH_GAP,
-  curve_control? : Double = 25.0,
+  roots : Array[Int32],
+  branch_gap~ : Double = MINDMAP_BRANCH_GAP,
+  curve_control~ : Double = 25.0,
 ) -> MindmapLayout {
   guard !items.is_empty() else {
     {

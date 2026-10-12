@@ -9,7 +9,7 @@ priv struct StateDrawingLayout {
 
 ///|
 priv struct StateNoteConnection {
-  note_index : Int
+  note_index : Int32
   note_contact : (Double, Double)
   state_contact : (Double, Double)
 }
@@ -90,7 +90,7 @@ const STATE_NOTE_POINTER_HALF_BASE : Double = 4.0
 fn state_note_outline(
   note : StateNoteLayout,
   connection : StateNoteConnection?,
-  round_corner? : Double = 0.0,
+  round_corner~ : Double = 0.0,
 ) -> Array[@graphics.PathSegment] {
   let left = note.x
   let right = note.x + note.width

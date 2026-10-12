@@ -186,7 +186,7 @@ fn transform(gaps : Array[Gap], v : Double) -> Double {
 /// transformed node boxes, and `layout()` recomputes the canvas width.
 pub fn ActivityLayout::compress_x(
   self : ActivityLayout,
-  small_metrics? : @metrics.FontMetrics = @metrics.FontMetrics::from_defaults(
+  small_metrics~ : @metrics.FontMetrics = @metrics.FontMetrics::from_defaults(
     font_size=SMALL_FONT,
   ),
 ) -> ActivityLayout {
@@ -214,7 +214,7 @@ pub fn ActivityLayout::compress_x(
     let right = transform(gaps, region.x + region.width)
     { ..region, x, width: right - x, }
   })
-  let compress_offset = (anchor : Int, offset : Double) => {
+  let compress_offset = (anchor : Int32, offset : Double) => {
     let node = layout_for(self, anchor).unwrap()
     transform(gaps, node.x + offset) - transform(gaps, node.x)
   }

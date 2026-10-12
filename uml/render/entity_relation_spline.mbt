@@ -259,7 +259,7 @@ fn relation_edge_paths(
 }
 
 ///|
-fn relation_edge_first_spline_index(edge : @graphviz.GraphvizEdge) -> Int? {
+fn relation_edge_first_spline_index(edge : @graphviz.GraphvizEdge) -> Int32? {
   for index, spline in edge.splines {
     if spline.points.length() > 1 {
       return Some(index)
@@ -269,7 +269,7 @@ fn relation_edge_first_spline_index(edge : @graphviz.GraphvizEdge) -> Int? {
 }
 
 ///|
-fn relation_edge_last_spline_index(edge : @graphviz.GraphvizEdge) -> Int? {
+fn relation_edge_last_spline_index(edge : @graphviz.GraphvizEdge) -> Int32? {
   let mut index = edge.splines.length()
   while index > 0 {
     index -= 1

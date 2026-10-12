@@ -22,7 +22,7 @@ enum Cmp {
 
 ///|
 enum Value {
-  IntV(Int)
+  IntV(Int32)
   MaxV
   MinV
 }
@@ -58,7 +58,7 @@ type KeepPredicate = (@api.InOutDegrees) -> Bool
 /// An atom without an axis compares both axes and keeps the node when either
 /// side matches: `>1` is `in > 1 or out > 1`.
 pub fn parse_keep_rule(source : String) -> KeepPredicate raise KeepRuleError {
-  let pos : Ref[Int] = { val: 0, }
+  let pos : Ref[Int32] = { val: 0, }
   let expr = parse_or(source, pos)
   skip_ws(source, pos)
   if pos.val < source.length() {
@@ -78,7 +78,7 @@ fn Expr::eval(self : Expr, degrees : @api.InOutDegrees) -> Bool {
 }
 
 ///|
-fn parse_or(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
+fn parse_or(source : String, pos : Ref[Int32]) -> Expr raise KeepRuleError {
   let left = parse_and(source, pos)
   skip_ws(source, pos)
   if consume(source, pos, "||") {
@@ -89,7 +89,7 @@ fn parse_or(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
 }
 
 ///|
-fn parse_and(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
+fn parse_and(source : String, pos : Ref[Int32]) -> Expr raise KeepRuleError {
   let left = parse_unary(source, pos)
   skip_ws(source, pos)
   if consume(source, pos, "&&") {
@@ -100,7 +100,7 @@ fn parse_and(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
 }
 
 ///|
-fn parse_unary(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
+fn parse_unary(source : String, pos : Ref[Int32]) -> Expr raise KeepRuleError {
   skip_ws(source, pos)
   if consume(source, pos, "!") {
     Not(parse_unary(source, pos))
@@ -110,7 +110,7 @@ fn parse_unary(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
 }
 
 ///|
-fn parse_primary(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
+fn parse_primary(source : String, pos : Ref[Int32]) -> Expr raise KeepRuleError {
   skip_ws(source, pos)
   if consume(source, pos, "(") {
     let inner = parse_or(source, pos)
@@ -125,7 +125,7 @@ fn parse_primary(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
 }
 
 ///|
-fn parse_atom(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
+fn parse_atom(source : String, pos : Ref[Int32]) -> Expr raise KeepRuleError {
   let axis = try_parse_axis(source, pos)
   let cmp = parse_cmp(source, pos)
   let value = parse_value(source, pos)
@@ -137,7 +137,7 @@ fn parse_atom(source : String, pos : Ref[Int]) -> Expr raise KeepRuleError {
 
 ///|
 /// Whether `in` or `out` prefixes the comparison at the cursor.
-fn try_parse_axis(source : String, pos : Ref[Int]) -> Axis? {
+fn try_parse_axis(source : String, pos : Ref[Int32]) -> Axis? {
   skip_ws(source, pos)
   let remaining = source.length() - pos.val
   if remaining >= 2 {
@@ -163,7 +163,7 @@ fn try_parse_axis(source : String, pos : Ref[Int]) -> Axis? {
 }
 
 ///|
-fn is_cmp(code : Int) -> Bool {
+fn is_cmp(code : Int32) -> Bool {
   code == '<'.to_int() ||
   code == '>'.to_int() ||
   code == '='.to_int() ||
@@ -171,7 +171,7 @@ fn is_cmp(code : Int) -> Bool {
 }
 
 ///|
-fn parse_cmp(source : String, pos : Ref[Int]) -> Cmp raise KeepRuleError {
+fn parse_cmp(source : String, pos : Ref[Int32]) -> Cmp raise KeepRuleError {
   skip_ws(source, pos)
   if consume(source, pos, "<=") {
     Le
@@ -191,7 +191,7 @@ fn parse_cmp(source : String, pos : Ref[Int]) -> Cmp raise KeepRuleError {
 }
 
 ///|
-fn parse_value(source : String, pos : Ref[Int]) -> Value raise KeepRuleError {
+fn parse_value(source : String, pos : Ref[Int32]) -> Value raise KeepRuleError {
   skip_ws(source, pos)
   if consume(source, pos, "max") {
     return MaxV
@@ -215,7 +215,7 @@ fn parse_value(source : String, pos : Ref[Int]) -> Value raise KeepRuleError {
 }
 
 ///|
-fn is_digit(code : Int) -> Bool {
+fn is_digit(code : Int32) -> Bool {
   code >= '0'.to_int() && code <= '9'.to_int()
 }
 
@@ -254,14 +254,14 @@ fn compare(
 }
 
 ///|
-fn skip_ws(source : String, pos : Ref[Int]) -> Unit {
+fn skip_ws(source : String, pos : Ref[Int32]) -> Unit {
   while pos.val < source.length() && source[pos.val] == ' ' {
     pos.val = pos.val + 1
   }
 }
 
 ///|
-fn consume(source : String, pos : Ref[Int], literal : String) -> Bool {
+fn consume(source : String, pos : Ref[Int32], literal : String) -> Bool {
   if pos.val + literal.length() <= source.length() &&
     source.unsafe_substring(start=pos.val, end=pos.val + literal.length()) ==
     literal {

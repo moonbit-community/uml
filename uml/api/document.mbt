@@ -46,10 +46,10 @@ pub(all) enum DiagramKind {
 /// Render a parsed document to SVG by dispatching to its diagram-specific renderer.
 pub fn Document::render_svg(
   self : Document,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
-  mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
+  mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   self.diagram.render_svg(
     color_scheme~,
@@ -75,10 +75,10 @@ pub fn Document::render_svg(
 /// MBTI defaults come from its render options; class members default closed.
 pub fn render_svg(
   source : String,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
-  mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
+  mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   parse(source).render_svg(
     color_scheme~,
@@ -96,10 +96,10 @@ pub fn render_svg(
 /// API only dispatches after parsing has selected the family.
 pub fn Diagram::render_svg(
   self : Diagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
-  mbti_render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
+  mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   match self {
     Sequence(diagram) => @render.render_sequence_svg(diagram, color_scheme~)

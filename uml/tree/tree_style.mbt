@@ -40,9 +40,9 @@ pub(all) struct TreeNodeStyle {
   margin_right : Double?
   margin_top : Double?
   margin_bottom : Double?
-  font_size : Int?
+  font_size : Int32?
   font_name : String?
-  font_weight : Int?
+  font_weight : Int32?
   italic : Bool?
   wrap_width : Double?
   background_color : String?
@@ -128,7 +128,7 @@ pub const WBS_DEFAULT_PADDING_Y : Double = 10.0
 pub const WBS_DEFAULT_MARGIN : Double = 15.0
 
 ///|
-pub const WBS_DEFAULT_FONT_SIZE : Int = 12
+pub const WBS_DEFAULT_FONT_SIZE : Int32 = 12
 
 ///|
 pub fn TreeNodeStyle::empty() -> TreeNodeStyle {
@@ -246,7 +246,7 @@ pub fn TreeNodeStyle::merge(
 }
 
 ///|
-fn parse_nonnegative_int(value : String) -> Int? {
+fn parse_nonnegative_int(value : String) -> Int32? {
   let parsed = @string.parse_int(value.trim()) catch { _ => return None }
   if parsed >= 0 {
     Some(parsed)

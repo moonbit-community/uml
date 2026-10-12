@@ -6,7 +6,7 @@
 fn EntityPaintContext::append_port(
   self : EntityPaintContext,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }

@@ -134,7 +134,7 @@ async fn main {
 }
 
 ///|
-async fn run(args : ArrayView[String]) -> Int {
+async fn run(args : ArrayView[String]) -> Int32 {
   let matches = @argparse.parse(uml_command(), argv=args, env=Map([])) catch {
     err => {
       println(err)
@@ -156,8 +156,8 @@ async fn run(args : ArrayView[String]) -> Int {
 ///|
 fn dispatch_file(
   matches : @argparse.Matches,
-  action : (String, @argparse.Matches) -> Int,
-) -> Int {
+  action : (String, @argparse.Matches) -> Int32,
+) -> Int32 {
   match matches.values.get("file") {
     Some([path]) => action(path, matches)
     _ => 2
@@ -165,7 +165,7 @@ fn dispatch_file(
 }
 
 ///|
-fn render_file(path : String, matches : @argparse.Matches) -> Int {
+fn render_file(path : String, matches : @argparse.Matches) -> Int32 {
   let source = @fs.read_file_to_string(path) catch {
     IOError(message) => {
       println("error: failed to read \{path}: \{message}")
@@ -196,7 +196,7 @@ fn render_file(path : String, matches : @argparse.Matches) -> Int {
 }
 
 ///|
-fn check_file(path : String, _matches : @argparse.Matches) -> Int {
+fn check_file(path : String, _matches : @argparse.Matches) -> Int32 {
   let source = @fs.read_file_to_string(path) catch {
     IOError(message) => {
       println("error: failed to read \{path}: \{message}")
@@ -214,7 +214,7 @@ fn check_file(path : String, _matches : @argparse.Matches) -> Int {
 }
 
 ///|
-async fn package_dep(matches : @argparse.Matches) -> Int {
+async fn package_dep(matches : @argparse.Matches) -> Int32 {
   let source = @stdio.stdin.read_all().text() catch {
       err => {
         println("error: failed to read stdin: \{err}")

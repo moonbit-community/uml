@@ -43,7 +43,7 @@ pub fn unquote_identifier(raw : String) -> String {
 
 ///|
 /// Find a literal substring and return its character offset.
-pub fn find_literal(haystack : String, needle : String) -> Int? {
+pub fn find_literal(haystack : String, needle : String) -> Int32? {
   guard needle.length() > 0 else { return Some(0) }
   let cursor = Cursor::new(haystack)
   while !cursor.is_eof() {
@@ -57,7 +57,7 @@ pub fn find_literal(haystack : String, needle : String) -> Int? {
 
 ///|
 /// Find a literal substring outside double-quoted text.
-pub fn find_unquoted_literal(haystack : String, needle : String) -> Int? {
+pub fn find_unquoted_literal(haystack : String, needle : String) -> Int32? {
   guard needle.length() > 0 else { return Some(0) }
   let cursor = Cursor::new(haystack)
   while !cursor.is_eof() {

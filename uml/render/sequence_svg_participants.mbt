@@ -272,7 +272,7 @@ fn append_participant_symbol(
 }
 
 ///|
-fn @seq.ParticipantType::symbol_height(self : @seq.ParticipantType) -> Int {
+fn @seq.ParticipantType::symbol_height(self : @seq.ParticipantType) -> Int32 {
   match self {
     Actor => 60
     Boundary | Control | Entity => 32
@@ -300,7 +300,7 @@ fn append_participant_box(
   output : SequenceDrawing,
   layouts : Array[ParticipantLayout],
   box : @seq.ParticipantBox,
-  depth : Int,
+  depth : Int32,
   diagram_layout : DiagramLayout,
 ) -> Unit {
   guard layouts.length() > 0 else { return }

@@ -1,7 +1,7 @@
 ///|
 priv struct RawIdea {
   marker : String
-  level : Int
+  level : Int32
   direction : @tree.TreeDirection?
   shape : @tree.IdeaShape
   background_color : String?
@@ -10,7 +10,7 @@ priv struct RawIdea {
 }
 
 ///|
-fn mindmap_marker_end(line : String) -> Int {
+fn mindmap_marker_end(line : String) -> Int32 {
   let cursor = @tokenizer.Cursor::new(line)
   ignore(cursor.skip_inline_whitespace())
   ignore(
@@ -31,7 +31,7 @@ fn marker_is_valid(marker : String) -> Bool {
 }
 
 ///|
-fn marker_count(marker : String) -> Int {
+fn marker_count(marker : String) -> Int32 {
   let cursor = @tokenizer.Cursor::new(marker)
   let mut count = 0
   while cursor.advance() is Some(char) {
@@ -129,7 +129,7 @@ fn parse_raw_idea(line : String) -> RawIdea? {
 fn smart_level(
   marker : String,
   first : String?,
-) -> (Int, String?) raise @tokenizer.ParseError {
+) -> (Int32, String?) raise @tokenizer.ParseError {
   let initial = first.unwrap_or(marker)
   let normalized = if marker.has_suffix("**") {
     marker.replace_all(old="\t", new=" ").trim().to_owned()
@@ -162,9 +162,9 @@ fn mindmap_ending_stereotype(label : String) -> (String, String?) {
 ///|
 fn complete_multiline_label(
   lines : Array[String],
-  index : Int,
+  index : Int32,
   first : String,
-) -> (String, Int, String?) raise @tokenizer.ParseError {
+) -> (String, Int32, String?) raise @tokenizer.ParseError {
   let values = [first]
   let mut last = index
   while !values.last().unwrap_or("").contains(";") {
@@ -190,8 +190,8 @@ fn complete_multiline_label(
 fn parent_for(
   ideas : Array[@tree.Idea],
   direction : @tree.TreeDirection,
-  level : Int,
-) -> Int? raise @tokenizer.ParseError {
+  level : Int32,
+) -> Int32? raise @tokenizer.ParseError {
   let mut index = ideas.length() - 1
   while index >= 0 {
     let candidate = ideas[index]
@@ -207,11 +207,11 @@ fn parent_for(
 ///|
 fn parse_mindmap_style_block(
   lines : Array[String],
-  start : Int,
+  start : Int32,
   style : @tree.MindmapStyle,
   properties : Array[@tree.WbsStyleProperty],
   document : @style.DocumentStyle,
-) -> Int raise @tokenizer.ParseError {
+) -> Int32 raise @tokenizer.ParseError {
   let mut index = start + 1
   let closed = @style.consume_style_body(
     () => {
@@ -266,7 +266,7 @@ pub fn parse_mindmap(
   let mindmap_style = @tree.TreeStyle::default(@tree.TreeDiagramFamily::Mindmap)
   let style_properties = []
   let mut index = 0
-  let mut multiplier : Int? = None
+  let mut multiplier : Int32? = None
   let mut org_first : String? = None
   let mut default_direction : @tree.TreeDirection = @tree.TreeDirection::Right
   while index < lines.length() {
@@ -371,7 +371,7 @@ pub fn parse_mindmap(
       let (text, stereotype) = mindmap_ending_stereotype(raw.label)
       (text, index, stereotype)
     }
-    let parent : Int? = if normalized_level == 0 {
+    let parent : Int32? = if normalized_level == 0 {
       None
     } else {
       parent_for(ideas, direction, normalized_level) catch {

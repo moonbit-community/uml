@@ -4,7 +4,7 @@ pub fn ArrowConfig::from_dressing(
   right : DressingResult,
   body : ArrowBody,
   direction : MessageDirection,
-  line_style? : String? = None,
+  line_style~ : String? = None,
 ) -> ArrowConfig {
   let body = line_style.map_or(body, value => {
     value

@@ -2,9 +2,9 @@
 /// FtileRepeat.getLeft/getRight align both diamonds with the body's flow axis;
 /// calculateDimensionInternal reserves the return corridor on the right.
 fn repeat_columns(
-  entry : Int,
+  entry : Int32,
   body : Array[Tile],
-  exit : Int,
+  exit : Int32,
   retry_label : String?,
   exit_label : String?,
   nodes : Array[@flow.ActivityNode],

@@ -241,7 +241,7 @@ fn RelationDecorationFrame::arc(
 fn relation_decoration_primitive(
   shape : RelationDecorationShape,
   fill : RelationDecorationFill,
-  stroke_width? : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
+  stroke_width~ : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
 ) -> RelationDecorationPrimitive {
   { shape, fill, stroke_width, }
 }
@@ -258,7 +258,7 @@ fn relation_decoration_polygon(
 fn relation_decoration_segment(
   start : (Double, Double),
   end : (Double, Double),
-  stroke_width? : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
+  stroke_width~ : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
 ) -> RelationDecorationPrimitive {
   relation_decoration_primitive(
     DecorationSegment(start, end),
@@ -272,7 +272,7 @@ fn relation_decoration_circle(
   center : (Double, Double),
   radius : Double,
   fill : RelationDecorationFill,
-  stroke_width? : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
+  stroke_width~ : Double = DEFAULT_EXTREMITY_STROKE_WIDTH,
 ) -> RelationDecorationPrimitive {
   relation_decoration_primitive(
     DecorationCircle(center, radius),
@@ -351,7 +351,7 @@ fn @entity.RelationEnd::decoration_geometry(
   self : @entity.RelationEnd,
   endpoint : (Double, Double),
   adjacent : (Double, Double),
-  side? : RelationContactSide? = None,
+  side~ : RelationContactSide? = None,
 ) -> RelationDecorationGeometry? {
   guard RelationDecorationFrame::new(endpoint, adjacent) is Some(frame) else {
     return None

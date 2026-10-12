@@ -8,9 +8,9 @@ priv struct ClassLayout {
 fn ClassLayout::entity_rect(
   self : ClassLayout,
   diagram : @entity.EntityDiagram,
-  index : Int,
+  index : Int32,
   _text_metrics : ClassTextMetrics,
-) -> (Int, Int, Int, Int) {
+) -> (Int32, Int32, Int32, Int32) {
   if self.mindmap is Some(mindmap) {
     return mindmap.rects[index]
   }
@@ -223,11 +223,11 @@ fn relation_endpoints(
   layout : ClassLayout,
   diagram : @entity.EntityDiagram,
   relation : @entity.Relation,
-  left_index : Int?,
-  right_index : Int?,
+  left_index : Int32?,
+  right_index : Int32?,
   text_metrics : ClassTextMetrics,
 ) -> ((Double, Double), (Double, Double)) {
-  let endpoint_center = (index : Int?, code : String) => {
+  let endpoint_center = (index : Int32?, code : String) => {
     match index {
       Some(index) => {
         let (x, y, width, height) = layout.entity_rect(
@@ -245,7 +245,7 @@ fn relation_endpoints(
         }
     }
   }
-  let endpoint_style = (index : Int?) => {
+  let endpoint_style = (index : Int32?) => {
     index.map_or(@entity.EntityRelationEndpointCapability::CenterEndpoint, index => {
       diagram.entities[index].render_capability(diagram.family).relation_endpoint
     })
@@ -253,7 +253,7 @@ fn relation_endpoints(
   let left_center = endpoint_center(left_index, relation.left)
   let right_center = endpoint_center(right_index, relation.right)
   let boundary_endpoint = (
-    index : Int?,
+    index : Int32?,
     port : String?,
     other_center : (Double, Double),
   ) => {
@@ -327,7 +327,7 @@ fn relation_endpoints(
 }
 
 ///|
-fn entity_index(diagram : @entity.EntityDiagram, code : String) -> Int? {
+fn entity_index(diagram : @entity.EntityDiagram, code : String) -> Int32? {
   for index, entity in diagram.entities {
     if entity.qualified_code == code {
       return Some(index)
@@ -338,13 +338,13 @@ fn entity_index(diagram : @entity.EntityDiagram, code : String) -> Int? {
 
 ///|
 fn usecase_relation_endpoint(
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
-  target_x : Int,
-  target_y : Int,
-) -> (Int, Int) {
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
+  target_x : Int32,
+  target_y : Int32,
+) -> (Int32, Int32) {
   let center_x = x + width / 2
   let center_y = y + height / 2
   let horizontal = (target_x - center_x).abs() > (target_y - center_y).abs()

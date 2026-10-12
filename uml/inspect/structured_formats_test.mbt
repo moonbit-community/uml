@@ -1,5 +1,5 @@
 ///|
-fn svg_height(svg : String) -> Int {
+fn svg_height(svg : String) -> Int32 {
   let parts = svg.split("height=\"").to_array()
   guard parts.length() >= 2 else { return 0 }
   let height = parts[1].split("\"").to_array()[0].to_owned()

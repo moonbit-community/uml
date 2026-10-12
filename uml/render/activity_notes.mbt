@@ -10,7 +10,7 @@ const NOTE_STACK_MARGIN : Double = 10
 fn attach_activity_note(
   tiles : Array[Tile],
   nodes : Array[@flow.ActivityNode],
-  note : Int,
+  note : Int32,
 ) -> Unit {
   for index = tiles.length() - 1; index >= 0; index = index - 1 {
     match tiles[index] {
@@ -51,7 +51,7 @@ fn note_instruction_body(tile : Tile) -> Array[Tile]? {
 ///|
 /// Column widths include the clearance between the notes and the body.
 fn measure_note_columns(
-  notes : Array[Int],
+  notes : Array[Int32],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -160,7 +160,7 @@ fn sequence_axis(
 ///|
 fn place_noted(
   body : Tile,
-  notes : Array[Int],
+  notes : Array[Int32],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,

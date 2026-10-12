@@ -1,7 +1,7 @@
 ///|
 /// One player's frame, left panel, and waveform allocation.
 pub(all) struct TimingPlayerLayout {
-  index : Int
+  index : Int32
   frame_y : Double
   panel_y : Double
   height : Double
@@ -115,7 +115,7 @@ fn timing_note_size(
 ///|
 fn timing_player_layout(
   diagram : @flow.TimingDiagram,
-  index : Int,
+  index : Int32,
   y : Double,
 ) -> TimingPlayerLayout {
   let player = diagram.players[index]
