@@ -44,7 +44,7 @@ pub fn JsonNode::display(self : JsonNode) -> String {
 ///|
 priv struct JsonTreeCursor {
   chars : Array[Char]
-  mut index : Int
+  mut index : Int32
 }
 
 ///|
@@ -114,7 +114,7 @@ fn JsonTreeCursor::parse_value(
       self.expect_literal("null")
       JsonNull
     }
-    '-' | '0'..='9' => JsonNumber(self.parse_number())
+    '-' | '0'..<='9' => JsonNumber(self.parse_number())
     _ => json_tree_error("invalid JSON value")
   }
 }
@@ -246,8 +246,8 @@ fn JsonTreeCursor::parse_string(
 ///|
 fn JsonTreeCursor::unicode_escape(
   self : JsonTreeCursor,
-  start : Int,
-) -> Int raise @tokenizer.ParseError {
+  start : Int32,
+) -> Int32 raise @tokenizer.ParseError {
   guard start + 4 <= self.chars.length() else {
     json_tree_error("truncated \\u escape")
   }
@@ -312,7 +312,7 @@ fn JsonTreeCursor::parse_number(
 fn JsonTreeCursor::take_digits(
   self : JsonTreeCursor,
   output : StringBuilder,
-) -> Int {
+) -> Int32 {
   let start = self.index
   while self.index < self.chars.length() && self.chars[self.index].is_digit(10) {
     output.write_char(self.chars[self.index])

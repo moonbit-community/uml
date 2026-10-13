@@ -20,7 +20,7 @@ pub fn Cursor::starts_with_literal(self : Cursor, literal : String) -> Bool {
 
 ///|
 /// Consumes inline whitespace without crossing a line boundary.
-pub fn Cursor::skip_inline_whitespace(self : Cursor) -> Int {
+pub fn Cursor::skip_inline_whitespace(self : Cursor) -> Int32 {
   self.skip_while(char => char == ' ' || char == '\t' || char == '\r')
 }
 
@@ -166,7 +166,7 @@ pub fn unquoted_delimiter_delta(
   value : String,
   open : Char,
   close : Char,
-) -> Int {
+) -> Int32 {
   let cursor = Cursor::new(value)
   let mut delta = 0
   while !cursor.is_eof() {

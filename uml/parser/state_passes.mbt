@@ -10,7 +10,7 @@ priv enum PendingStateCommand {
 priv struct ScopedStateCommand {
   command : PendingStateCommand
   scope : StateScope?
-  line_index : Int
+  line_index : Int32
 }
 
 ///|
@@ -87,7 +87,7 @@ fn Parser::resolve_state_commands(
   self : Parser,
 ) -> Unit raise @tokenizer.ParseError {
   let end_index = self.buffer.index
-  let link_targets : Map[Int, Int] = Map([])
+  let link_targets : Map[Int32, Int32] = Map([])
   for index, scoped in self.pending_commands {
     self.enter_command_scope(scoped)
     match scoped.command {

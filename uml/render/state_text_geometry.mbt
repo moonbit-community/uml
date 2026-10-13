@@ -9,8 +9,8 @@ const STATE_SEPARATOR_MARGIN : Double = 5.0
 fn @flow.StateNode::header_height(
   self : @flow.StateNode,
   metrics : @metrics.FontMetrics,
-  wrap_width? : Double = 0.0,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  wrap_width~ : Double = 0.0,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> Double {
   STATE_TEXT_MARGIN +
   state_text_size(self.display, metrics, wrap_width~, monospaced_family~).1 +
@@ -21,8 +21,8 @@ fn @flow.StateNode::header_height(
 fn @flow.StateNode::description_size(
   self : @flow.StateNode,
   metrics : @metrics.FontMetrics,
-  wrap_width? : Double = 0.0,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  wrap_width~ : Double = 0.0,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> (Double, Double) {
   guard self.description is Some(description) && !description.is_empty() else {
     return (0.0, 0.0)
@@ -35,7 +35,7 @@ fn @flow.StateNode::description_size(
 fn @flow.StateNode::description_compartment_height(
   self : @flow.StateNode,
   metrics : @metrics.FontMetrics,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> Double {
   let height = self.description_size(metrics, monospaced_family~).1
   if height > 0.0 {
@@ -50,7 +50,7 @@ fn @flow.StateNode::composite_content_y(
   self : @flow.StateNode,
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> Double {
   self.header_height(name_metrics, monospaced_family~) +
   self.description_compartment_height(description_metrics, monospaced_family~) +
@@ -65,7 +65,7 @@ fn @flow.StateNode::composite_size(
   child : StateFragment,
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
 ) -> (Double, Double) {
   let name = state_text_size(self.display, name_metrics, monospaced_family~)
   let description = self.description_size(
@@ -93,14 +93,14 @@ fn append_state_text_at_top(
   top : Double,
   class_name : String,
   metrics : @metrics.FontMetrics,
-  anchor? : @graphics.TextAnchor = Middle,
-  line_alignment? : @graphics.TextAnchor? = None,
-  state? : @flow.StateNode? = None,
-  wrap_width? : Double = 0.0,
-  data? : Array[(String, String)] = [],
-  monospaced_family? : String = STATE_MONOSPACED_FAMILY,
-  literal_newlines? : Bool = false,
-  font_family? : String? = None,
+  anchor~ : @graphics.TextAnchor = Middle,
+  line_alignment~ : @graphics.TextAnchor? = None,
+  state~ : @flow.StateNode? = None,
+  wrap_width~ : Double = 0.0,
+  data~ : Array[(String, String)] = [],
+  monospaced_family~ : String = STATE_MONOSPACED_FAMILY,
+  literal_newlines~ : Bool = false,
+  font_family~ : String? = None,
 ) -> Unit {
   let metadata = {
     ..state_class(class_name),
@@ -149,7 +149,7 @@ fn append_state_text_at_top(
 fn state_text_alignment(
   state : @flow.StateNode,
   style : @style.DocumentStyle,
-  fallback? : @graphics.TextAnchor = Start,
+  fallback~ : @graphics.TextAnchor = Start,
 ) -> @graphics.TextAnchor {
   state_style_property(state, style, "DefaultTextAlignment")
   .bind(parse_state_text_alignment)
@@ -198,8 +198,8 @@ fn append_state_description(
   top : Double,
   style : @style.DocumentStyle,
   metrics : @metrics.FontMetrics,
-  wrap_width? : Double = 0.0,
-  align_within_state? : Bool = true,
+  wrap_width~ : Double = 0.0,
+  align_within_state~ : Bool = true,
 ) -> Unit {
   guard state.description is Some(text) && !text.is_empty() else { return }
   let alignment = state_text_alignment(state, style)

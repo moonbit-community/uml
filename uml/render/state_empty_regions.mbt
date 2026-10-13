@@ -19,7 +19,7 @@ fn @flow.StateDiagram::state_uses_empty_image(
 fn @flow.StateDiagram::state_region_is_empty(
   self : @flow.StateDiagram,
   parent : String,
-  region_index : Int,
+  region_index : Int32,
 ) -> Bool {
   !self.states.any(state => {
     state.parent == Some(parent) && state.region_index == region_index

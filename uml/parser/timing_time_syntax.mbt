@@ -5,14 +5,14 @@
 /// `TimeTickBuilder.parseTimeTick`.
 priv enum TimeExpr {
   Code(String, @decimal.Decimal?)
-  Date(Int, Int, Int)
-  Hour(Int, Int, Int)
+  Date(Int32, Int32, Int32)
+  Hour(Int32, Int32, Int32)
   Digit(Bool, @decimal.Decimal)
-  Clock(String, Int)
+  Clock(String, Int32)
 }
 
 ///|
-fn parse_positive_int(value : String) -> Int {
+fn parse_positive_int(value : String) -> Int32 {
   let mut result = 0
   for char in value {
     result = result * 10 + (char.to_int() - 48)
@@ -23,14 +23,14 @@ fn parse_positive_int(value : String) -> Int {
 ///|
 /// Seconds since the Unix epoch of `yyyy/mm/dd` at 00:00 GMT, mirroring
 /// `@flow.TimingFormat.createDate` with its GregorianCalendar in the GMT zone.
-fn epoch_seconds(yyyy : Int, mm : Int, dd : Int) -> Int64 {
+fn epoch_seconds(yyyy : Int32, mm : Int32, dd : Int32) -> Int64 {
   let days = days_from_civil(yyyy, mm, dd)
   days * 86400L
 }
 
 ///|
 /// Days since 1970-01-01 of the proleptic Gregorian calendar.
-fn days_from_civil(y : Int, m : Int, d : Int) -> Int64 {
+fn days_from_civil(y : Int32, m : Int32, d : Int32) -> Int64 {
   let shifted = if m <= 2 { y - 1 } else { y }
   let era = (if shifted >= 0 { shifted } else { shifted - 399 }) / 400
   let yoe = shifted - era * 400
@@ -123,7 +123,7 @@ fn match_clock_expr(cursor : @tokenizer.Cursor) -> TimeExpr? {
 }
 
 ///|
-fn match_ascii_digits(cursor : @tokenizer.Cursor) -> Int? {
+fn match_ascii_digits(cursor : @tokenizer.Cursor) -> Int32? {
   let digits = cursor.take_while(char => char >= '0' && char <= '9')
   if digits.length() == 0 {
     None

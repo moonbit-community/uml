@@ -18,7 +18,7 @@ priv struct StateTransitionSyntax {
   source_port : String?
   target_port : String?
   direction : @flow.TransitionDirection
-  length : Int
+  length : Int32
   line_style : String?
   has_cross_start : Bool
   has_circle_end : Bool
@@ -51,7 +51,7 @@ priv enum StateNoteBody {
 ///|
 priv struct TransitionArrowSyntax {
   direction : @flow.TransitionDirection
-  length : Int
+  length : Int32
   line_style : String?
   has_cross_start : Bool
   has_circle_end : Bool
@@ -61,7 +61,7 @@ priv struct TransitionArrowSyntax {
 ///|
 priv struct TransitionArrowParts {
   direction : @flow.TransitionDirection?
-  length : Int
+  length : Int32
   first_style : String?
   second_style : String?
   has_cross_start : Bool

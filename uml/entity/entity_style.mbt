@@ -131,25 +131,34 @@ pub fn arrow_font_color(style : @style.DocumentStyle) -> String {
 }
 
 ///|
-pub fn usecase_font_size(style : @style.DocumentStyle, fallback~ : Int) -> Int {
+pub fn usecase_font_size(
+  style : @style.DocumentStyle,
+  fallback~ : Int32,
+) -> Int32 {
   style.property_font_size("UsecaseFontSize", fallback~)
 }
 
 ///|
-pub fn actor_font_size(style : @style.DocumentStyle, fallback~ : Int) -> Int {
+pub fn actor_font_size(
+  style : @style.DocumentStyle,
+  fallback~ : Int32,
+) -> Int32 {
   style.property_font_size("ActorFontSize", fallback~)
 }
 
 ///|
 pub fn class_stereotype_font_size(
   style : @style.DocumentStyle,
-  fallback~ : Int,
-) -> Int {
+  fallback~ : Int32,
+) -> Int32 {
   style.property_font_size("ClassStereotypeFontSize", fallback~)
 }
 
 ///|
-pub fn arrow_font_size(style : @style.DocumentStyle, fallback~ : Int) -> Int {
+pub fn arrow_font_size(
+  style : @style.DocumentStyle,
+  fallback~ : Int32,
+) -> Int32 {
   style.property_font_size("ArrowFontSize", fallback~)
 }
 

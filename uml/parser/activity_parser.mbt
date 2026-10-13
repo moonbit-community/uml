@@ -26,7 +26,7 @@ fn block_name(kind : BlockKind) -> String {
 fn require_block(
   stack : Array[BlockKind],
   expected : BlockKind,
-  line : Int,
+  line : Int32,
   command : String,
 ) -> Unit raise @tokenizer.ParseError {
   guard stack.last() is Some(actual) && actual == expected else {
@@ -41,7 +41,7 @@ fn require_block(
 fn pop_block(
   stack : Array[BlockKind],
   expected : BlockKind,
-  line : Int,
+  line : Int32,
   command : String,
 ) -> Unit raise @tokenizer.ParseError {
   require_block(stack, expected, line, command)
@@ -61,8 +61,8 @@ fn command_text(line : String, prefix : String) -> String {
 ///|
 fn parse_note(
   buffer : LineBuffer,
-  start : Int,
-) -> (String, Int) raise @tokenizer.ParseError {
+  start : Int32,
+) -> (String, Int32) raise @tokenizer.ParseError {
   let mut index = start + 1
   guard @tokenizer.collect_lines_until(
       () => {

@@ -11,7 +11,7 @@ fn JavaRandom::new(seed : Int64) -> JavaRandom {
 }
 
 ///|
-fn JavaRandom::next(self : JavaRandom, bits : Int) -> Int {
+fn JavaRandom::next(self : JavaRandom, bits : Int32) -> Int32 {
   self.seed = (self.seed * 0x5DEECE66DL + 0xBL) & 0xFFFFFFFFFFFFL
   (self.seed >> (48 - bits)).to_int()
 }

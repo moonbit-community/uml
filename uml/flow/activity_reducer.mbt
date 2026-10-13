@@ -29,7 +29,7 @@ pub fn edge_label(value : String) -> ActivityEdgeLabel {
 
 ///|
 /// Branch keywords delimit labels only outside the parenthesized text.
-fn activity_label_separator(value : String, separator : String) -> Int? {
+fn activity_label_separator(value : String, separator : String) -> Int32? {
   let lower = value.to_lower()
   let mut depth = 0
   for index = 0; index < lower.length(); index = index + 1 {
@@ -155,12 +155,12 @@ fn[B] reduce_chain(
   instructions : Array[ActivityInstruction],
   nodes : Array[ActivityNode],
   header : ActivityNode,
-  cursor : Int,
+  cursor : Int32,
   boundaries : Array[ReductionBoundary],
   branch : (ActivityNode, Array[ActivityInstruction]) -> B,
   continue_with : (ActivityNode) -> ActivityNode?,
   finish : (Array[B], ActivityNode) -> ActivityInstruction,
-) -> Int? {
+) -> Int32? {
   let branches = []
   let mut header = header
   let mut cursor = cursor
@@ -182,8 +182,8 @@ fn[B] reduce_chain(
 fn emit(
   instructions : Array[ActivityInstruction],
   instruction : ActivityInstruction,
-  index : Int,
-) -> Int {
+  index : Int32,
+) -> Int32 {
   instructions.push(instruction)
   index + 1
 }
@@ -191,9 +191,9 @@ fn emit(
 ///|
 fn reduce_flow(
   nodes : Array[ActivityNode],
-  start : Int,
+  start : Int32,
   boundaries : Array[ReductionBoundary],
-) -> (Array[ActivityInstruction], Int) {
+) -> (Array[ActivityInstruction], Int32) {
   let instructions = []
   let mut index = start
   while index < nodes.length() {

@@ -9,7 +9,7 @@
 /// dropped instead of connecting nodes with extra beziers.
 priv struct MindmapClassLayout {
   layout : MindmapLayout
-  rects : Array[(Int, Int, Int, Int)]
+  rects : Array[(Int32, Int32, Int32, Int32)]
   /// Tree edges from the packing.
   structure_edges : Array[MindmapClassEdge]
 }
@@ -19,14 +19,14 @@ priv struct MindmapClassLayout {
 /// from the relation target (parent) to its source (child), so its endpoint
 /// decorations are stored in that visual order.
 priv struct MindmapClassEdge {
-  x1 : Int
-  y1 : Int
-  control1_x : Int
-  control1_y : Int
-  control2_x : Int
-  control2_y : Int
-  x2 : Int
-  y2 : Int
+  x1 : Int32
+  y1 : Int32
+  control1_x : Int32
+  control1_y : Int32
+  control2_x : Int32
+  control2_y : Int32
+  x2 : Int32
+  y2 : Int32
   parent_end : @entity.RelationEnd
   child_end : @entity.RelationEnd
 }
@@ -34,7 +34,11 @@ priv struct MindmapClassEdge {
 ///|
 /// Whether `source` already has `target` as an ancestor; assigning the parent
 /// then would close a cycle.
-fn creates_cycle(parent : Array[Int?], source : Int, target : Int) -> Bool {
+fn creates_cycle(
+  parent : Array[Int32?],
+  source : Int32,
+  target : Int32,
+) -> Bool {
   let mut current = target
   while current != source {
     guard parent[current] is Some(next) else { return false }
@@ -63,8 +67,8 @@ fn @entity.EntityDiagram::mindmap_class_layout(
   text_metrics : ClassTextMetrics,
 ) -> MindmapClassLayout {
   let count = self.entities.length()
-  let parent : Array[Int?] = Array::make(count, None)
-  let parent_relation_indices : Array[Int?] = Array::make(count, None)
+  let parent : Array[Int32?] = Array::make(count, None)
+  let parent_relation_indices : Array[Int32?] = Array::make(count, None)
   for relation_index, relation in self.relations {
     let source = entity_index(self, relation.left)
     let target = entity_index(self, relation.right)
@@ -77,7 +81,7 @@ fn @entity.EntityDiagram::mindmap_class_layout(
       _ => ()
     }
   }
-  let children : Array[Array[Int]] = []
+  let children : Array[Array[Int32]] = []
   for _ in 0..<count {
     children.push([])
   }
@@ -86,7 +90,7 @@ fn @entity.EntityDiagram::mindmap_class_layout(
       children[par].push(entity_index)
     }
   }
-  let roots : Array[Int] = []
+  let roots : Array[Int32] = []
   let items : Array[LayoutItem] = []
   for entity_index, entity in self.entities {
     let geometry = entity.node_geometry(text_metrics, self.family)
@@ -105,7 +109,10 @@ fn @entity.EntityDiagram::mindmap_class_layout(
     }
   }
   let layout = layout_tree(items, roots)
-  let rects : Array[(Int, Int, Int, Int)] = Array::make(count, (0, 0, 0, 0))
+  let rects : Array[(Int32, Int32, Int32, Int32)] = Array::make(
+    count,
+    (0, 0, 0, 0),
+  )
   for node in layout.nodes {
     rects[node.index] = (
       node.x.round().to_int(),

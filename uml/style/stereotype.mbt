@@ -21,7 +21,7 @@ pub fn DocumentStyle::with_stereotypes(
   let labels = stereotype_labels(source)
   guard !labels.is_empty() else { return self }
   let properties = self.properties.copy()
-  let priorities : Map[String, Int] = Map([])
+  let priorities : Map[String, Int32] = Map([])
   for key, value in self.properties {
     guard key.find("<<") is Some(start) && key.has_suffix(">>") else {
       continue

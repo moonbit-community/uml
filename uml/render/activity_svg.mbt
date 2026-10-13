@@ -1,5 +1,8 @@
 ///|
-fn layout_for(layout : ActivityLayout, node_index : Int) -> ActivityNodeLayout? {
+fn layout_for(
+  layout : ActivityLayout,
+  node_index : Int32,
+) -> ActivityNodeLayout? {
   for node in layout.nodes {
     guard node.node_index == node_index else { continue }
     return Some(node)
@@ -14,8 +17,8 @@ fn append_label(
   y : Double,
   label : String,
   font_metrics : @metrics.FontMetrics,
-  anchor? : @graphics.TextAnchor = Middle,
-  multiline_anchor? : @svg.MultilineTextAnchor = Center,
+  anchor~ : @graphics.TextAnchor = Middle,
+  multiline_anchor~ : @svg.MultilineTextAnchor = Center,
 ) -> Unit {
   if state_rich_text(label, font_metrics, 0.0) is Some(rich) {
     let top = if multiline_anchor is @svg.Center {
@@ -926,7 +929,7 @@ const ACTIVITY_ARROW_MIDDLE : Double = ACTIVITY_ARROW_EXTENT / 2.0
 fn define_activity_arrow(
   document : @svg.SvgDocument,
   fill : String,
-  id? : String = "activity-arrow",
+  id~ : String = "activity-arrow",
 ) -> @graphics.MarkerRef {
   document.define_marker(
     id,
@@ -957,7 +960,7 @@ fn define_activity_arrow(
 /// Render a parsed activity diagram with the built-in, non-Graphviz layout.
 fn @flow.ActivityDiagram::render_svg(
   self : @flow.ActivityDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let nodes : Array[@flow.ActivityNode] = self.nodes.map(node => {
     match node {
@@ -1173,7 +1176,7 @@ fn @flow.ActivityDiagram::render_svg(
 /// Render a parsed activity diagram to SVG.
 pub fn render_activity_svg(
   diagram : @flow.ActivityDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   diagram.render_svg(color_scheme~)
 }

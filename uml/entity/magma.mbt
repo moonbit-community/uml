@@ -12,7 +12,7 @@ pub(all) struct Magma {
 
 ///|
 /// `SquareMaker.computeBranch`: the number of columns of the near-square grid.
-pub fn magma_branch(size : Int) -> Int {
+pub fn magma_branch(size : Int32) -> Int32 {
   let r = size.to_double().sqrt().floor().to_int()
   guard r * r == size else { return r + 1 }
   r
@@ -20,7 +20,7 @@ pub fn magma_branch(size : Int) -> Int {
 
 ///|
 /// `SquareMaker.getBottomLeft`: index of the first cell of the last row.
-pub fn magma_bottom_left_index(size : Int) -> Int {
+pub fn magma_bottom_left_index(size : Int32) -> Int32 {
   (size - 1) / magma_branch(size) * magma_branch(size)
 }
 
@@ -101,8 +101,8 @@ pub fn EntityDiagram::find_package(
 /// assignment without being drawn.
 pub fn EntityDiagram::magma_grid_edges(
   self : EntityDiagram,
-) -> Array[(String, String, Int)] {
-  let edges : Array[(String, String, Int)] = []
+) -> Array[(String, String, Int32)] {
+  let edges : Array[(String, String, Int32)] = []
   guard self.family.applies_magma_grid() else { return edges }
   let scopes = [""] + self.packages.map(group => group.qualified_name)
   let magmas = scopes.filter_map(scope => {

@@ -32,7 +32,7 @@ pub fn set_fixed_node_size(
   node : @cgraph.Node,
   width : Double,
   height : Double,
-  shape? : String = "box",
+  shape~ : String = "box",
 ) -> Unit {
   node.set_attr("label", "")
   node.set_attr("shape", shape)
@@ -152,7 +152,7 @@ pub fn graphviz_rankdir_attr(rankdir : @rankdir.RankDir) -> String {
 }
 
 ///|
-pub fn graphviz_note_name(index : Int) -> String {
+pub fn graphviz_note_name(index : Int32) -> String {
   "note" + index.to_string()
 }
 
@@ -175,7 +175,7 @@ pub extend GraphvizSpline with Debug::{to_repr}
 ///|
 /// One graphviz edge normalized into SVG coordinates.
 pub(all) struct GraphvizEdge {
-  index : Int
+  index : Int32
   splines : Array[GraphvizSpline]
   label : GraphvizPoint?
   head_label : GraphvizPoint?
@@ -193,9 +193,9 @@ pub extend GraphvizEdge with Debug::{to_repr}
 /// its semantic index. Orthogonal PlantUML links use the exterior label slot.
 pub fn graphviz_edges(
   laid_out : @dot_layout.DotLayoutGraph,
-  names : Map[Int, String],
+  names : Map[Int32, String],
   bbox : @geom.Rect,
-  external_labels? : Bool = false,
+  external_labels~ : Bool = false,
 ) -> Array[GraphvizEdge] {
   laid_out.edges.filter_map(edge_layout => {
     guard names.get(edge_layout.edge.id()) is Some(index_text) else {
@@ -224,7 +224,7 @@ pub fn graphviz_edges(
 ///|
 /// One graphviz note node normalized into SVG coordinates.
 pub(all) struct GraphvizNote {
-  note_index : Int
+  note_index : Int32
   x : Double
   y : Double
   width : Double
@@ -256,9 +256,9 @@ pub extend NodeAnchor with Debug::{to_repr}
 /// `offset` the result is the top-left corner, otherwise the center.
 pub fn graphviz_notes(
   laid_out : @dot_layout.DotLayoutGraph,
-  note_names : Map[String, Int],
+  note_names : Map[String, Int32],
   bbox : @geom.Rect,
-  anchor? : NodeAnchor = TopLeft,
+  anchor~ : NodeAnchor = TopLeft,
 ) -> Array[GraphvizNote] {
   let notes = []
   for node_layout in laid_out.nodes {

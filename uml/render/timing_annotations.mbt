@@ -1,7 +1,7 @@
 ///|
 /// Message contacts selected from each waveform's TimeProjected endpoints.
 pub(all) struct TimingMessageLayout {
-  index : Int
+  index : Int32
   start : @graphics.Point
   end : @graphics.Point
 }

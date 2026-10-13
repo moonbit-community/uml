@@ -192,7 +192,7 @@ fn if_merge_size(
 
 ///|
 fn place_if_merge(
-  index : Int,
+  index : Int32,
   size : TileMeasure,
   center_x : Double,
   y : Double,
@@ -232,7 +232,7 @@ fn if_single_terminal(
 fn if_vertical_body_index(
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
-) -> Int? {
+) -> Int32? {
   guard is_if_down(branches) else { return None }
   let left_empty = sequence_is_empty(branches[0].tiles, nodes)
   let right_empty = sequence_is_empty(branches[1].tiles, nodes)

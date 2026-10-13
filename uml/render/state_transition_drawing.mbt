@@ -115,7 +115,7 @@ fn append_state_edge(
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   edge : StateEdgeLayout,
-  include_hidden? : Bool = false,
+  include_hidden~ : Bool = false,
 ) -> Unit {
   guard edge.transition_index < diagram.transitions.length() else { return }
   let transition = diagram.transitions[edge.transition_index]

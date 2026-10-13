@@ -28,7 +28,7 @@ fn append_text(output : StringBuilder, value : String) -> Unit {
 pub fn XmlWriter::open(
   self : XmlWriter,
   name : String,
-  attributes? : Array[(String, String)] = [],
+  attributes~ : Array[(String, String)] = [],
 ) -> Unit {
   self.output <+ "<\{name}"
   for attribute in attributes {
@@ -42,7 +42,7 @@ pub fn XmlWriter::open(
 pub fn XmlWriter::empty(
   self : XmlWriter,
   name : String,
-  attributes? : Array[(String, String)] = [],
+  attributes~ : Array[(String, String)] = [],
 ) -> Unit {
   self.output <+ "<\{name}"
   for attribute in attributes {
@@ -56,7 +56,7 @@ pub fn XmlWriter::text(
   self : XmlWriter,
   name : String,
   value : String,
-  attributes? : Array[(String, String)] = [],
+  attributes~ : Array[(String, String)] = [],
 ) -> Unit {
   self.open(name, attributes~)
   append_text(self.output, value)

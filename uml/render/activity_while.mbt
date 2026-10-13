@@ -2,9 +2,9 @@
 /// FtileWhile.calculateDimensionFtile stacks the condition and body on one
 /// axis, with two hexagon half-widths on the left and one on the right.
 fn while_columns(
-  entry : Int,
+  entry : Int32,
   body : Array[Tile],
-  exit : Int,
+  exit : Int32,
   exit_label : String?,
   enter_label : String?,
   nodes : Array[@flow.ActivityNode],

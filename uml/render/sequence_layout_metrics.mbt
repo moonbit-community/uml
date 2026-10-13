@@ -41,7 +41,7 @@ pub(all) struct ParticipantLayout {
   participant : @seq.Participant
   text_metrics : SequenceTextMetrics
   defaults : @style.SequenceColors
-  index : Int
+  index : Int32
   center_x : Double
   width : Double
   height : Double
@@ -62,7 +62,7 @@ pub(all) struct EventPlacement {
 pub(all) struct ActivationSpan {
   participant_code : String
   caller_code : String?
-  depth : Int
+  depth : Int32
   start_y : Double
   end_y : Double
   color : String?
@@ -72,14 +72,14 @@ pub(all) struct ActivationSpan {
 pub(all) struct GroupSpan {
   start_y : Double
   end_y : Double
-  depth : Int
+  depth : Int32
   keyword : @seq.GroupKeyword
   header : String
   color : String?
   header_color : String?
   parallel : Bool
-  first_participant : Int?
-  last_participant : Int?
+  first_participant : Int32?
+  last_participant : Int32?
   branches : Array[GroupBranch]
 }
 
@@ -100,7 +100,7 @@ pub(all) struct DestroyMark {
 ///|
 pub(all) struct DiagramLayout {
   participants : Array[ParticipantLayout]
-  participant_index : Map[String, Int]
+  participant_index : Map[String, Int32]
   placements : Array[EventPlacement]
   activations : Array[ActivationSpan]
   groups : Array[GroupSpan]
@@ -265,8 +265,8 @@ fn @seq.Event::required_gap_before(
 ///|
 fn @seq.Event::participant_span(
   self : @seq.Event,
-  participant_index : Map[String, Int],
-) -> (Int, Int)? {
+  participant_index : Map[String, Int32],
+) -> (Int32, Int32)? {
   let index_for = (code : String) => participant_index.get(code)
   let between = (first : String, last : String) => {
     match (index_for(first), index_for(last)) {
@@ -296,7 +296,7 @@ fn @seq.Event::participant_span(
         _ => None
       }
     @seq.Notes(notes) => {
-      let mut span : (Int, Int)? = None
+      let mut span : (Int32, Int32)? = None
       for note in notes {
         if (note.participant_codes.get(0), note.participant_codes.last())
           is (Some(first), Some(last)) {
@@ -327,7 +327,7 @@ fn @seq.Event::participant_span(
 ///|
 fn GroupSpan::include_participant_span(
   self : GroupSpan,
-  span : (Int, Int),
+  span : (Int32, Int32),
 ) -> GroupSpan {
   let (first, last) = span
   {
@@ -356,7 +356,7 @@ fn event_advances_layout(
 ///|
 fn next_visual_gap(
   events : Array[@seq.Event],
-  index : Int,
+  index : Int32,
   text_metrics : SequenceTextMetrics,
 ) -> Double {
   for next_index in (index + 1)..<events.length() {
@@ -371,8 +371,8 @@ fn next_visual_gap(
 ///|
 fn participant_code_index(
   participants : Array[ParticipantLayout],
-) -> Map[String, Int] {
-  let index : Map[String, Int] = Map([])
+) -> Map[String, Int32] {
+  let index : Map[String, Int32] = Map([])
   for layout in participants {
     index[layout.participant.code] = layout.index
   }
@@ -437,7 +437,7 @@ fn participant_box_horizontal_bounds(
 ///
 /// Shared by the participant-box painters and constrains; do not re-fold the
 /// depths locally.
-fn max_participant_box_depth(layouts : Array[ParticipantLayout]) -> Int {
+fn max_participant_box_depth(layouts : Array[ParticipantLayout]) -> Int32 {
   layouts.fold(init=0, (depth, layout) => {
     depth.max(layout.participant.boxes.length())
   })
@@ -451,8 +451,8 @@ fn max_participant_box_depth(layouts : Array[ParticipantLayout]) -> Int {
 /// need this run-length split; keep it here rather than re-implementing it.
 fn for_each_participant_box_run(
   layouts : Array[ParticipantLayout],
-  depth : Int,
-  run : (Int, Int, @seq.ParticipantBox) -> Unit,
+  depth : Int32,
+  run : (Int32, Int32, @seq.ParticipantBox) -> Unit,
 ) -> Unit {
   let mut active : @seq.ParticipantBox? = None
   let mut start = 0

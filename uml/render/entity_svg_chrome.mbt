@@ -1,10 +1,10 @@
 ///|
 /// Vertical padding above and below each document chrome text block.
-const CHROME_BLOCK_PADDING : Int = 4
+const CHROME_BLOCK_PADDING : Int32 = 4
 
 ///|
 /// Gap between stacked chrome blocks (title above header, etc.).
-const CHROME_BLOCK_GAP : Int = 6
+const CHROME_BLOCK_GAP : Int32 = 6
 
 ///|
 priv struct ChromeBlock {
@@ -69,12 +69,12 @@ fn @entity.EntityDiagram::chrome_blocks(
 }
 
 ///|
-fn ChromeBlock::height(self : ChromeBlock) -> Int {
+fn ChromeBlock::height(self : ChromeBlock) -> Int32 {
   self.metrics.entity_measure(self.text).height + CHROME_BLOCK_PADDING * 2
 }
 
 ///|
-fn chrome_stack_height(blocks : Array[ChromeBlock]) -> Int {
+fn chrome_stack_height(blocks : Array[ChromeBlock]) -> Int32 {
   let mut height = 0
   for index, block in blocks {
     if index > 0 {
@@ -86,7 +86,7 @@ fn chrome_stack_height(blocks : Array[ChromeBlock]) -> Int {
 }
 
 ///|
-fn chrome_stack_width(blocks : Array[ChromeBlock]) -> Int {
+fn chrome_stack_width(blocks : Array[ChromeBlock]) -> Int32 {
   let mut width = 0
   for block in blocks {
     width = width.max(block.metrics.entity_measure(block.text).width)

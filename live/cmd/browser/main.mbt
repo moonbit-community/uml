@@ -36,7 +36,7 @@ fn Theme::toggle(self : Theme) -> Theme {
 enum Msg {
   EditorChanged(String)
   FileSelected(String)
-  SizesChanged(Array[Int])
+  SizesChanged(Array[Int32])
   ManifestLoaded(Result[Map[String, Array[String]], String])
   SourceLoaded(String, Result[String, String])
   ThemeToggled
@@ -47,13 +47,13 @@ enum Msg {
 struct AppState {
   active_file : String
   source : String
-  sizes : Array[Int]
+  sizes : Array[Int32]
   categories : Map[String, Array[String]]
   sources : Map[String, String]
   load_error : String?
   theme : Theme
   member_states : Map[String, @entity.ClassMemberState]
-  member_revision : Int
+  member_revision : Int32
 } derive(Eq)
 
 ///|
@@ -111,7 +111,7 @@ fn select_source(state : AppState, path : String) -> AppState {
 }
 
 ///|
-fn example_count(categories : Map[String, Array[String]]) -> Int {
+fn example_count(categories : Map[String, Array[String]]) -> Int32 {
   let mut total = 0
   for _, files in categories {
     total += files.length()
@@ -151,17 +151,17 @@ fn apply_source(state : AppState, path : String, source : String) -> AppState {
 }
 
 ///|
-fn workspace_default_sizes() -> Array[Int] {
+fn workspace_default_sizes() -> Array[Int32] {
   [26, 30, 44]
 }
 
 ///|
-fn workspace_min_sizes() -> Array[Int] {
+fn workspace_min_sizes() -> Array[Int32] {
   [16, 24, 18]
 }
 
 ///|
-fn workspace_max_sizes() -> Array[Int] {
+fn workspace_max_sizes() -> Array[Int32] {
   [52, 68, 54]
 }
 

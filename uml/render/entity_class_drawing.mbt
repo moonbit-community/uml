@@ -8,16 +8,16 @@ priv struct ClassDrawing {
 ///|
 fn draw_class_text(
   output : @graphics.Graphic,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   text : String,
   class_name : String,
   metrics : @metrics.FontMetrics,
-  fill? : String = "",
-  font_family? : String = "",
-  font_size? : Int = 0,
-  italic? : Bool? = None,
-  anchor? : @graphics.TextAnchor = Start,
+  fill~ : String = "",
+  font_family~ : String = "",
+  font_size~ : Int32 = 0,
+  italic~ : Bool? = None,
+  anchor~ : @graphics.TextAnchor = Start,
 ) -> Unit {
   draw_entity_text(
     output,
@@ -44,7 +44,7 @@ fn draw_class_text(
 fn ClassDrawing::draw_class(
   self : ClassDrawing,
   entity : @entity.Entity,
-  index : Int,
+  index : Int32,
   layout : ClassLayout,
 ) -> Unit {
   guard !entity.is_hidden && !entity.is_removed else { return }
@@ -107,8 +107,8 @@ fn ClassDrawing::draw_class(
 fn ClassDrawing::append_class_spot(
   self : ClassDrawing,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   placement : ClassHeaderPlacement,
   spot_text : String,
   spot_fill : String,
@@ -160,9 +160,9 @@ fn ClassDrawing::append_class_spot(
 fn ClassDrawing::append_class_header(
   self : ClassDrawing,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   placement : ClassHeaderPlacement,
   header : ClassHeaderLayout,
 ) -> Unit {
@@ -255,9 +255,9 @@ fn ClassDrawing::append_class_header(
 fn ClassDrawing::append_class_members(
   self : ClassDrawing,
   entity : @entity.Entity,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   header : ClassHeaderLayout,
   body : ClassBodyLayout,
   line_style : @graphics.DrawingStyle,
@@ -373,10 +373,10 @@ fn append_member_toggle(
   code : String,
   section : String,
   expanded : Bool,
-  x : Int,
-  y : Int,
-  width : Int,
-  height : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   output.draw(
     ToggleArea(
@@ -396,12 +396,12 @@ fn append_member_toggle(
 ///|
 fn append_member_section(
   output : @graphics.Graphic,
-  x : Int,
-  y : Int,
-  width : Int,
+  x : Int32,
+  y : Int32,
+  width : Int32,
   entries : Array[@entity.Member],
-  section_height : Int,
-  row_height : Int,
+  section_height : Int32,
+  row_height : Int32,
   entity_colors : @style.EntityColors,
   text_color : String,
   line_style : @graphics.DrawingStyle,
@@ -431,7 +431,7 @@ fn append_member_section(
 }
 
 ///|
-fn class_point(x : Int, y : Int) -> @graphics.Point {
+fn class_point(x : Int32, y : Int32) -> @graphics.Point {
   { x: x.to_double(), y: y.to_double(), }
 }
 
@@ -439,8 +439,8 @@ fn class_point(x : Int, y : Int) -> @graphics.Point {
 fn draw_member_text(
   output : @graphics.Graphic,
   entry : @entity.Member,
-  x : Int,
-  y : Int,
+  x : Int32,
+  y : Int32,
   class_name : String,
   metrics : ClassTextMetrics,
   color : String,

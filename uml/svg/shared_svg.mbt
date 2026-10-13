@@ -140,7 +140,7 @@ pub fn line_style_attributes_markup(line_style : String?) -> String {
 /// stroke width (empty means no stroke attribute).
 pub fn stroke_style(
   line_style : String?,
-  default_width? : String = STANDARD_BORDER_WIDTH.to_string(),
+  default_width~ : String = STANDARD_BORDER_WIDTH.to_string(),
 ) -> String {
   match line_style_attributes(line_style) {
     [(name, value)] => "\{name}:\{value}"
@@ -187,8 +187,8 @@ pub fn multiline_text_markup(
   text : String,
   attributes : Array[(String, String)],
   line_height~ : Double,
-  anchor? : MultilineTextAnchor = Center,
-  text_metrics? : @metrics.FontMetrics? = None,
+  anchor~ : MultilineTextAnchor = Center,
+  text_metrics~ : @metrics.FontMetrics? = None,
 ) -> String {
   let block = layout_multiline_text(
     x,
@@ -306,9 +306,9 @@ pub fn layout_multiline_text(
   y : Double,
   text : String,
   line_height~ : Double,
-  anchor? : MultilineTextAnchor = Center,
-  text_anchor? : @graphics.TextAnchor = Start,
-  text_metrics? : @metrics.FontMetrics? = None,
+  anchor~ : MultilineTextAnchor = Center,
+  text_anchor~ : @graphics.TextAnchor = Start,
+  text_metrics~ : @metrics.FontMetrics? = None,
 ) -> @graphics.MultilineText {
   let lines = text.split("\n").map(StringView::to_owned).to_array()
   let baseline = match anchor {

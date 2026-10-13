@@ -22,7 +22,7 @@ priv struct NoteOpaleAttachment {
 ///|
 fn GraphvizLayout::note_edge(
   self : GraphvizLayout,
-  note_index : Int,
+  note_index : Int32,
 ) -> @graphviz.GraphvizEdge? {
   for edge in self.note_edges {
     if edge.index == note_index {
@@ -231,7 +231,7 @@ fn opale_note_path(
 ///|
 
 ///|
-const FALLBACK_NOTE_GAP : Int = 12
+const FALLBACK_NOTE_GAP : Int32 = 12
 
 ///|
 /// Place notes next to their target entity when Graphviz is unavailable.

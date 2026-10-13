@@ -16,12 +16,12 @@ pub extend IdeaShape with Debug::{to_repr}
 /// `MindmapDiagram::ideas`; the root has no parent.
 pub(all) struct Idea {
   label : String
-  level : Int
+  level : Int32
   direction : TreeDirection
   shape : IdeaShape
   background_color : String?
   stereotype : String?
-  parent : Int?
+  parent : Int32?
 } derive(Eq, Debug)
 
 ///|

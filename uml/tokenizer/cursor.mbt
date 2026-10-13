@@ -5,8 +5,8 @@
 /// can inspect and consume Unicode text without duplicating index arithmetic.
 pub struct Cursor {
   text : StringView
-  code_unit_offsets : Array[Int]
-  mut offset : Int
+  code_unit_offsets : Array[Int32]
+  mut offset : Int32
 }
 
 ///|
@@ -24,13 +24,13 @@ pub fn Cursor::new(input : String) -> Cursor {
 
 ///|
 /// Returns the current character offset.
-pub fn Cursor::offset(self : Cursor) -> Int {
+pub fn Cursor::offset(self : Cursor) -> Int32 {
   self.offset
 }
 
 ///|
 /// Returns the number of characters in the input.
-pub fn Cursor::length(self : Cursor) -> Int {
+pub fn Cursor::length(self : Cursor) -> Int32 {
   self.code_unit_offsets.length() - 1
 }
 
@@ -48,14 +48,14 @@ pub fn Cursor::peek(self : Cursor) -> Char? {
 
 ///|
 /// Returns a character at an absolute character offset.
-pub fn Cursor::char_at(self : Cursor, offset : Int) -> Char? {
+pub fn Cursor::char_at(self : Cursor, offset : Int32) -> Char? {
   guard offset >= 0 && offset < self.length() else { return None }
   self.text.get_char(self.code_unit_offsets[offset])
 }
 
 ///|
 /// Returns a character relative to the current cursor position.
-pub fn Cursor::peek_ahead(self : Cursor, distance : Int) -> Char? {
+pub fn Cursor::peek_ahead(self : Cursor, distance : Int32) -> Char? {
   self.char_at(self.offset + distance)
 }
 
@@ -91,7 +91,7 @@ pub fn Cursor::consume_literal(self : Cursor, literal : String) -> Bool {
 
 ///|
 /// Consumes characters while `predicate` accepts them and returns the count.
-pub fn Cursor::skip_while(self : Cursor, predicate : (Char) -> Bool) -> Int {
+pub fn Cursor::skip_while(self : Cursor, predicate : (Char) -> Bool) -> Int32 {
   let start = self.offset
   while self.peek() is Some(char) && predicate(char) {
     self.offset += 1
@@ -140,7 +140,7 @@ pub fn Cursor::take_rest_trimmed(self : Cursor) -> String {
 
 ///|
 /// Returns a character slice using absolute character offsets.
-pub fn Cursor::slice(self : Cursor, start : Int, end : Int) -> String {
+pub fn Cursor::slice(self : Cursor, start : Int32, end : Int32) -> String {
   let first = start.max(0).min(self.length())
   let last = end.max(first).min(self.length())
   self.text[self.code_unit_offsets[first]:self.code_unit_offsets[last]].to_owned()
@@ -148,7 +148,7 @@ pub fn Cursor::slice(self : Cursor, start : Int, end : Int) -> String {
 
 ///|
 /// Restores a previously saved offset. Returns false for an invalid offset.
-pub fn Cursor::restore(self : Cursor, offset : Int) -> Bool {
+pub fn Cursor::restore(self : Cursor, offset : Int32) -> Bool {
   guard offset >= 0 && offset <= self.length() else { return false }
   self.offset = offset
   true

@@ -3,7 +3,7 @@ name = "moonbit-community/uml-cli"
 version = "0.1.1"
 
 import {
-  "moonbit-community/uml@0.4.2",
+  "moonbit-community/uml@0.4.3",
   "moonbitlang/async@0.22.4",
   "moonbitlang/x@0.5.5",
 }

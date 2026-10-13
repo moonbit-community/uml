@@ -134,7 +134,7 @@ pub(all) struct TextStyle {
   font_size : Double?
   font_family : String?
   italic : Bool?
-  weight : Int?
+  weight : Int32?
 } derive(Eq, Debug, Default)
 
 ///|

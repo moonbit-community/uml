@@ -1,7 +1,7 @@
 ///|
 priv struct StateOutputSize {
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   scale : Double
 }
 

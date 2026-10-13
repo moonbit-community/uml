@@ -14,7 +14,7 @@ const WBS_CANVAS_MARGIN : Double = 10.0
 ///|
 /// A WBS main box, retaining half-pixel attachment coordinates.
 pub(all) struct WbsNodeLayout {
-  index : Int
+  index : Int32
   x : Double
   y : Double
   width : Double
@@ -30,7 +30,7 @@ pub extend WbsNodeLayout with Debug::{to_repr}
 ///|
 /// One shared bus or branch segment, styled by its owning parent.
 pub(all) struct WbsLineLayout {
-  owner : Int
+  owner : Int32
   start : @graphics.Point
   end : @graphics.Point
 } derive(Eq, Debug)
@@ -58,14 +58,14 @@ pub extend WbsLayout with Debug::{to_repr}
 
 ///|
 priv struct WbsItem {
-  index : Int
+  index : Int32
   style : @tree.TreeNodeStyle
   label : String
   natural_width : Double
   width : Double
   height : Double
-  left : Array[Int]
-  right : Array[Int]
+  left : Array[Int32]
+  right : Array[Int32]
 }
 
 ///|
@@ -80,8 +80,8 @@ priv struct WbsTile {
 
 ///|
 fn wbs_items(diagram : @tree.WbsDiagram) -> Array[WbsItem] {
-  let left : Array[Array[Int]] = Array::makei(diagram.nodes.length(), _ => [])
-  let right : Array[Array[Int]] = Array::makei(diagram.nodes.length(), _ => [])
+  let left : Array[Array[Int32]] = Array::makei(diagram.nodes.length(), _ => [])
+  let right : Array[Array[Int32]] = Array::makei(diagram.nodes.length(), _ => [])
   for index, node in diagram.nodes {
     guard node.parent is Some(parent) else { continue }
     if node.direction is @tree.TreeDirection::Left {
@@ -156,7 +156,7 @@ fn wbs_items(diagram : @tree.WbsDiagram) -> Array[WbsItem] {
 ///|
 fn wbs_tile(
   items : Array[WbsItem],
-  index : Int,
+  index : Int32,
   diagram : @tree.WbsDiagram,
 ) -> WbsTile {
   let item = items[index]
@@ -204,7 +204,7 @@ fn wbs_child_margin(diagram : @tree.WbsDiagram, item : WbsItem) -> Double {
 ///|
 fn wbs_line(
   lines : Array[WbsLineLayout],
-  owner : Int,
+  owner : Int32,
   x1 : Double,
   y1 : Double,
   x2 : Double,

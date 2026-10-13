@@ -136,7 +136,7 @@ test "port clusters place input and output ports on opposite sides of the title"
         // The title's own `y="` sits before its class attribute; scan the
         // prefix for the last occurrence.
         let prefix = svg[:start].to_owned()
-        let mut y_pos : Int? = None
+        let mut y_pos : Int32? = None
         let mut offset = 0
         while @tokenizer.find_unquoted_literal(
                 prefix[offset:].to_owned(),

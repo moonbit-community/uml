@@ -205,7 +205,7 @@ fn EntityParser::add_map_link(
 /// its value without moving its original row.
 fn EntityParser::set_map_entry(
   self : EntityParser,
-  entity_index : Int,
+  entity_index : Int32,
   entry : @entity.MapEntry,
 ) -> Unit {
   let entries = self.entities[entity_index].map_entries
@@ -221,7 +221,7 @@ fn EntityParser::set_map_entry(
 ///|
 fn EntityParser::consume_json_body_line(
   self : EntityParser,
-  entity_index : Int,
+  entity_index : Int32,
   line : String,
 ) -> Unit raise @tokenizer.ParseError {
   let delta = parse_brace_delta(line)
@@ -272,7 +272,7 @@ fn complete_json_source(
 ///|
 fn EntityParser::consume_entity_body_line(
   self : EntityParser,
-  entity_index : Int,
+  entity_index : Int32,
   line : String,
 ) -> Unit raise @tokenizer.ParseError {
   let entity = self.entities[entity_index]
@@ -298,6 +298,6 @@ fn EntityParser::consume_entity_body_line(
 }
 
 ///|
-fn parse_brace_delta(line : String) -> Int {
+fn parse_brace_delta(line : String) -> Int32 {
   @tokenizer.unquoted_delimiter_delta(line, '{', '}')
 }

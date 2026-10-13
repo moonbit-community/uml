@@ -12,7 +12,7 @@ const TIMING_TICK_PIXELS : Double = 50.0
 const TIMING_MAX_AUTO_WIDTH : Double = 4000.0
 
 ///|
-const TIMING_MAX_TICKS : Int = 1000
+const TIMING_MAX_TICKS : Int32 = 1000
 
 ///|
 const TIMING_TICK_HEIGHT : Double = 5.0
@@ -158,7 +158,7 @@ fn timing_appearance(
 ///|
 fn TimingAppearance::paint(
   self : TimingAppearance,
-  fill? : Bool = false,
+  fill~ : Bool = false,
 ) -> @graphics.DrawingStyle {
   {
     ..Default::default(),

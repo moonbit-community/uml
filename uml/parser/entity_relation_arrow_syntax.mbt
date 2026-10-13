@@ -1,13 +1,13 @@
 ///|
 priv struct RelationStroke {
-  first_length : Int
+  first_length : Int32
   has_direction : Bool
   text : String
 }
 
 ///|
 priv struct RelationArrowCandidate {
-  first_length : Int
+  first_length : Int32
   has_direction : Bool
   has_left_decor : Bool
   has_right_decor : Bool

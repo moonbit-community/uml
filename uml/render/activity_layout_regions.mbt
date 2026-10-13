@@ -1,11 +1,11 @@
 ///|
 fn append_layout_edge(
   edges : Array[ActivityEdgeLayout],
-  from_node_index : Int?,
-  to_node_index : Int?,
+  from_node_index : Int32?,
+  to_node_index : Int32?,
   route : ActivityEdgeRoute,
-  label? : String? = None,
-  style? : String? = None,
+  label~ : String? = None,
+  style~ : String? = None,
 ) -> Unit {
   guard from_node_index is Some(from_node_index) else { return }
   guard to_node_index is Some(to_node_index) else { return }
@@ -24,7 +24,7 @@ fn goto_target(
   nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
   label : String,
-) -> Int? {
+) -> Int32? {
   for index, node in nodes {
     guard node is @flow.ActivityNode::Label(candidate) && candidate == label else {
       continue
@@ -54,8 +54,8 @@ fn append_goto_edges(
 ///|
 fn layout_for_node(
   layouts : Array[ActivityNodeLayout],
-  node_index : Int,
-) -> Int? {
+  node_index : Int32,
+) -> Int32? {
   for layout in layouts {
     guard layout.node_index == node_index else { continue }
     return Some(node_index)
@@ -66,7 +66,7 @@ fn layout_for_node(
 ///|
 fn swimlane_for_node(
   nodes : Array[@flow.ActivityNode],
-  node_index : Int,
+  node_index : Int32,
 ) -> String? {
   for index = node_index.min(nodes.length() - 1); index >= 0; index = index - 1 {
     guard nodes[index] is @flow.ActivityNode::Swimlane(name) else { continue }
@@ -87,7 +87,7 @@ fn swimlane_names(nodes : Array[@flow.ActivityNode]) -> Array[String] {
 }
 
 ///|
-fn swimlane_index(names : Array[String], name : String) -> Int? {
+fn swimlane_index(names : Array[String], name : String) -> Int32? {
   for index, candidate in names {
     guard candidate == name else { continue }
     return Some(index)

@@ -18,9 +18,9 @@ fn switch_right_route_x(from : ActivityNodeLayout, target_x : Double) -> Double 
 /// Width, flow axis, case column origins and wide-condition mode for the SMALL_DIAMOND and
 /// BIG_DIAMOND layouts in FtileSwitchWithDiamonds.
 fn switch_columns(
-  entry : Int,
+  entry : Int32,
   branches : Array[BranchTiles],
-  exit : Int,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,

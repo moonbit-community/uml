@@ -258,7 +258,7 @@ fn build_timing_drawing(
 /// Render the six TimingDiagram player families through their native panels.
 pub fn render_timing_svg(
   diagram : @flow.TimingDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let diagram = {
     ..diagram,

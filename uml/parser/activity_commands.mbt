@@ -265,7 +265,7 @@ fn parse_activity_decision(
 ///|
 fn activity_command_stereotype(
   value : String,
-  line : Int,
+  line : Int32,
 ) -> String? raise @tokenizer.ParseError {
   let value = value.trim_start(chars="; ").to_owned()
   if value.is_empty() {

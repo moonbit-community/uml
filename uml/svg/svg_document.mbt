@@ -5,8 +5,8 @@
 /// finish with `to_string`, which closes the root element.
 pub struct SvgDocument {
   writer : XmlWriter
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   marker_ids : Array[String]
 }
 
@@ -17,8 +17,8 @@ pub struct SvgDocument {
 /// `svg_root_markup` is the string form for renderers that hand-build markup.
 /// Do not re-list the xmlns/width/height/viewBox/role attributes locally.
 pub fn svg_root_attributes(
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
   view_box : String,
   aria_label : String,
 ) -> Array[(String, String)] {
@@ -35,8 +35,8 @@ pub fn svg_root_attributes(
 ///|
 /// The opening `<svg>` tag for renderers that hand-build markup.
 pub fn svg_root_markup(
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
   view_box : String,
   aria_label : String,
 ) -> String {
@@ -62,10 +62,10 @@ pub fn svg_style_rule(
 /// The background `<rect>` attributes shared by the renderers that paint a
 /// canvas rectangle under their content.
 pub fn background_rect_attributes(
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
   fill : String,
-  class_name? : String = "",
+  class_name~ : String = "",
 ) -> Array[(String, String)] {
   let class = if class_name.length() > 0 { [("class", class_name)] } else { [] }
   class +
@@ -81,10 +81,10 @@ pub fn background_rect_attributes(
 ///|
 /// The background `<rect>` markup for renderers that hand-build markup.
 pub fn background_rect_markup(
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
   fill : String,
-  class_name? : String = "",
+  class_name~ : String = "",
 ) -> String {
   "<rect" +
   background_rect_attributes(width, height, fill, class_name~)
@@ -102,13 +102,13 @@ pub fn svg_close_markup() -> String {
 
 ///|
 pub fn SvgDocument::new(
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
   aria_label : String,
   background : String,
   font_family : String,
   font_size : String,
-  css? : String = "",
+  css~ : String = "",
 ) -> SvgDocument {
   let writer = XmlWriter::new()
   writer.open(
@@ -132,8 +132,8 @@ pub fn SvgDocument::new(
 /// Open a document whose resources, styles and background are supplied by
 /// the renderer through the typed drawing and document APIs.
 pub fn SvgDocument::empty(
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
   aria_label : String,
   view_box? : (@graphics.Point, @graphics.Size),
 ) -> SvgDocument {

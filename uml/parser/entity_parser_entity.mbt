@@ -63,7 +63,7 @@ fn EntityParser::ensure_implicit_namespaces(
 fn EntityParser::entity_index(
   self : EntityParser,
   qualified_code : String,
-) -> Int? {
+) -> Int32? {
   self.entity_indices.get(qualified_code)
 }
 
@@ -79,7 +79,7 @@ fn EntityParser::has_entity(
 fn EntityParser::append_entity(
   self : EntityParser,
   entity : @entity.Entity,
-) -> Int {
+) -> Int32 {
   let index = self.entities.length()
   self.entities.push(entity)
   self.entity_indices[entity.qualified_code] = index

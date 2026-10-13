@@ -136,8 +136,8 @@ fn @seq.SequenceDiagram::paint_sequence_svg(
   // note's URL too (`AbstractMessage.getUrl`), first note wins; a reference
   // or group-leaf carrier applies no URL at all, so a note attached there
   // is drawn without its own link.
-  let note_urls : Map[Int, String] = Map([])
-  let note_suppress : Map[Int, Bool] = Map([])
+  let note_urls : Map[Int32, String] = Map([])
+  let note_suppress : Map[Int32, Bool] = Map([])
   let mut last_carrier_index = -1
   let mut last_carrier_is_message = false
   for index, event in self.events {
@@ -206,7 +206,7 @@ fn @seq.SequenceDiagram::paint_sequence_svg(
 /// Render a parsed sequence diagram to SVG.
 pub fn render_sequence_svg(
   diagram : @seq.SequenceDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let diagram = {
     ..diagram,

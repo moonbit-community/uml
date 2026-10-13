@@ -156,9 +156,9 @@ fn @entity.EntityDiagram::render_svg_with_mode(
 /// MBTI defaults come from its render options; class members default closed.
 fn @entity.EntityDiagram::render_svg(
   self : @entity.EntityDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(
@@ -172,10 +172,10 @@ fn @entity.EntityDiagram::render_svg(
 /// Render the mbti family with the mindmap tree layout.
 fn @entity.EntityDiagram::render_mbti_svg(
   self : @entity.EntityDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
-  render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
+  render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(
@@ -187,9 +187,9 @@ fn @entity.EntityDiagram::render_mbti_svg(
 /// Render a parsed entity-family diagram to SVG.
 pub fn render_entity_svg(
   diagram : @entity.EntityDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
 ) -> String raise @dot_layout.DotLayoutError {
   diagram.render_svg(color_scheme~, class_member_collapsible~, member_states~)
 }
@@ -198,10 +198,10 @@ pub fn render_entity_svg(
 /// Render a parsed mbti diagram to SVG.
 pub fn render_mbti_svg(
   diagram : @entity.MbtiDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
-  class_member_collapsible? : Bool = false,
-  member_states? : Map[String, @entity.ClassMemberState] = {},
-  render_options? : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
+  class_member_collapsible~ : Bool = false,
+  member_states~ : Map[String, @entity.ClassMemberState] = {},
+  render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   diagram.graph.render_mbti_svg(
     color_scheme~,

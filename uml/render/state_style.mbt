@@ -273,7 +273,7 @@ priv enum StateFontRole {
 /// Resolved together so CSS and measured text use the same font definition.
 priv struct ResolvedStateFont {
   family : String
-  size : Int
+  size : Int32
   color : String
   metrics : @metrics.FontMetrics
 }
@@ -284,7 +284,7 @@ priv struct ResolvedStateFont {
 fn resolve_state_font(
   style : @style.DocumentStyle,
   role : StateFontRole,
-  state? : @flow.StateNode? = None,
+  state~ : @flow.StateNode? = None,
 ) -> ResolvedStateFont {
   let style = style.with_stereotypes(state.bind(state => state.stereotype))
   let (prefix, fallback) = match role {
@@ -374,10 +374,10 @@ fn resolve_state_font(
 /// ValueImpl.asInt collects ASCII digits; Style.getUFont uses the standard
 /// state text size for an explicit value with no digits. It does not convert
 /// a pt/px suffix into another unit before reserving the text box.
-fn state_font_size(value : String) -> Int {
+fn state_font_size(value : String) -> Int32 {
   let digits = StringBuilder()
   for char in value.iter() {
-    if char is ('0'..='9') {
+    if char is ('0'..<='9') {
       digits.write_char(char)
     }
   }
@@ -388,27 +388,27 @@ fn state_font_size(value : String) -> Int {
 
 ///|
 priv struct StateFontFace {
-  weight : Int
+  weight : Int32
   style : @metrics.FontStyle
 }
 
 ///|
-const STATE_FONT_NORMAL_WEIGHT : Int = 400
+const STATE_FONT_NORMAL_WEIGHT : Int32 = 400
 
 ///|
-const STATE_FONT_BOLD_WEIGHT : Int = 700
+const STATE_FONT_BOLD_WEIGHT : Int32 = 700
 
 ///|
-const STATE_FONT_LIGHT_WEIGHT : Int = 300
+const STATE_FONT_LIGHT_WEIGHT : Int32 = 300
 
 ///|
-const STATE_FONT_HEAVY_WEIGHT : Int = 800
+const STATE_FONT_HEAVY_WEIGHT : Int32 = 800
 
 ///|
-const STATE_FONT_WEIGHT_STEP : Int = 100
+const STATE_FONT_WEIGHT_STEP : Int32 = 100
 
 ///|
-const STATE_FONT_MAX_WEIGHT : Int = 900
+const STATE_FONT_MAX_WEIGHT : Int32 = 900
 
 ///|
 /// ValueImpl.asFontFace and UFontWeight.fromCssValue. Unrecognized values
@@ -456,15 +456,15 @@ fn ResolvedStateFont::css_rule(
 }
 
 ///|
-const STATE_LABEL_FONT_SIZE : Int = 14
+const STATE_LABEL_FONT_SIZE : Int32 = 14
 
 ///|
 /// plantuml.skin: arrow.FontSize (also used by state-diagram transitions).
-const STATE_TRANSITION_FONT_SIZE : Int = 13
+const STATE_TRANSITION_FONT_SIZE : Int32 = 13
 
 ///|
 /// plantuml.skin note.FontSize.
-const STATE_NOTE_FONT_SIZE : Int = 13
+const STATE_NOTE_FONT_SIZE : Int32 = 13
 
 ///|
 /// FromSkinparamToStyle converts booleans to 0/3; Style.getShadowing uses

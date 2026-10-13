@@ -1,6 +1,6 @@
 name = "moonbit-community/uml"
 
-version = "0.4.2"
+version = "0.4.3"
 
 import {
   "moonbit-community/toml@0.5.0",

@@ -11,7 +11,7 @@ priv struct ParticipantDecl {
   created : Bool
   color : String?
   url : String?
-  order : Int?
+  order : Int32?
   stereotype : String?
 }
 
@@ -21,12 +21,12 @@ priv struct ParseCtx {
   participants : Map[String, @seq.Participant]
   events : Array[@seq.Event]
   box_stack : Array[@seq.ParticipantBox]
-  mut grouping_depth : Int
+  mut grouping_depth : Int32
   mut pending_create : String?
   activating_messages : Array[(@seq.Event, String)]
   mut last_message : @seq.Event?
   mut autoactivate : Bool
-  mut next_participant_position : Int
+  mut next_participant_position : Int32
   mut last_message_from : String?
   mut last_message_to : String?
   style : @style.DocumentStyle

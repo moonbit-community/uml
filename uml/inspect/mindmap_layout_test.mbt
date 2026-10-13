@@ -1,7 +1,7 @@
 ///|
 fn node_for(
   layout : @render.MindmapLayout,
-  idea_index : Int,
+  idea_index : Int32,
 ) -> @render.NodeLayout {
   for node in layout.nodes {
     guard node.index == idea_index else { continue }
@@ -13,7 +13,7 @@ fn node_for(
 ///|
 fn edge_for(
   layout : @render.MindmapLayout,
-  child_index : Int,
+  child_index : Int32,
 ) -> @render.EdgeLayout {
   for edge in layout.edges {
     guard edge.child_index == child_index else { continue }
@@ -209,7 +209,7 @@ test "generic layout_tree keeps one edge per non-root node" {
   let layout = @render.layout_tree(items, [0])
   @test.assert_eq(layout.edges.length(), items.length() - 1)
   // every non-root node appears as a child exactly once
-  let child_seen : Array[Int] = Array::make(items.length(), 0)
+  let child_seen : Array[Int32] = Array::make(items.length(), 0)
   for edge in layout.edges {
     child_seen[edge.child_index] += 1
   }

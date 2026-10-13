@@ -137,7 +137,7 @@ fn place_switch_branches(
 
 ///|
 fn place_leaf(
-  index : Int,
+  index : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -328,7 +328,7 @@ fn place_tile(
 /// centered between the two branch columns, labels beside the diamond.
 fn place_if_down(
   branches : Array[BranchTiles],
-  exit : Int,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -451,7 +451,7 @@ fn place_if_down(
 /// horizontally, then turn down into the final else branch.
 fn place_if_chain(
   branches : Array[BranchTiles],
-  exit : Int,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -471,7 +471,7 @@ fn place_if_chain(
   let body_y = y + decision_height + if_chain_body_gap(branches, small_metrics)
   let placed = []
   let mut cursor_x = x
-  let mut previous_decision : Int? = None
+  let mut previous_decision : Int32? = None
   let mut previous_decision_x = x
   for branch in branches {
     let decision_size = branch.decision.map_or(
@@ -603,9 +603,9 @@ fn measure_branches_height(
 
 ///|
 fn place_switch(
-  entry : Int,
+  entry : Int32,
   branches : Array[BranchTiles],
-  exit : Int,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -708,9 +708,9 @@ fn place_switch(
 
 ///|
 fn place_while(
-  entry : Int,
+  entry : Int32,
   body : Array[Tile],
-  exit : Int,
+  exit : Int32,
   enter_label : String?,
   exit_label : String?,
   nodes : Array[@flow.ActivityNode],
@@ -818,9 +818,9 @@ fn place_while(
 
 ///|
 fn place_repeat(
-  entry : Int,
+  entry : Int32,
   body : Array[Tile],
-  exit : Int,
+  exit : Int32,
   retry_label : String?,
   exit_label : String?,
   nodes : Array[@flow.ActivityNode],
@@ -907,9 +907,9 @@ fn place_repeat(
 
 ///|
 fn place_parallel(
-  entry : Int,
+  entry : Int32,
   branches : Array[BranchTiles],
-  exit : Int,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -1234,7 +1234,7 @@ pub fn layout_activity(diagram : @flow.ActivityDiagram) -> ActivityLayout {
 /// either bypasses the body or terminates to the right of the condition.
 fn place_if_vertical(
   branches : Array[BranchTiles],
-  exit : Int,
+  exit : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
@@ -1347,8 +1347,8 @@ fn place_if_vertical(
 /// left corridor; while welding points join the existing left exit corridor.
 fn place_loop_breaks(
   body : Tile,
-  breaks : Array[Int],
-  target : Int,
+  breaks : Array[Int32],
+  target : Int32,
   repeat : Bool,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -1423,9 +1423,9 @@ fn place_loop_breaks(
 /// vertically; the upward return traverses its bottom and top contacts.
 fn place_loop_backward(
   body : Tile,
-  backward : Int,
-  entry : Int,
-  exit : Int,
+  backward : Int32,
+  entry : Int32,
+  exit : Int32,
   spec : @flow.ActivityBackward,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,

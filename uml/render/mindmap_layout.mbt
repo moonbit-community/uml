@@ -7,7 +7,7 @@ let boxless_vertical_margin = 1
 ///|
 fn @tree.MindmapDiagram::has_children(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> Bool {
   self.ideas.any(idea => idea.parent == Some(index))
 }
@@ -15,9 +15,9 @@ fn @tree.MindmapDiagram::has_children(
 ///|
 fn @tree.MindmapDiagram::children_of(
   self : @tree.MindmapDiagram,
-  parent : Int,
+  parent : Int32,
   direction : @tree.TreeDirection,
-) -> Array[Int] {
+) -> Array[Int32] {
   let children = []
   for index, idea in self.ideas {
     if idea.parent == Some(parent) && idea.direction == direction {
@@ -30,7 +30,7 @@ fn @tree.MindmapDiagram::children_of(
 ///|
 fn @tree.MindmapDiagram::node_style(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> @tree.MindmapNodeStyle {
   let idea = self.ideas[index]
   mindmap_properties(self, index, false).fold(
@@ -46,11 +46,11 @@ fn @tree.MindmapDiagram::node_style(
 ///|
 fn mindmap_properties(
   diagram : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
   arrow : Bool,
 ) -> Array[@tree.WbsStyleProperty] {
   let idea = diagram.ideas[index]
-  let selected : Array[(Int, Int, @tree.WbsStyleProperty)] = []
+  let selected : Array[(Int32, Int32, @tree.WbsStyleProperty)] = []
   for order, property in diagram.style_properties {
     let mut score = 0
     let matches = property.selector
@@ -105,8 +105,8 @@ fn mindmap_properties(
 ///|
 fn @tree.MindmapDiagram::node_font_size(
   self : @tree.MindmapDiagram,
-  index : Int,
-) -> Int {
+  index : Int32,
+) -> Int32 {
   self.node_style(index).font_size.unwrap_or(
     self.style.font_size_value(fallback=14),
   )
@@ -115,7 +115,7 @@ fn @tree.MindmapDiagram::node_font_size(
 ///|
 fn @tree.MindmapDiagram::node_text_metrics(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> TreeLabelMetrics {
   let idea = self.ideas[index]
   let metrics = self.node_font_metrics(index)
@@ -129,7 +129,7 @@ fn @tree.MindmapDiagram::node_text_metrics(
 ///|
 fn @tree.MindmapDiagram::node_text_width(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> Double {
   let idea = self.ideas[index]
   let font_size = self.node_font_size(index)
@@ -145,7 +145,7 @@ fn @tree.MindmapDiagram::node_text_width(
 ///|
 fn @tree.MindmapDiagram::node_font_metrics(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> @metrics.FontMetrics {
   let style = self.node_style(index)
   self.style.font_metrics_for(
@@ -159,7 +159,7 @@ fn @tree.MindmapDiagram::node_font_metrics(
 ///|
 fn @tree.MindmapDiagram::node_base_size(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> (Double, Double) {
   let idea = self.ideas[index]
   let metrics = self.node_text_metrics(index)
@@ -195,7 +195,7 @@ fn @tree.MindmapDiagram::node_base_size(
 ///|
 fn @tree.MindmapDiagram::node_size(
   self : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> (Double, Double) {
   let (width, height) = self.node_base_size(index)
   guard self.node_style(index).same_class_width.unwrap_or(false) else {
@@ -301,7 +301,7 @@ pub fn layout_mindmap(diagram : @tree.MindmapDiagram) -> MindmapLayout {
 /// with `<style>` and skinparam overrides.
 pub fn mindmap_node_style(
   diagram : @tree.MindmapDiagram,
-  index : Int,
+  index : Int32,
 ) -> @tree.MindmapNodeStyle {
   diagram.node_style(index)
 }

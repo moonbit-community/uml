@@ -66,13 +66,13 @@ fn @entity.Entity::description_symbol(
 /// The label block drawn inside every symbol: the stereotype stacked above
 /// the display text, merged to the widest column like `TextBlockUtils.mergeTB`.
 priv struct DescriptionTextLayout {
-  label_width : Int
-  label_height : Int
-  block_width : Int
-  block_height : Int
+  label_width : Int32
+  label_height : Int32
+  block_width : Int32
+  block_height : Int32
   stereotype : String?
-  stereotype_width : Int
-  stereotype_height : Int
+  stereotype_width : Int32
+  stereotype_height : Int32
 }
 
 ///|
@@ -133,8 +133,8 @@ fn @entity.Entity::description_layout(
 
 ///|
 priv struct DescriptionPersonGeometry {
-  body_width : Int
-  body_height : Int
+  body_width : Int32
+  body_height : Int32
   head_size : Double
 }
 
@@ -154,7 +154,9 @@ fn DescriptionTextLayout::person_geometry(
 
 ///|
 /// One symbol margin (left, right, top, bottom) from `USymbol.getMargin`.
-fn DescriptionSymbol::margin(self : DescriptionSymbol) -> (Int, Int, Int, Int) {
+fn DescriptionSymbol::margin(
+  self : DescriptionSymbol,
+) -> (Int32, Int32, Int32, Int32) {
   match self {
     // `USymbolNode` / `USymbolFrame`
     NodeSymbol | FrameSymbol => (15, 25, 20, 10)
@@ -187,7 +189,9 @@ fn DescriptionSymbol::margin(self : DescriptionSymbol) -> (Int, Int, Int, Int) {
 /// Fixed figure sizes of the "simple" symbols: `@entity.EntityKind::Boundary`, `@entity.EntityKind::Control`,
 /// `EntityDomain` and `CircleInterface2` all expose a figure whose dimension
 /// enters the stacked `mergeLayoutT12B3` layout instead of a margin.
-fn DescriptionSymbol::figure_dimension(self : DescriptionSymbol) -> (Int, Int)? {
+fn DescriptionSymbol::figure_dimension(
+  self : DescriptionSymbol,
+) -> (Int32, Int32)? {
   match self {
     BoundarySymbol => Some((49, 32))
     ControlSymbol | EntityDomainSymbol => Some((32, 32))
@@ -200,7 +204,7 @@ fn DescriptionSymbol::figure_dimension(self : DescriptionSymbol) -> (Int, Int)? 
 /// `USymbol.asSmall.calculateDimension` for the given symbol.
 fn DescriptionImageLayout::dimension(
   self : DescriptionImageLayout,
-) -> (Int, Int) {
+) -> (Int32, Int32) {
   let text = self.text
   match self.symbol {
     FolderSymbol => {
@@ -255,8 +259,8 @@ fn DescriptionImageLayout::label_top(self : DescriptionImageLayout) -> Double {
 /// in node-local coordinates.
 fn DescriptionImageLayout::text_placement(
   self : DescriptionImageLayout,
-  width : Int,
-) -> ((Int, Int), (Int, Int)?) {
+  width : Int32,
+) -> ((Int32, Int32), (Int32, Int32)?) {
   let text = self.text
   match self.symbol {
     BoundarySymbol | ControlSymbol | EntityDomainSymbol => {
@@ -323,7 +327,7 @@ fn DescriptionImageLayout::text_placement(
 /// the stereotype strip like `USymbolSimpleAbstract.asSmall`.
 fn DescriptionImageLayout::figure_origin(
   self : DescriptionImageLayout,
-  width : Int,
+  width : Int32,
 ) -> (Double, Double) {
   let (figure_width, _) = self.symbol.figure_dimension().unwrap()
   let figure_x = (width.to_double() - figure_width.to_double()) / 2.0

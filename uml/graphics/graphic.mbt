@@ -129,7 +129,7 @@ fn Metadata::snapshot(self : Metadata) -> Metadata {
 pub fn Graphic::draw(
   self : Graphic,
   shape : Shape,
-  metadata? : Metadata = Default::default(),
+  metadata~ : Metadata = Default::default(),
 ) -> Unit {
   let shape = match shape {
     Path(segments) => Shape::Path(segments.copy())

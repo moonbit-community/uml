@@ -15,7 +15,7 @@ priv struct ItemPrefix {
   direction : @tree.TreeDirection?
   shape : @tree.NodeShape
   background_color : String?
-  end : Int
+  end : Int32
 }
 
 ///|
@@ -23,7 +23,7 @@ priv struct WbsParser {
   buffer : LineBuffer
   nodes : Array[@tree.WbsNode]
   links : Array[@tree.WbsLink]
-  codes : Map[String, Int]
+  codes : Map[String, Int32]
   style : @style.DocumentStyle
   style_properties : Array[@tree.WbsStyleProperty]
   mut first_marker : String?
@@ -76,7 +76,7 @@ fn is_marker_char(char : Char) -> Bool {
 }
 
 ///|
-fn wbs_marker_end(cursor : @tokenizer.Cursor) -> Int? {
+fn wbs_marker_end(cursor : @tokenizer.Cursor) -> Int32? {
   ignore(cursor.skip_while(char => char == ' ' || char == '\t'))
   let first = cursor.offset()
   ignore(cursor.skip_while(is_marker_char))
@@ -99,7 +99,7 @@ fn marker_direction(marker : String) -> @tree.TreeDirection {
 ///|
 fn parse_modifiers(
   cursor : @tokenizer.Cursor,
-) -> (@tree.NodeShape, @tree.TreeDirection?, Int) {
+) -> (@tree.NodeShape, @tree.TreeDirection?, Int32) {
   let parse_direction = () => {
     match cursor.peek() {
       Some('<') => {
@@ -166,7 +166,7 @@ fn parse_parenthesized_code(cursor : @tokenizer.Cursor) -> String? {
 }
 
 ///|
-fn parse_attributes(cursor : @tokenizer.Cursor) -> (String?, String?, Int) {
+fn parse_attributes(cursor : @tokenizer.Cursor) -> (String?, String?, Int32) {
   let mut color = None
   let mut code = None
   let mut count = 0
@@ -189,7 +189,7 @@ fn parse_attributes(cursor : @tokenizer.Cursor) -> (String?, String?, Int) {
 ///|
 fn parse_prefix(
   cursor : @tokenizer.Cursor,
-  start : Int,
+  start : Int32,
   attributes_first : Bool,
 ) -> ItemPrefix {
   ignore(cursor.restore(start))
@@ -372,7 +372,7 @@ fn WbsParser::complete_multiline(
 fn WbsParser::smart_level(
   self : WbsParser,
   marker : String,
-) -> Int raise @tokenizer.ParseError {
+) -> Int32 raise @tokenizer.ParseError {
   guard self.first_marker is Some(first) else {
     self.first_marker = Some(marker)
     return 0
@@ -396,8 +396,8 @@ fn WbsParser::smart_level(
 ///|
 fn WbsParser::parent_for(
   self : WbsParser,
-  level : Int,
-) -> Int raise @tokenizer.ParseError {
+  level : Int32,
+) -> Int32 raise @tokenizer.ParseError {
   let last_index = self.nodes.length() - 1
   let last = self.nodes[last_index]
   guard level <= last.level + 1 else {

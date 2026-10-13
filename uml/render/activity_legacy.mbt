@@ -12,16 +12,16 @@ const LEGACY_ACTIVITY_NODESEP : Double = 20.0
 const LEGACY_ACTIVITY_RANKSEP : Double = 40.0
 
 ///|
-const LEGACY_ACTIVITY_FONT : Int = 12
+const LEGACY_ACTIVITY_FONT : Int32 = 12
 
 ///|
-const LEGACY_ACTIVITY_ARROW_FONT : Int = 11
+const LEGACY_ACTIVITY_ARROW_FONT : Int32 = 11
 
 ///|
 fn legacy_activity_font(
   style : @style.DocumentStyle,
   prefix : String,
-  fallback : Int,
+  fallback : Int32,
 ) -> @metrics.FontMetrics {
   let size = style.property_font_size(prefix + "FontSize", fallback~)
   let face = style.property(prefix + "FontStyle").unwrap_or("").to_lower()
@@ -127,7 +127,7 @@ fn append_legacy_activity_node(
 /// but use their own node geometry, spacing and activity/arrow styles.
 pub fn render_legacy_activity_svg(
   diagram : @flow.StateDiagram,
-  color_scheme? : @style.ColorScheme = @style.ColorScheme::default(),
+  color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   diagram.render_svg(color_scheme~)
 }

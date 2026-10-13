@@ -155,8 +155,8 @@ fn state_note_text_x(
 /// Link.addNote replaces the previous note on the same transition.
 fn @flow.StateDiagram::transition_note(
   self : @flow.StateDiagram,
-  transition_index : Int,
-) -> (Int, @flow.StateNote)? {
+  transition_index : Int32,
+) -> (Int32, @flow.StateNote)? {
   let mut found = None
   for index, note in self.notes {
     if note.target == @flow.StateNoteTarget::TransitionNote(transition_index) {
@@ -174,7 +174,7 @@ fn @flow.StateDiagram::transition_note(
 /// retain role-specific margins and source-order style precedence.
 fn @flow.StateDiagram::transition_label_geometry(
   self : @flow.StateDiagram,
-  transition_index : Int,
+  transition_index : Int32,
 ) -> StateTransitionLabelGeometry {
   let transition = self.transitions[transition_index]
   let metrics = resolve_state_font(self.style, TransitionLabel).metrics
