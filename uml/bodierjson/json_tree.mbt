@@ -124,7 +124,7 @@ fn JsonTreeCursor::expect_literal(
   self : JsonTreeCursor,
   literal : String,
 ) -> Unit raise @tokenizer.ParseError {
-  guard self.chars[self.index:].starts_with(literal.to_array()[:]) else {
+  guard self.chars[self.index:].has_prefix(literal.to_array()[:]) else {
     json_tree_error("invalid JSON literal")
   }
   self.index += literal.length()
