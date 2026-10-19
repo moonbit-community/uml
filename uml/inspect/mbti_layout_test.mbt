@@ -142,6 +142,6 @@ test "mindmap layout paints only tree edges" {
   let svg = @render.render_mbti_svg(diagram) catch {
     _ => @test.fail("svg rendering failed")
   }
-  let painted_edges = svg.split("class=\"relation\"").length() - 1
+  let painted_edges = svg.split("class=\"relation\"").count() - 1
   @test.assert_eq(painted_edges, layout.edges.length())
 }
