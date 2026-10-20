@@ -1,0 +1,6 @@
+@startuml
+json Profile {
+  "name": "Ada",
+  "active": true
+}
+@enduml

@@ -1,21 +1,14 @@
 # UML CLI Cram Tests
 
-These Moon Cram tests document the native `uml` executable. `moon cram`
-builds the native CLI and puts `uml` on `PATH`:
-
-```bash
-moon cram test --release cram
-```
-
 ## Help And Version
 
-```mooncram
-$ uml --version
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml --version
 0.1.0
 ```
 
-```mooncram
-$ uml --help
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml --help
 Usage: uml [options] [file] [command]
 
 Render PlantUML diagrams as SVG.
@@ -63,60 +56,27 @@ Options:
 `check` parses without rendering and reports the diagram family the source
 selects:
 
-```mooncram
-$ cat > hello.puml <<'EOF'
-> @startuml
-> participant Alice
-> Alice -> Bob : hello
-> @enduml
-> EOF
-> uml check hello.puml
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml check hello.puml
 hello.puml: OK (sequence diagram)
 ```
 
-```mooncram
-$ cat > user.puml <<'EOF'
-> @startuml
-> class User {
-> - secret
-> }
-> @enduml
-> EOF
-> uml check user.puml
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml check user.puml
 user.puml: OK (class diagram)
 ```
 
 Object diagrams are recognized as their own family:
 
-```mooncram
-$ cat > object.puml <<'EOF'
-> @startuml
-> object "Ada Lovelace" as ada <<customer>> {
->   + id = "customer-42"
-> }
-> json Profile {
->   "active": true
-> }
-> map Index {
->   id => 42
-> }
-> @enduml
-> EOF
-> uml check object.puml
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml check object.puml
 object.puml: OK (object diagram)
 ```
 
 Malformed JSON bodies keep the exit-1 contract:
 
-```mooncram
-$ cat > broken-object.puml <<'EOF'
-> @startuml
-> json Broken {
-> "missing":
-> }
-> @enduml
-> EOF
-> uml check broken-object.puml
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml check broken-object.puml
 error: broken-object.puml:4: bad JSON data
 [1]
 ```
@@ -125,61 +85,34 @@ error: broken-object.puml:4: bad JSON data
 
 `render --output` writes the SVG and prints nothing on success:
 
-```mooncram
-$ cat > hello.puml <<'EOF'
-> @startuml
-> participant Alice
-> Alice -> Bob : hello
-> @enduml
-> EOF
-> uml render hello.puml -o hello.svg
-> head -c 60 hello.svg
-<svg xmlns="http://www.w3.org/2000/svg" width="117" height=" (no-eol)
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml render hello.puml -o hello.svg
+
+$ moonx cli/head@0.2.1 -c 60 hello.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="118" height=" (no-eol)
+
+$ moonx cli/rm@0.2.1 hello.svg
 ```
 
 ## Render To Stdout
 
 Without `--output` the SVG goes to stdout, so it can be piped:
 
-```mooncram
-$ cat > hello.puml <<'EOF'
-> @startuml
-> participant Alice
-> Alice -> Bob : hello
-> @enduml
-> EOF
-> uml hello.puml | head -c 15
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml hello.puml | moonx cli/head@0.2.1 -c 15
 <svg xmlns="htt (no-eol)
 ```
 
 Object rendering keeps a parseable `<svg>` root and paints the typed nodes:
 
-```mooncram
-$ cat > object.puml <<'EOF'
-> @startuml
-> object Cart {
->   + total = "42.00"
-> }
-> json Profile {
->   "name": "Ada"
-> }
-> @enduml
-> EOF
-> uml render object.puml | head -c 15
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml render cart.puml | moonx cli/head@0.2.1 -c 15
 <svg xmlns="htt (no-eol)
 ```
 
-```mooncram
-$ cat > json-rows.puml <<'EOF'
-> @startuml
-> json Profile {
->   "name": "Ada",
->   "active": true
-> }
-> @enduml
-> EOF
-> uml render json-rows.puml | grep -o '<line class="json-row-separator"' | wc -l
-       2
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml render json-rows.puml | moonx cli/grep@0.2.1 -o 'class="json-row-separator"' | moonx cli/wc@0.2.1 -l
+2
 ```
 
 ## Render Package Dependency Graphs
@@ -187,10 +120,8 @@ $ cat > json-rows.puml <<'EOF'
 `mod` reads a `moon tree --package --json` graph from stdin, keeps only
 packages with `in > 1 or out > 1`, and prints the SVG to stdout:
 
-```mooncram
-$ cat <<'EOF' | uml mod | head -c 15
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 graph.json | moonx moonbit-community/uml-cli/uml mod | moonx cli/head@0.2.1 -c 15
 <?xml version=" (no-eol)
 ```
 
@@ -198,10 +129,8 @@ The default selection keeps packages with `in > 1 or out > 1` (the two hubs)
 and draws every edge touching them, together with the packages at the other
 end:
 
-```mooncram
-$ cat <<'EOF' | uml mod --format d2
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 graph.json | moonx moonbit-community/uml-cli/uml mod --format d2
 direction: down
 
 `m/a/a`: {
@@ -237,16 +166,15 @@ direction: down
 `m/a/e` -> `m/a/f`
 
 `m/a/a` -> `m/a/f`
+"" (escaped)
 ```
 
 `--keep` replaces the selection rule: `==1` selects the packages with exactly
 one incoming or outgoing edge and draws their connections, which omits the
 edge between the two hubs:
 
-```mooncram
-$ cat <<'EOF' | uml mod --format d2 --keep '==1'
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 graph.json | moonx moonbit-community/uml-cli/uml mod --format d2 --keep '==1'
 direction: down
 
 `m/a/a`: {
@@ -280,15 +208,14 @@ direction: down
 `m/a/d` -> `m/a/f`
 
 `m/a/e` -> `m/a/f`
+"" (escaped)
 ```
 
 `--related-edges induced` narrows the graph to exactly the selected nodes and
 the edges between them:
 
-```mooncram
-$ cat <<'EOF' | uml mod --format d2 --related-edges induced
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 graph.json | moonx moonbit-community/uml-cli/uml mod --format d2 --related-edges induced
 direction: down
 
 `m/a/a`: {
@@ -300,29 +227,30 @@ direction: down
 }
 
 `m/a/a` -> `m/a/f`
+"" (escaped)
 ```
 
 `--stats` reports the in/out degree minima and maxima of the graph:
 
-```mooncram
-$ cat <<'EOF' | uml mod --stats
-> {"nodes":[{"module":"m/a","source":{"kind":"local"},"rel":"a"},{"module":"m/a","source":{"kind":"local"},"rel":"f"},{"module":"m/a","source":{"kind":"local"},"rel":"b"},{"module":"m/a","source":{"kind":"local"},"rel":"c"},{"module":"m/a","source":{"kind":"local"},"rel":"d"},{"module":"m/a","source":{"kind":"local"},"rel":"e"}],"edges":[{"from":0,"to":2,"alias":"","kinds":["source"]},{"from":0,"to":3,"alias":"","kinds":["source"]},{"from":4,"to":1,"alias":"","kinds":["source"]},{"from":5,"to":1,"alias":"","kinds":["source"]},{"from":0,"to":1,"alias":"","kinds":["source"]}]}
-> EOF
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 graph.json | moonx moonbit-community/uml-cli/uml mod --stats
 in: min 0, max 3
 out: min 0, max 3
 ```
 
 Malformed input exits 1:
 
-```mooncram
-$ printf 'not json' | uml mod >/dev/null
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 invalid-graph.json | moonx moonbit-community/uml-cli/uml mod
+error: failed to render <stdin>: InvalidGraph(message="Invalid character 'o' at line 1, column 1")
 [1]
 ```
 
 An invalid `--keep` rule exits 1:
 
-```mooncram
-$ printf 'not json' | uml mod --keep 'bogus' >/dev/null
+```mooncram moonbit-community/uml-cli
+$ moonx cli/cat@0.2.1 invalid-graph.json | moonx moonbit-community/uml-cli/uml mod --keep 'bogus'
+error: invalid keep rule: expected a comparison operator
 [1]
 ```
 
@@ -330,28 +258,24 @@ $ printf 'not json' | uml mod --keep 'bogus' >/dev/null
 
 Unreadable input exits 1:
 
-```mooncram
-$ uml check missing.puml
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml check missing.puml
 error: failed to read missing.puml: No such file or directory
 [1]
 ```
 
 Sources that select no diagram family exit 1:
 
-```mooncram
-$ cat > empty.puml <<'EOF'
-> @startuml
-> @enduml
-> EOF
-> uml check empty.puml
-error: empty.puml:1: unknown diagram
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml check unknown.puml
+error: unknown.puml:1: unknown diagram
 [1]
 ```
 
 Usage errors exit 2:
 
-```mooncram
-$ uml render
+```mooncram moonbit-community/uml-cli
+$ moonx moonbit-community/uml-cli/uml render
 error: 'file' requires at least 1 values but only 0 were provided
 
 Usage: uml render [options] <file>

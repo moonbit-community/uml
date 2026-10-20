@@ -1,0 +1,5 @@
+@startuml
+class User {
+- secret
+}
+@enduml

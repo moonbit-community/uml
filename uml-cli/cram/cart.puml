@@ -1,0 +1,8 @@
+@startuml
+object Cart {
+  + total = "42.00"
+}
+json Profile {
+  "name": "Ada"
+}
+@enduml

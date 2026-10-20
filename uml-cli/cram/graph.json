@@ -1,0 +1,17 @@
+{
+  "nodes": [
+    {"module": "m/a", "source": {"kind": "local"}, "rel": "a"},
+    {"module": "m/a", "source": {"kind": "local"}, "rel": "f"},
+    {"module": "m/a", "source": {"kind": "local"}, "rel": "b"},
+    {"module": "m/a", "source": {"kind": "local"}, "rel": "c"},
+    {"module": "m/a", "source": {"kind": "local"}, "rel": "d"},
+    {"module": "m/a", "source": {"kind": "local"}, "rel": "e"}
+  ],
+  "edges": [
+    {"from": 0, "to": 2, "alias": "", "kinds": ["source"]},
+    {"from": 0, "to": 3, "alias": "", "kinds": ["source"]},
+    {"from": 4, "to": 1, "alias": "", "kinds": ["source"]},
+    {"from": 5, "to": 1, "alias": "", "kinds": ["source"]},
+    {"from": 0, "to": 1, "alias": "", "kinds": ["source"]}
+  ]
+}
