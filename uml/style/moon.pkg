@@ -1,7 +1,7 @@
 import {
   "moonbit-community/uml/svg",
   "moonbit-community/uml/tokenizer",
-  "kokic/metrics",
+  "moonbit-community/metrics",
   "moonbitlang/core/string",
 }
 

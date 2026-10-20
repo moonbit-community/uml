@@ -1,4 +1,4 @@
-name = "kokic/metrics"
+name = "moonbit-community/metrics"
 
 version = "0.1.1"
 

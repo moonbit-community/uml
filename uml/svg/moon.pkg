@@ -1,6 +1,6 @@
 import {
   "moonbit-community/uml/graphics",
-  "kokic/metrics",
+  "moonbit-community/metrics",
   "moonbitlang/core/string",
   "moonbitlang/core/test",
 }
