@@ -88,6 +88,7 @@ jobs:
           printf '%s\n' "$SECRET" > "$HOME/.moon/credentials.json"
           for module in "${modules[@]}"; do
             echo "::group::Publish $module"
+            moon update
             (cd "$module" && moon publish)
             echo "::endgroup::"
           done
