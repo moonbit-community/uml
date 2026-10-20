@@ -1,0 +1,11 @@
+@startuml
+object "Ada Lovelace" as ada <<customer>> {
+  + id = "customer-42"
+}
+json Profile {
+  "active": true
+}
+map Index {
+  id => 42
+}
+@enduml
