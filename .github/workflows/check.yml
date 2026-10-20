@@ -8,18 +8,32 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v5
+      - name: Check out repository
+        uses: actions/checkout@v5
+
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
-      - run: moon version --all
-      - run: moon update
-      - name: moon check (warnings are errors)
+
+      - name: Show MoonBit versions
+        run: moon version --all
+
+      - name: Update dependencies
+        run: moon update
+
+      - name: Check code (warnings are errors)
         run: moon check --deny-warn
-      - name: moon fmt (no diff)
+
+      - name: Check formatting
         run: moon fmt --check
-      - name: mooncram (native CLI)
+
+      - name: Run CLI cram tests
         working-directory: uml-cli
-        run: moonx moonbit-community/mooncram@0.0.8 test --target native --timeout-ms 300000 cram/cli.md
+        run: >-
+          moonx moonbit-community/mooncram@0.0.8 test
+          --target native
+          --timeout-ms 300000
+          cram/cli.md
