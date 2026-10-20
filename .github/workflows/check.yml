@@ -20,3 +20,6 @@ jobs:
         run: moon check --deny-warn
       - name: moon fmt (no diff)
         run: moon fmt --check
+      - name: mooncram (native CLI)
+        working-directory: uml-cli
+        run: moonx moonbit-community/mooncram@0.0.8 test --target native --timeout-ms 300000 cram/cli.md
