@@ -29,6 +29,9 @@ jobs:
 
       - name: Check formatting
         run: moon fmt --check
+      
+      - name: test
+        run: moon test --target all
 
       - name: Run CLI cram tests
         working-directory: uml-cli
