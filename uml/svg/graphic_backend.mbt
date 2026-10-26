@@ -30,7 +30,7 @@ fn metadata_attributes(
   [
     ..metadata.id.map_or([], value => [("id", value)]),
     ..metadata.class_name.map_or([], value => [("class", value)]),
-    ..metadata.data.map(entry => ("data-" + entry.0, entry.1)),
+    ..metadata.data.map(entry => ("data-\{entry.0}", entry.1)),
   ]
 }
 

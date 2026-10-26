@@ -284,10 +284,8 @@ pub fn line_drawing_style(line_style : String?) -> @graphics.DrawingStyle {
         style = { ..style, dash: Some([DOTTED_LINE_LENGTH, DOTTED_LINE_GAP]), }
       "bold" => style = { ..style, stroke_width: Some(2.5), }
       "plain" => style = { ..style, dash: Some([]), }
-      _ if token.has_prefix("thickness=") => {
-        let thickness = @string.parse_double(token[10:].to_owned()) catch {
-          _ => 0.0
-        }
+      _ if token.strip_prefix("thickness=") is Some(raw) => {
+        let thickness = @string.parse_double(raw) catch { _ => 0.0 }
         if thickness > 0.0 {
           style = { ..style, stroke_width: Some(thickness), }
         }
