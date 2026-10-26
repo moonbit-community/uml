@@ -7,10 +7,7 @@ fn type_to_string(ty : @mbti_ast.Type) -> String {
       if tys.is_empty() {
         constr_id_to_string(constr_id)
       } else {
-        constr_id_to_string(constr_id) +
-        "[" +
-        tys.map(type_to_string).to_array().join(", ") +
-        "]"
+        "\{constr_id_to_string(constr_id)}[\{tys.map(type_to_string).to_array().join(", ")}]"
       }
     Option(ty~, ..) => type_to_string(ty) + "?"
     Tuple(tys~, ..) => "(" + tys.map(type_to_string).to_array().join(", ") + ")"

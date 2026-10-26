@@ -215,16 +215,16 @@ fn parse_activity_fork_end(line : String) -> (Bool, String?)? {
 
 ///|
 fn activity_control_color(line : String) -> (String, String?) {
-  guard line.has_prefix("#") && line.find(":") is Some(colon) else {
+  guard line.has_prefix("#") && line.split_once(":") is Some((head, tail)) else {
     return (line, None)
   }
-  let rest = line[colon + 1:].trim_start().to_owned()
+  let rest = tail.trim_start().to_owned()
   guard ["if", "elseif", "while", "repeat", "switch"].any(keyword => {
     rest.has_prefix(keyword + " ") || rest.has_prefix(keyword + "(")
   }) else {
     return (line, None)
   }
-  (rest, Some(line[1:colon].to_owned()))
+  (rest, Some(head[1:].to_owned()))
 }
 
 ///|

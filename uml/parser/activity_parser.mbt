@@ -147,8 +147,8 @@ pub fn parse_activity(
       lower.has_prefix("note ") ||
       lower.has_prefix("note:") ||
       lower.has_prefix("floating note") {
-      let (text, end) = if line.find(":") is Some(colon) {
-        (line[colon + 1:].trim().to_owned(), buffer.index)
+      let (text, end) = if line.split_once(":") is Some((_, text)) {
+        (text.trim().to_owned(), buffer.index)
       } else {
         parse_note(buffer, buffer.index)
       }
@@ -454,15 +454,15 @@ fn parse_activity_backward(
   }
   let last = lines.length() - 1
   let ending = lines[last]
-  let semicolon = ending.find(";").unwrap()
-  let suffix = @tokenizer.Cursor::new(ending[semicolon + 1:].trim().to_owned())
+  let (head, tail) = ending.split_once(";").unwrap()
+  let suffix = @tokenizer.Cursor::new(tail.trim().to_owned())
   let stereotypes = StringBuilder()
   while suffix.take_stereotype_value() is Some(label) {
     stereotypes.write_string(label)
     suffix.skip_inline_spaces()
   }
   let outgoing = activity_backward_link(suffix.take_rest_trimmed())
-  lines[last] = ending[:semicolon].to_owned()
+  lines[last] = head.to_owned()
   let stereotype = stereotypes.to_string()
   {
     action: {

@@ -192,14 +192,12 @@ fn parent_for(
   direction : @tree.TreeDirection,
   level : Int32,
 ) -> Int32? raise @tokenizer.ParseError {
-  let mut index = ideas.length() - 1
-  while index >= 0 {
+  for index in (ideas.length() - 1)>=..0 {
     let candidate = ideas[index]
     if candidate.level == level - 1 &&
       (candidate.level == 0 || candidate.direction == direction) {
       return Some(index)
     }
-    index -= 1
   }
   raise SyntaxError(0, "invalid mindmap indentation")
 }
@@ -224,8 +222,7 @@ fn parse_mindmap_style_block(
       match directive {
         Property(key, value) if key.has_prefix("style ") => {
           let words = @tokenizer.syntax_words(key[6:].to_owned())
-          guard words.length() >= 1 else { return }
-          let name = words[words.length() - 1]
+          guard words is [.., name] else { return }
           let selector = words[:words.length() - 1].to_owned().join(" ")
           properties.push({ selector, name, value, })
           if words.length() > 1 &&

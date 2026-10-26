@@ -208,8 +208,7 @@ fn parse_prefix(
 fn quoted_alias(value : String) -> (String, String)? {
   let cursor = @tokenizer.Cursor::new(value)
   guard cursor.peek() == Some('"') else { return None }
-  let mut close = cursor.length() - 1
-  while close > 0 {
+  for close in (cursor.length() - 1)>=..1 {
     if cursor.char_at(close) == Some('"') {
       let suffix = cursor.slice(close + 1, cursor.length()).trim().to_owned()
       let words = @tokenizer.syntax_words(suffix)
@@ -219,7 +218,6 @@ fn quoted_alias(value : String) -> (String, String)? {
         return Some((cursor.slice(1, close), words[1]))
       }
     }
-    close -= 1
   }
   None
 }

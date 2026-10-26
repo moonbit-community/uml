@@ -48,10 +48,10 @@ fn structured_source(
           match directive {
             Property(key, value) if key.has_prefix("style ") => {
               let words = @tokenizer.syntax_words(key[6:].to_owned())
-              guard !words.is_empty() else { return }
+              guard words is [.., name] else { return }
               styles.push({
                 selector: words[:words.length() - 1].to_owned().join(" "),
-                name: words[words.length() - 1],
+                name,
                 value,
               })
             }

@@ -187,11 +187,7 @@ fn Adapter::fill_type(self : Adapter, sig : @mbti_ast.TypeSig) -> Unit {
         let mut_prefix = if field.mut_ { "mut " } else { "" }
         self.entities[index].members.push(
           entity_member(
-            "+" +
-            mut_prefix +
-            field.name.label +
-            ": " +
-            type_to_string(field.ty),
+            "+\{mut_prefix}\{field.name.label}: \{type_to_string(field.ty)}",
             @entity.Public,
             false,
           ),
