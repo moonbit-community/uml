@@ -23,16 +23,14 @@ fn state_gradient_color(value : String) -> String? {
     resolved
   }
   guard [1, 3, 6, 8].contains(digits.length()) &&
-    digits
-    .iter()
-    .all(char => char.is_ascii_digit() || (char >= 'a' && char <= 'f')) else {
+    digits.all(char => char.is_ascii_digit() || (char >= 'a' && char <= 'f')) else {
     return None
   }
   let color = match digits.length() {
     1 => digits.repeat(6)
     3 => {
       let output = StringBuilder()
-      for char in digits.iter() {
+      for char in digits {
         output.write_char(char)
         output.write_char(char)
       }
@@ -100,12 +98,7 @@ fn StateGradient::id(self : StateGradient) -> String {
     '\\' => "rising"
     _ => "falling"
   }
-  "state-gradient-" +
-  self.first[1:].to_owned() +
-  "-" +
-  self.second[1:].to_owned() +
-  "-" +
-  direction
+  "state-gradient-\{self.first[1:]}-\{self.second[1:]}-\{direction}"
 }
 
 ///|

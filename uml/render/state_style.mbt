@@ -163,7 +163,7 @@ fn state_border_color(
 /// geometry values, including values annotated with units.
 fn state_style_dimension(value : String, fallback : Double) -> Double {
   let digits = StringBuilder()
-  for char in value.iter() {
+  for char in value {
     if char.is_ascii_digit() || char == '.' {
       digits.write_char(char)
     }
@@ -376,7 +376,7 @@ fn resolve_state_font(
 /// a pt/px suffix into another unit before reserving the text box.
 fn state_font_size(value : String) -> Int32 {
   let digits = StringBuilder()
-  for char in value.iter() {
+  for char in value {
     if char is ('0'..<='9') {
       digits.write_char(char)
     }
