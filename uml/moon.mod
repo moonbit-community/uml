@@ -7,9 +7,9 @@ import {
   "moonbit-community/yaml@0.0.8",
   "moonbit-community/unicode@0.6.0",
   "moonbit-community/graphviz@0.1.10",
-  "moonbitlang/lexer@0.4.3",
-  "moonbitlang/parser@0.4.5",
-  "moonbitlang/x@0.5.5",
+  "moonbitlang/lexer@0.4.4",
+  "moonbitlang/parser@0.4.6",
+  "moonbitlang/x@0.5.6",
   "moonbit-community/metrics@0.1.1",
 }
 
