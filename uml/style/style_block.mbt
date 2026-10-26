@@ -27,7 +27,7 @@ pub fn consume_style_body(
         quoted = Some(char)
         segment.write_char(char)
       } else if char == '{' {
-        let selector = (pending + " " + segment.to_string()).trim().to_owned()
+        let selector = "\{pending} \{segment}".trim().to_owned()
         selectors.push(
           selector.split(",").map(value => value.trim().to_owned()).to_array(),
         )
@@ -73,14 +73,14 @@ fn apply_style_entry(
     let nested : Array[String] = []
     for path in paths {
       for selector in alternatives {
-        nested.push((path + " " + selector).trim().to_owned())
+        nested.push("\{path} \{selector}".trim().to_owned())
       }
     }
     paths = nested
   }
   for path in paths {
     // Retain the original selector for renderers with a domain-specific cascade.
-    apply(Property("style " + path + " " + property, value))
+    apply(Property("style \{path} \{property}", value))
     apply_style_selector(path, property, value, apply)
   }
 }
@@ -169,7 +169,7 @@ fn apply_style_selector(
       "footer" => prefix = "Footer"
       "legend" => prefix = "Legend"
       _ if word.has_prefix(".") && word.length() > 1 =>
-        labels += "<<" + word[1:].to_owned() + ">>"
+        labels += "<<\{word[1:]}>>"
       _ => return
     }
   }
@@ -184,7 +184,7 @@ fn apply_style_selector(
           "card", "group", "circle", "note",
         ] {
         apply_style_selector(
-          "activityDiagram " + role + " " + path,
+          "activityDiagram \{role} \{path}",
           property,
           value,
           apply,
@@ -200,7 +200,7 @@ fn apply_style_selector(
           "class", "object", "state", "activity", "actor", "usecase", "component",
           "node", "note", "participant", "package", "arrow",
         ] {
-        apply_style_selector(role + " " + path, property, value, apply)
+        apply_style_selector("\{role} \{path}", property, value, apply)
       }
       return
     }
@@ -218,7 +218,7 @@ fn apply_style_selector(
             "Class", "Object", "Component", "Actor", "Usecase", "Node", "Package",
             "Note", "State", "Activity", "Participant",
           ] {
-          apply(Property(role + "BorderColor", value))
+          apply(Property("\{role}BorderColor", value))
         }
       }
       _ => apply(Property(property, value))
@@ -250,9 +250,9 @@ fn apply_style_selector(
     apply(
       Property(
         if prefix == "Class" && key == "MinimumWidth" {
-          "MinClassWidth" + labels
+          "MinClassWidth\{labels}"
         } else {
-          prefix + key + labels
+          "\{prefix}\{key}\{labels}"
         },
         value,
       ),

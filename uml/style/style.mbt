@@ -131,9 +131,8 @@ pub fn DocumentStyle::property(self : DocumentStyle, key : String) -> String? {
   match self.properties.get(key) {
     Some(value) => Some(value)
     None => {
-      let entries = self.properties.iter()
       let mut matching = None
-      while entries.next() is Some((stored_key, value)) {
+      for stored_key, value in self.properties {
         if stored_key.equal_ignore_ascii_case(key) {
           matching = Some(value)
         }
@@ -227,9 +226,10 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     return Some(
       Property(
         "hide empty description",
-        {
-          guard lower == "hide empty description" else { "false" }
+        if lower == "hide empty description" {
           "true"
+        } else {
+          "false"
         },
       ),
     )
