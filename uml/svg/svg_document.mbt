@@ -67,9 +67,12 @@ pub fn background_rect_attributes(
   fill : String,
   class_name~ : String = "",
 ) -> Array[(String, String)] {
-  let class = if class_name.length() > 0 { [("class", class_name)] } else { [] }
-  class +
   [
+    ..if class_name.length() > 0 {
+      [("class", class_name)]
+    } else {
+      []
+    },
     ("x", "0"),
     ("y", "0"),
     ("width", width.to_string()),
