@@ -26,13 +26,13 @@ fn state_note_round_corner(
 ) -> Double {
   guard style.property("RoundCorner") is Some(value) else { return 0.0 }
   if !(note.target is TransitionNote(_)) {
-    guard !value.is_empty() && value.iter().all(char => char.is_ascii_digit()) else {
+    guard !value.is_empty() && value.all(char => char.is_ascii_digit()) else {
       return 0.0
     }
     return state_style_dimension(value, 0.0)
   }
   let digits = StringBuilder()
-  for char in value.iter() {
+  for char in value {
     if char.is_ascii_digit() {
       digits.write_char(char)
     }

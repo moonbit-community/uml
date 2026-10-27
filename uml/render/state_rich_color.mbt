@@ -133,7 +133,7 @@ fn resolve_state_rich_paint(
 
 ///|
 fn state_text_background_id(color : String) -> String {
-  "state-text-background-" + color[1:].to_owned()
+  "state-text-background-\{color[1:]}"
 }
 
 ///|

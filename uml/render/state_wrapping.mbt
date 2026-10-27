@@ -21,7 +21,7 @@ priv struct StateWrapToken {
 /// fallback precedence passed temporary tests, removed after verification.
 fn state_wrap_value(value : String) -> Double {
   let digits = if value.has_prefix("-") { value[1:] } else { value[:] }
-  guard !digits.is_empty() && digits.iter().all(char => char.is_ascii_digit()) else {
+  guard !digits.is_empty() && digits.all(char => char.is_ascii_digit()) else {
     return 0.0
   }
   @string.parse_double(value) catch {
@@ -102,7 +102,7 @@ fn state_wrap_tokens(
   }
   let mut pending = ""
   let mut kind = Word
-  for char in text.iter() {
+  for char in text {
     let current = state_wrap_kind(char)
     if !pending.is_empty() && (current != kind || kind == Cjk) {
       emit(pending, kind)
@@ -155,7 +155,7 @@ fn state_wrap_split(
     }
     let content = []
     let mut white = true
-    for i = start; i < end; i = i + 1 {
+    for i in start..<end {
       let token = tokens[line[i]]
       if token.kind != Break {
         content.push(token)

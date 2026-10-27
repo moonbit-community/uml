@@ -288,8 +288,8 @@ fn timing_analog_label(player : @flow.TimingPlayer, value : Double) -> String {
   let precision = player.bounds.map_or(1, bounds => {
     [bounds.0, bounds.1].fold(init=0, (digits, bound) => {
       bound
-      .find(".")
-      .map_or(digits, dot => digits.max(bound.length() - dot - 1))
+      .split_once(".")
+      .map_or(digits, parts => digits.max(parts.1.length()))
     })
   })
   let factor = @math.pow(10.0, precision.to_double())
