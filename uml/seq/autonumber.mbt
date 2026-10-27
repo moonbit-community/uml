@@ -119,11 +119,8 @@ pub fn format_autonumber(format : String, value : String) -> String {
       }
     }
   }
-  let padding = StringBuilder()
-  for _ in 0..<(integer_zeros - value.length()).max(0) {
-    padding.write_char('0')
-  }
-  let digits = padding.to_string() + value
+  let padding = "0".repeat((integer_zeros - value.length()).max(0))
+  let digits = "\{padding}\{value}"
   let number = StringBuilder()
   for index, char in digits.to_array() {
     if group_size > 0 &&
@@ -139,7 +136,7 @@ pub fn format_autonumber(format : String, value : String) -> String {
       number.write_char('0')
     }
   }
-  prefix.to_string() + number.to_string() + suffix.to_string()
+  "\{prefix}\{number}\{suffix}"
 }
 
 ///|
