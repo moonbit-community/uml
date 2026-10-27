@@ -83,10 +83,9 @@ fn match_keyword(cursor : @tokenizer.Cursor, keyword : String) -> Bool {
   guard cursor.offset() + chars.length() <= cursor.length() else {
     return false
   }
-  for index in 0..<chars.length() {
+  for index, expected in chars {
     let current = cursor.char_at(cursor.offset() + index)
-    if current is None ||
-      lower_ascii(current.unwrap()) != lower_ascii(chars[index]) {
+    if current is None || lower_ascii(current.unwrap()) != lower_ascii(expected) {
       return false
     }
   }
@@ -143,13 +142,11 @@ fn[T] with_player_code(
   while cursor.char_at(end) is Some(char) && is_player_code_char(char) {
     end += 1
   }
-  let mut length = end - start
-  while length >= 1 {
+  for length in (end - start)>=..1 {
     ignore(cursor.restore(start + length))
     if continue_with(cursor.slice(start, start + length)) is Some(result) {
       return Some(result)
     }
-    length -= 1
   }
   ignore(cursor.restore(start))
   None
@@ -167,13 +164,11 @@ fn[T] with_full_code(
   while cursor.char_at(end) is Some(char) && is_code_char(char) {
     end += 1
   }
-  let mut length = end - start
-  while length >= 1 {
+  for length in (end - start)>=..1 {
     ignore(cursor.restore(start + length))
     if continue_with(cursor.slice(start, start + length)) is Some(result) {
       return Some(result)
     }
-    length -= 1
   }
   ignore(cursor.restore(start))
   None
