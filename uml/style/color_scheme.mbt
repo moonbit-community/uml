@@ -8,6 +8,7 @@
 /// so a caller can target a specific light/dark theme without touching each
 /// diagram. Use `sequence_colors` and `entity_colors` when implementing those
 /// diagram families instead of making `DocumentStyle` aware of their roles.
+#derive(Eq, Debug)
 pub struct ColorScheme {
   text : String
   line : String
@@ -37,7 +38,7 @@ pub struct ColorScheme {
   visibility_protected_fill : String
   visibility_package_stroke : String
   visibility_package_fill : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ColorScheme with Eq::{not_equal, equal}
@@ -48,6 +49,7 @@ pub extend ColorScheme with Debug::{to_repr}
 ///|
 /// Theme roles consumed by the sequence renderer. Sequence-specific fallback
 /// and skinparam precedence remain owned by the sequence package.
+#derive(Eq, Debug)
 pub(all) struct SequenceColors {
   text : String
   line : String
@@ -61,7 +63,7 @@ pub(all) struct SequenceColors {
   delay : String
   reference_tab : String
   page_break : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SequenceColors with Eq::{not_equal, equal}
@@ -73,6 +75,7 @@ pub extend SequenceColors with Debug::{to_repr}
 /// Theme roles consumed by the class/object/component/use-case renderer.
 /// Entity-specific fallback and skinparam precedence remain owned by the
 /// entity package.
+#derive(Eq, Debug)
 pub(all) struct EntityColors {
   text : String
   line : String
@@ -92,7 +95,7 @@ pub(all) struct EntityColors {
   visibility_protected_fill : String
   visibility_package_stroke : String
   visibility_package_fill : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EntityColors with Eq::{not_equal, equal}

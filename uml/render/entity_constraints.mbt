@@ -4,11 +4,12 @@
 const ENTITY_CONSTRAINT_SPOT : Int32 = 10
 
 ///|
+#derive(Eq, Debug)
 pub struct RelationConstraintLayout {
   start : (Double, Double)
   end : (Double, Double)
   label : RelationTextBox
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelationConstraintLayout with Eq::{not_equal, equal}

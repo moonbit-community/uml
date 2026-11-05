@@ -1,6 +1,7 @@
 ///|
 /// The kind of a timing-diagram player, mirroring PlantUML's `Player`
 /// subclasses and the `TimingStyle` enum used by `CommandRobustConcise`.
+#derive(Eq, Debug)
 pub(all) enum PlayerKind {
   Robust
   Concise
@@ -8,7 +9,7 @@ pub(all) enum PlayerKind {
   Binary
   Clock
   Analog
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PlayerKind with Eq::{not_equal, equal}
@@ -21,11 +22,12 @@ pub extend PlayerKind with Debug::{to_repr}
 ///
 /// The format only affects how a time value is rendered; parsing keeps the
 /// exact decimal value independently of it.
+#derive(Eq, Debug)
 pub(all) enum TimingFormat {
   Decimal
   Hour
   Date
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TimingFormat with Eq::{not_equal, equal}
@@ -36,11 +38,12 @@ pub extend TimingFormat with Debug::{to_repr}
 ///|
 /// The time-axis strategy selected by `hide time axis` and `manual time axis`,
 /// mirroring `TimeAxisStategy`.
+#derive(Eq, Debug)
 pub(all) enum TimeAxisStrategy {
   Automatic
   Manual
   Hidden
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TimeAxisStrategy with Eq::{not_equal, equal}
@@ -54,10 +57,11 @@ pub extend TimeAxisStrategy with Debug::{to_repr}
 pub type Decimal = @decimal.Decimal
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TimeTick {
   time : Decimal
   format : TimingFormat
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TimeTick with Eq::{not_equal, equal}
@@ -70,12 +74,13 @@ pub extend TimeTick with Debug::{to_repr}
 ///
 /// `when` is the tick the change applies at; the initial state is the change
 /// recorded before any time mark exists, and keeps `when = None`.
+#derive(Eq, Debug)
 pub(all) struct ChangeState {
   when : TimeTick?
   comment : String?
   color : String?
   states : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ChangeState with Eq::{not_equal, equal}
@@ -84,12 +89,13 @@ pub extend ChangeState with Eq::{not_equal, equal}
 pub extend ChangeState with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TimingNote {
   when : TimeTick?
   position : String
   text : String
   stereotype : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TimingNote with Eq::{not_equal, equal}
@@ -98,12 +104,13 @@ pub extend TimingNote with Eq::{not_equal, equal}
 pub extend TimingNote with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TimeConstraint {
   tick1 : TimeTick
   tick2 : TimeTick
   message : String?
   style : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TimeConstraint with Eq::{not_equal, equal}
@@ -116,6 +123,7 @@ pub extend TimeConstraint with Debug::{to_repr}
 ///
 /// Player endpoints are kept as codes; the tick of an endpoint is null when
 /// the optional `@time` expression was absent or unresolved.
+#derive(Eq, Debug)
 pub(all) struct TimingMessage {
   player1 : String
   tick1 : TimeTick?
@@ -123,7 +131,7 @@ pub(all) struct TimingMessage {
   tick2 : TimeTick?
   label : String?
   style : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TimingMessage with Eq::{not_equal, equal}
@@ -132,12 +140,13 @@ pub extend TimingMessage with Eq::{not_equal, equal}
 pub extend TimingMessage with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Highlight {
   from : TimeTick?
   to : TimeTick?
   caption : String?
   color : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Highlight with Eq::{not_equal, equal}

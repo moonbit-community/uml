@@ -1,9 +1,10 @@
 ///|
 /// A parser diagnostic independent of a particular diagram family.
+#derive(Eq, Debug)
 pub struct ParseDiagnostic {
   span : SourceSpan
   message : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ParseDiagnostic with Eq::{not_equal, equal}
@@ -16,9 +17,10 @@ pub extend ParseDiagnostic with Debug::{to_repr}
 ///
 /// This is shared by every PlantUML diagram parser so callers can handle
 /// malformed source independently of the selected diagram family.
+#derive(Debug)
 pub(all) suberror ParseError {
   SyntaxError(Int32, String)
-} derive(Debug)
+}
 
 ///|
 pub extend ParseError with Debug::{to_repr}

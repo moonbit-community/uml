@@ -1,10 +1,11 @@
 ///|
 /// A source position shared by all diagram parsers.
+#derive(Eq, Debug)
 pub struct SourceSpan {
   offset : Int32
   line : Int32
   column : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend SourceSpan with Eq::{not_equal, equal}

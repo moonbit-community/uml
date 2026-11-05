@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum TextAlignment {
   Left
   Center
   Right
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TextAlignment with Eq::{not_equal, equal}
@@ -14,10 +15,11 @@ pub extend TextAlignment with Debug::{to_repr}
 ///|
 /// The tree-diagram family selects default constants and the selector and
 /// skinparam prefixes shared by node, root, leaf, and arrow rules.
+#derive(Eq, Debug)
 pub(all) enum TreeDiagramFamily {
   Mindmap
   Wbs
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TreeDiagramFamily with Eq::{not_equal, equal}
@@ -30,6 +32,7 @@ pub extend TreeDiagramFamily with Debug::{to_repr}
 /// the fields it does not use (mindmaps the WBS-only `width_auto`, WBS the
 /// mindmap-only `same_class_width`), so the parsing and precedence logic
 /// lives once.
+#derive(Eq, Debug)
 pub(all) struct TreeNodeStyle {
   minimum_width : Double?
   padding_left : Double?
@@ -53,7 +56,7 @@ pub(all) struct TreeNodeStyle {
   same_class_width : Bool?
   width_auto : Bool?
   alignment : TextAlignment?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TreeNodeStyle with Eq::{not_equal, equal}
@@ -62,10 +65,11 @@ pub extend TreeNodeStyle with Eq::{not_equal, equal}
 pub extend TreeNodeStyle with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct TreeArrowStyle {
   line_color : String?
   line_thickness : Double?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TreeArrowStyle with Eq::{not_equal, equal}
@@ -76,6 +80,7 @@ pub extend TreeArrowStyle with Debug::{to_repr}
 ///|
 /// The layered node/arrow style container of a tree diagram. The `family`
 /// drives default constants and the selector/skinparam prefixes.
+#derive(Eq, Debug)
 pub(all) struct TreeStyle {
   family : TreeDiagramFamily
   mut node : TreeNodeStyle
@@ -83,7 +88,7 @@ pub(all) struct TreeStyle {
   mut leaf_node : TreeNodeStyle
   stereotypes : Map[String, TreeNodeStyle]
   mut arrow : TreeArrowStyle
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TreeStyle with Eq::{not_equal, equal}

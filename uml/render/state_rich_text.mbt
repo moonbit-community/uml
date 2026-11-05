@@ -574,13 +574,14 @@ fn StateRichText::draw(
 ///|
 /// CommandCreoleStyle shares one extended color between decorations. A nested
 /// colored style therefore also changes existing underline/strike/background.
+#derive(Default)
 priv struct StateRichDecoration {
   underline : Bool
   strike : Bool
   wave : Bool
   background : Bool
   color : String?
-} derive(Default)
+}
 
 ///|
 priv enum StateRichDecorationKind {

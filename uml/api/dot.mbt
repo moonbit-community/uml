@@ -1,9 +1,10 @@
 ///|
 /// A `@startdot` diagram: the raw Graphviz DOT source forwarded to the shared
 /// graphviz engine, mirroring PlantUML's pass-through to the `dot` executable.
+#derive(Eq, Debug)
 pub struct DotDiagram {
   source : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DotDiagram with Eq::{not_equal, equal}

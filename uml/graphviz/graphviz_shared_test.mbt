@@ -1,8 +1,9 @@
 ///|
+#derive(Eq, Debug)
 priv enum TestLayoutPath {
   GraphvizPath
   FallbackPath
-} derive(Eq, Debug)
+}
 
 ///|
 fn unsupported_layout_for_test() -> TestLayoutPath raise @dot_layout.DotLayoutError {

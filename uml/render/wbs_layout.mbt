@@ -13,13 +13,14 @@ const WBS_CANVAS_MARGIN : Double = 10.0
 
 ///|
 /// A WBS main box, retaining half-pixel attachment coordinates.
+#derive(Eq, Debug)
 pub(all) struct WbsNodeLayout {
   index : Int32
   x : Double
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WbsNodeLayout with Eq::{not_equal, equal}
@@ -29,11 +30,12 @@ pub extend WbsNodeLayout with Debug::{to_repr}
 
 ///|
 /// One shared bus or branch segment, styled by its owning parent.
+#derive(Eq, Debug)
 pub(all) struct WbsLineLayout {
   owner : Int32
   start : @graphics.Point
   end : @graphics.Point
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WbsLineLayout with Eq::{not_equal, equal}
@@ -43,12 +45,13 @@ pub extend WbsLineLayout with Debug::{to_repr}
 
 ///|
 /// The Fork/ITF layout, before document title, legend, and scale wrappers.
+#derive(Eq, Debug)
 pub(all) struct WbsLayout {
   nodes : Array[WbsNodeLayout]
   lines : Array[WbsLineLayout]
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend WbsLayout with Eq::{not_equal, equal}

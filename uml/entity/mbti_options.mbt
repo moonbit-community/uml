@@ -25,10 +25,11 @@ pub fn MbtiOptions::default() -> MbtiOptions {
 
 ///|
 /// The two member portions of an mbti node.
+#derive(Eq, Debug)
 pub(all) enum MbtiCollapsibleSection {
   Fields
   Methods
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MbtiCollapsibleSection with Eq::{not_equal, equal}
@@ -38,10 +39,11 @@ pub extend MbtiCollapsibleSection with Debug::{to_repr}
 
 ///|
 /// The rendering state of the selected mbti member portion.
+#derive(Eq, Debug)
 pub(all) enum MbtiCollapseState {
   Expanded
   Collapsed
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MbtiCollapseState with Eq::{not_equal, equal}
@@ -55,10 +57,11 @@ pub extend MbtiCollapseState with Debug::{to_repr}
 /// This is deliberately separate from `MbtiOptions`: parsing decides which
 /// members exist, while these settings only decide whether each existing
 /// portion is expanded or collapsed.
+#derive(Eq, Debug)
 pub(all) struct MbtiRenderOptions {
   fields_state : MbtiCollapseState
   methods_state : MbtiCollapseState
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MbtiRenderOptions with Eq::{not_equal, equal}

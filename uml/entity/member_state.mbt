@@ -3,10 +3,11 @@
 /// render calls. Class diagrams toggle both portions together; MBTI toggles
 /// fields and methods independently. The host owns state and requests a new
 /// layout after each change.
+#derive(Eq, Debug)
 pub(all) struct ClassMemberState {
   fields_expanded : Bool
   methods_expanded : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ClassMemberState with Eq::{not_equal, equal}

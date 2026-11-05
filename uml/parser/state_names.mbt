@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 priv enum StateNamePart {
   Root
   Identifier(String)
   Concurrent(Int32)
-} derive(Eq)
+}
 
 ///|
 /// Names exist independently of their state data, as in PlantUML's Quark.

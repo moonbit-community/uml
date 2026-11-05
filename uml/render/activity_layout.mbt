@@ -1,5 +1,6 @@
 ///|
 /// Geometry for one visible activity instruction.
+#derive(Eq, Debug)
 pub(all) struct ActivityNodeLayout {
   node_index : Int32
   note_pointer_offset : Double?
@@ -7,7 +8,7 @@ pub(all) struct ActivityNodeLayout {
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ActivityNodeLayout with Eq::{not_equal, equal}
@@ -16,6 +17,7 @@ pub extend ActivityNodeLayout with Eq::{not_equal, equal}
 pub extend ActivityNodeLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ActivityEdgeRoute {
   Forward
   ForkLane(Double, Double)
@@ -44,7 +46,7 @@ pub(all) enum ActivityEdgeRoute {
   WhileExitLeft(Double)
   WhileEntry
   ForkMerge
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ActivityEdgeRoute with Eq::{not_equal, equal}
@@ -54,6 +56,7 @@ pub extend ActivityEdgeRoute with Debug::{to_repr}
 
 ///|
 /// A directed connector between visible activity instructions.
+#derive(Eq, Debug)
 pub(all) struct ActivityEdgeLayout {
   from_node_index : Int32
   to_node_index : Int32
@@ -61,7 +64,7 @@ pub(all) struct ActivityEdgeLayout {
   label : String?
   style : String?
   rainbow_separation : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ActivityEdgeLayout with Eq::{not_equal, equal}
@@ -70,10 +73,11 @@ pub extend ActivityEdgeLayout with Eq::{not_equal, equal}
 pub extend ActivityEdgeLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum ActivityRegionKind {
   Partition
   Swimlane
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ActivityRegionKind with Eq::{not_equal, equal}
@@ -82,6 +86,7 @@ pub extend ActivityRegionKind with Eq::{not_equal, equal}
 pub extend ActivityRegionKind with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct ActivityRegionLayout {
   kind : ActivityRegionKind
   label : String
@@ -91,7 +96,7 @@ pub(all) struct ActivityRegionLayout {
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ActivityRegionLayout with Eq::{not_equal, equal}
@@ -101,6 +106,7 @@ pub extend ActivityRegionLayout with Debug::{to_repr}
 
 ///|
 /// Complete geometry emitted by the built-in activity layout stage.
+#derive(Eq, Debug)
 pub(all) struct ActivityLayout {
   nodes : Array[ActivityNodeLayout]
   edges : Array[ActivityEdgeLayout]
@@ -108,7 +114,7 @@ pub(all) struct ActivityLayout {
   source_nodes : Array[@flow.ActivityNode]
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ActivityLayout with Eq::{not_equal, equal}

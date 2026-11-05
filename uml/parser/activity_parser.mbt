@@ -1,4 +1,5 @@
 ///|
+#derive(Eq)
 priv enum BlockKind {
   Conditional
   WhileLoop
@@ -7,7 +8,7 @@ priv enum BlockKind {
   SplitBlock
   SwitchBlock
   PartitionBlock
-} derive(Eq)
+}
 
 ///|
 fn block_name(kind : BlockKind) -> String {

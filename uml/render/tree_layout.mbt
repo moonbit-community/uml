@@ -5,13 +5,14 @@ const MINDMAP_BRANCH_GAP : Double = 30.0
 ///|
 /// A positioned tree item in document coordinates, shared by the tree
 /// diagram families (mindmap, WBS, mbti).
+#derive(Eq, Debug)
 pub(all) struct NodeLayout {
   index : Int32
   x : Double
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend NodeLayout with Eq::{not_equal, equal}
@@ -21,6 +22,7 @@ pub extend NodeLayout with Debug::{to_repr}
 
 ///|
 /// A cubic parent-to-child connector in document coordinates.
+#derive(Eq, Debug)
 pub(all) struct EdgeLayout {
   parent_index : Int32
   child_index : Int32
@@ -32,7 +34,7 @@ pub(all) struct EdgeLayout {
   control2_y : Double
   x2 : Double
   y2 : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EdgeLayout with Eq::{not_equal, equal}
@@ -42,17 +44,19 @@ pub extend EdgeLayout with Debug::{to_repr}
 
 ///|
 /// Complete geometry for a mindmap-style (tee-packed) SVG.
+#derive(Eq, Debug)
 pub(all) struct MindmapLayout {
   nodes : Array[NodeLayout]
   edges : Array[EdgeLayout]
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 /// A generic tree node for the mindmap packing algorithm: its size, margins,
 /// and children per side. Both the mindmap and the mbti families build this
 /// structure and pack it with `layout_tree`.
+#derive(Eq, Debug)
 pub(all) struct LayoutItem {
   width : Double
   height : Double
@@ -62,7 +66,7 @@ pub(all) struct LayoutItem {
   margin_bottom : Double
   left_children : Array[Int32]
   right_children : Array[Int32]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LayoutItem with Eq::{not_equal, equal}

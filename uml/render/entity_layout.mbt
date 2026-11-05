@@ -1,12 +1,13 @@
 ///|
 /// Geometry returned by Graphviz for one class node.
+#derive(Eq, Debug)
 pub struct GraphvizNodeLayout {
   code : String
   x : Double
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizNodeLayout with Eq::{not_equal, equal}
@@ -15,13 +16,14 @@ pub extend GraphvizNodeLayout with Eq::{not_equal, equal}
 pub extend GraphvizNodeLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct GraphvizPackageLayout {
   package_index : Int32
   x : Double
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizPackageLayout with Eq::{not_equal, equal}
@@ -31,6 +33,7 @@ pub extend GraphvizPackageLayout with Debug::{to_repr}
 
 ///|
 /// Complete Graphviz layout normalized to an SVG coordinate system.
+#derive(Eq, Debug)
 pub struct GraphvizLayout {
   width : Double
   height : Double
@@ -41,7 +44,7 @@ pub struct GraphvizLayout {
   constraints : Array[RelationConstraintLayout]
   packages : Array[GraphvizPackageLayout]
   notes : Array[@graphviz.GraphvizNote]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizLayout with Eq::{not_equal, equal}

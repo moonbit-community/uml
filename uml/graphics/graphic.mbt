@@ -1,11 +1,12 @@
 ///|
 /// Inherit omits a paint declaration; None explicitly disables painting.
 /// Color holds an unescaped, resolved color value.
+#derive(Eq, Debug)
 pub(all) enum Paint {
   Inherit
   None
   Color(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Paint with Eq::{not_equal, equal}
@@ -25,6 +26,7 @@ pub impl Default for Paint with fn default() -> Paint {
 /// Explicit drawing state, independent of SVG attribute names or CSS syntax.
 /// Absent width/dash values inherit document presentation; an empty dash
 /// array explicitly selects a solid stroke.
+#derive(Eq, Debug, Default)
 pub(all) struct DrawingStyle {
   fill : Paint
   stroke : Paint
@@ -32,7 +34,7 @@ pub(all) struct DrawingStyle {
   dash : Array[Double]?
   /// Explicit inline styles override document CSS, like PlantUML skin overrides.
   inline : Bool
-} derive(Eq, Debug, Default)
+}
 
 ///|
 pub extend DrawingStyle with Eq::{not_equal, equal}
@@ -46,11 +48,12 @@ pub extend DrawingStyle with Default::{default}
 ///|
 /// Semantic element identity. Data names are trusted renderer constants,
 /// without the `data-` prefix; values are unescaped application text.
+#derive(Eq, Debug, Default)
 pub(all) struct Metadata {
   id : String?
   class_name : String?
   data : Array[(String, String)]
-} derive(Eq, Debug, Default)
+}
 
 ///|
 pub extend Metadata with Eq::{not_equal, equal}
@@ -64,6 +67,7 @@ pub extend Metadata with Default::{default}
 ///|
 /// Ordered drawing events consumed immediately by a backend. Translation
 /// and style are snapshots of the context at the draw call.
+#derive(Eq, Debug)
 pub(all) enum DrawCommand {
   Draw(Shape, DrawingStyle, Point, Metadata)
   BeginGroup(Metadata)
@@ -73,7 +77,7 @@ pub(all) enum DrawCommand {
   BeginLinkWithTarget(String, String)
   EndLink
   Annotation(Metadata)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DrawCommand with Eq::{not_equal, equal}

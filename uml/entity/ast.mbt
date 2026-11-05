@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum EntityKind {
   Class
   AbstractClass
@@ -54,7 +55,7 @@ pub(all) enum EntityKind {
   LollipopFull
   LollipopHalf
   Point
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EntityKind with Eq::{not_equal, equal}
@@ -63,13 +64,14 @@ pub extend EntityKind with Eq::{not_equal, equal}
 pub extend EntityKind with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Visibility {
   Public
   Private
   Protected
   Package
   Unknown
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Visibility with Eq::{not_equal, equal}
@@ -78,6 +80,7 @@ pub extend Visibility with Eq::{not_equal, equal}
 pub extend Visibility with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Member {
   raw : String
   visibility : Visibility
@@ -86,7 +89,7 @@ pub(all) struct Member {
   is_abstract : Bool
   is_separator : Bool
   is_hidden : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Member with Eq::{not_equal, equal}
@@ -95,6 +98,7 @@ pub extend Member with Eq::{not_equal, equal}
 pub extend Member with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Entity {
   code : String
   qualified_code : String
@@ -121,7 +125,7 @@ pub(all) struct Entity {
   map_entries : Array[MapEntry]
   json_data : String?
   json_tree : @bodierjson.JsonNode?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Entity with Eq::{not_equal, equal}
@@ -130,12 +134,13 @@ pub extend Entity with Eq::{not_equal, equal}
 pub extend Entity with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct MapEntry {
   key : String
   value : String?
   link_target : String?
   raw : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MapEntry with Eq::{not_equal, equal}
@@ -144,6 +149,7 @@ pub extend MapEntry with Eq::{not_equal, equal}
 pub extend MapEntry with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RelationKind {
   Association
   Dependency
@@ -151,7 +157,7 @@ pub(all) enum RelationKind {
   Aggregation
   Composition
   Realization
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelationKind with Eq::{not_equal, equal}
@@ -160,6 +166,7 @@ pub extend RelationKind with Eq::{not_equal, equal}
 pub extend RelationKind with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RelationEnd {
   Plain
   Arrow
@@ -183,7 +190,7 @@ pub(all) enum RelationEnd {
   Plus
   HalfArrowUp
   HalfArrowDown
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelationEnd with Eq::{not_equal, equal}
@@ -192,13 +199,14 @@ pub extend RelationEnd with Eq::{not_equal, equal}
 pub extend RelationEnd with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RelationDirection {
   Automatic
   Leftward
   Rightward
   Upward
   Downward
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelationDirection with Eq::{not_equal, equal}
@@ -207,6 +215,7 @@ pub extend RelationDirection with Eq::{not_equal, equal}
 pub extend RelationDirection with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Relation {
   left : String
   right : String
@@ -233,7 +242,7 @@ pub(all) struct Relation {
   right_port : String?
   left_couple : (String, String)?
   right_couple : (String, String)?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Relation with Eq::{not_equal, equal}
@@ -280,6 +289,7 @@ pub fn Relation::new(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Package {
   name : String
   qualified_name : String
@@ -294,7 +304,7 @@ pub(all) struct Package {
   /// groups opened by a declaration keyword, `None` for plain packages and
   /// namespaces.
   symbol : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Package with Eq::{not_equal, equal}
@@ -303,12 +313,13 @@ pub extend Package with Eq::{not_equal, equal}
 pub extend Package with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum NotePosition {
   Left
   Right
   Top
   Bottom
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend NotePosition with Eq::{not_equal, equal}
@@ -317,12 +328,13 @@ pub extend NotePosition with Eq::{not_equal, equal}
 pub extend NotePosition with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum NoteTargetKind {
   EntityNote
   LinkNote
   MemberTip
   FloatingNote
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend NoteTargetKind with Eq::{not_equal, equal}
@@ -331,6 +343,7 @@ pub extend NoteTargetKind with Eq::{not_equal, equal}
 pub extend NoteTargetKind with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct Note {
   target : String
   position : NotePosition
@@ -343,7 +356,7 @@ pub(all) struct Note {
   url : String?
   stereotype : String?
   tags : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Note with Eq::{not_equal, equal}
@@ -352,12 +365,13 @@ pub extend Note with Eq::{not_equal, equal}
 pub extend Note with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct LinkConstraint {
   first_relation : Int32
   second_relation : Int32
   text : String
   color : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LinkConstraint with Eq::{not_equal, equal}
@@ -370,6 +384,7 @@ pub extend LinkConstraint with Debug::{to_repr}
 ///
 /// The family selects the parsing policy (`allow_mixing`) and the SVG rendering
 /// mode, so diagram-family packages do not need to wrap the shared engine.
+#derive(Eq, Debug)
 pub(all) enum EntityFamily {
   ClassDiagram
   ObjectDiagram
@@ -377,7 +392,7 @@ pub(all) enum EntityFamily {
   UseCaseDiagram
   DeploymentDiagram
   Mbti
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EntityFamily with Eq::{not_equal, equal}
@@ -405,6 +420,7 @@ pub fn EntityFamily::is_usecase(self : EntityFamily) -> Bool {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EntityDiagram {
   family : EntityFamily
   entities : Array[Entity]
@@ -414,7 +430,7 @@ pub(all) struct EntityDiagram {
   constraints : Array[LinkConstraint]
   together_groups : Array[Array[String]]
   style : @style.DocumentStyle
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EntityDiagram with Eq::{not_equal, equal}

@@ -5,6 +5,7 @@
 /// and font resolution. Diagram-family role mapping belongs to the relevant
 /// painter; `ColorScheme` is stored here only as the selected cross-diagram
 /// theme.
+#derive(Eq, Debug)
 pub struct DocumentStyle {
   mut background_color : String?
   mut theme : String?
@@ -20,7 +21,7 @@ pub struct DocumentStyle {
   mut footer : String?
   color_scheme : ColorScheme
   properties : Map[String, String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DocumentStyle with Eq::{not_equal, equal}
@@ -29,10 +30,11 @@ pub extend DocumentStyle with Eq::{not_equal, equal}
 pub extend DocumentStyle with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum Direction {
   TopToBottom
   LeftToRight
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Direction with Eq::{not_equal, equal}
@@ -41,6 +43,7 @@ pub extend Direction with Eq::{not_equal, equal}
 pub extend Direction with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StyleDirective {
   BackgroundColor(String)
   Theme(String)
@@ -52,7 +55,7 @@ pub(all) enum StyleDirective {
   Scale(String)
   Title(String)
   Property(String, String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StyleDirective with Eq::{not_equal, equal}

@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct StateNodeLayout {
   /// Node-local outline supplied by Graphviz, preserved through fragment shifts.
   outline : Array[@graphics.Point]?
@@ -7,7 +8,7 @@ pub(all) struct StateNodeLayout {
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StateNodeLayout with Eq::{not_equal, equal}
@@ -16,12 +17,13 @@ pub extend StateNodeLayout with Eq::{not_equal, equal}
 pub extend StateNodeLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StateEdgeLayout {
   transition_index : Int32
   paths : Array[Array[(Double, Double)]]
   label : (Double, Double)?
   target_label : (Double, Double)?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StateEdgeLayout with Eq::{not_equal, equal}
@@ -30,6 +32,7 @@ pub extend StateEdgeLayout with Eq::{not_equal, equal}
 pub extend StateEdgeLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StateRegionLayout {
   parent : String
   region_index : Int32
@@ -38,7 +41,7 @@ pub(all) struct StateRegionLayout {
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StateRegionLayout with Eq::{not_equal, equal}
@@ -47,13 +50,14 @@ pub extend StateRegionLayout with Eq::{not_equal, equal}
 pub extend StateRegionLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StateNoteLayout {
   note_index : Int32
   x : Double
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StateNoteLayout with Eq::{not_equal, equal}
@@ -62,6 +66,7 @@ pub extend StateNoteLayout with Eq::{not_equal, equal}
 pub extend StateNoteLayout with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StateLayout {
   width : Double
   height : Double
@@ -69,7 +74,7 @@ pub(all) struct StateLayout {
   edges : Array[StateEdgeLayout]
   regions : Array[StateRegionLayout]
   notes : Array[StateNoteLayout]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StateLayout with Eq::{not_equal, equal}

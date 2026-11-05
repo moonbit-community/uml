@@ -1,5 +1,6 @@
 ///|
 /// Portable text measurement used by the built-in SVG renderers.
+#derive(Eq, Debug)
 pub struct TextMetrics {
   width : Int32
   advance_width : Int32
@@ -9,7 +10,7 @@ pub struct TextMetrics {
   baseline : Int32
   ink_left : Int32
   ink_right : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TextMetrics with Eq::{not_equal, equal}
@@ -33,11 +34,12 @@ pub fn TextMetrics::with_extra_advance(
 
 ///|
 /// Coarse built-in width profiles for deterministic cross-platform layout.
+#derive(Eq, Debug)
 pub(all) enum FontProfile {
   Sans
   Serif
   Monospace
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FontProfile with Eq::{not_equal, equal}
@@ -46,10 +48,11 @@ pub extend FontProfile with Eq::{not_equal, equal}
 pub extend FontProfile with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum FontStyle {
   Normal
   Italic
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FontStyle with Eq::{not_equal, equal}
@@ -63,6 +66,7 @@ pub extend FontStyle with Debug::{to_repr}
 /// Glyph advances are accumulated internally at 1/1000px precision. The
 /// public width fields are rounded pixel summaries retained for callers that
 /// inspect individual character classes.
+#derive(Eq, Debug)
 pub struct FontMetrics {
   profile : FontProfile
   style : FontStyle
@@ -95,7 +99,7 @@ pub struct FontMetrics {
   digit_width : Int32
   cjk_width : Int32
   emoji_width : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FontMetrics with Eq::{not_equal, equal}

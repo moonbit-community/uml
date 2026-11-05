@@ -1,9 +1,10 @@
 ///|
 /// A position in layout coordinates. No rounding occurs in the drawing layer.
+#derive(Eq, Debug, Default)
 pub(all) struct Point {
   x : Double
   y : Double
-} derive(Eq, Debug, Default)
+}
 
 ///|
 pub extend Point with Eq::{not_equal, equal}
@@ -16,6 +17,7 @@ pub extend Point with Default::{default}
 
 ///|
 /// Absolute path operations, including curves and arcs without flattening.
+#derive(Eq, Debug)
 pub(all) enum PathSegment {
   MoveTo(Point)
   LineTo(Point)
@@ -30,7 +32,7 @@ pub(all) enum PathSegment {
     end~ : Point
   )
   Close
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PathSegment with Eq::{not_equal, equal}
@@ -59,11 +61,12 @@ pub fn spline_segments(points : Array[(Double, Double)]) -> Array[PathSegment] {
 
 ///|
 /// Text alignment around its baseline position.
+#derive(Eq, Debug)
 pub(all) enum TextAnchor {
   Start
   Middle
   End
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TextAnchor with Eq::{not_equal, equal}
@@ -75,6 +78,7 @@ pub extend TextAnchor with Debug::{to_repr}
 /// An already laid-out text run. `advance` comes from the same measurement
 /// used by layout; the backend must not measure it again. None leaves the
 /// browser's natural spacing intact.
+#derive(Eq, Debug)
 pub(all) struct TextRun {
   text : String
   position : Point
@@ -83,7 +87,7 @@ pub(all) struct TextRun {
   font_size : Double
   font_family : String?
   strike : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TextRun with Eq::{not_equal, equal}
@@ -94,6 +98,7 @@ pub extend TextRun with Debug::{to_repr}
 ///|
 /// Drawing primitives in layout coordinates. Composite UML symbols remain
 /// renderer operations which draw several primitives in their existing order.
+#derive(Eq, Debug)
 pub(all) enum Shape {
   Rectangle(
     origin~ : Point,
@@ -119,7 +124,7 @@ pub(all) enum Shape {
   )
   TextBlock(MultilineText)
   StyledTextBlock(MultilineText, TextStyle)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Shape with Eq::{not_equal, equal}
@@ -130,12 +135,13 @@ pub extend Shape with Debug::{to_repr}
 ///|
 /// Explicit font presentation for text runs and blocks. Missing values inherit
 /// the document font; layout still owns line spacing and measured advances.
+#derive(Eq, Debug, Default)
 pub(all) struct TextStyle {
   font_size : Double?
   font_family : String?
   italic : Bool?
   weight : Int32?
-} derive(Eq, Debug, Default)
+}
 
 ///|
 pub extend TextStyle with Eq::{not_equal, equal}
@@ -148,11 +154,12 @@ pub extend TextStyle with Default::{default}
 
 ///|
 /// A measured line with a baseline offset from the previous line.
+#derive(Eq, Debug)
 pub(all) struct TextLine {
   text : String
   dy : Double
   advance : Double?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TextLine with Eq::{not_equal, equal}
@@ -163,11 +170,12 @@ pub extend TextLine with Debug::{to_repr}
 ///|
 /// Lines sharing a horizontal anchor. Font presentation is inherited from
 /// the enclosing document; the baseline and advances are layout-owned.
+#derive(Eq, Debug)
 pub(all) struct MultilineText {
   position : Point
   anchor : TextAnchor
   lines : Array[TextLine]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MultilineText with Eq::{not_equal, equal}
@@ -177,10 +185,11 @@ pub extend MultilineText with Debug::{to_repr}
 
 ///|
 /// Untranslated dimensions of a viewport or drawing resource.
+#derive(Eq, Debug)
 pub(all) struct Size {
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Size with Eq::{not_equal, equal}

@@ -2,6 +2,7 @@
 /// Ordered JSON tree mirroring the `JsonValue` model PlantUML keeps in
 /// `BodierJSon`. Object members keep their source order so the rendered
 /// body rows match the input text.
+#derive(Eq, Debug)
 pub(all) enum JsonNode {
   JsonObject(Array[JsonMember])
   JsonArray(Array[JsonNode])
@@ -9,7 +10,7 @@ pub(all) enum JsonNode {
   JsonNumber(String)
   JsonBoolean(Bool)
   JsonNull
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend JsonNode with Eq::{not_equal, equal}
@@ -18,10 +19,11 @@ pub extend JsonNode with Eq::{not_equal, equal}
 pub extend JsonNode with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct JsonMember {
   key : String
   value : JsonNode
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend JsonMember with Eq::{not_equal, equal}

@@ -104,10 +104,11 @@ pub fn graphviz_node_rect(
 
 ///|
 /// A normalized Graphviz point in SVG coordinates.
+#derive(Eq, Debug)
 pub(all) struct GraphvizPoint {
   x : Double
   y : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizPoint with Eq::{not_equal, equal}
@@ -160,11 +161,12 @@ pub fn graphviz_note_name(index : Int32) -> String {
 /// One Graphviz cubic spline normalized into SVG coordinates. `arrow_start`
 /// and `arrow_end` are optional arrow clipping tips; node contact points live
 /// in `points` when Graphviz routing has arrows disabled.
+#derive(Eq, Debug)
 pub(all) struct GraphvizSpline {
   arrow_start : GraphvizPoint?
   arrow_end : GraphvizPoint?
   points : Array[GraphvizPoint]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizSpline with Eq::{not_equal, equal}
@@ -174,13 +176,14 @@ pub extend GraphvizSpline with Debug::{to_repr}
 
 ///|
 /// One graphviz edge normalized into SVG coordinates.
+#derive(Eq, Debug)
 pub(all) struct GraphvizEdge {
   index : Int32
   splines : Array[GraphvizSpline]
   label : GraphvizPoint?
   head_label : GraphvizPoint?
   tail_label : GraphvizPoint?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizEdge with Eq::{not_equal, equal}
@@ -223,13 +226,14 @@ pub fn graphviz_edges(
 
 ///|
 /// One graphviz note node normalized into SVG coordinates.
+#derive(Eq, Debug)
 pub(all) struct GraphvizNote {
   note_index : Int32
   x : Double
   y : Double
   width : Double
   height : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend GraphvizNote with Eq::{not_equal, equal}
@@ -240,10 +244,11 @@ pub extend GraphvizNote with Debug::{to_repr}
 ///|
 /// Select whether normalized node coordinates identify the center or the
 /// top-left corner of the node rectangle.
+#derive(Eq, Debug)
 pub(all) enum NodeAnchor {
   Center
   TopLeft
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend NodeAnchor with Eq::{not_equal, equal}

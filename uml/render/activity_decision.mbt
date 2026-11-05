@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 priv enum ActivityConditionShape {
   Hexagon
   InsideDiamond
   EmptyDiamond
-} derive(Eq)
+}
 
 ///|
 /// SkinParam.getConditionStyle / ConditionStyle.fromString. Switch and empty

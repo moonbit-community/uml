@@ -1,11 +1,12 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum StructuredValueDisplay {
   Text(String)
   True
   False
   Null
   Compound
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StructuredValueDisplay with Eq::{not_equal, equal}
@@ -14,11 +15,12 @@ pub extend StructuredValueDisplay with Eq::{not_equal, equal}
 pub extend StructuredValueDisplay with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructuredRow {
   key : String?
   value : StructuredValueDisplay
   child : StructuredNode?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StructuredRow with Eq::{not_equal, equal}
@@ -27,10 +29,11 @@ pub extend StructuredRow with Eq::{not_equal, equal}
 pub extend StructuredRow with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum StructuredNodeKind {
   Object
   Array
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StructuredNodeKind with Eq::{not_equal, equal}
@@ -40,11 +43,12 @@ pub extend StructuredNodeKind with Debug::{to_repr}
 
 ///|
 /// Source format represented by a structured-data diagram.
+#derive(Eq, Debug)
 pub(all) enum StructuredFormat {
   Json
   Yaml
   Toml
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StructuredFormat with Eq::{not_equal, equal}
@@ -65,10 +69,11 @@ pub fn StructuredFormat::aria_label(self : StructuredFormat) -> String {
 /// A structured-data record node shared by JSON, YAML, and TOML renderers.
 /// Objects have key/value rows; arrays have single value rows. Compound rows
 /// point to another record node.
+#derive(Eq, Debug)
 pub(all) struct StructuredNode {
   kind : StructuredNodeKind
   rows : Array[StructuredRow]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StructuredNode with Eq::{not_equal, equal}
@@ -77,13 +82,14 @@ pub extend StructuredNode with Eq::{not_equal, equal}
 pub extend StructuredNode with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructuredDiagram {
   format : StructuredFormat
   root : StructuredNode
   presentation : Array[(String, String)]
   styles : Array[StructuredStyleProperty]
   highlights : Array[StructuredHighlight]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StructuredDiagram with Eq::{not_equal, equal}
@@ -92,17 +98,19 @@ pub extend StructuredDiagram with Eq::{not_equal, equal}
 pub extend StructuredDiagram with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructuredStyleProperty {
   selector : String
   name : String
   value : String
-} derive(Eq, Debug)
+}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct StructuredHighlight {
   path : Array[String]
   stereotype : String?
-} derive(Eq, Debug)
+}
 
 ///|
 

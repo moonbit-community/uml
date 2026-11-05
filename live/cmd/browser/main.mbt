@@ -5,10 +5,11 @@ using @html {button, div, h1, li, textarea, ul}
 using @rabbita {type Html, type Val}
 
 ///|
+#derive(Eq, Debug)
 enum Theme {
   Light
   Dark
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Theme with Eq::{not_equal, equal}
@@ -44,6 +45,7 @@ enum Msg {
 }
 
 ///|
+#derive(Eq)
 struct AppState {
   active_file : String
   source : String
@@ -54,7 +56,7 @@ struct AppState {
   theme : Theme
   member_states : Map[String, @entity.ClassMemberState]
   member_revision : Int32
-} derive(Eq)
+}
 
 ///|
 pub extend AppState with Eq::{not_equal, equal}

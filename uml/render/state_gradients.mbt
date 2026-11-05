@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 priv struct StateGradient {
   first : String
   second : String
   policy : Char
-} derive(Eq)
+}
 
 ///|
 priv struct StateGradients {

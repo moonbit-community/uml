@@ -2,6 +2,7 @@
 /// A relation label after Graphviz has supplied its anchor and the renderer
 /// has resolved the actual text dimensions. Coordinates are SVG coordinates;
 /// `x` and `y` are the top-left corner and `baseline` is the text baseline.
+#derive(Eq, Debug)
 pub struct RelationTextBox {
   text : String
   x : Double
@@ -9,7 +10,7 @@ pub struct RelationTextBox {
   width : Double
   height : Double
   baseline : Double
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelationTextBox with Eq::{not_equal, equal}
@@ -19,6 +20,7 @@ pub extend RelationTextBox with Debug::{to_repr}
 
 ///|
 /// Final positions for every textual part of one class relation.
+#derive(Eq, Debug)
 pub struct RelationLabelLayout {
   relation_index : Int32
   label : RelationTextBox?
@@ -26,7 +28,7 @@ pub struct RelationLabelLayout {
   right_cardinality : RelationTextBox?
   left_role : RelationTextBox?
   right_role : RelationTextBox?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RelationLabelLayout with Eq::{not_equal, equal}
@@ -70,13 +72,14 @@ fn RelationLabelLayout::end_boxes(
 }
 
 ///|
+#derive(Eq)
 priv enum RelationLabelKind {
   Label
   LeftCardinality
   RightCardinality
   LeftRole
   RightRole
-} derive(Eq)
+}
 
 ///|
 priv struct RelationLabelEntry {

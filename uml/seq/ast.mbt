@@ -11,10 +11,11 @@ pub(all) enum ParticipantType {
 }
 
 ///|
+#derive(Eq)
 pub(all) struct ParticipantBox {
   label : String?
   color : String?
-} derive(Eq)
+}
 
 ///|
 pub extend ParticipantBox with Eq::{not_equal, equal}
@@ -33,10 +34,11 @@ pub(all) struct Participant {
 }
 
 ///|
+#derive(Eq)
 pub(all) enum ArrowBody {
   Solid
   Dotted
-} derive(Eq)
+}
 
 ///|
 pub extend ArrowBody with Eq::{not_equal, equal}

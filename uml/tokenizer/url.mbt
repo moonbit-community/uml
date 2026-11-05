@@ -1,9 +1,10 @@
 ///|
 /// A parsed PlantUML URL target with an optional display label.
+#derive(Eq, Debug)
 pub struct UrlTarget {
   target : String
   label : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend UrlTarget with Eq::{not_equal, equal}
@@ -13,11 +14,12 @@ pub extend UrlTarget with Debug::{to_repr}
 
 ///|
 /// A PlantUML URL embedded in a larger command.
+#derive(Eq, Debug)
 pub struct UrlOccurrence {
   before : String
   target : UrlTarget
   after : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend UrlOccurrence with Eq::{not_equal, equal}

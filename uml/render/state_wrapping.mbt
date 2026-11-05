@@ -1,10 +1,11 @@
 ///|
+#derive(Eq)
 priv enum StateWrapKind {
   Word
   Space
   Cjk
   Break
-} derive(Eq)
+}
 
 ///|
 priv struct StateWrapToken {
