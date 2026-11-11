@@ -291,11 +291,27 @@ pub(all) struct ActivitySwimlane {
 #derive(Eq, Debug)
 pub(all) struct ActivityGroup {
   label : String
-  symbol : String
+  symbol : ActivityGroupSymbol
   color : String?
   stereotype : String?
   style : @style.DocumentStyle
 }
+
+///|
+#derive(Eq, Debug)
+pub(all) enum ActivityGroupSymbol {
+  Partition
+  Package
+  Rectangle
+  Card
+  Group
+}
+
+///|
+pub extend ActivityGroupSymbol with Eq::{not_equal, equal}
+
+///|
+pub extend ActivityGroupSymbol with Debug::{to_repr}
 
 ///|
 pub extend ActivityGroup with Eq::{not_equal, equal}

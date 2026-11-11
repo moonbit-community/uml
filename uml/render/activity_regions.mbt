@@ -32,11 +32,11 @@ fn activity_lane(
 ///|
 fn activity_group_role(group : @flow.ActivityGroup) -> String {
   match group.symbol {
-    "package" => "Package"
-    "rectangle" => "Rectangle"
-    "card" => "Card"
-    "group" => "Group"
-    _ => "Partition"
+    Package => "Package"
+    Rectangle => "Rectangle"
+    Card => "Card"
+    Group => "Group"
+    Partition => "Partition"
   }
 }
 
@@ -103,7 +103,7 @@ fn draw_activity_group(
   let height = region.height
   let mut title_x = 3.0
   let mut title_y = 1.0
-  if group.symbol == "package" {
+  if group.symbol is Package {
     let tab_width = if title.width == 0 {
       (width / 4).max(30)
     } else {
@@ -180,9 +180,9 @@ fn draw_activity_group(
     let radius = activity_style_number(style, role + "RoundCorner", 0.0) / 2
     graphic.draw(
       Rectangle(origin=point(0, 0), width~, height~, rx=Some(radius), ry=None),
-      metadata=activity_class("activity-partition-" + group.symbol),
+      metadata=activity_class("activity-partition-" + activity_group_role(group).to_lower()),
     )
-    if group.symbol == "partition" || group.symbol == "group" {
+    if group.symbol is (Partition | Group) {
       let tab_width = if title.width == 0 {
         width / 3
       } else {
@@ -203,7 +203,7 @@ fn draw_activity_group(
     } else {
       title_x = (width - title.width) / 2
       title_y = 2
-      if group.symbol == "card" {
+      if group.symbol is Card {
         graphic.draw(
           Line(point(0, title.height + 4), point(width, title.height + 4)),
         )

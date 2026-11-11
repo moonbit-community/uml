@@ -297,7 +297,7 @@ fn draw_timing_notes(
     let x = layout.wave_x +
       note.when.map_or(0.0, tick => layout.ruler.position(timing_tick(tick)))
     let y = if player.kind is @flow.PlayerKind::Binary {
-      if note.position == "top" {
+      if note.position is Top {
         panel.panel_y + TIMING_MARGIN_Y
       } else {
         panel.panel_y +
@@ -307,7 +307,7 @@ fn draw_timing_notes(
         TIMING_MARGIN_Y / 2.0 +
         TIMING_NOTE_MARGIN / 2.0
       }
-    } else if note.position == "top" {
+    } else if note.position is Top {
       panel.panel_y
     } else {
       panel.panel_y +

@@ -73,9 +73,13 @@ fn parse_activity_group(
   style : @style.DocumentStyle,
 ) -> @flow.ActivityGroup? {
   let cursor = @tokenizer.Cursor::new(line)
-  let symbol = cursor.take_while(char => !char.is_whitespace()).to_lower()
-  guard ["partition", "package", "rectangle", "card", "group"].contains(symbol) else {
-    return None
+  let symbol : @flow.ActivityGroupSymbol = match cursor.take_while(char => !char.is_whitespace()).to_lower() {
+    "partition" => Partition
+    "package" => Package
+    "rectangle" => Rectangle
+    "card" => Card
+    "group" => Group
+    _ => return None
   }
   cursor.skip_inline_spaces()
   let leading_color = cursor.take_color_value()

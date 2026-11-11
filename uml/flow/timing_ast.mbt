@@ -90,9 +90,22 @@ pub extend ChangeState with Debug::{to_repr}
 
 ///|
 #derive(Eq, Debug)
+pub(all) enum TimingNotePosition {
+  Top
+  Bottom
+}
+
+///|
+pub extend TimingNotePosition with Eq::{not_equal, equal}
+
+///|
+pub extend TimingNotePosition with Debug::{to_repr}
+
+///|
+#derive(Eq, Debug)
 pub(all) struct TimingNote {
   when : TimeTick?
-  position : String
+  position : TimingNotePosition
   text : String
   stereotype : String?
 }

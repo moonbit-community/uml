@@ -205,11 +205,11 @@ fn timing_parse_note(
 }
 
 ///|
-fn timing_parse_note_position(cursor : @tokenizer.Cursor) -> String? {
+fn timing_parse_note_position(cursor : @tokenizer.Cursor) -> @flow.TimingNotePosition? {
   if match_keyword(cursor, "top") {
-    Some("top")
+    Some(Top)
   } else if match_keyword(cursor, "bottom") {
-    Some("bottom")
+    Some(Bottom)
   } else {
     None
   }

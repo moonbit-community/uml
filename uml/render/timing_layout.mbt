@@ -235,7 +235,7 @@ fn timing_player_layout(
     Clock => 0.0
     _ => constraint_height
   }
-  let notes_height = (position : String) => {
+  let notes_height = (position : @flow.TimingNotePosition) => {
     guard player.kind
       is (@flow.PlayerKind::Concise
       | @flow.PlayerKind::Rectangle
@@ -250,8 +250,8 @@ fn timing_player_layout(
       }
     })
   }
-  let top_notes = notes_height("top")
-  let bottom_notes = notes_height("bottom")
+  let top_notes = notes_height(Top)
+  let bottom_notes = notes_height(Bottom)
   let comment_height = if player.kind
     is (@flow.PlayerKind::Concise | @flow.PlayerKind::Rectangle) {
     player.changes.fold(init=0.0, (height, change) => {

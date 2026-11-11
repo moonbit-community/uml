@@ -115,7 +115,7 @@ test "time codes, messages, constraints, highlights and notes keep their targets
   let constraint = diagram.player("A").unwrap().constraints[0]
   @test.assert_eq(constraint.message, Some("setup"))
   @test.assert_eq(diagram.highlights[0].caption, Some("warmup"))
-  @test.assert_eq(diagram.player("A").unwrap().notes[0].position, "top")
+  @test.assert_eq(diagram.player("A").unwrap().notes[0].position, Top)
   @test.assert_eq(diagram.player("B").unwrap().notes[0].text, "multi\nline")
 }
 
