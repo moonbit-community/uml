@@ -1323,7 +1323,7 @@ test "stores shared layout, scale, text blocks, and custom skinparams" {
     "@startuml\nleft to right direction\nscale 2/3\ntitle\nDomain model\nend title\nskinparam ClassBorderColor #123456\nclass User\n@enduml",
   )
   @test.assert_eq(diagram.style.layout_direction, Some(LeftToRight))
-  @test.assert_eq(diagram.style.scale, Some("2/3"))
+  @test.assert_eq(diagram.style.scale, @style.parse_diagram_scale("2/3"))
   @test.assert_eq(diagram.style.title, Some("Domain model"))
   @test.assert_eq(diagram.style.properties["ClassBorderColor"], "#123456")
 }

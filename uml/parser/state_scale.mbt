@@ -10,9 +10,9 @@ fn Parser::consume_state_scale(
     return false
   }
   let value = cursor.remaining().trim().to_owned()
-  guard @style.parse_diagram_scale(value) is Some(_) else {
+  guard @style.parse_diagram_scale(value) is Some(scale) else {
     raise @tokenizer.SyntaxError(self.line_number(), "invalid scale")
   }
-  self.apply_state_style(@style.Scale(value))
+  self.apply_state_style(@style.Scale(Some(scale)))
   true
 }

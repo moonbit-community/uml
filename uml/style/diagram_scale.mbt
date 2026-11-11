@@ -6,6 +6,7 @@ const MAX_DIAGRAM_SCALE : Double = 4.0
 const DIAGRAM_DEFAULT_DPI : Int32 = 96
 
 ///|
+#derive(Eq, Debug)
 enum ScaleDimension {
   Factor(Double)
   Width(Double)
@@ -15,10 +16,23 @@ enum ScaleDimension {
 
 ///|
 /// A validated PlantUML scale command, resolved against the final image size.
+#derive(Eq, Debug)
 pub struct DiagramScale {
   dimension : ScaleDimension
   shrink_only : Bool
 }
+
+///|
+pub extend ScaleDimension with Eq::{not_equal, equal}
+
+///|
+pub extend ScaleDimension with Debug::{to_repr}
+
+///|
+pub extend DiagramScale with Eq::{not_equal, equal}
+
+///|
+pub extend DiagramScale with Debug::{to_repr}
 
 ///|
 fn scale_number(cursor : @tokenizer.Cursor) -> Double? {
@@ -95,9 +109,7 @@ pub fn DocumentStyle::output_scale(
   width : Double,
   height : Double,
 ) -> Double {
-  let scale = self.scale
-    .bind(parse_diagram_scale)
-    .map_or(1.0, scale => scale.factor(width, height))
+  let scale = self.scale.map_or(1.0, scale => scale.factor(width, height))
   let dpi = self
     .property("dpi")
     .map_or(DIAGRAM_DEFAULT_DPI, value => {

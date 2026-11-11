@@ -363,7 +363,7 @@ fn TimingParser::consume_common_directive(
     // The common `scale X`/`scale X/Y` form; the timing `scale N as N pixel`
     // form is left to the command list.
     if parse_common_scale(line) is Some(value) {
-      self.diagram.style.apply(@style.Scale(value))
+      self.diagram.style.apply(@style.Scale(@style.parse_diagram_scale(value)))
       return true
     }
     return false

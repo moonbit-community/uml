@@ -13,7 +13,7 @@ pub struct DocumentStyle {
   mut font_size : String?
   mut line_color : String?
   mut layout_direction : Direction?
-  mut scale : String?
+  mut scale : DiagramScale?
   mut title : String?
   mut caption : String?
   mut legend : String?
@@ -52,7 +52,7 @@ pub(all) enum StyleDirective {
   LineColor(String)
   TextBlock(String, String)
   Direction(Direction)
-  Scale(String)
+  Scale(DiagramScale?)
   Title(String)
   Property(String, String)
 }
@@ -122,7 +122,7 @@ pub fn DocumentStyle::apply(
         _ => ()
       }
     Direction(dir) => self.layout_direction = Some(dir)
-    Scale(s) => self.scale = Some(s)
+    Scale(s) => self.scale = s
     Title(t) => self.title = Some(t)
     Property(key, value) => self.properties[key] = value
   }
@@ -254,7 +254,7 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     return Some(Property(lower.to_owned(), "true"))
   }
   if lower.has_prefix(SCALE_PREFIX) {
-    return Some(Scale(trimmed[SCALE_PREFIX.length():].trim().to_owned()))
+    return Some(Scale(parse_diagram_scale(trimmed[SCALE_PREFIX.length():].to_owned())))
   }
   if lower == "rotate" ||
     lower.has_prefix("skin ") ||
@@ -299,7 +299,7 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
   match words {
     ["!theme", theme, ..] => Some(Theme(theme))
     ["left", "to", "right", ..] => Some(Direction(LeftToRight))
-    ["scale", value, ..] => Some(Scale(value))
+    ["scale", value, ..] => Some(Scale(parse_diagram_scale(value)))
     _ => None
   }
 }
