@@ -86,7 +86,7 @@ pub extend StructuredNode with Debug::{to_repr}
 pub(all) struct StructuredDiagram {
   format : StructuredFormat
   root : StructuredNode
-  presentation : Array[(String, String)]
+  presentation : Array[@style.StyleDirective]
   styles : Array[StructuredStyleProperty]
   highlights : Array[StructuredHighlight]
 }

@@ -704,10 +704,8 @@ pub fn render_structured_svg(
     layout.bbox.lly +
     STRUCTURED_CANVAS_PADDING.to_double() * 2.0
   let style = @style.DocumentStyle::empty().with_color_scheme(color_scheme)
-  for (key, value) in diagram.presentation {
-    if @style.parse_style_directive(key + " " + value) is Some(directive) {
-      style.apply(directive)
-    }
+  for directive in diagram.presentation {
+    style.apply(directive)
   }
   let decoration = decorate_document_text(style, width, height)
   let scale = style.output_scale(decoration.width, decoration.height)

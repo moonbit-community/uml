@@ -311,12 +311,17 @@ pub fn parse_style_property(line : String) -> StyleDirective? {
   let key = cursor.take_while(char => !char.is_whitespace())
   let value = cursor.take_rest_trimmed()
   guard !key.is_empty() && !value.is_empty() else { return None }
+  Some(skinparam_directive(key, value))
+}
+
+///|
+pub fn skinparam_directive(key : String, value : String) -> StyleDirective {
   match key.to_lower() {
-    "defaultfontname" => Some(FontFamily(value))
-    "backgroundcolor" => Some(BackgroundColor(value))
-    "defaultfontsize" => Some(FontSize(value))
-    "arrowcolor" => Some(LineColor(value))
-    _ => Some(Property(key, value))
+    "defaultfontname" => FontFamily(value)
+    "backgroundcolor" => BackgroundColor(value)
+    "defaultfontsize" => FontSize(value)
+    "arrowcolor" => LineColor(value)
+    _ => Property(key, value)
   }
 }
 

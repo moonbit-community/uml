@@ -1,7 +1,7 @@
 ///|
 priv struct StructuredSource {
   data : String
-  presentation : Array[(String, String)]
+  presentation : Array[@style.StyleDirective]
   styles : Array[@structured.StructuredStyleProperty]
   highlights : Array[@structured.StructuredHighlight]
 }
@@ -55,14 +55,9 @@ fn structured_source(
                 value,
               })
             }
-            BackgroundColor(value) =>
-              presentation.push(("skinparam BackgroundColor", value))
-            FontFamily(value) =>
-              presentation.push(("skinparam DefaultFontName", value))
-            FontSize(value) =>
-              presentation.push(("skinparam DefaultFontSize", value))
-            Property(key, value) =>
-              presentation.push(("skinparam " + key, value))
+            BackgroundColor(_) | FontFamily(_) | FontSize(_) =>
+              presentation.push(directive)
+            Property(key, value) => presentation.push(@style.skinparam_directive(key, value))
             _ => ()
           }
         },
@@ -101,11 +96,11 @@ fn structured_source(
       }
       if line.has_prefix("title ") &&
         (marker != "toml" || !line[6:].trim_start().has_prefix("=")) {
-        presentation.push(("title", line[6:].trim().to_owned()))
+        presentation.push(TextBlock("title", line[6:].trim().to_owned()))
         continue
       }
       if line.has_prefix("scale ") {
-        presentation.push(("scale", line[6:].trim().to_owned()))
+        presentation.push(Scale(@style.parse_diagram_scale(line[6:].to_owned())))
         continue
       }
       if line.has_prefix("skinparam ") {
@@ -118,7 +113,7 @@ fn structured_source(
         continue
       }
       if line.has_prefix("skin ") {
-        presentation.push(("skin", line[5:].trim().to_owned()))
+        presentation.push(Property(("skin " + line[5:].trim().to_owned()).to_lower(), "true"))
         continue
       }
     }
