@@ -111,6 +111,15 @@ fn layout_events(
   let destroys = []
   let active : Map[String, Array[Int32]] = Map([])
   let group_stack = []
+  let group_starts : Map[Int, Int] = Map([])
+  let group_leaves : Map[Int, Int] = Map([])
+  for index, group in diagram.groups {
+    group_starts[group.start_event] = index
+    group_leaves[group.end_event] = index
+    for branch in group.branch_events {
+      group_leaves[branch] = index
+    }
+  }
   let mut current_y = start_y
   let mut previous_top = current_y
   let mut last_visual_bottom = start_y
@@ -228,7 +237,7 @@ fn layout_events(
         groups.push({
           start_y: y,
           end_y: y + height,
-          depth: group_stack.length(),
+          depth: diagram.groups[group_starts[event_index]].depth,
           keyword: group.keyword,
           header: group.header,
           color: group.back_color_header,
@@ -242,8 +251,8 @@ fn layout_events(
         })
         group_stack.push(groups.length() - 1)
       }
-      @seq.GroupingLeaf(leaf) =>
-        if group_stack.last() is Some(index) {
+      @seq.GroupingLeaf(leaf) => {
+          let index = group_leaves[event_index]
           let group = groups[index]
           let branch_index = group.branches.length() - 1
           let branches = group.branches
@@ -284,14 +293,6 @@ fn layout_events(
       let activation = activations[index]
       activations[index] = { ..activation, end_y: current_y, }
     }
-  }
-  for index in group_stack {
-    let group = groups[index]
-    let branch_index = group.branches.length() - 1
-    let branches = group.branches
-    let end_y = current_y.max(last_visual_bottom)
-    branches[branch_index] = { ..branches[branch_index], end_y, }
-    groups[index] = { ..group, end_y, branches, }
   }
   (placements, activations, groups, destroys, auto_page_breaks, current_y)
 }

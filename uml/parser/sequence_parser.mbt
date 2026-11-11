@@ -126,7 +126,7 @@ pub fn parse_sequence(
   }
 
   ctx.ensure_no_pending_create()
-  guard ctx.grouping_depth == 0 else {
+  guard ctx.group_stack.is_empty() else {
     let diagnostic = ctx.source.diagnostic("unclosed group")
     raise SyntaxError(diagnostic.line_number(), diagnostic.message)
   }
@@ -136,7 +136,9 @@ pub fn parse_sequence(
   }
 
   let options = diagram_options(ctx.events)
+  ctx.groups.sort_by((left, right) => left.start_event - right.start_event)
   {
+    groups: ctx.groups,
     participants: ctx.participants,
     events: ctx.events,
     autoactivate: options.autoactivate,

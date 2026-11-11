@@ -283,7 +283,16 @@ pub(all) enum Event {
 }
 
 ///|
+pub(all) struct SequenceGroup {
+  start_event : Int
+  end_event : Int
+  branch_events : Array[Int]
+  depth : Int
+}
+
+///|
 pub(all) struct SequenceDiagram {
+  groups : Array[SequenceGroup]
   participants : Map[String, Participant]
   events : Array[Event]
   autoactivate : Bool

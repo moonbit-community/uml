@@ -16,12 +16,20 @@ priv struct ParticipantDecl {
 }
 
 ///|
+priv struct OpenSequenceGroup {
+  start_event : Int
+  branch_events : Array[Int]
+  depth : Int
+}
+
+///|
 priv struct ParseCtx {
   source : @tokenizer.Cursor
   participants : Map[String, @seq.Participant]
   events : Array[@seq.Event]
   box_stack : Array[@seq.ParticipantBox]
-  mut grouping_depth : Int32
+  group_stack : Array[OpenSequenceGroup]
+  groups : Array[@seq.SequenceGroup]
   mut pending_create : String?
   activating_messages : Array[(@seq.Event, String)]
   mut last_message : @seq.Event?
@@ -39,7 +47,8 @@ fn ParseCtx::new(input : String) -> ParseCtx {
     participants: Map([]),
     events: [],
     box_stack: [],
-    grouping_depth: 0,
+    group_stack: [],
+    groups: [],
     pending_create: None,
     activating_messages: [],
     last_message: None,
@@ -181,13 +190,25 @@ fn ParseCtx::validate_event(
     }
   }
   match event {
-    @seq.GroupingStart(_) => self.grouping_depth += 1
+    @seq.GroupingStart(_) => self.group_stack.push({
+      start_event: self.events.length(),
+      branch_events: [],
+      depth: self.group_stack.length(),
+    })
     @seq.GroupingLeaf(leaf) => {
-      guard self.grouping_depth > 0 else {
+      guard self.group_stack.last() is Some(group) else {
         self.source.raise_parse_error("group leaf without a group")
       }
       if leaf.is_end {
-        self.grouping_depth -= 1
+        ignore(self.group_stack.pop())
+        self.groups.push({
+          start_event: group.start_event,
+          end_event: self.events.length(),
+          branch_events: group.branch_events,
+          depth: group.depth,
+        })
+      } else {
+        group.branch_events.push(self.events.length())
       }
     }
     @seq.BoxEnd => {
