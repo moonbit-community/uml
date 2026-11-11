@@ -1,39 +1,50 @@
 ///|
-fn autonumber_parts(value : String) -> (Array[String], Array[String]) {
-  let numbers : Array[String] = []
-  let separators : Array[String] = []
+struct NumberPart {
+  value : Int
+  text : String
+}
+
+///|
+pub struct DottedNumber {
+  parts : Array[NumberPart]
+  separators : Array[String]
+}
+
+///|
+pub fn parse_autonumber_number(source : String) -> DottedNumber {
+  let parts = []
+  let separators = []
   let mut part = StringBuilder()
   let mut digits = true
-  for char in value {
+  for char in source {
     let next_digits = char.is_ascii_digit()
     if next_digits != digits {
+      let text = part.to_string()
       if digits {
-        numbers.push(part.to_string())
+        parts.push({ value: @string.parse_int(text) catch { _ => 0 }, text, })
       } else {
-        separators.push(part.to_string())
+        separators.push(text)
       }
       part = StringBuilder()
       digits = next_digits
     }
     part.write_char(char)
   }
+  let text = part.to_string()
   if digits {
-    numbers.push(part.to_string())
+    parts.push({ value: @string.parse_int(text) catch { _ => 0 }, text, })
   } else {
-    separators.push(part.to_string())
+    separators.push(text)
   }
-  (numbers, separators)
+  { parts, separators, }
 }
 
 ///|
-fn join_autonumber(
-  numbers : Array[String],
-  separators : Array[String],
-) -> String {
+fn DottedNumber::text(self : DottedNumber) -> String {
   let output = StringBuilder()
-  for index, number in numbers {
-    output.write_string(number)
-    if separators.get(index) is Some(separator) {
+  for index, part in self.parts {
+    output.write_string(part.text)
+    if self.separators.get(index) is Some(separator) {
       output.write_string(separator)
     }
   }
@@ -41,34 +52,44 @@ fn join_autonumber(
 }
 
 ///|
-pub fn increment_autonumber_at(
-  value : String,
-  index : Int32,
-  increment : Int32,
-) -> String {
-  let (numbers, separators) = autonumber_parts(value)
-  guard numbers.length() > 0 else { return increment.to_string() }
-  let index = index.max(0).min(numbers.length() - 1)
-  numbers[index] = ((@string.parse_int(numbers[index]) catch { _ => 0 }) +
-  increment).to_string()
-  join_autonumber(numbers, separators)
-}
-
-///|
-pub fn increment_autonumber(value : String, increment : Int32) -> String {
-  increment_autonumber_at(
-    value,
-    autonumber_parts(value).0.length() - 1,
-    increment,
-  )
-}
-
-///|
-pub fn format_autonumber(format : String, value : String) -> String {
-  // DottedNumber uses its own bold representation for multipart numbers.
-  if !autonumber_parts(value).1.is_empty() {
-    return "<b>\{value}</b>"
+fn DottedNumber::increment(
+  self : DottedNumber,
+  index : Int,
+  increment : Int,
+  reset_tail~ : Bool = false,
+) -> DottedNumber {
+  let index = index.max(0).min(self.parts.length() - 1)
+  let result = {
+    ..self,
+    parts: self.parts.mapi((position, part) => {
+      if position == index || (reset_tail && position > index) {
+        let value = if position == index { part.value + increment } else { 1 }
+        { value, text: value.to_string(), }
+      } else {
+        part
+      }
+    }),
   }
+  // Integer overflow historically turns the minus sign into a dotted-number
+  // separator. Only that grammar-changing transition needs normalization.
+  if result.parts.any(part => part.value < 0) {
+    parse_autonumber_number(result.text())
+  } else {
+    result
+  }
+}
+
+///|
+pub struct AutonumberFormat {
+  prefix : String
+  suffix : String
+  integer_zeros : Int
+  fractional_zeros : Int
+  group_size : Int
+}
+
+///|
+pub fn parse_autonumber_format(format : String) -> AutonumberFormat {
   let prefix = StringBuilder()
   let suffix = StringBuilder()
   let pattern : Array[Char] = []
@@ -84,9 +105,7 @@ pub fn format_autonumber(format : String, value : String) -> String {
       numeric = true
       pattern.push(char)
     } else {
-      if !quoted && char == ';' {
-        break
-      }
+      if !quoted && char == ';' { break }
       if numeric {
         ended = true
         suffix.write_char(char)
@@ -107,77 +126,47 @@ pub fn format_autonumber(format : String, value : String) -> String {
       grouped = true
       group_size = 0
     } else if fraction {
-      if char == '0' {
-        fractional_zeros += 1
-      }
+      if char == '0' { fractional_zeros += 1 }
     } else {
-      if char == '0' {
-        integer_zeros += 1
-      }
-      if grouped {
-        group_size += 1
-      }
+      if char == '0' { integer_zeros += 1 }
+      if grouped { group_size += 1 }
     }
   }
-  let padding = "0".repeat((integer_zeros - value.length()).max(0))
-  let digits = "\{padding}\{value}"
-  let number = StringBuilder()
-  for index, char in digits.to_array() {
-    if group_size > 0 &&
-      index > 0 &&
-      (digits.length() - index) % group_size == 0 {
-      number.write_char(',')
-    }
-    number.write_char(char)
-  }
-  if fractional_zeros > 0 {
-    number.write_char('.')
-    for _ in 0..<fractional_zeros {
-      number.write_char('0')
-    }
-  }
-  "\{prefix}\{number}\{suffix}"
+  { prefix: prefix.to_string(), suffix: suffix.to_string(), integer_zeros, fractional_zeros, group_size, }
 }
 
 ///|
-pub fn increment_autonumber_part(
-  value : String,
-  position : String?,
-  _increment : Int32,
-) -> String {
-  let (parts, separators) = autonumber_parts(value)
-  guard parts.length() > 0 else { return increment_autonumber(value, 1) }
-  let index = match position {
-    Some(letter) if letter.length() > 0 => {
-      let chars = letter.to_lower().to_array()
-      let value = chars[0].to_int() - 'a'.to_int()
-      value.max(0).min(parts.length() - 1)
+fn AutonumberFormat::render(self : AutonumberFormat, number : DottedNumber) -> String {
+  let value = number.text()
+  if !number.separators.is_empty() { return "<b>\{value}</b>" }
+  let digits = "0".repeat((self.integer_zeros - value.length()).max(0)) + value
+  let output = StringBuilder()
+  output.write_string(self.prefix)
+  for index, char in digits.to_array() {
+    if self.group_size > 0 && index > 0 && (digits.length() - index) % self.group_size == 0 {
+      output.write_char(',')
     }
-    _ => (parts.length() - 2).max(0)
+    output.write_char(char)
   }
-  let incremented = parts.mapi((position, part) => {
-    if position > index {
-      "1"
-    } else if position == index {
-      ((@string.parse_int(part) catch { _ => 0 }) + 1).to_string()
-    } else {
-      part
-    }
-  })
-  join_autonumber(incremented, separators)
+  if self.fractional_zeros > 0 {
+    output.write_char('.')
+    output.write_string("0".repeat(self.fractional_zeros))
+  }
+  output.write_string(self.suffix)
+  output.to_string()
 }
 
 ///|
 pub(all) struct AutonumberState {
   mut enabled : Bool
-  mut next : String
+  mut next : DottedNumber
   mut increment : Int32
-  mut format : String?
+  mut format : AutonumberFormat
 }
 
 ///|
 pub fn AutonumberState::new() -> AutonumberState {
-  { enabled: false, next: "1", increment: 1, format: Some("<b>0</b>"), }
+  { enabled: false, next: parse_autonumber_number("1"), increment: 1, format: parse_autonumber_format("<b>0</b>"), }
 }
 
 ///|
@@ -185,20 +174,20 @@ pub fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
   match event {
     Autonumber(config) => {
       self.enabled = true
-      self.next = config.start.unwrap_or("1")
+      self.next = config.start.unwrap_or_else(() => parse_autonumber_number("1"))
       self.increment = config.increment.unwrap_or(1)
-      self.format = Some(config.format.unwrap_or("<b>0</b>"))
+      self.format = config.format.unwrap_or_else(() => parse_autonumber_format("<b>0</b>"))
     }
     AutonumberStop => self.enabled = false
     AutonumberResume(config) => {
       self.enabled = true
       self.increment = config.increment.unwrap_or(self.increment)
-      if config.format is Some(format) {
-        self.format = Some(format)
-      }
+      if config.format is Some(format) { self.format = format }
     }
-    AutonumberIncrement(position) =>
-      self.next = increment_autonumber_part(self.next, position, self.increment)
+    AutonumberIncrement(position) => {
+      let index = position.unwrap_or(self.next.parts.length() - 2)
+      self.next = self.next.increment(index, 1, reset_tail=true)
+    }
     _ => ()
   }
 }
@@ -207,6 +196,6 @@ pub fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
 pub fn AutonumberState::take(self : AutonumberState) -> String? {
   guard self.enabled else { return None }
   let value = self.next
-  self.next = increment_autonumber(self.next, self.increment)
-  Some(self.format.map_or(value, format => format_autonumber(format, value)))
+  self.next = value.increment(value.parts.length() - 1, self.increment)
+  Some(self.format.render(value))
 }

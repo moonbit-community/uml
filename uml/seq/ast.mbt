@@ -218,15 +218,15 @@ pub(all) struct BoxStart {
 
 ///|
 pub(all) struct Autonumber {
-  start : String?
+  start : DottedNumber?
   increment : Int32?
-  format : String?
+  format : AutonumberFormat?
 }
 
 ///|
 pub(all) struct AutonumberResume {
   increment : Int32?
-  format : String?
+  format : AutonumberFormat?
 }
 
 ///|
@@ -269,7 +269,7 @@ pub(all) enum Event {
   Autonumber(Autonumber)
   AutonumberStop
   AutonumberResume(AutonumberResume)
-  AutonumberIncrement(String?)
+  AutonumberIncrement(Int?)
   Autoactivate(Bool)
   Footbox(Bool)
   HideUnlinked(Bool)

@@ -556,7 +556,7 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
         let format = optional_quoted(cursor)
         cursor.skip_inline_spaces()
         if cursor.is_eof() {
-          return Some(@seq.AutonumberResume({ increment, format, }))
+          return Some(@seq.AutonumberResume({ increment, format: format.map(@seq.parse_autonumber_format), }))
         }
         ignore(cursor.restore(start))
         return None
@@ -565,7 +565,7 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
         let value = optional_alpha_run(cursor)
         cursor.skip_inline_spaces()
         if cursor.is_eof() {
-          return Some(@seq.AutonumberIncrement(value))
+          return Some(@seq.AutonumberIncrement(value.map(letter => letter.to_lower().to_array()[0].to_int() - 'a'.to_int())))
         }
         ignore(cursor.restore(start))
         return None
@@ -591,7 +591,7 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
       guard start_value.to_array().last().map_or(false, Char::is_ascii_digit) else {
         return None
       }
-      Some(start_value)
+      Some(@seq.parse_autonumber_number(start_value))
     } else {
       None
     }
@@ -600,7 +600,7 @@ fn autonumber_line_syntax(cursor : @tokenizer.Cursor) -> @seq.Event? {
     let format = cursor.take_quoted_value()
     cursor.skip_inline_spaces()
     if cursor.is_eof() {
-      return Some(@seq.Autonumber({ start: start_value, increment, format, }))
+      return Some(@seq.Autonumber({ start: start_value, increment, format: format.map(@seq.parse_autonumber_format), }))
     }
     ignore(cursor.restore(start))
     return None
