@@ -322,7 +322,9 @@ fn Adapter::apply_func(
 ) -> Unit {
   guard adapter.options.show_methods else { return }
   let index = if sig.type_name is Some(type_name) {
-    guard adapter.entity_index(type_name.name) is Some(index) else { return }
+    guard adapter.entity_index(ident_to_string(type_name.name)) is Some(index) else {
+      return
+    }
     index
   } else {
     let index = adapter.ensure_entity(
@@ -487,8 +489,7 @@ fn func_sig_to_string(sig : @mbti_ast.FuncSig) -> String {
   "(" +
   sig.params.map(parameter_to_string).to_array().join(", ") +
   ") -> " +
-  type_to_string(sig.return_.0) +
-  error_type_to_string(sig.return_.1)
+  return_type_to_string(sig.return_.0, sig.return_.1, sig.nocancel_ is Some(_))
 }
 
 ///|
@@ -499,8 +500,11 @@ fn trait_method_to_string(method_sig : @mbti_ast.TraitMethodSig) -> String {
   "(" +
   method_sig.params.map(parameter_to_string).to_array().join(", ") +
   ") -> " +
-  type_to_string(method_sig.return_.0) +
-  error_type_to_string(method_sig.return_.1)
+  return_type_to_string(
+    method_sig.return_.0,
+    method_sig.return_.1,
+    method_sig.nocancel_ is Some(_),
+  )
 }
 
 ///|

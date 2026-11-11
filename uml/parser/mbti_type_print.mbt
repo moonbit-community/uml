@@ -9,19 +9,47 @@ fn type_to_string(ty : @mbti_ast.Type) -> String {
       } else {
         "\{constr_id_to_string(constr_id)}[\{tys.map(type_to_string).to_array().join(", ")}]"
       }
-    Option(ty~, ..) => type_to_string(ty) + "?"
+    Option(ty~, ..) =>
+      match ty {
+        Arrow(..) => "(" + type_to_string(ty) + ")?"
+        _ => type_to_string(ty) + "?"
+      }
     Tuple(tys~, ..) => "(" + tys.map(type_to_string).to_array().join(", ") + ")"
-    Arrow(args~, res~, err~, is_async~, ..) => {
+    Arrow(args~, res~, err~, is_async~, nocancel_~, ..) => {
       let prefix = if is_async is Some(_) { "async " } else { "" }
       prefix +
       "(" +
       args.map(type_to_string).to_array().join(", ") +
       ") -> " +
-      type_to_string(res) +
-      error_type_to_string(err)
+      return_type_to_string(res, err, nocancel_ is Some(_))
     }
     Object(constr_id) => "&" + constr_id_to_string(constr_id)
   }
+}
+
+///|
+/// Parentheses keep outer effects from attaching to a returned function type.
+fn return_type_to_string(
+  ty : @mbti_ast.Type,
+  err : @mbti_ast.ErrorType,
+  has_nocancel : Bool,
+) -> String {
+  let result = if ty is Arrow(..) && (!(err is NoErrorType) || has_nocancel) {
+    "(" + type_to_string(ty) + ")"
+  } else {
+    type_to_string(ty)
+  }
+  let effect = error_type_to_string(err)
+  let cancellation = if has_nocancel {
+    if err is NoErrorType {
+      " nocancel"
+    } else {
+      " + nocancel"
+    }
+  } else {
+    ""
+  }
+  result + effect + cancellation
 }
 
 ///|
@@ -31,7 +59,7 @@ fn error_type_to_string(err : @mbti_ast.ErrorType) -> String {
     Noraise(_) => " noraise"
     DefaultErrorType(_) => " raise"
     ErrorType(ty~) => " raise " + type_to_string(ty)
-    MaybeError(ty~) => " raise " + type_to_string(ty) + "?"
+    MaybeError(..) => " raise?"
   }
 }
 
@@ -44,7 +72,7 @@ fn constr_id_to_string(id : @mbti_ast.ConstrId) -> String {
 fn ident_to_string(id : @mbti_ast.QualifiedIdent) -> String {
   match id {
     Ident(name~) => name
-    Dot(pkg~, id=name) => pkg + "." + name
+    Dot(pkg~, id=name) => "@" + pkg + "." + name
   }
 }
 
