@@ -41,12 +41,12 @@ fn timing_text_size(
 ///|
 fn timing_states(player : @flow.TimingPlayer) -> Array[String] {
   let states = player.states.map(state => state.1).rev()
-  if player.initial is Some(initial) && !states.contains(initial.states[0]) {
-    states.push(initial.states[0])
+  if player.initial is Some(initial) && !states.contains(initial.states.first()) {
+    states.push(initial.states.first())
   }
   for change in player.changes {
-    guard change.states[0] != "{hidden}" else { continue }
-    for state in change.states {
+    guard change.states.first() != "{hidden}" else { continue }
+    for state in change.states.labels() {
       if !states.contains(state) {
         states.push(state)
       }
@@ -69,10 +69,10 @@ fn TimingPlayerLayout::state_y(
 
 ///|
 fn timing_state_at(player : @flow.TimingPlayer, time : Double) -> String? {
-  let mut state = player.initial.map(change => change.states[0])
+  let mut state = player.initial.map(change => change.states.first())
   for change in player.changes {
     guard timing_tick(change.when) <= time else { break }
-    state = Some(change.states[0])
+    state = Some(change.states.first())
   }
   state
 }
@@ -87,13 +87,13 @@ fn timing_constraint_delta(
   let start = timing_tick(constraint.tick1)
   let end = timing_tick(constraint.tick2)
   let first = timing_state_at(player, start).map_or_else(
-    () => player.changes.get(0).map_or("", change => change.states[0]),
+    () => player.changes.get(0).map_or("", change => change.states.first()),
     value => value,
   )
   player.changes.fold(init=panel.state_y(first), (y, change) => {
     let time = timing_tick(change.when)
     if time > start && time < end {
-      y.min(panel.state_y(change.states[0]))
+      y.min(panel.state_y(change.states.first()))
     } else {
       y
     }
@@ -151,7 +151,7 @@ fn timing_player_layout(
   let minimum = player.bounds.map_or_else(
     () => {
       player.changes.fold(init=0.0, (value, change) => {
-        value.min(timing_number(change.states[0], 0.0))
+        value.min(change.states.analog_value())
       })
     },
     bounds => bounds.0.value,
@@ -159,7 +159,7 @@ fn timing_player_layout(
   let maximum = player.bounds.map_or_else(
     () => {
       let value = player.changes.fold(init=0.0, (value, change) => {
-        value.max(timing_number(change.states[0], 0.0))
+        value.max(change.states.analog_value())
       })
       if value == 0.0 {
         10.0
@@ -192,7 +192,7 @@ fn timing_player_layout(
       (if player.initial is Some(_) { TIMING_ROBUST_INITIAL } else { 0.0 })
     Concise | Rectangle =>
       player.initial.map_or(0.0, change => {
-        timing_text_size(change.states[0], appearance).0 + TIMING_MARGIN_X * 2.0
+        timing_text_size(change.states.first(), appearance).0 + TIMING_MARGIN_X * 2.0
       })
     Analog =>
       TIMING_SIDE +

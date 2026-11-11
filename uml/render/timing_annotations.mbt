@@ -24,24 +24,24 @@ fn timing_projection(
         let when = timing_tick(change.when)
         if when == time {
           let previous = if index == 0 {
-            player.initial.map_or(change.states[0], initial => initial.states[0])
+            player.initial.map_or(change.states.first(), initial => initial.states.first())
           } else {
-            player.changes[index - 1].states[0]
+            player.changes[index - 1].states.first()
           }
           return Some([
             point(panel.wave_y + panel.state_y(previous)),
-            point(panel.wave_y + panel.state_y(change.states[0])),
+            point(panel.wave_y + panel.state_y(change.states.first())),
           ])
         }
         if when > time {
-          let state = player.changes[(index - 1).max(0)].states[0]
+          let state = player.changes[(index - 1).max(0)].states.first()
           return Some([point(panel.wave_y + panel.state_y(state))])
         }
       }
       Some([
         point(
           panel.wave_y +
-          panel.state_y(player.changes[player.changes.length() - 1].states[0]),
+          panel.state_y(player.changes[player.changes.length() - 1].states.first()),
         ),
       ])
     }
@@ -76,13 +76,13 @@ fn timing_projection(
       let mut previous = player.changes[0]
       for change in player.changes {
         let when = timing_tick(change.when)
-        let value = timing_number(change.states[0], 0.0)
+        let value = change.states.analog_value()
         if when >= time {
           let before = timing_tick(previous.when)
           let interpolated = if before == when {
             value
           } else {
-            let first = timing_number(previous.states[0], 0.0)
+            let first = previous.states.analog_value()
             first + (value - first) * (time - before) / (when - before)
           }
           return Some([point(timing_analog_y(panel, interpolated))])
@@ -90,7 +90,7 @@ fn timing_projection(
         previous = change
       }
       Some([
-        point(timing_analog_y(panel, timing_number(previous.states[0], 0.0))),
+        point(timing_analog_y(panel, previous.states.analog_value())),
       ])
     }
   }

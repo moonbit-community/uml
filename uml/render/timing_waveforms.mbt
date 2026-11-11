@@ -41,12 +41,12 @@ fn draw_timing_analog(
   let mut x = layout.wave_x
   let mut y = timing_analog_y(
     panel,
-    player.initial.map_or(0.0, change => timing_number(change.states[0], 0.0)),
+    player.initial.map_or(0.0, change => change.states.analog_value()),
   )
   for change in player.changes {
     let next_x = layout.wave_x +
       layout.ruler.position(timing_tick(change.when))
-    let next_y = timing_analog_y(panel, timing_number(change.states[0], 0.0))
+    let next_y = timing_analog_y(panel, change.states.analog_value())
     drawing.line(x, y, next_x, next_y, paint)
     x = next_x
     y = next_y
@@ -64,19 +64,19 @@ fn draw_timing_binary(
   let paint = timing_appearance(drawing.style, "binary").paint()
   let high = panel.wave_y + TIMING_MARGIN_Y
   let low = panel.wave_y + panel.wave_height - TIMING_MARGIN_Y
-  let state_y = (states : Array[String]) => {
-    if states[0] == "0" {
+  let state_y = (states : @flow.TimingStates) => {
+    if states.first() == "0" {
       low
     } else {
       high
     }
   }
-  let mut states = player.initial.map_or(["0"], change => change.states)
+  let mut states = player.initial.map_or(@flow.Single("0"), change => change.states)
   let mut x = layout.wave_x
   for change in player.changes {
     let next_x = layout.wave_x +
       layout.ruler.position(timing_tick(change.when))
-    if states.length() == 1 {
+    if !(states is Pair(_, _)) {
       drawing.line(x, state_y(states), next_x, state_y(states), paint)
     } else {
       for hatch = x; hatch < next_x; hatch = hatch + TIMING_HATCH_STEP {
@@ -170,9 +170,9 @@ fn draw_timing_robust(
   if player.initial is Some(initial) {
     let x = layout.wave_x +
       layout.ruler.position(timing_tick(player.changes[0].when))
-    let y = y_of(initial.states[0])
+    let y = y_of(initial.states.first())
     drawing.line(layout.wave_x - TIMING_ROBUST_INITIAL, y, x, y, paint)
-    drawing.line(x, y, x, y_of(player.changes[0].states[0]), paint)
+    drawing.line(x, y, x, y_of(player.changes[0].states.first()), paint)
   }
   for index, change in player.changes {
     let x = layout.wave_x +
@@ -185,8 +185,8 @@ fn draw_timing_robust(
     } else {
       layout.wave_x + layout.ruler.width
     }
-    let ys = change.states.map(y_of)
-    if change.states[0] != "{hidden}" {
+    let ys = change.states.labels().map(y_of)
+    if change.states.first() != "{hidden}" {
       if ys.length() > 1 {
         let top = ys[0].min(ys[1])
         let bottom = ys[0].max(ys[1])
@@ -206,9 +206,9 @@ fn draw_timing_robust(
       }
     }
     if index > 0 &&
-      change.states[0] != "{hidden}" &&
-      player.changes[index - 1].states[0] != "{hidden}" {
-      let all = [..ys, ..player.changes[index - 1].states.map(y_of)]
+      change.states.first() != "{hidden}" &&
+      player.changes[index - 1].states.first() != "{hidden}" {
+      let all = [..ys, ..player.changes[index - 1].states.labels().map(y_of)]
       drawing.line(
         x,
         all.fold(init=ys[0], (a, b) => a.min(b)),
@@ -317,7 +317,7 @@ fn draw_timing_concise(
         layout.wave_x + layout.ruler.position(timing_tick(change.when))
       })
     let paint = timing_wave_paint(appearance, initial.color)
-    if initial.states[0] == "{-}" {
+    if initial.states.first() == "{-}" {
       drawing.line(x, y + height / 2.0, end, y + height / 2.0, paint)
     } else {
       draw_timing_ribbon(
@@ -335,9 +335,9 @@ fn draw_timing_concise(
         paint,
       )
       drawing.text(
-        initial.states[0],
+        initial.states.first(),
         layout.wave_x - TIMING_MARGIN_X,
-        y + (height - timing_text_size(initial.states[0], appearance).1) / 2.0,
+        y + (height - timing_text_size(initial.states.first(), appearance).1) / 2.0,
         role,
         anchor=End,
       )
@@ -355,7 +355,7 @@ fn draw_timing_concise(
         timing_tick(player.changes[index + 1].when),
       )
     }
-    let state = change.states[0]
+    let state = change.states.first()
     let paint = timing_wave_paint(appearance, change.color)
     if state == "{-}" {
       drawing.line(x, y + height / 2.0, end, y + height / 2.0, paint)

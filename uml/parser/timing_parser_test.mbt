@@ -35,9 +35,9 @@ test "state changes before any time mark become the initial state" {
     "@startuml\nrobust R\nR has \"Inactive\" as idle\nR is idle\n@3\nR is busy\n@enduml",
   )
   let player = diagram.player("R").unwrap()
-  @test.assert_eq(player.initial.unwrap().states, ["Inactive"])
+  @test.assert_eq(player.initial.unwrap().states, Single("Inactive"))
   @test.assert_eq(player.changes.length(), 1)
-  @test.assert_eq(player.changes[0].states, ["busy"])
+  @test.assert_eq(player.changes[0].states, Single("busy"))
   @test.assert_eq(player.changes[0].when.time.to_string(), "3")
   @test.assert_eq(diagram.now.unwrap().time.to_string(), "3")
 }
@@ -48,9 +48,9 @@ test "binary and analog players convert their state values" {
     "@startuml\nbinary B\nB is high\nanalog \"V\" as A\nA is 0.25\n@2\nA is 1e-1\n@enduml",
   )
   let binary = diagram.player("B").unwrap()
-  @test.assert_eq(binary.initial.unwrap().states, ["1"])
+  @test.assert_eq(binary.initial.unwrap().states, Single("1"))
   let analog = diagram.player("A").unwrap()
-  @test.assert_eq(analog.initial.unwrap().states, ["0.25"])
+  @test.assert_eq(analog.initial.unwrap().states, AnalogValue(0.25))
   // A timed analog change also seeds the initial value when none exists.
   @test.assert_eq(analog.changes.length(), 1)
 }
@@ -146,7 +146,7 @@ test "initial state overwrites and duplicate changes keep the first entry" {
     "@startuml\nrobust R\nR is a\nR is b\n@3\nR is c\n@3\nR is d\n@enduml",
   )
   let player = diagram.player("R").unwrap()
-  @test.assert_eq(player.initial.unwrap().states, ["b"])
+  @test.assert_eq(player.initial.unwrap().states, Single("b"))
   @test.assert_eq(player.changes.length(), 1)
-  @test.assert_eq(player.changes[0].states, ["c"])
+  @test.assert_eq(player.changes[0].states, Single("c"))
 }

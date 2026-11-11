@@ -172,12 +172,12 @@ fn convert_binary_state(value : String) -> String {
 ///|
 /// Parses a state value for an analog player, mirroring `Double.parseDouble`
 /// with a fallback of `0` on failure.
-fn parse_analog_value(value : String) -> String {
-  match @decimal.Decimal::from_string(value) {
-    Some(decimal) => decimal.to_string()
-    None =>
-      (@string.parse_double(value.to_string()) catch { _ => 0.0 }).to_string()
+fn parse_analog_value(value : String) -> Double {
+  let number = match @decimal.Decimal::from_string(value) {
+    Some(decimal) => decimal.to_double()
+    None => @string.parse_double(value) catch { _ => 0.0 }
   }
+  if number.is_nan() || number.is_inf() { 0.0 } else { number }
 }
 
 ///|
@@ -189,7 +189,7 @@ fn TimingParser::set_player_state(
   self : TimingParser,
   player : @flow.TimingPlayer,
   when : @flow.TimeTick?,
-  states : Array[String],
+  states : @flow.TimingStates,
   comment : String?,
   color : String?,
 ) -> Unit raise @tokenizer.ParseError {
@@ -197,14 +197,14 @@ fn TimingParser::set_player_state(
     @flow.PlayerKind::Robust
     | @flow.PlayerKind::Concise
     | @flow.PlayerKind::Rectangle => {
-      let decoded = states.map(state => decode_state(player, state))
+      let decoded = states.map_labels(state => decode_state(player, state))
       match when {
         None =>
           player.initial = Some({
             when: (),
             comment: None,
             color,
-            states: [decoded[0]],
+            states: Single(decoded.first()),
           })
         Some(tick) =>
           insert_change(
@@ -215,7 +215,7 @@ fn TimingParser::set_player_state(
       }
     }
     @flow.PlayerKind::Binary => {
-      let converted = states.map(convert_binary_state)
+      let converted = states.map_labels(convert_binary_state)
       match when {
         None =>
           player.initial = Some({
@@ -233,12 +233,12 @@ fn TimingParser::set_player_state(
       }
     }
     @flow.PlayerKind::Analog => {
-      let value = parse_analog_value(states[0])
+      let value = parse_analog_value(states.first())
       let change : @flow.ChangeState[Unit] = {
         when: (),
         comment: None,
         color: None,
-        states: [value],
+        states: AnalogValue(value),
       }
       match when {
         None => player.initial = Some(change)

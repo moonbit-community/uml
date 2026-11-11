@@ -193,37 +193,37 @@ fn parse_state_code(cursor : @tokenizer.Cursor) -> String? {
 /// continuation rejects a match, mirroring the regex backtracking.
 fn[T] with_state_spec(
   cursor : @tokenizer.Cursor,
-  continue_with : (Array[String]) -> T?,
+  continue_with : (@flow.TimingStates) -> T?,
 ) -> T? {
   for branch in 0..<7 {
     let checkpoint = cursor.offset()
     let states = match branch {
       0 =>
         match parse_quoted_any(cursor) {
-          Some(text) => Some([text])
+          Some(text) => Some(@flow.Single(text))
           None => None
         }
       1 =>
         match parse_state_code(cursor) {
-          Some(text) => Some([text])
+          Some(text) => Some(@flow.Single(text))
           None => None
         }
       2 =>
         if cursor.consume_literal("{hidden}") {
-          Some(["{hidden}"])
+          Some(@flow.Single("{hidden}"))
         } else {
           None
         }
-      3 => if cursor.consume_literal("{...}") { Some(["{...}"]) } else { None }
-      4 => if cursor.consume_literal("{-}") { Some(["{-}"]) } else { None }
-      5 => if cursor.consume_literal("{?}") { Some(["{?}"]) } else { None }
+      3 => if cursor.consume_literal("{...}") { Some(@flow.Single("{...}")) } else { None }
+      4 => if cursor.consume_literal("{-}") { Some(@flow.Single("{-}")) } else { None }
+      5 => if cursor.consume_literal("{?}") { Some(@flow.Single("{?}")) } else { None }
       _ =>
         if cursor.consume_literal("{") &&
           parse_state_code(cursor) is Some(first) &&
           cursor.consume_literal(",") &&
           parse_state_code(cursor) is Some(second) &&
           cursor.consume_literal("}") {
-          Some([first, second])
+          Some(@flow.Pair(first, second))
         } else {
           None
         }

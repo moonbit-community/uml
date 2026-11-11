@@ -78,7 +78,7 @@ pub(all) struct ChangeState[T] {
   when : T
   comment : String?
   color : String?
-  states : Array[String]
+  states : TimingStates
 }
 
 ///|
@@ -86,6 +86,54 @@ pub extend ChangeState with Eq::{not_equal, equal}
 
 ///|
 pub extend ChangeState with Debug::{to_repr}
+
+///|
+#derive(Eq, Debug)
+pub(all) enum TimingStates {
+  Single(String)
+  Pair(String, String)
+  AnalogValue(Double)
+}
+
+///|
+pub extend TimingStates with Eq::{not_equal, equal}
+
+///|
+pub extend TimingStates with Debug::{to_repr}
+
+///|
+pub fn TimingStates::first(self : TimingStates) -> String {
+  match self {
+    Single(value) | Pair(value, _) => value
+    AnalogValue(value) => value.to_string()
+  }
+}
+
+///|
+pub fn TimingStates::labels(self : TimingStates) -> Array[String] {
+  match self {
+    Single(value) => [value]
+    Pair(first, second) => [first, second]
+    AnalogValue(value) => [value.to_string()]
+  }
+}
+
+///|
+pub fn TimingStates::map_labels(self : TimingStates, f : (String) -> String) -> TimingStates {
+  match self {
+    Single(value) => Single(f(value))
+    Pair(first, second) => Pair(f(first), f(second))
+    AnalogValue(_) => self
+  }
+}
+
+///|
+pub fn TimingStates::analog_value(self : TimingStates) -> Double {
+  match self {
+    AnalogValue(value) => value
+    Single(_) | Pair(_, _) => 0.0
+  }
+}
 
 ///|
 #derive(Eq, Debug)
