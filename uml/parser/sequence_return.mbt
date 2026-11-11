@@ -18,7 +18,7 @@ fn ParseCtx::resolve_return(
     ..original,
     body: @seq.Dotted,
     line_style: value.color.map_or(original.line_style, color => {
-      Some("#" + color)
+      Some([@linestyle.Color("#" + color)])
     }),
   }
   match call {

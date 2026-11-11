@@ -1,4 +1,5 @@
 import {
+  "moonbit-community/uml/linestyle",
   "moonbitlang/core/string",
   "moonbit-community/uml/tokenizer",
   "moonbit-community/uml/flow",

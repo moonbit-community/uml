@@ -121,7 +121,7 @@ pub(all) struct TimeConstraint {
   tick1 : TimeTick
   tick2 : TimeTick
   message : String?
-  style : String?
+  style : Array[@linestyle.LineStyleToken]?
 }
 
 ///|
@@ -142,7 +142,7 @@ pub(all) struct TimingMessage {
   player2 : String
   tick2 : TimeTick?
   label : String?
-  style : String?
+  style : Array[@linestyle.LineStyleToken]?
 }
 
 ///|

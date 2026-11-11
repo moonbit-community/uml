@@ -1,6 +1,6 @@
 import {
   "moonbit-community/uml/graphics",
   "moonbit-community/metrics",
-  "moonbitlang/core/string",
+  "moonbit-community/uml/linestyle",
   "moonbitlang/core/test",
 }

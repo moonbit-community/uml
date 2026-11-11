@@ -4,15 +4,14 @@ pub fn ArrowConfig::from_dressing(
   right : DressingResult,
   body : ArrowBody,
   direction : MessageDirection,
-  line_style~ : String? = None,
+  line_style~ : Array[@linestyle.LineStyleToken]? = None,
 ) -> ArrowConfig {
   let body = line_style.map_or(body, value => {
     value
-    .split(",")
     .fold(init=body, (current, token) => {
-      match token.trim().to_lower() {
-        "dashed" | "dotted" => Dotted
-        "plain" => Solid
+      match token {
+        Dashed | Dotted => Dotted
+        Plain => Solid
         _ => current
       }
     })

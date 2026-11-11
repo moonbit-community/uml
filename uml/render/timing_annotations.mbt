@@ -152,32 +152,22 @@ fn timing_messages(
 ///|
 fn timing_link_paint(
   appearance : TimingAppearance,
-  style : String?,
+  style : Array[@linestyle.LineStyleToken]?,
 ) -> @graphics.DrawingStyle {
   let mut paint = appearance.paint()
-  guard style is Some(style) else { return paint }
-  for part in style.trim(chars="[]").split(",") {
-    let word = part.trim().to_owned()
-    match word.to_lower() {
-      "dashed" => paint = { ..paint, dash: Some([7.0, 7.0]), }
-      "dotted" => paint = { ..paint, dash: Some([1.0, 3.0]), }
-      "bold" => paint = { ..paint, stroke_width: Some(2.0), }
-      "plain" => paint = { ..paint, dash: None, }
-      "hidden" => paint = { ..paint, stroke: None, }
-      _ =>
-        if word.has_prefix("thickness=") {
-          paint = {
-            ..paint,
-            stroke_width: Some(
-              timing_number(word[10:].to_owned(), appearance.thickness),
-            ),
-          }
-        } else if word.has_prefix("#") {
-          paint = {
-            ..paint,
-            stroke: Color(@svg.svg_color(Some(word), appearance.line)),
-          }
-        }
+  for token in style.unwrap_or([]) {
+    match token {
+      Dashed => paint = { ..paint, dash: Some([7.0, 7.0]), }
+      Dotted => paint = { ..paint, dash: Some([1.0, 3.0]), }
+      Bold => paint = { ..paint, stroke_width: Some(2.0), }
+      Plain => paint = { ..paint, dash: None, }
+      Hidden => paint = { ..paint, stroke: None, }
+      Thickness(value) => paint = { ..paint, stroke_width: Some(value.unwrap_or(appearance.thickness)), }
+      Color(word) if word.has_prefix("#") => paint = {
+        ..paint,
+        stroke: Color(@svg.svg_color(Some(word), appearance.line)),
+      }
+      _ => ()
     }
   }
   paint

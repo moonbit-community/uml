@@ -66,7 +66,7 @@ pub(all) struct ArrowConfig {
   part : ArrowPart
   circle_start : Bool
   circle_end : Bool
-  line_style : String?
+  line_style : Array[@linestyle.LineStyleToken]?
 }
 
 ///|

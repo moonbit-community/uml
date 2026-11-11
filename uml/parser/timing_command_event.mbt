@@ -64,7 +64,7 @@ fn parse_optional_time(cursor : @tokenizer.Cursor) -> TimeExpr? {
 
 ///|
 /// Matches the `[-]+` body and optional `[...]` style of a message arrow.
-fn parse_arrow(cursor : @tokenizer.Cursor) -> (String, String?)? {
+fn parse_arrow(cursor : @tokenizer.Cursor) -> (String, Array[@linestyle.LineStyleToken]?)? {
   let body = cursor.take_while(char => char == '-')
   guard body.length() > 0 else { return None }
   let style = if cursor.consume('[') {
@@ -80,44 +80,42 @@ fn parse_arrow(cursor : @tokenizer.Cursor) -> (String, String?)? {
 
 ///|
 /// Matches one `LINE_STYLE` item: `#\w+`, a style keyword, or `thickness=\d+`.
-fn parse_arrow_style_item(cursor : @tokenizer.Cursor) -> Bool {
+fn parse_arrow_style_item(cursor : @tokenizer.Cursor) -> @linestyle.LineStyleToken? {
   if cursor.consume('#') {
-    guard take_word(cursor).length() > 0 else { return false }
-    return true
+    let word = take_word(cursor)
+    guard !word.is_empty() else { return None }
+    return Some(Color("#" + word))
   }
-  for
-    keyword in [
-      "dotted", "dashed", "plain", "bold", "hidden", "norank", "single", "node",
-    ] {
-    if match_keyword(cursor, keyword) {
-      return true
-    }
+  for (keyword, token) in [
+    ("dotted", @linestyle.Dotted), ("dashed", Dashed), ("plain", Plain),
+    ("bold", Bold), ("hidden", Hidden), ("norank", NoRank),
+    ("single", Single), ("node", Node),
+  ] {
+    if match_keyword(cursor, keyword) { return Some(token) }
   }
   let checkpoint = cursor.offset()
-  guard match_keyword(cursor, "thickness") else { return false }
-  guard cursor.consume('=') else {
+  guard match_keyword(cursor, "thickness") else { return None }
+  guard cursor.consume('=') && match_ascii_digits(cursor) is Some(number) else {
     ignore(cursor.restore(checkpoint))
-    return false
+    return None
   }
-  guard match_ascii_digits(cursor) is Some(_) else {
-    ignore(cursor.restore(checkpoint))
-    return false
-  }
-  true
+  Some(Thickness(Some(number.to_double())))
 }
 
 ///|
 /// Matches the comma-separated `LINE_STYLE` list inside `[...]`.
-fn parse_arrow_style(cursor : @tokenizer.Cursor) -> String? {
+fn parse_arrow_style(cursor : @tokenizer.Cursor) -> Array[@linestyle.LineStyleToken]? {
   let start = cursor.offset()
-  guard parse_arrow_style_item(cursor) else { return None }
+  guard parse_arrow_style_item(cursor) is Some(first) else { return None }
+  let tokens = [first]
   while cursor.consume(',') {
-    guard parse_arrow_style_item(cursor) else {
+    guard parse_arrow_style_item(cursor) is Some(token) else {
       ignore(cursor.restore(start))
       return None
     }
+    tokens.push(token)
   }
-  Some(cursor.slice(start, cursor.offset()))
+  Some(tokens)
 }
 
 ///|

@@ -1,4 +1,5 @@
 import {
+  "moonbit-community/uml/linestyle",
   "moonbit-community/uml/entity",
   "moonbit-community/uml/style",
   "moonbitlang/x/decimal",
