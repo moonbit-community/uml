@@ -196,15 +196,14 @@ pub extend GraphvizEdge with Debug::{to_repr}
 /// its semantic index. Orthogonal PlantUML links use the exterior label slot.
 pub fn graphviz_edges(
   laid_out : @dot_layout.DotLayoutGraph,
-  names : Map[Int32, String],
+  names : Map[Int32, Int32],
   bbox : @geom.Rect,
   external_labels~ : Bool = false,
 ) -> Array[GraphvizEdge] {
   laid_out.edges.filter_map(edge_layout => {
-    guard names.get(edge_layout.edge.id()) is Some(index_text) else {
+    guard names.get(edge_layout.edge.id()) is Some(index) else {
       return None
     }
-    let index = @string.parse_int(index_text) catch { _ => return None }
     let splines = edge_layout.splines.map(spline => {
       graphviz_path_to_svg(spline, bbox)
     })

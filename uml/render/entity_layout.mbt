@@ -311,7 +311,7 @@ fn @entity.EntityDiagram::graphviz_layout(
       node.set_attr("margin", "0")
     }
   }
-  let relation_names : Map[Int32, String] = Map([])
+  let relation_names : Map[Int32, Int32] = Map([])
   let source_ports : Map[String, Array[String]] = Map([])
   let sink_ports : Map[String, Array[String]] = Map([])
   for index, entity in self.entities {
@@ -432,7 +432,7 @@ fn @entity.EntityDiagram::graphviz_layout(
         graph.edge(tail, head, name="e\{relation_index}", head_port~)
       (None, None) => graph.edge(tail, head, name="e\{relation_index}")
     }
-    relation_names[edge.id()] = "\{relation_index}"
+    relation_names[edge.id()] = relation_index
     edge.set_attr("minlen", "\{relation.graphviz_minlen()}")
     let mut label = relation.label.unwrap_or("")
     for note in self.notes {
@@ -567,7 +567,7 @@ fn @entity.EntityDiagram::graphviz_layout(
     edge.set_attr("dir", "none")
   }
   let note_names : Map[String, Int32] = Map([])
-  let note_edge_names : Map[Int32, String] = Map([])
+  let note_edge_names : Map[Int32, Int32] = Map([])
   for note_index, note in self.notes {
     if note.target_kind is @entity.NoteTargetKind::LinkNote {
       continue
@@ -632,7 +632,7 @@ fn @entity.EntityDiagram::graphviz_layout(
               name="note_edge\{note_index}",
             )
         }
-        note_edge_names[edge.id()] = "\{note_index}"
+        note_edge_names[edge.id()] = note_index
         edge.set_attr("dir", "none")
         edge.set_attr("style", "invis")
         edge.set_attr("minlen", "\{minlen}")

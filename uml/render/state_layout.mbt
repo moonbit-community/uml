@@ -799,7 +799,7 @@ fn @flow.StateDiagram::layout_scope(
       }
     }
   }
-  let transition_names : Map[Int32, String] = Map([])
+  let transition_names : Map[Int32, Int32] = Map([])
   for transition_index, transition in self.transitions {
     let route_scope = self.transition_scope(transition)
     guard route_scope == scope else { continue }
@@ -859,7 +859,7 @@ fn @flow.StateDiagram::layout_scope(
         graph.edge(tail, head, name=edge_name, head_port~)
       (None, None) => graph.edge(tail, head, name=edge_name)
     }
-    transition_names[edge.id()] = transition_index.to_string()
+    transition_names[edge.id()] = transition_index
     if transition.has_line_style("norank") {
       edge.set_attr("constraint", "false")
     }
@@ -904,7 +904,7 @@ fn @flow.StateDiagram::layout_scope(
     edge.set_attr("arrowtail", "none")
   }
   let note_names : Map[String, Int32] = Map([])
-  let note_edge_names : Map[Int32, String] = Map([])
+  let note_edge_names : Map[Int32, Int32] = Map([])
   let note_metrics = resolve_state_font(self.style, NoteLabel).metrics
   for note_index, note in self.notes {
     guard !(note.target is @flow.TransitionNote(_)) else { continue }
@@ -931,7 +931,7 @@ fn @flow.StateDiagram::layout_scope(
     } else {
       graph.edge(node, anchor_node)
     }
-    note_edge_names[edge.id()] = note_index.to_string()
+    note_edge_names[edge.id()] = note_index
     edge.set_attr("dir", "none")
     edge.set_attr("arrowhead", "none")
     edge.set_attr("arrowtail", "none")

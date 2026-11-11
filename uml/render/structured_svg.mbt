@@ -393,7 +393,7 @@ fn structured_graph_node(
   scheme : @style.ColorScheme,
   graph : @cgraph.Graph,
   blocks : Array[StructuredBlock],
-  edges : Map[Int32, String],
+  edges : Map[Int32, Int32],
 ) -> @cgraph.Node {
   let index = blocks.length()
   let block = structured_block(diagram, node, path, scheme)
@@ -423,7 +423,7 @@ fn structured_graph_node(
     edge.set_attr("arrowsize", ".75")
     edge.set_attr("arrowtail", "none")
     edge.set_attr("arrowhead", "normal")
-    edges[edge.id()] = edges.length().to_string()
+    edges[edge.id()] = edges.length()
   }
   vertex
 }
@@ -676,7 +676,7 @@ pub fn render_structured_svg(
   graph.set_attr("rankdir", "LR")
   graph.set_attr("splines", "spline")
   let blocks = []
-  let edge_names : Map[Int32, String] = Map([])
+  let edge_names : Map[Int32, Int32] = Map([])
   ignore(
     structured_graph_node(
       diagram,
