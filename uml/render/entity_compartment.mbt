@@ -37,7 +37,7 @@ fn @entity.Member::rendered_height(
   metrics : ClassTextMetrics,
 ) -> Int32 {
   let font = if self.is_abstract { metrics.italic } else { metrics.regular }
-  font.entity_measure(self.display_without_visibility()).height.max(
+  font.entity_measure(self.display).height.max(
     metrics.row_height(),
   )
 }
@@ -61,7 +61,7 @@ fn build_class_compartment(
     items.push(MemberRow(entry, row_height))
     let font = if entry.is_abstract { metrics.italic } else { metrics.regular }
     width = width.max(
-      font.entity_measure(entry.display_without_visibility()).width + icon_width,
+      font.entity_measure(entry.display).width + icon_width,
     )
     height += row_height
     index += 1
@@ -94,21 +94,17 @@ fn @entity.Entity::custom_compartments(
   self : @entity.Entity,
   metrics : ClassTextMetrics,
 ) -> Array[ClassCompartment]? {
-  guard self.members.any(entry => entry.is_separator) else { return None }
+  guard self.members.any(entry => entry.separator is Some(_)) else { return None }
   let result : Array[ClassCompartment] = []
   let mut entries : Array[@entity.Member] = []
   let mut separator = '_'
   let mut title : String? = None
   for entry in self.members {
     guard self.entry_visible(entry) else { continue }
-    if entry.is_separator {
+    if entry.separator is Some((kind, heading)) {
       result.push(build_class_compartment(entries, separator, title, metrics))
-      separator = entry.raw.to_array()[0]
-      title = if entry.raw.length() > 4 {
-        Some(entry.raw[2:entry.raw.length() - 2].trim().to_owned())
-      } else {
-        None
-      }
+      separator = kind
+      title = heading
       entries = []
     } else {
       entries.push(entry)

@@ -83,11 +83,12 @@ pub extend Visibility with Debug::{to_repr}
 #derive(Eq, Debug)
 pub(all) struct Member {
   raw : String
+  display : String
   visibility : Visibility
   is_method : Bool
   is_static : Bool
   is_abstract : Bool
-  is_separator : Bool
+  separator : (Char, String?)?
   is_hidden : Bool
 }
 

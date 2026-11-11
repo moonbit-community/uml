@@ -218,9 +218,25 @@ fn member_of(line : String) -> @entity.Member {
       raw.has_prefix(marker) && raw.has_suffix(marker)
     }) &&
     raw != "..."
+  let text = @entity.member_display(raw)
+  let visibility = visibility_of(text)
+  let display = match visibility {
+    Unknown => text
+    _ => text[1:].trim_start().to_owned()
+  }
+  let separator = if is_separator {
+    Some((raw.to_array()[0], if raw.length() > 4 {
+      Some(raw[2:raw.length() - 2].trim().to_owned())
+    } else {
+      None
+    }))
+  } else {
+    None
+  }
   {
     raw,
-    visibility: visibility_of(@entity.member_display(raw)),
+    display,
+    visibility,
     is_method: if raw.contains("{method}") {
       true
     } else if raw.contains("{field}") {
@@ -231,7 +247,7 @@ fn member_of(line : String) -> @entity.Member {
     is_static: raw.to_lower().contains("{static}") ||
     raw.to_lower().contains("{classifier}"),
     is_abstract: raw.to_lower().contains("{abstract}"),
-    is_separator,
+    separator,
     is_hidden: false,
   }
 }

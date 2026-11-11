@@ -446,7 +446,7 @@ fn draw_member_text(
   color : String,
 ) -> Unit {
   let font = if entry.is_abstract { metrics.italic } else { metrics.regular }
-  let text = entry.display_without_visibility()
+  let text = entry.display
   draw_class_text(
     output,
     x,

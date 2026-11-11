@@ -613,7 +613,7 @@ fn EntityPaintContext::append_object_body(
   let mut body_y = y + header.height
   let output = self.output
   for entry in body.entries {
-    if entry.is_separator {
+    if entry.separator is Some(_) {
       body_y += OBJECT_SEPARATOR_HEIGHT
       output
       .with_style({ ..separator_attributes, })

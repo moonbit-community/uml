@@ -43,15 +43,6 @@ fn @entity.Entity::spot(
 }
 
 ///|
-fn @entity.Member::display_without_visibility(self : @entity.Member) -> String {
-  let display = @entity.member_display(self.raw)
-  match self.visibility {
-    Unknown => display
-    _ => display[1:].trim_start().to_owned()
-  }
-}
-
-///|
 /// Horizontal offset of the member text from the class rect's left edge.
 /// PlantUML starts unadorned members (e.g. enum values) at x+5 with no
 /// placeholder, while visibility-prefixed members reserve x+20 for the icon.
@@ -394,7 +385,7 @@ fn @entity.Entity::object_body_layout(
   let mut previous_separator = false
   for entry in self.members {
     guard self.entry_visible(entry) else { continue }
-    if entry.is_separator {
+    if entry.separator is Some(_) {
       // PlantUML does not render leading, trailing, or repeated separators as
       // empty rows.  Filtering them here keeps the SVG and node size aligned.
       guard member_count > 0 && !previous_separator else { continue }
@@ -410,7 +401,7 @@ fn @entity.Entity::object_body_layout(
   }
   let has_visibility = self.members.any(entry => {
     self.entry_visible(entry) &&
-    !entry.is_separator &&
+    entry.separator is None &&
     !(entry.visibility is Unknown)
   })
   let height = if member_count == 0 {
@@ -587,7 +578,7 @@ fn @entity.Entity::node_ports(
       }
     } else {
       for entry in body.entries {
-        if entry.is_separator {
+        if entry.separator is Some(_) {
           top += OBJECT_SEPARATOR_HEIGHT
         } else {
           rows.push((entry, top))
@@ -631,7 +622,7 @@ fn @entity.Entity::node_ports(
   for row in rows {
     let (entry, top) = row
     for name in names {
-      let score = member_port_score(entry.display_without_visibility(), name)
+      let score = member_port_score(entry.display, name)
       guard score > 0 else { continue }
       if elected.get(name).map_or(true, previous => previous.score < score) {
         elected[name] = {
@@ -1083,7 +1074,7 @@ fn @entity.Entity::body_layout(
 ) -> ClassBodyLayout {
   let text_metrics = text_metrics.for_entity(self)
   let visible = self.members.filter(entry => {
-    self.entry_visible(entry) && !entry.is_separator
+    self.entry_visible(entry) && entry.separator is None
   })
   let fields = visible.filter(entry => !entry.is_method)
   let methods = visible.filter(entry => entry.is_method)
@@ -1146,7 +1137,7 @@ fn @entity.Entity::entry_visible(
 ) -> Bool {
   !entry.is_hidden &&
   !(entry.is_method && self.methods_hidden) &&
-  !(!entry.is_method && !entry.is_separator && self.fields_hidden)
+  !(!entry.is_method && entry.separator is None && self.fields_hidden)
 }
 
 ///|
@@ -1503,7 +1494,7 @@ fn @entity.Entity::class_node_size(
       text_metrics.regular
     }
     width = width.max(
-      metrics.entity_measure(entry.display_without_visibility()).width +
+      metrics.entity_measure(entry.display).width +
       entry.member_text_x() +
       5,
     )
@@ -1528,9 +1519,9 @@ fn @entity.Entity::object_node_size(
   let text_x = if body.has_visibility { 20 } else { 5 }
   let mut width = header.width
   for entry in body.entries {
-    guard !entry.is_separator else { continue }
+    guard entry.separator is None else { continue }
     let text_width = text_metrics.regular.entity_measure(
-        entry.display_without_visibility(),
+        entry.display,
       ).width
     width = width.max(text_width + text_x + OBJECT_TEXT_HORIZONTAL_PADDING)
   }

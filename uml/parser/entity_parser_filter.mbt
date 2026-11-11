@@ -223,11 +223,11 @@ fn member_matches_portion(
   portion : @entity.EntityPortion,
 ) -> Bool {
   match portion {
-    @entity.EntityPortion::MemberPortion => !entry.is_separator
+    @entity.EntityPortion::MemberPortion => entry.separator is None
     @entity.EntityPortion::FieldPortion =>
-      !entry.is_method && !entry.is_separator
+      !entry.is_method && entry.separator is None
     @entity.EntityPortion::MethodPortion =>
-      entry.is_method && !entry.is_separator
+      entry.is_method && entry.separator is None
     @entity.EntityPortion::CirclePortion
     | @entity.EntityPortion::StereotypePortion => false
   }

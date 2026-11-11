@@ -202,7 +202,7 @@ test "keeps class-body separators distinct from members" {
   )
   let members = diagram.entity("User").unwrap().members
   @test.assert_eq(members.length(), 3)
-  @test.assert_eq(members[1].is_separator, true)
+  @test.assert_eq(members[1].separator is Some(_), true)
 }
 
 ///|

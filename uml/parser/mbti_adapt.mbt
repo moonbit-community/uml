@@ -422,13 +422,19 @@ fn entity_member(
   visibility : @entity.Visibility,
   is_method : Bool,
 ) -> @entity.Member {
+  let text = @entity.member_display(raw)
+  let display = match visibility {
+    Unknown => text
+    _ => text[1:].trim_start().to_owned()
+  }
   {
     raw,
+    display,
     visibility,
     is_method,
     is_static: false,
     is_abstract: false,
-    is_separator: false,
+    separator: None,
     is_hidden: false,
   }
 }
