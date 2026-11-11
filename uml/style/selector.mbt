@@ -3,7 +3,7 @@
 pub(all) enum SelectorTerm {
   Name(String)
   Stereotype(String)
-  Depth(Int)
+  Depth(Int32)
 }
 
 ///|

@@ -64,7 +64,9 @@ fn parse_optional_time(cursor : @tokenizer.Cursor) -> TimeExpr? {
 
 ///|
 /// Matches the `[-]+` body and optional `[...]` style of a message arrow.
-fn parse_arrow(cursor : @tokenizer.Cursor) -> (String, Array[@linestyle.LineStyleToken]?)? {
+fn parse_arrow(
+  cursor : @tokenizer.Cursor,
+) -> (String, Array[@linestyle.LineStyleToken]?)? {
   let body = cursor.take_while(char => char == '-')
   guard body.length() > 0 else { return None }
   let style = if cursor.consume('[') {
@@ -80,18 +82,28 @@ fn parse_arrow(cursor : @tokenizer.Cursor) -> (String, Array[@linestyle.LineStyl
 
 ///|
 /// Matches one `LINE_STYLE` item: `#\w+`, a style keyword, or `thickness=\d+`.
-fn parse_arrow_style_item(cursor : @tokenizer.Cursor) -> @linestyle.LineStyleToken? {
+fn parse_arrow_style_item(
+  cursor : @tokenizer.Cursor,
+) -> @linestyle.LineStyleToken? {
   if cursor.consume('#') {
     let word = take_word(cursor)
     guard !word.is_empty() else { return None }
     return Some(Color("#" + word))
   }
-  for (keyword, token) in [
-    ("dotted", @linestyle.Dotted), ("dashed", Dashed), ("plain", Plain),
-    ("bold", Bold), ("hidden", Hidden), ("norank", NoRank),
-    ("single", Single), ("node", Node),
-  ] {
-    if match_keyword(cursor, keyword) { return Some(token) }
+  for
+    (keyword, token) in [
+      ("dotted", @linestyle.Dotted),
+      ("dashed", Dashed),
+      ("plain", Plain),
+      ("bold", Bold),
+      ("hidden", Hidden),
+      ("norank", NoRank),
+      ("single", Single),
+      ("node", Node),
+    ] {
+    if match_keyword(cursor, keyword) {
+      return Some(token)
+    }
   }
   let checkpoint = cursor.offset()
   guard match_keyword(cursor, "thickness") else { return None }
@@ -104,7 +116,9 @@ fn parse_arrow_style_item(cursor : @tokenizer.Cursor) -> @linestyle.LineStyleTok
 
 ///|
 /// Matches the comma-separated `LINE_STYLE` list inside `[...]`.
-fn parse_arrow_style(cursor : @tokenizer.Cursor) -> Array[@linestyle.LineStyleToken]? {
+fn parse_arrow_style(
+  cursor : @tokenizer.Cursor,
+) -> Array[@linestyle.LineStyleToken]? {
   let start = cursor.offset()
   guard parse_arrow_style_item(cursor) is Some(first) else { return None }
   let tokens = [first]
@@ -203,7 +217,9 @@ fn timing_parse_note(
 }
 
 ///|
-fn timing_parse_note_position(cursor : @tokenizer.Cursor) -> @flow.TimingNotePosition? {
+fn timing_parse_note_position(
+  cursor : @tokenizer.Cursor,
+) -> @flow.TimingNotePosition? {
   if match_keyword(cursor, "top") {
     Some(Top)
   } else if match_keyword(cursor, "bottom") {

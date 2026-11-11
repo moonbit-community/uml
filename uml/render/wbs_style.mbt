@@ -37,7 +37,8 @@ fn wbs_selector_matches(
       Name("leafnode") =>
         !arrow && node.parent is Some(_) && !wbs_has_children(diagram, index)
       Name("boxless") => !arrow && node.shape is @tree.NodeShape::Boxless
-      Stereotype(label) => stereotype.map_or(false, value => wbs_stereotype(value) == label)
+      Stereotype(label) =>
+        stereotype.map_or(false, value => wbs_stereotype(value) == label)
       Depth(level) => level == node.level
       Name(_) => false
     }
@@ -66,7 +67,8 @@ fn wbs_properties(
       continue
     }
     let specificity = property.selector.fold(init=0, (score, term) => {
-      score + (match term {
+      score +
+      (match term {
         Stereotype(_) => 1000
         Depth(_) | Name("rootnode" | "leafnode" | "boxless") => 100
         Name(_) => 1

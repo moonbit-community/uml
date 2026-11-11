@@ -46,12 +46,12 @@ fn structured_source(
         },
         directive => {
           match directive {
-            Rule(words, name, value) => {
+            Rule(words, name, value) =>
               styles.push({ selector: words, name, value, })
-            }
             BackgroundColor(_) | FontFamily(_) | FontSize(_) =>
               presentation.push(directive)
-            Property(key, value) => presentation.push(@style.skinparam_directive(key, value))
+            Property(key, value) =>
+              presentation.push(@style.skinparam_directive(key, value))
             _ => ()
           }
         },
@@ -94,7 +94,9 @@ fn structured_source(
         continue
       }
       if line.has_prefix("scale ") {
-        presentation.push(Scale(@style.parse_diagram_scale(line[6:].to_owned())))
+        presentation.push(
+          Scale(@style.parse_diagram_scale(line[6:].to_owned())),
+        )
         continue
       }
       if line.has_prefix("skinparam ") {
@@ -107,7 +109,9 @@ fn structured_source(
         continue
       }
       if line.has_prefix("skin ") {
-        presentation.push(Property(("skin " + line[5:].trim().to_owned()).to_lower(), "true"))
+        presentation.push(
+          Property(("skin " + line[5:].trim().to_owned()).to_lower(), "true"),
+        )
         continue
       }
     }

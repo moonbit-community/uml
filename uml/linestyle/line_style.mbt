@@ -38,7 +38,9 @@ pub fn line_style_keyword(word : String) -> LineStyleToken? {
 /// Dynamic skinparam values and permissive diagram grammars retain unknown
 /// tokens as colors. Thickness(None) preserves their ignored invalid numbers.
 pub fn parse_line_style(source : String) -> Array[LineStyleToken] {
-  source.split(",").map(part => {
+  source
+  .split(",")
+  .map(part => {
     let word = part.trim().to_owned()
     if line_style_keyword(word) is Some(token) {
       token
@@ -47,5 +49,6 @@ pub fn parse_line_style(source : String) -> Array[LineStyleToken] {
     } else {
       Color(word)
     }
-  }).to_array()
+  })
+  .to_array()
 }

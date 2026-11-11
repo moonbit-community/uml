@@ -214,9 +214,24 @@ fn[T] with_state_spec(
         } else {
           None
         }
-      3 => if cursor.consume_literal("{...}") { Some(@flow.Single("{...}")) } else { None }
-      4 => if cursor.consume_literal("{-}") { Some(@flow.Single("{-}")) } else { None }
-      5 => if cursor.consume_literal("{?}") { Some(@flow.Single("{?}")) } else { None }
+      3 =>
+        if cursor.consume_literal("{...}") {
+          Some(@flow.Single("{...}"))
+        } else {
+          None
+        }
+      4 =>
+        if cursor.consume_literal("{-}") {
+          Some(@flow.Single("{-}"))
+        } else {
+          None
+        }
+      5 =>
+        if cursor.consume_literal("{?}") {
+          Some(@flow.Single("{?}"))
+        } else {
+          None
+        }
       _ =>
         if cursor.consume_literal("{") &&
           parse_state_code(cursor) is Some(first) &&

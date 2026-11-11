@@ -215,47 +215,46 @@ fn structured_paint(
   let selected : Array[(Int32, Int32, @structured.StructuredStyleProperty)] = []
   for order, property in diagram.styles {
     let mut specificity = 0
-    let matches = property.selector
-      .all(group => {
-        group
-        .to_lower()
-        .split(",")
-        .any(word => {
-          if word.is_empty() {
-            return true
+    let matches = property.selector.all(group => {
+      group
+      .to_lower()
+      .split(",")
+      .any(word => {
+        if word.is_empty() {
+          return true
+        }
+        match word {
+          "root" | "element" => true
+          _ if word == family => true
+          "node" => role != "arrow"
+          "header" => {
+            specificity += 10
+            role == "header"
           }
-          match word {
-            "root" | "element" => true
-            _ if word == family => true
-            "node" => role != "arrow"
-            "header" => {
-              specificity += 10
-              role == "header"
-            }
-            "separator" => {
-              specificity += 10
-              role == "separator"
-            }
-            "arrow" => {
-              specificity += 10
-              role == "arrow"
-            }
-            "highlight" => {
-              specificity += 100
-              highlight is Some(_)
-            }
-            _ if word.has_prefix(".") => {
-              specificity += 1000
-              highlight
-              .bind(value => value.stereotype)
-              .map_or(false, name => {
-                structured_stereotype(name) == word[1:].to_owned()
-              })
-            }
-            _ => false
+          "separator" => {
+            specificity += 10
+            role == "separator"
           }
-        })
+          "arrow" => {
+            specificity += 10
+            role == "arrow"
+          }
+          "highlight" => {
+            specificity += 100
+            highlight is Some(_)
+          }
+          _ if word.has_prefix(".") => {
+            specificity += 1000
+            highlight
+            .bind(value => value.stereotype)
+            .map_or(false, name => {
+              structured_stereotype(name) == word[1:].to_owned()
+            })
+          }
+          _ => false
+        }
       })
+    })
     if matches {
       selected.push((specificity, order, property))
     }

@@ -1,8 +1,6 @@
 ///|
 fn sequence_arrow_hidden(config : @seq.ArrowConfig) -> Bool {
-  config.line_style.map_or(false, style => {
-    style.contains(Hidden)
-  })
+  config.line_style.map_or(false, style => style.contains(Hidden))
 }
 
 ///|

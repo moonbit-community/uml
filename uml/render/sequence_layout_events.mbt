@@ -111,8 +111,8 @@ fn layout_events(
   let destroys = []
   let active : Map[String, Array[Int32]] = Map([])
   let group_stack = []
-  let group_starts : Map[Int, Int] = Map([])
-  let group_leaves : Map[Int, Int] = Map([])
+  let group_starts : Map[Int32, Int32] = Map([])
+  let group_leaves : Map[Int32, Int32] = Map([])
   for index, group in diagram.groups {
     group_starts[group.start_event] = index
     group_leaves[group.end_event] = index
@@ -252,33 +252,33 @@ fn layout_events(
         group_stack.push(groups.length() - 1)
       }
       @seq.GroupingLeaf(leaf) => {
-          let index = group_leaves[event_index]
-          let group = groups[index]
-          let branch_index = group.branches.length() - 1
-          let branches = group.branches
-          let end_y = y.max(last_visual_bottom)
-          branches[branch_index] = { ..branches[branch_index], end_y, }
-          if leaf.is_end {
-            groups[index] = { ..group, end_y, branches, }
-            let _ = group_stack.pop()
-          } else {
-            let branch_color = leaf.back_color.map_or(
-              if group.parallel {
-                group.color
-              } else {
-                None
-              },
-              color => Some(color),
-            )
-            branches.push({
-              start_y: y,
-              end_y: y,
-              label: leaf.label,
-              color: branch_color,
-            })
-            groups[index] = { ..group, branches, }
-          }
+        let index = group_leaves[event_index]
+        let group = groups[index]
+        let branch_index = group.branches.length() - 1
+        let branches = group.branches
+        let end_y = y.max(last_visual_bottom)
+        branches[branch_index] = { ..branches[branch_index], end_y, }
+        if leaf.is_end {
+          groups[index] = { ..group, end_y, branches, }
+          let _ = group_stack.pop()
+        } else {
+          let branch_color = leaf.back_color.map_or(
+            if group.parallel {
+              group.color
+            } else {
+              None
+            },
+            color => Some(color),
+          )
+          branches.push({
+            start_y: y,
+            end_y: y,
+            label: leaf.label,
+            color: branch_color,
+          })
+          groups[index] = { ..group, branches, }
         }
+      }
       @seq.Autoactivate(_) => ()
       @seq.IgnoreNewpage => ignore_newpage = true
       @seq.AutoNewpage(_) => ()

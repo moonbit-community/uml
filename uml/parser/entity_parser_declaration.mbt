@@ -225,11 +225,16 @@ fn member_of(line : String) -> @entity.Member {
     _ => text[1:].trim_start().to_owned()
   }
   let separator = if is_separator {
-    Some((raw.to_array()[0], if raw.length() > 4 {
-      Some(raw[2:raw.length() - 2].trim().to_owned())
-    } else {
-      None
-    }))
+    Some(
+      (
+        raw.to_array()[0],
+        if raw.length() > 4 {
+          Some(raw[2:raw.length() - 2].trim().to_owned())
+        } else {
+          None
+        },
+      ),
+    )
   } else {
     None
   }

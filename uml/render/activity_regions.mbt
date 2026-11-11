@@ -180,7 +180,9 @@ fn draw_activity_group(
     let radius = activity_style_number(style, role + "RoundCorner", 0.0) / 2
     graphic.draw(
       Rectangle(origin=point(0, 0), width~, height~, rx=Some(radius), ry=None),
-      metadata=activity_class("activity-partition-" + activity_group_role(group).to_lower()),
+      metadata=activity_class(
+        "activity-partition-" + activity_group_role(group).to_lower(),
+      ),
     )
     if group.symbol is (Partition | Group) {
       let tab_width = if title.width == 0 {

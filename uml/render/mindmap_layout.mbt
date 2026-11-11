@@ -54,7 +54,9 @@ fn mindmap_properties(
   for order, property in diagram.style_properties {
     let mut score = 0
     let matches = property.selector.all(term => {
-      if term is Name("") { return true }
+      if term is Name("") {
+        return true
+      }
       score += 1
       match term {
         Name("root" | "element" | "mindmapdiagram") => true
@@ -75,7 +77,8 @@ fn mindmap_properties(
         Stereotype(label) => {
           score += 1000
           idea.stereotype.map_or(false, value => {
-            value.trim().trim_start(chars="<").trim_end(chars=">").to_lower() == label
+            value.trim().trim_start(chars="<").trim_end(chars=">").to_lower() ==
+            label
           })
         }
         Depth(depth) => {

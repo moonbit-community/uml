@@ -1,6 +1,6 @@
 ///|
 struct NumberPart {
-  value : Int
+  value : Int32
   text : String
 }
 
@@ -54,8 +54,8 @@ fn DottedNumber::text(self : DottedNumber) -> String {
 ///|
 fn DottedNumber::increment(
   self : DottedNumber,
-  index : Int,
-  increment : Int,
+  index : Int32,
+  increment : Int32,
   reset_tail~ : Bool = false,
 ) -> DottedNumber {
   let index = index.max(0).min(self.parts.length() - 1)
@@ -83,9 +83,9 @@ fn DottedNumber::increment(
 pub struct AutonumberFormat {
   prefix : String
   suffix : String
-  integer_zeros : Int
-  fractional_zeros : Int
-  group_size : Int
+  integer_zeros : Int32
+  fractional_zeros : Int32
+  group_size : Int32
 }
 
 ///|
@@ -105,7 +105,9 @@ pub fn parse_autonumber_format(format : String) -> AutonumberFormat {
       numeric = true
       pattern.push(char)
     } else {
-      if !quoted && char == ';' { break }
+      if !quoted && char == ';' {
+        break
+      }
       if numeric {
         ended = true
         suffix.write_char(char)
@@ -126,24 +128,43 @@ pub fn parse_autonumber_format(format : String) -> AutonumberFormat {
       grouped = true
       group_size = 0
     } else if fraction {
-      if char == '0' { fractional_zeros += 1 }
+      if char == '0' {
+        fractional_zeros += 1
+      }
     } else {
-      if char == '0' { integer_zeros += 1 }
-      if grouped { group_size += 1 }
+      if char == '0' {
+        integer_zeros += 1
+      }
+      if grouped {
+        group_size += 1
+      }
     }
   }
-  { prefix: prefix.to_string(), suffix: suffix.to_string(), integer_zeros, fractional_zeros, group_size, }
+  {
+    prefix: prefix.to_string(),
+    suffix: suffix.to_string(),
+    integer_zeros,
+    fractional_zeros,
+    group_size,
+  }
 }
 
 ///|
-fn AutonumberFormat::render(self : AutonumberFormat, number : DottedNumber) -> String {
+fn AutonumberFormat::render(
+  self : AutonumberFormat,
+  number : DottedNumber,
+) -> String {
   let value = number.text()
-  if !number.separators.is_empty() { return "<b>\{value}</b>" }
+  if !number.separators.is_empty() {
+    return "<b>\{value}</b>"
+  }
   let digits = "0".repeat((self.integer_zeros - value.length()).max(0)) + value
   let output = StringBuilder()
   output.write_string(self.prefix)
   for index, char in digits.to_array() {
-    if self.group_size > 0 && index > 0 && (digits.length() - index) % self.group_size == 0 {
+    if self.group_size > 0 &&
+      index > 0 &&
+      (digits.length() - index) % self.group_size == 0 {
       output.write_char(',')
     }
     output.write_char(char)
@@ -166,7 +187,12 @@ pub(all) struct AutonumberState {
 
 ///|
 pub fn AutonumberState::new() -> AutonumberState {
-  { enabled: false, next: parse_autonumber_number("1"), increment: 1, format: parse_autonumber_format("<b>0</b>"), }
+  {
+    enabled: false,
+    next: parse_autonumber_number("1"),
+    increment: 1,
+    format: parse_autonumber_format("<b>0</b>"),
+  }
 }
 
 ///|
@@ -176,13 +202,17 @@ pub fn AutonumberState::apply(self : AutonumberState, event : Event) -> Unit {
       self.enabled = true
       self.next = config.start.unwrap_or_else(() => parse_autonumber_number("1"))
       self.increment = config.increment.unwrap_or(1)
-      self.format = config.format.unwrap_or_else(() => parse_autonumber_format("<b>0</b>"))
+      self.format = config.format.unwrap_or_else(() => {
+        parse_autonumber_format("<b>0</b>")
+      })
     }
     AutonumberStop => self.enabled = false
     AutonumberResume(config) => {
       self.enabled = true
       self.increment = config.increment.unwrap_or(self.increment)
-      if config.format is Some(format) { self.format = format }
+      if config.format is Some(format) {
+        self.format = format
+      }
     }
     AutonumberIncrement(position) => {
       let index = position.unwrap_or(self.next.parts.length() - 2)

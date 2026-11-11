@@ -119,7 +119,10 @@ pub fn TimingStates::labels(self : TimingStates) -> Array[String] {
 }
 
 ///|
-pub fn TimingStates::map_labels(self : TimingStates, f : (String) -> String) -> TimingStates {
+pub fn TimingStates::map_labels(
+  self : TimingStates,
+  f : (String) -> String,
+) -> TimingStates {
   match self {
     Single(value) => Single(f(value))
     Pair(first, second) => Pair(f(first), f(second))
@@ -243,7 +246,7 @@ pub(all) struct TimingPlayer {
 ///|
 pub(all) struct AnalogBound {
   value : Double
-  precision : Int
+  precision : Int32
 }
 
 ///|

@@ -73,7 +73,8 @@ fn parse_activity_group(
   style : @style.DocumentStyle,
 ) -> @flow.ActivityGroup? {
   let cursor = @tokenizer.Cursor::new(line)
-  let symbol : @flow.ActivityGroupSymbol = match cursor.take_while(char => !char.is_whitespace()).to_lower() {
+  let symbol : @flow.ActivityGroupSymbol = match
+    cursor.take_while(char => !char.is_whitespace()).to_lower() {
     "partition" => Partition
     "package" => Package
     "rectangle" => Rectangle

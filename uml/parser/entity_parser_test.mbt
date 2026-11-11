@@ -1198,7 +1198,10 @@ test "parses map entries and linked map ports" {
   @test.assert_eq(map.map_entries.length(), 2)
   @test.assert_eq(map.map_entries[0].key, "id")
   @test.assert_eq(map.map_entries[0].content, MapValue("42"))
-  @test.assert_eq(map.map_entries[1].content, MapLink(arrow="*-->", target="Customer"))
+  @test.assert_eq(
+    map.map_entries[1].content,
+    MapLink(arrow="*-->", target="Customer"),
+  )
   @test.assert_eq(diagram.relations[0].left, "Orders")
   @test.assert_eq(diagram.relations[0].left_end, Arrow)
   @test.assert_eq(diagram.relations[0].left_port, Some("customer"))

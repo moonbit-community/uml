@@ -17,9 +17,9 @@ priv struct ParticipantDecl {
 
 ///|
 priv struct OpenSequenceGroup {
-  start_event : Int
-  branch_events : Array[Int]
-  depth : Int
+  start_event : Int32
+  branch_events : Array[Int32]
+  depth : Int32
 }
 
 ///|
@@ -190,11 +190,12 @@ fn ParseCtx::validate_event(
     }
   }
   match event {
-    @seq.GroupingStart(_) => self.group_stack.push({
-      start_event: self.events.length(),
-      branch_events: [],
-      depth: self.group_stack.length(),
-    })
+    @seq.GroupingStart(_) =>
+      self.group_stack.push({
+        start_event: self.events.length(),
+        branch_events: [],
+        depth: self.group_stack.length(),
+      })
     @seq.GroupingLeaf(leaf) => {
       guard self.group_stack.last() is Some(group) else {
         self.source.raise_parse_error("group leaf without a group")

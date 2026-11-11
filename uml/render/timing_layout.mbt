@@ -192,7 +192,8 @@ fn timing_player_layout(
       (if player.initial is Some(_) { TIMING_ROBUST_INITIAL } else { 0.0 })
     Concise | Rectangle =>
       player.initial.map_or(0.0, change => {
-        timing_text_size(change.states.first(), appearance).0 + TIMING_MARGIN_X * 2.0
+        timing_text_size(change.states.first(), appearance).0 +
+        TIMING_MARGIN_X * 2.0
       })
     Analog =>
       TIMING_SIDE +

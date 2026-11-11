@@ -44,8 +44,7 @@ fn draw_timing_analog(
     player.initial.map_or(0.0, change => change.states.analog_value()),
   )
   for change in player.changes {
-    let next_x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when))
+    let next_x = layout.wave_x + layout.ruler.position(timing_tick(change.when))
     let next_y = timing_analog_y(panel, change.states.analog_value())
     drawing.line(x, y, next_x, next_y, paint)
     x = next_x
@@ -71,11 +70,12 @@ fn draw_timing_binary(
       high
     }
   }
-  let mut states = player.initial.map_or(@flow.Single("0"), change => change.states)
+  let mut states = player.initial.map_or(@flow.Single("0"), change => {
+    change.states
+  })
   let mut x = layout.wave_x
   for change in player.changes {
-    let next_x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when))
+    let next_x = layout.wave_x + layout.ruler.position(timing_tick(change.when))
     if !(states is Pair(_, _)) {
       drawing.line(x, state_y(states), next_x, state_y(states), paint)
     } else {
@@ -175,13 +175,10 @@ fn draw_timing_robust(
     drawing.line(x, y, x, y_of(player.changes[0].states.first()), paint)
   }
   for index, change in player.changes {
-    let x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when))
+    let x = layout.wave_x + layout.ruler.position(timing_tick(change.when))
     let next_x = if index + 1 < player.changes.length() {
       layout.wave_x +
-      layout.ruler.position(
-        timing_tick(player.changes[index + 1].when),
-      )
+      layout.ruler.position(timing_tick(player.changes[index + 1].when))
     } else {
       layout.wave_x + layout.ruler.width
     }
@@ -337,23 +334,21 @@ fn draw_timing_concise(
       drawing.text(
         initial.states.first(),
         layout.wave_x - TIMING_MARGIN_X,
-        y + (height - timing_text_size(initial.states.first(), appearance).1) / 2.0,
+        y +
+        (height - timing_text_size(initial.states.first(), appearance).1) / 2.0,
         role,
         anchor=End,
       )
     }
   }
   for index, change in player.changes {
-    let x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when))
+    let x = layout.wave_x + layout.ruler.position(timing_tick(change.when))
     let last = index + 1 == player.changes.length()
     let end = if last {
       layout.wave_x + layout.ruler.width
     } else {
       layout.wave_x +
-      layout.ruler.position(
-        timing_tick(player.changes[index + 1].when),
-      )
+      layout.ruler.position(timing_tick(player.changes[index + 1].when))
     }
     let state = change.states.first()
     let paint = timing_wave_paint(appearance, change.color)

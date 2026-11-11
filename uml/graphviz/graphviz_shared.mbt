@@ -201,9 +201,7 @@ pub fn graphviz_edges(
   external_labels~ : Bool = false,
 ) -> Array[GraphvizEdge] {
   laid_out.edges.filter_map(edge_layout => {
-    guard names.get(edge_layout.edge.id()) is Some(index) else {
-      return None
-    }
+    guard names.get(edge_layout.edge.id()) is Some(index) else { return None }
     let splines = edge_layout.splines.map(spline => {
       graphviz_path_to_svg(spline, bbox)
     })

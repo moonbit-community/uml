@@ -269,7 +269,7 @@ pub(all) enum Event {
   Autonumber(Autonumber)
   AutonumberStop
   AutonumberResume(AutonumberResume)
-  AutonumberIncrement(Int?)
+  AutonumberIncrement(Int32?)
   Autoactivate(Bool)
   Footbox(Bool)
   HideUnlinked(Bool)
@@ -284,10 +284,10 @@ pub(all) enum Event {
 
 ///|
 pub(all) struct SequenceGroup {
-  start_event : Int
-  end_event : Int
-  branch_events : Array[Int]
-  depth : Int
+  start_event : Int32
+  end_event : Int32
+  branch_events : Array[Int32]
+  depth : Int32
 }
 
 ///|

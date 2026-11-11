@@ -258,7 +258,9 @@ pub fn parse_style_directive(line : String) -> StyleDirective? {
     return Some(Property(lower.to_owned(), "true"))
   }
   if lower.has_prefix(SCALE_PREFIX) {
-    return Some(Scale(parse_diagram_scale(trimmed[SCALE_PREFIX.length():].to_owned())))
+    return Some(
+      Scale(parse_diagram_scale(trimmed[SCALE_PREFIX.length():].to_owned())),
+    )
   }
   if lower == "rotate" ||
     lower.has_prefix("skin ") ||

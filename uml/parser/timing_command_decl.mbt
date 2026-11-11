@@ -155,7 +155,9 @@ fn parse_bound_number(cursor : @tokenizer.Cursor) -> @flow.AnalogBound? {
   } else {
     let source = cursor.slice(start, cursor.offset())
     Some({
-      value: @string.parse_double(source) catch { _ => 0.0 },
+      value: @string.parse_double(source) catch {
+        _ => 0.0
+      },
       precision: source.split_once(".").map_or(0, parts => parts.1.length()),
     })
   }

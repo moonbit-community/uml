@@ -1494,9 +1494,7 @@ fn @entity.Entity::class_node_size(
       text_metrics.regular
     }
     width = width.max(
-      metrics.entity_measure(entry.display).width +
-      entry.member_text_x() +
-      5,
+      metrics.entity_measure(entry.display).width + entry.member_text_x() + 5,
     )
   }
   (width, header.height + body.fields_height + body.methods_height)
@@ -1520,9 +1518,7 @@ fn @entity.Entity::object_node_size(
   let mut width = header.width
   for entry in body.entries {
     guard entry.separator is None else { continue }
-    let text_width = text_metrics.regular.entity_measure(
-        entry.display,
-      ).width
+    let text_width = text_metrics.regular.entity_measure(entry.display).width
     width = width.max(text_width + text_x + OBJECT_TEXT_HORIZONTAL_PADDING)
   }
   (width, header.height + body.height)

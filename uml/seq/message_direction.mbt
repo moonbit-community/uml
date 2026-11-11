@@ -7,8 +7,7 @@ pub fn ArrowConfig::from_dressing(
   line_style~ : Array[@linestyle.LineStyleToken]? = None,
 ) -> ArrowConfig {
   let body = line_style.map_or(body, value => {
-    value
-    .fold(init=body, (current, token) => {
+    value.fold(init=body, (current, token) => {
       match token {
         Dashed | Dotted => Dotted
         Plain => Solid

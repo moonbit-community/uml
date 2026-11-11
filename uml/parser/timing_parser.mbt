@@ -177,7 +177,11 @@ fn parse_analog_value(value : String) -> Double {
     Some(decimal) => decimal.to_double()
     None => @string.parse_double(value) catch { _ => 0.0 }
   }
-  if number.is_nan() || number.is_inf() { 0.0 } else { number }
+  if number.is_nan() || number.is_inf() {
+    0.0
+  } else {
+    number
+  }
 }
 
 ///|
@@ -218,12 +222,7 @@ fn TimingParser::set_player_state(
       let converted = states.map_labels(convert_binary_state)
       match when {
         None =>
-          player.initial = Some({
-            when: (),
-            comment,
-            color,
-            states: converted,
-          })
+          player.initial = Some({ when: (), comment, color, states: converted, })
         Some(tick) =>
           insert_change(
             player,
@@ -243,7 +242,16 @@ fn TimingParser::set_player_state(
       match when {
         None => player.initial = Some(change)
         Some(tick) => {
-          insert_change(player, { when: tick, comment: change.comment, color: change.color, states: change.states, }, true)
+          insert_change(
+            player,
+            {
+              when: tick,
+              comment: change.comment,
+              color: change.color,
+              states: change.states,
+            },
+            true,
+          )
           if player.initial is None {
             player.initial = Some(change)
           }

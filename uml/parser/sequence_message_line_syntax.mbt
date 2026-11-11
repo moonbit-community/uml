@@ -351,7 +351,9 @@ fn take_right_dressing(cursor : @tokenizer.Cursor) -> @seq.DressingResult {
 /// Matches an optional `[LINE_STYLE]` token: a comma-separated list of
 /// colors (`#\w+`) and style keywords, mirroring `CommandLinkElement.
 /// LINE_STYLE`. Consumes nothing when absent or malformed.
-fn take_arrow_style(cursor : @tokenizer.Cursor) -> Array[@linestyle.LineStyleToken]? {
+fn take_arrow_style(
+  cursor : @tokenizer.Cursor,
+) -> Array[@linestyle.LineStyleToken]? {
   cursor.attempt(cursor => {
     guard cursor.consume('[') else { return None }
     guard take_style_token(cursor) is Some(first) else { return None }
@@ -375,9 +377,13 @@ fn take_style_token(cursor : @tokenizer.Cursor) -> @linestyle.LineStyleToken? {
     }
     let word = cursor.take_while(sequence_is_word_char)
     if word == "thickness" && cursor.consume('=') {
-      let number = cursor.take_while(char => char.is_ascii_digit() || char == '.')
+      let number = cursor.take_while(char => {
+        char.is_ascii_digit() || char == '.'
+      })
       guard !number.is_empty() else { return None }
-      return Some(Thickness(Some(@string.parse_double(number)) catch { _ => None }))
+      return Some(
+        Thickness(Some(@string.parse_double(number)) catch { _ => None }),
+      )
     }
     @linestyle.line_style_keyword(word)
   })
@@ -394,7 +400,12 @@ fn sequence_is_word_char(char : Char) -> Bool {
 /// dash, mirroring the talc "arrow body" failure.
 fn take_arrow_dressing(
   cursor : @tokenizer.Cursor,
-) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult, Array[@linestyle.LineStyleToken]?)? {
+) -> (
+  @seq.DressingResult,
+  @seq.ArrowBody,
+  @seq.DressingResult,
+  Array[@linestyle.LineStyleToken]?,
+)? {
   let left = take_left_dressing(cursor)
   let first = cursor.take_while(char => char == '-')
   let line_style = take_arrow_style(cursor)
@@ -413,7 +424,12 @@ fn take_arrow_dressing(
 /// `CommandExoArrowLeft`/`@seq.Right` alternatives.
 fn take_exo_arrow_dressing(
   cursor : @tokenizer.Cursor,
-) -> (@seq.DressingResult, @seq.ArrowBody, @seq.DressingResult, Array[@linestyle.LineStyleToken]?)? {
+) -> (
+  @seq.DressingResult,
+  @seq.ArrowBody,
+  @seq.DressingResult,
+  Array[@linestyle.LineStyleToken]?,
+)? {
   let start = cursor.offset()
   let (left_head, left_part) = take_left_arrow_head(cursor)
   let first = cursor.take_while(char => char == '-')

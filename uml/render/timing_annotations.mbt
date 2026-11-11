@@ -24,7 +24,9 @@ fn timing_projection(
         let when = timing_tick(change.when)
         if when == time {
           let previous = if index == 0 {
-            player.initial.map_or(change.states.first(), initial => initial.states.first())
+            player.initial.map_or(change.states.first(), initial => {
+              initial.states.first()
+            })
           } else {
             player.changes[index - 1].states.first()
           }
@@ -41,7 +43,9 @@ fn timing_projection(
       Some([
         point(
           panel.wave_y +
-          panel.state_y(player.changes[player.changes.length() - 1].states.first()),
+          panel.state_y(
+            player.changes[player.changes.length() - 1].states.first(),
+          ),
         ),
       ])
     }
@@ -89,9 +93,7 @@ fn timing_projection(
         }
         previous = change
       }
-      Some([
-        point(timing_analog_y(panel, previous.states.analog_value())),
-      ])
+      Some([point(timing_analog_y(panel, previous.states.analog_value()))])
     }
   }
 }
@@ -162,11 +164,16 @@ fn timing_link_paint(
       Bold => paint = { ..paint, stroke_width: Some(2.0), }
       Plain => paint = { ..paint, dash: None, }
       Hidden => paint = { ..paint, stroke: None, }
-      Thickness(value) => paint = { ..paint, stroke_width: Some(value.unwrap_or(appearance.thickness)), }
-      Color(word) if word.has_prefix("#") => paint = {
-        ..paint,
-        stroke: Color(@svg.svg_color(Some(word), appearance.line)),
-      }
+      Thickness(value) =>
+        paint = {
+          ..paint,
+          stroke_width: Some(value.unwrap_or(appearance.thickness)),
+        }
+      Color(word) if word.has_prefix("#") =>
+        paint = {
+          ..paint,
+          stroke: Color(@svg.svg_color(Some(word), appearance.line)),
+        }
       _ => ()
     }
   }

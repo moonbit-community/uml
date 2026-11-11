@@ -278,7 +278,9 @@ pub fn line_drawing_style(line_style : String?) -> @graphics.DrawingStyle {
 }
 
 ///|
-pub fn parsed_line_drawing_style(line_style : Array[@linestyle.LineStyleToken]?) -> @graphics.DrawingStyle {
+pub fn parsed_line_drawing_style(
+  line_style : Array[@linestyle.LineStyleToken]?,
+) -> @graphics.DrawingStyle {
   let mut style = @graphics.DrawingStyle::default()
   for token in line_style.unwrap_or([]) {
     match token {
@@ -288,11 +290,10 @@ pub fn parsed_line_drawing_style(line_style : Array[@linestyle.LineStyleToken]?)
         style = { ..style, dash: Some([DOTTED_LINE_LENGTH, DOTTED_LINE_GAP]), }
       Bold => style = { ..style, stroke_width: Some(2.5), }
       Plain => style = { ..style, dash: Some([]), }
-      Thickness(Some(thickness)) => {
+      Thickness(Some(thickness)) =>
         if thickness > 0.0 {
           style = { ..style, stroke_width: Some(thickness), }
         }
-      }
       _ => ()
     }
   }
