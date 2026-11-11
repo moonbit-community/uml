@@ -154,7 +154,7 @@ test "retains document and nested WBS style properties" {
   )
   @test.assert_eq(diagram.style.canvas_color(), "#eeeeee")
   let property = style_property_named(diagram, "width")
-  @test.assert_eq(property.selector, "wbsDiagram node")
+  @test.assert_eq(property.selector, [Name("wbsdiagram"), Name("node")])
   @test.assert_eq(property.name, "width")
   @test.assert_eq(property.value, "auto")
 }

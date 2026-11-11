@@ -614,8 +614,14 @@ fn WbsParser::consume_style_block(
     guard !selectors.is_empty() && words.length() >= 2 else {
       raise SyntaxError(self.buffer.line_number(), "invalid WBS style property")
     }
+    let selector = []
+    for path in selectors {
+      for word in path.split(" ") {
+        selector.push(@style.parse_selector_term(word.to_owned()))
+      }
+    }
     self.style_properties.push({
-      selector: selectors.join(" "),
+      selector,
       name: words[0],
       value: words[1:].to_owned().join(" "),
     })

@@ -51,11 +51,10 @@ pub extend WbsLink with Eq::{not_equal, equal}
 pub extend WbsLink with Debug::{to_repr}
 
 ///|
-/// One property from a PlantUML `<style>` block. Nested selectors are joined
-/// from outermost to innermost, for example `wbsDiagram node`.
+/// A style property with selector terms ordered from outermost to innermost.
 #derive(Eq, Debug)
 pub(all) struct WbsStyleProperty {
-  selector : String
+  selector : Array[@style.SelectorTerm]
   name : String
   value : String
 }

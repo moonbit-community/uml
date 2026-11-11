@@ -21,36 +21,25 @@ fn wbs_stereotype(value : String) -> String {
 ///|
 /// Match the WElement node signature or WBSTextBlock arrow signature.
 fn wbs_selector_matches(
-  selector : String,
+  selector : Array[@style.SelectorTerm],
   diagram : @tree.WbsDiagram,
   index : Int32,
   arrow : Bool,
   stereotype : String?,
 ) -> Bool {
   let node = diagram.nodes[index]
-  for word in selector.to_lower().split(" ") {
-    guard !word.is_empty() else { continue }
-    let matches = match word {
-      "root" | "element" | "wbsdiagram" => true
-      "node" => !arrow
-      "arrow" => arrow
-      "rootnode" => !arrow && node.parent is None
-      "leafnode" =>
+  for term in selector {
+    let matches = match term {
+      Name("" | "root" | "element" | "wbsdiagram") => true
+      Name("node") => !arrow
+      Name("arrow") => arrow
+      Name("rootnode") => !arrow && node.parent is None
+      Name("leafnode") =>
         !arrow && node.parent is Some(_) && !wbs_has_children(diagram, index)
-      "boxless" => !arrow && node.shape is @tree.NodeShape::Boxless
-      _ =>
-        if word.has_prefix(".") {
-          stereotype.map_or(false, value => {
-            wbs_stereotype(value) == word[1:].to_owned()
-          })
-        } else if word.has_prefix("depth(") && word.has_suffix(")") {
-          let level = @string.parse_int(word[6:word.length() - 1]) catch {
-            _ => -1
-          }
-          level == node.level
-        } else {
-          false
-        }
+      Name("boxless") => !arrow && node.shape is @tree.NodeShape::Boxless
+      Stereotype(label) => stereotype.map_or(false, value => wbs_stereotype(value) == label)
+      Depth(level) => level == node.level
+      Name(_) => false
     }
     guard matches else { return false }
   }
@@ -76,22 +65,13 @@ fn wbs_properties(
     ) else {
       continue
     }
-    let specificity = property.selector
-      .to_lower()
-      .split(" ")
-      .fold(init=0, (score, word) => {
-        score +
-        (if word.has_prefix(".") {
-          1000
-        } else if word == "rootnode" ||
-          word == "leafnode" ||
-          word == "boxless" ||
-          word.has_prefix("depth(") {
-          100
-        } else {
-          1
-        })
+    let specificity = property.selector.fold(init=0, (score, term) => {
+      score + (match term {
+        Stereotype(_) => 1000
+        Depth(_) | Name("rootnode" | "leafnode" | "boxless") => 100
+        Name(_) => 1
       })
+    })
     selected.push((specificity, order, property))
   }
   selected.sort_by((a, b) => if a.0 == b.0 { a.1 - b.1 } else { a.0 - b.0 })

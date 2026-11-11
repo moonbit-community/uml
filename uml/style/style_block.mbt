@@ -79,22 +79,22 @@ fn apply_style_entry(
     paths = nested
   }
   for path in paths {
-    // Retain the original selector for renderers with a domain-specific cascade.
-    apply(Property("style \{path} \{property}", value))
-    apply_style_selector(path, property, value, apply)
+    let words = @tokenizer.syntax_words(path)
+    apply(Rule(words, property, value))
+    apply_style_selector(words, property, value, apply)
   }
 }
 
 ///|
 fn apply_style_selector(
-  path : String,
+  path : Array[String],
   property : String,
   value : String,
   apply : (StyleDirective) -> Unit,
 ) -> Unit {
   let words : Array[String] = []
-  for word in @tokenizer.syntax_words(path.to_lower()) {
-    let parts = word.split(".").map(StringView::to_owned).to_array()
+  for word in path {
+    let parts = word.to_lower().split(".").map(StringView::to_owned).to_array()
     if !parts[0].is_empty() {
       words.push(parts[0])
     }
@@ -138,9 +138,7 @@ fn apply_style_selector(
         if prefix.is_empty() {
           for role in ["partition", "package", "rectangle", "card", "group"] {
             apply_style_selector(
-              words
-              .map(word => if word == "composite" { role } else { word })
-              .join(" "),
+              words.map(word => if word == "composite" { role } else { word }),
               property,
               value,
               apply,
@@ -184,7 +182,7 @@ fn apply_style_selector(
           "card", "group", "circle", "note",
         ] {
         apply_style_selector(
-          "activityDiagram \{role} \{path}",
+          ["activityDiagram", role, ..path],
           property,
           value,
           apply,
@@ -200,7 +198,7 @@ fn apply_style_selector(
           "class", "object", "state", "activity", "actor", "usecase", "component",
           "node", "note", "participant", "package", "arrow",
         ] {
-        apply_style_selector("\{role} \{path}", property, value, apply)
+        apply_style_selector([role, ..path], property, value, apply)
       }
       return
     }

@@ -21,6 +21,7 @@ pub struct DocumentStyle {
   mut footer : String?
   color_scheme : ColorScheme
   properties : Map[String, String]
+  rules : Array[(Array[String], String, String)]
 }
 
 ///|
@@ -55,6 +56,7 @@ pub(all) enum StyleDirective {
   Scale(DiagramScale?)
   Title(String)
   Property(String, String)
+  Rule(Array[String], String, String)
 }
 
 ///|
@@ -80,6 +82,7 @@ pub fn DocumentStyle::empty() -> DocumentStyle {
     footer: None,
     color_scheme: ColorScheme::default(),
     properties: Map([]),
+    rules: [],
   }
 }
 
@@ -125,6 +128,7 @@ pub fn DocumentStyle::apply(
     Scale(s) => self.scale = s
     Title(t) => self.title = Some(t)
     Property(key, value) => self.properties[key] = value
+    Rule(path, name, value) => self.rules.push((path, name, value))
   }
 }
 

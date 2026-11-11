@@ -220,14 +220,12 @@ fn parse_mindmap_style_block(
     },
     directive => {
       match directive {
-        Property(key, value) if key.has_prefix("style ") => {
-          let words = @tokenizer.syntax_words(key[6:].to_owned())
-          guard words is [.., name] else { return }
-          let selector = words[:words.length() - 1].to_owned().join(" ")
+        Rule(words, name, value) => {
+          let selector = words.map(@style.parse_selector_term)
           properties.push({ selector, name, value, })
-          if words.length() > 1 &&
-            words[words.length() - 2].equal_ignore_ascii_case("arrow") &&
-            words[:words.length() - 1].all(word => {
+          if words.length() > 0 &&
+            words[words.length() - 1].equal_ignore_ascii_case("arrow") &&
+            words.all(word => {
               let word = word.to_lower()
               word == "root" ||
               word == "element" ||

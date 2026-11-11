@@ -53,47 +53,38 @@ fn mindmap_properties(
   let selected : Array[(Int32, Int32, @tree.WbsStyleProperty)] = []
   for order, property in diagram.style_properties {
     let mut score = 0
-    let matches = property.selector
-      .to_lower()
-      .split(" ")
-      .all(word => {
-        if word.is_empty() {
-          return true
+    let matches = property.selector.all(term => {
+      if term is Name("") { return true }
+      score += 1
+      match term {
+        Name("root" | "element" | "mindmapdiagram") => true
+        Name("node") => !arrow
+        Name("arrow") => arrow
+        Name("rootnode") => {
+          score += 100
+          !arrow && idea.parent is None
         }
-        score += 1
-        match word {
-          "root" | "element" | "mindmapdiagram" => true
-          "node" => !arrow
-          "arrow" => arrow
-          "rootnode" => {
-            score += 100
-            !arrow && idea.parent is None
-          }
-          "leafnode" => {
-            score += 100
-            !arrow && idea.parent is Some(_) && !diagram.has_children(index)
-          }
-          "boxless" => {
-            score += 100
-            !arrow && idea.shape is @tree.IdeaShape::Boxless
-          }
-          _ if word.has_prefix(".") => {
-            score += 1000
-            idea.stereotype.map_or(false, value => {
-              value.trim().trim_start(chars="<").trim_end(chars=">").to_lower() ==
-              word[1:]
-            })
-          }
-          _ if word.has_prefix("depth(") && word.has_suffix(")") => {
-            score += 100
-            let depth = @string.parse_int(word[6:word.length() - 1]) catch {
-              _ => -1
-            }
-            depth == idea.level
-          }
-          _ => false
+        Name("leafnode") => {
+          score += 100
+          !arrow && idea.parent is Some(_) && !diagram.has_children(index)
         }
-      })
+        Name("boxless") => {
+          score += 100
+          !arrow && idea.shape is @tree.IdeaShape::Boxless
+        }
+        Stereotype(label) => {
+          score += 1000
+          idea.stereotype.map_or(false, value => {
+            value.trim().trim_start(chars="<").trim_end(chars=">").to_lower() == label
+          })
+        }
+        Depth(depth) => {
+          score += 100
+          depth == idea.level
+        }
+        Name(_) => false
+      }
+    })
     if matches {
       selected.push((score, order, property))
     }

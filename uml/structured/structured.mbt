@@ -100,7 +100,7 @@ pub extend StructuredDiagram with Debug::{to_repr}
 ///|
 #derive(Eq, Debug)
 pub(all) struct StructuredStyleProperty {
-  selector : String
+  selector : Array[String]
   name : String
   value : String
 }

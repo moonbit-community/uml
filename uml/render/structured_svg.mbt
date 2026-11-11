@@ -216,10 +216,9 @@ fn structured_paint(
   for order, property in diagram.styles {
     let mut specificity = 0
     let matches = property.selector
-      .to_lower()
-      .split(" ")
       .all(group => {
         group
+        .to_lower()
         .split(",")
         .any(word => {
           if word.is_empty() {

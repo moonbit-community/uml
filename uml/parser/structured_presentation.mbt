@@ -46,14 +46,8 @@ fn structured_source(
         },
         directive => {
           match directive {
-            Property(key, value) if key.has_prefix("style ") => {
-              let words = @tokenizer.syntax_words(key[6:].to_owned())
-              guard words is [.., name] else { return }
-              styles.push({
-                selector: words[:words.length() - 1].to_owned().join(" "),
-                name,
-                value,
-              })
+            Rule(words, name, value) => {
+              styles.push({ selector: words, name, value, })
             }
             BackgroundColor(_) | FontFamily(_) | FontSize(_) =>
               presentation.push(directive)
