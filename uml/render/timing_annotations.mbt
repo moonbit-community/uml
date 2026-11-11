@@ -21,7 +21,7 @@ fn timing_projection(
     Robust => {
       guard !player.changes.is_empty() else { return None }
       for index, change in player.changes {
-        let when = timing_tick(change.when.unwrap())
+        let when = timing_tick(change.when)
         if when == time {
           let previous = if index == 0 {
             player.initial.map_or(change.states[0], initial => initial.states[0])
@@ -46,7 +46,7 @@ fn timing_projection(
       ])
     }
     Concise | Rectangle =>
-      if player.changes.any(change => timing_tick(change.when.unwrap()) == time) {
+      if player.changes.any(change => timing_tick(change.when) == time) {
         Some([point(panel.wave_y + panel.wave_height / 2.0)])
       } else {
         Some([point(panel.wave_y), point(panel.wave_y + panel.wave_height)])
@@ -75,10 +75,10 @@ fn timing_projection(
       guard !player.changes.is_empty() else { return None }
       let mut previous = player.changes[0]
       for change in player.changes {
-        let when = timing_tick(change.when.unwrap())
+        let when = timing_tick(change.when)
         let value = timing_number(change.states[0], 0.0)
         if when >= time {
-          let before = timing_tick(previous.when.unwrap())
+          let before = timing_tick(previous.when)
           let interpolated = if before == when {
             value
           } else {

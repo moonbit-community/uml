@@ -72,11 +72,10 @@ pub extend TimeTick with Debug::{to_repr}
 ///|
 /// A state change recorded on a player, mirroring `ChangeState`.
 ///
-/// `when` is the tick the change applies at; the initial state is the change
-/// recorded before any time mark exists, and keeps `when = None`.
+/// Initial states carry Unit; timed changes carry a required TimeTick.
 #derive(Eq, Debug)
-pub(all) struct ChangeState {
-  when : TimeTick?
+pub(all) struct ChangeState[T] {
+  when : T
   comment : String?
   color : String?
   states : Array[String]
@@ -181,8 +180,8 @@ pub(all) struct TimingPlayer {
   stereotype : String?
   background_color : String?
   states : Array[(String, String)]
-  mut initial : ChangeState?
-  changes : Array[ChangeState]
+  mut initial : ChangeState[Unit]?
+  changes : Array[ChangeState[TimeTick]]
   notes : Array[TimingNote]
   constraints : Array[TimeConstraint]
   period : Decimal?

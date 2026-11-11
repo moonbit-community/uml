@@ -45,7 +45,7 @@ fn draw_timing_analog(
   )
   for change in player.changes {
     let next_x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when.unwrap()))
+      layout.ruler.position(timing_tick(change.when))
     let next_y = timing_analog_y(panel, timing_number(change.states[0], 0.0))
     drawing.line(x, y, next_x, next_y, paint)
     x = next_x
@@ -75,7 +75,7 @@ fn draw_timing_binary(
   let mut x = layout.wave_x
   for change in player.changes {
     let next_x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when.unwrap()))
+      layout.ruler.position(timing_tick(change.when))
     if states.length() == 1 {
       drawing.line(x, state_y(states), next_x, state_y(states), paint)
     } else {
@@ -169,18 +169,18 @@ fn draw_timing_robust(
   guard !player.changes.is_empty() else { return }
   if player.initial is Some(initial) {
     let x = layout.wave_x +
-      layout.ruler.position(timing_tick(player.changes[0].when.unwrap()))
+      layout.ruler.position(timing_tick(player.changes[0].when))
     let y = y_of(initial.states[0])
     drawing.line(layout.wave_x - TIMING_ROBUST_INITIAL, y, x, y, paint)
     drawing.line(x, y, x, y_of(player.changes[0].states[0]), paint)
   }
   for index, change in player.changes {
     let x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when.unwrap()))
+      layout.ruler.position(timing_tick(change.when))
     let next_x = if index + 1 < player.changes.length() {
       layout.wave_x +
       layout.ruler.position(
-        timing_tick(player.changes[index + 1].when.unwrap()),
+        timing_tick(player.changes[index + 1].when),
       )
     } else {
       layout.wave_x + layout.ruler.width
@@ -314,7 +314,7 @@ fn draw_timing_concise(
     let end = player.changes
       .get(0)
       .map_or(layout.wave_x + layout.ruler.width, change => {
-        layout.wave_x + layout.ruler.position(timing_tick(change.when.unwrap()))
+        layout.wave_x + layout.ruler.position(timing_tick(change.when))
       })
     let paint = timing_wave_paint(appearance, initial.color)
     if initial.states[0] == "{-}" {
@@ -345,14 +345,14 @@ fn draw_timing_concise(
   }
   for index, change in player.changes {
     let x = layout.wave_x +
-      layout.ruler.position(timing_tick(change.when.unwrap()))
+      layout.ruler.position(timing_tick(change.when))
     let last = index + 1 == player.changes.length()
     let end = if last {
       layout.wave_x + layout.ruler.width
     } else {
       layout.wave_x +
       layout.ruler.position(
-        timing_tick(player.changes[index + 1].when.unwrap()),
+        timing_tick(player.changes[index + 1].when),
       )
     }
     let state = change.states[0]

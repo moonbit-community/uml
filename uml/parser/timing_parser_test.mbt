@@ -38,7 +38,7 @@ test "state changes before any time mark become the initial state" {
   @test.assert_eq(player.initial.unwrap().states, ["Inactive"])
   @test.assert_eq(player.changes.length(), 1)
   @test.assert_eq(player.changes[0].states, ["busy"])
-  @test.assert_eq(player.changes[0].when.unwrap().time.to_string(), "3")
+  @test.assert_eq(player.changes[0].when.time.to_string(), "3")
   @test.assert_eq(diagram.now.unwrap().time.to_string(), "3")
 }
 
@@ -72,7 +72,7 @@ test "timed changes share the ascending order of the ruler including negative ti
     )
     let changes = diagram.player("P").unwrap().changes
     @test.assert_eq(
-      changes.map(change => change.when.unwrap()),
+      changes.map(change => change.when),
       diagram.time_marks,
     )
   }

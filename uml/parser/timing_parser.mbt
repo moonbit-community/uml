@@ -127,14 +127,14 @@ fn TimingParser::add_time(
 /// players and are replaced for binary and analog players.
 fn insert_change(
   player : @flow.TimingPlayer,
-  change : @flow.ChangeState,
+  change : @flow.ChangeState[@flow.TimeTick],
   replace_duplicates : Bool,
 ) -> Unit {
   let mut index = 0
   while index < player.changes.length() {
     let compared = Compare::compare(
-      change.when.unwrap().time,
-      player.changes[index].when.unwrap().time,
+      change.when.time,
+      player.changes[index].when.time,
     )
     if compared == 0 {
       if replace_duplicates {
@@ -201,7 +201,7 @@ fn TimingParser::set_player_state(
       match when {
         None =>
           player.initial = Some({
-            when: None,
+            when: (),
             comment: None,
             color,
             states: [decoded[0]],
@@ -209,7 +209,7 @@ fn TimingParser::set_player_state(
         Some(tick) =>
           insert_change(
             player,
-            { when: Some(tick), comment, color, states: decoded, },
+            { when: tick, comment, color, states: decoded, },
             false,
           )
       }
@@ -219,7 +219,7 @@ fn TimingParser::set_player_state(
       match when {
         None =>
           player.initial = Some({
-            when: None,
+            when: (),
             comment,
             color,
             states: converted,
@@ -227,15 +227,15 @@ fn TimingParser::set_player_state(
         Some(tick) =>
           insert_change(
             player,
-            { when: Some(tick), comment, color, states: converted, },
+            { when: tick, comment, color, states: converted, },
             true,
           )
       }
     }
     @flow.PlayerKind::Analog => {
       let value = parse_analog_value(states[0])
-      let change : @flow.ChangeState = {
-        when,
+      let change : @flow.ChangeState[Unit] = {
+        when: (),
         comment: None,
         color: None,
         states: [value],
@@ -243,9 +243,9 @@ fn TimingParser::set_player_state(
       match when {
         None => player.initial = Some(change)
         Some(tick) => {
-          insert_change(player, { ..change, when: Some(tick), }, true)
+          insert_change(player, { when: tick, comment: change.comment, color: change.color, states: change.states, }, true)
           if player.initial is None {
-            player.initial = Some({ ..change, when: None, })
+            player.initial = Some(change)
           }
         }
       }

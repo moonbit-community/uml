@@ -71,7 +71,7 @@ fn TimingPlayerLayout::state_y(
 fn timing_state_at(player : @flow.TimingPlayer, time : Double) -> String? {
   let mut state = player.initial.map(change => change.states[0])
   for change in player.changes {
-    guard timing_tick(change.when.unwrap()) <= time else { break }
+    guard timing_tick(change.when) <= time else { break }
     state = Some(change.states[0])
   }
   state
@@ -91,7 +91,7 @@ fn timing_constraint_delta(
     value => value,
   )
   player.changes.fold(init=panel.state_y(first), (y, change) => {
-    let time = timing_tick(change.when.unwrap())
+    let time = timing_tick(change.when)
     if time > start && time < end {
       y.min(panel.state_y(change.states[0]))
     } else {
