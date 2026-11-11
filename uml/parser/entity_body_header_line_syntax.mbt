@@ -12,7 +12,7 @@ fn json_single_declaration(
     let metadata = declaration_metadata_from(suffixes)
     guard cursor.skip_inline_space1() else { return None }
     let data = cursor.take_rest_trimmed()
-    guard data.length() > 0 && valid_json(data) else { return None }
+    let tree = @bodierjson.parse_json_tree(data) catch { _ => return None }
     Some({
       declaration: declaration_from_syntax(
         Json,
@@ -22,6 +22,7 @@ fn json_single_declaration(
         metadata,
       ),
       data,
+      tree,
     })
   })
 }

@@ -143,16 +143,7 @@ fn EntityParser::consume_multiline_element(
 priv struct JsonSingleDeclaration {
   declaration : @entity.Declaration
   data : String
-}
-
-///|
-fn valid_json(source : String) -> Bool {
-  try {
-    ignore(@bodierjson.parse_json_tree(source))
-    true
-  } catch {
-    _ => false
-  }
+  tree : @bodierjson.JsonNode
 }
 
 ///|
@@ -165,12 +156,11 @@ fn EntityParser::add_single_line_json(
     self.raise_parse_error("JSON already exists: \{value.declaration.code}")
   }
   self.add_entity(value.declaration, false)
-  let tree = @bodierjson.parse_json_tree(value.data) catch { _ => return }
   if self.entity_index(qualified_code) is Some(index) {
     self.entities[index] = {
       ..self.entities[index],
       json_data: Some(value.data),
-      json_tree: Some(tree),
+      json_tree: Some(value.tree),
     }
   }
 }
