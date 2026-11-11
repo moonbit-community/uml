@@ -111,11 +111,11 @@ fn draw_timing_clock(
   let paint = timing_appearance(drawing.style, "clock").paint()
   let high = panel.wave_y + TIMING_MARGIN_Y
   let low = panel.wave_y + panel.wave_height - TIMING_MARGIN_Y
-  let period = timing_number(player.period.unwrap_or("0"), 0.0)
+  let period = player.period.map_or(0.0, timing_decimal)
   guard period > 0.0 else { return }
-  let pulse = timing_number(player.pulse.unwrap_or("0"), 0.0)
+  let pulse = player.pulse.map_or(0.0, timing_decimal)
   let pulse = if pulse == 0.0 { period / 2.0 } else { pulse }
-  let offset = timing_number(player.offset.unwrap_or("0"), 0.0)
+  let offset = player.offset.map_or(0.0, timing_decimal)
   let x_of = time => layout.wave_x + layout.ruler.position(time)
   let end = layout.wave_x + layout.ruler.width
   let mut time = offset

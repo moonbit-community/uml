@@ -53,9 +53,9 @@ fn timing_projection(
       }
     Binary => Some([point(panel.wave_y + TIMING_MARGIN_Y)])
     Clock => {
-      let period = timing_number(player.period.unwrap_or("0"), 0.0)
-      let offset = timing_number(player.offset.unwrap_or("0"), 0.0)
-      let pulse = timing_number(player.pulse.unwrap_or("0"), 0.0)
+      let period = player.period.map_or(0.0, timing_decimal)
+      let offset = player.offset.map_or(0.0, timing_decimal)
+      let pulse = player.pulse.map_or(0.0, timing_decimal)
       let pulse = if pulse == 0.0 { period / 2.0 } else { pulse }
       let high = period > 0.0 &&
         time >= offset &&

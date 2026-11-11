@@ -182,7 +182,7 @@ fn resolve_time_expr(
         TimeExpr::Clock(name, number) => {
           guard parser.diagram.clock(name) is Some(clock) else { return None }
           let period = clock.period.unwrap()
-          let time = @decimal.Decimal::from_string(period).unwrap() *
+          let time = period *
             @decimal.Decimal::from_int(number)
           Some(tick(time, @flow.TimingFormat::Decimal))
         }

@@ -13,7 +13,7 @@ test "player declarations keep kind, title and registration order" {
   ])
   @test.assert_eq(diagram.players[4].title, "Voltage")
   @test.assert_eq(diagram.players[5].title, "Ticker")
-  @test.assert_eq(diagram.clock("Clk").unwrap().period, Some("4"))
+  @test.assert_eq(diagram.clock("Clk").unwrap().period, Some(diagram.time_marks[0].time))
   // A clock registers its period as a ruler mark...
   @test.assert_eq(diagram.time_marks.length(), 1)
   // ...and becomes the current player like any declaration.

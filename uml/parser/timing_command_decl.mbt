@@ -39,7 +39,7 @@ fn parse_robust_concise(
 
 ///|
 /// Matches `[0-9]+(\.[0-9]+)?`, the clock period/pulse/offset literals.
-fn parse_positive_decimal(cursor : @tokenizer.Cursor) -> String? {
+fn parse_positive_decimal(cursor : @tokenizer.Cursor) -> @flow.Decimal? {
   let start = cursor.offset()
   let whole = cursor.take_while(char => char >= '0' && char <= '9')
   guard whole.length() > 0 else { return None }
@@ -50,7 +50,7 @@ fn parse_positive_decimal(cursor : @tokenizer.Cursor) -> String? {
       return None
     }
   }
-  Some(cursor.slice(start, cursor.offset()))
+  @decimal.Decimal::from_string(cursor.slice(start, cursor.offset()))
 }
 
 ///|
@@ -134,10 +134,7 @@ fn parse_clock(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
   upsert_player(parser.diagram, player)
   parser.diagram.clocks.push(code)
   parser.diagram.last_player = Some(code)
-  let time = tick(
-    @decimal.Decimal::from_string(period).unwrap(),
-    @flow.TimingFormat::Decimal,
-  )
+  let time = tick(period, @flow.TimingFormat::Decimal)
   // The period becomes a ruler mark but, unlike `@time`, does not move the
   // current time forward.
   add_time_mark(parser.diagram, time)
@@ -146,7 +143,7 @@ fn parse_clock(parser : TimingParser, cursor : @tokenizer.Cursor) -> Bool {
 
 ///|
 /// Matches `-?[0-9]*\.?[0-9]+`, the analog bound literals.
-fn parse_bound_number(cursor : @tokenizer.Cursor) -> String? {
+fn parse_bound_number(cursor : @tokenizer.Cursor) -> @flow.AnalogBound? {
   let start = cursor.offset()
   ignore(cursor.consume('-'))
   let whole = cursor.take_while(char => char >= '0' && char <= '9')
@@ -156,7 +153,11 @@ fn parse_bound_number(cursor : @tokenizer.Cursor) -> String? {
     ignore(cursor.restore(start))
     None
   } else {
-    Some(cursor.slice(start, cursor.offset()))
+    let source = cursor.slice(start, cursor.offset())
+    Some({
+      value: @string.parse_double(source) catch { _ => 0.0 },
+      precision: source.split_once(".").map_or(0, parts => parts.1.length()),
+    })
   }
 }
 

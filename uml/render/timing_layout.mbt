@@ -154,7 +154,7 @@ fn timing_player_layout(
         value.min(timing_number(change.states[0], 0.0))
       })
     },
-    bounds => timing_number(bounds.0, 0.0),
+    bounds => bounds.0.value,
   )
   let maximum = player.bounds.map_or_else(
     () => {
@@ -167,7 +167,7 @@ fn timing_player_layout(
         value
       }
     },
-    bounds => timing_number(bounds.1, 10.0),
+    bounds => bounds.1.value,
   )
   let ticks = []
   if player.kind is @flow.PlayerKind::Analog {
@@ -286,11 +286,7 @@ fn timing_player_layout(
 fn timing_analog_label(player : @flow.TimingPlayer, value : Double) -> String {
   // Explicit bounds supply the decimal precision, as TimeSeries/DeduceFormat.
   let precision = player.bounds.map_or(1, bounds => {
-    [bounds.0, bounds.1].fold(init=0, (digits, bound) => {
-      bound
-      .split_once(".")
-      .map_or(digits, parts => digits.max(parts.1.length()))
-    })
+    bounds.0.precision.max(bounds.1.precision)
   })
   let factor = @math.pow(10.0, precision.to_double())
   let rounded = (value * factor).round() / factor

@@ -185,12 +185,18 @@ pub(all) struct TimingPlayer {
   changes : Array[ChangeState]
   notes : Array[TimingNote]
   constraints : Array[TimeConstraint]
-  period : String?
-  pulse : String?
-  offset : String?
-  mut bounds : (String, String)?
+  period : Decimal?
+  pulse : Decimal?
+  offset : Decimal?
+  mut bounds : (AnalogBound, AnalogBound)?
   mut ticks_every : Int32?
   mut height : Int32?
+}
+
+///|
+pub(all) struct AnalogBound {
+  value : Double
+  precision : Int
 }
 
 ///|
