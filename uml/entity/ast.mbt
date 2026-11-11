@@ -137,10 +137,22 @@ pub extend Entity with Debug::{to_repr}
 #derive(Eq, Debug)
 pub(all) struct MapEntry {
   key : String
-  value : String?
-  link_target : String?
+  content : MapEntryContent
   raw : String
 }
+
+///|
+#derive(Eq, Debug)
+pub(all) enum MapEntryContent {
+  MapValue(String)
+  MapLink(arrow~ : String, target~ : String)
+}
+
+///|
+pub extend MapEntryContent with Eq::{not_equal, equal}
+
+///|
+pub extend MapEntryContent with Debug::{to_repr}
 
 ///|
 pub extend MapEntry with Eq::{not_equal, equal}

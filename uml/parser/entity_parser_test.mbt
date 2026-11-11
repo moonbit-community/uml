@@ -1197,8 +1197,8 @@ test "parses map entries and linked map ports" {
   @test.assert_eq(map.display, "Order index")
   @test.assert_eq(map.map_entries.length(), 2)
   @test.assert_eq(map.map_entries[0].key, "id")
-  @test.assert_eq(map.map_entries[0].value, Some("42"))
-  @test.assert_eq(map.map_entries[1].link_target, Some("Customer"))
+  @test.assert_eq(map.map_entries[0].content, MapValue("42"))
+  @test.assert_eq(map.map_entries[1].content, MapLink(arrow="*-->", target="Customer"))
   @test.assert_eq(diagram.relations[0].left, "Orders")
   @test.assert_eq(diagram.relations[0].left_end, Arrow)
   @test.assert_eq(diagram.relations[0].left_port, Some("customer"))
@@ -1212,9 +1212,9 @@ test "map entries replace duplicate keys without changing row order" {
   let entries = diagram.entity("Values").unwrap().map_entries
   @test.assert_eq(entries.length(), 2)
   @test.assert_eq(entries[0].key, "first")
-  @test.assert_eq(entries[0].value, Some("new"))
+  @test.assert_eq(entries[0].content, MapValue("new"))
   @test.assert_eq(entries[1].key, "second")
-  @test.assert_eq(entries[1].value, Some("kept"))
+  @test.assert_eq(entries[1].content, MapValue("kept"))
 }
 
 ///|

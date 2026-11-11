@@ -470,15 +470,15 @@ fn @entity.Entity::map_body_layout(
     let key = entry.display_key()
     let key_metrics = text_metrics.regular.entity_measure(key)
     let key_block_width = key_metrics.width + MAP_CELL_HORIZONTAL_PADDING * 2
-    let (value_block_width, value_height) = match entry.value {
-      Some(value) => {
+    let (value_block_width, value_height) = match entry.content {
+      MapValue(value) => {
         let metrics = text_metrics.regular.entity_measure(value)
         (
           metrics.width + MAP_CELL_HORIZONTAL_PADDING * 2,
           metrics.height + MAP_CELL_VERTICAL_PADDING * 2,
         )
       }
-      None => (MAP_LINK_VALUE_DIAMETER, MAP_LINK_VALUE_DIAMETER)
+      MapLink(..) => (MAP_LINK_VALUE_DIAMETER, MAP_LINK_VALUE_DIAMETER)
     }
     let height = (key_metrics.height + MAP_CELL_VERTICAL_PADDING * 2).max(
       value_height,

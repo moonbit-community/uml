@@ -1,10 +1,4 @@
 ///|
-priv struct MapEntryLineSyntax {
-  entry : @entity.MapEntry
-  arrow : String?
-}
-
-///|
 priv enum ParsedMapEntrySyntax {
   ParsedMapValue(key~ : String, value~ : String)
   ParsedMapLink(key~ : String, arrow~ : String, target~ : String)
@@ -77,19 +71,13 @@ fn map_entry_line(cursor : @tokenizer.Cursor) -> ParsedMapEntrySyntax? {
 }
 
 ///|
-fn parse_map_entry_line(line : String) -> MapEntryLineSyntax? {
+fn parse_map_entry_line(line : String) -> @entity.MapEntry? {
   let cursor = @tokenizer.Cursor::new(line)
   match map_entry_line(cursor) {
     Some(ParsedMapValue(key~, value~)) =>
-      Some({
-        entry: { key, value: Some(value), link_target: None, raw: line, },
-        arrow: None,
-      })
+      Some({ key, content: MapValue(value), raw: line, })
     Some(ParsedMapLink(key~, arrow~, target~)) =>
-      Some({
-        entry: { key, value: None, link_target: Some(target), raw: line, },
-        arrow: Some(arrow),
-      })
+      Some({ key, content: MapLink(arrow~, target~), raw: line, })
     None => None
   }
 }
@@ -169,10 +157,10 @@ fn EntityParser::add_single_line_json(
 fn EntityParser::add_map_link(
   self : EntityParser,
   source : @entity.Entity,
-  entry : @entity.MapEntry,
+  key : String,
   arrow : String,
+  target : String,
 ) -> Unit raise @tokenizer.ParseError {
-  guard entry.link_target is Some(target) else { return }
   let resolved = self.resolve(target)
   guard self.has_entity(resolved) else {
     self.raise_parse_error("No such entity " + target)
@@ -186,7 +174,7 @@ fn EntityParser::add_map_link(
       @entity.RelationEnd::Arrow,
       @entity.RelationEnd::Plain,
     ),
-    left_port: Some(entry.key),
+    left_port: Some(key),
   })
 }
 
@@ -278,9 +266,9 @@ fn EntityParser::consume_entity_body_line(
     guard parse_map_entry_line(line) is Some(syntax) else {
       self.raise_parse_error("map definition should contain key => value")
     }
-    self.set_map_entry(entity_index, syntax.entry)
-    if syntax.arrow is Some(arrow) {
-      self.add_map_link(entity, syntax.entry, arrow)
+    self.set_map_entry(entity_index, syntax)
+    if syntax.content is MapLink(arrow~, target~) {
+      self.add_map_link(entity, syntax.key, arrow, target)
     }
     return
   }

@@ -521,13 +521,13 @@ fn EntityPaintContext::append_map_body(
       {
         id: Some(svg_port_id),
         class_name: Some(
-          "map-row\{if row.entry.link_target is Some(_) { " map-link-row" } else { " map-value-row" }}",
+          "map-row\{if row.entry.content is MapLink(..) { " map-link-row" } else { " map-value-row" }}",
         ),
         data: [("port", row.entry.key), ("port-id", row.port_id)],
       },
       output => {
         let key_metrics = self.text_metrics.regular.entity_measure(row.key)
-        let key_x = if row.entry.link_target is Some(_) {
+        let key_x = if row.entry.content is MapLink(..) {
           x + (width - key_metrics.width) / 2
         } else {
           x + (body.key_column_width - key_metrics.width) / 2
@@ -544,8 +544,8 @@ fn EntityPaintContext::append_map_body(
           self.text_metrics.regular,
           fill=text_color,
         )
-        match row.entry.value {
-          Some(value) => {
+        match row.entry.content {
+          MapValue(value) => {
             let value_metrics = self.text_metrics.regular.entity_measure(value)
             let divider_x = x + body.key_column_width
             let value_x = divider_x +
@@ -575,7 +575,7 @@ fn EntityPaintContext::append_map_body(
               fill=text_color,
             )
           }
-          None => ()
+          MapLink(..) => ()
         }
       },
     )
