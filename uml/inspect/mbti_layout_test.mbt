@@ -1,16 +1,4 @@
 ///|
-/// Whether two layout nodes overlap.
-fn mbti_rects_overlap(
-  left : (Double, Double, Double, Double),
-  right : (Double, Double, Double, Double),
-) -> Bool {
-  left.0 < right.0 + right.2 &&
-  right.0 < left.0 + left.2 &&
-  left.1 < right.1 + right.3 &&
-  right.1 < left.1 + left.3
-}
-
-///|
 /// The mindmap layout puts every entity at a distinct node, with no two boxes
 /// overlapping.
 test "mindmap layout places every entity in a disjoint box" {
@@ -26,19 +14,7 @@ test "mindmap layout places every entity in a disjoint box" {
   let diagram = @parser.parse_mbti(source)
   let layout = @render.mindmap_layout_entity(text_context, diagram.graph)
   @test.assert_eq(layout.nodes.length(), diagram.graph.entities.length())
-  for left_index in 0..<layout.nodes.length() {
-    for right_index in (left_index + 1)..<layout.nodes.length() {
-      let left = layout.nodes[left_index]
-      let right = layout.nodes[right_index]
-      @test.assert_eq(
-        mbti_rects_overlap(
-          (left.x, left.y, left.width, left.height),
-          (right.x, right.y, right.width, right.height),
-        ),
-        false,
-      )
-    }
-  }
+  expect_nodes_disjoint(layout)
 }
 
 ///|
