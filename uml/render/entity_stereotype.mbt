@@ -20,7 +20,7 @@ fn ClassTextMetrics::for_entity(
     style.apply(@style.FontSize(size))
   }
   {
-    ..ClassTextMetrics::new(style, role~),
+    ..ClassTextMetrics::new(self.text_context, style, role~),
     member_interaction: self.member_interaction,
     member_defaults: self.member_defaults,
     member_states: self.member_states,

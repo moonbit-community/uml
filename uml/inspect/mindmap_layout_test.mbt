@@ -48,7 +48,7 @@ fn expect_nodes_disjoint(layout : @render.MindmapLayout) -> Unit raise {
 ///|
 test "layout keeps reverse and regular branches on opposite sides" {
   let diagram = @parser.parse_mindmap("* Root\n++ Right\n-- Left")
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   let root = node_for(layout, 0)
   let right = node_for(layout, 1)
   let left = node_for(layout, 2)
@@ -60,7 +60,7 @@ test "layout keeps reverse and regular branches on opposite sides" {
 ///|
 test "layout connects a shared root directly to its reverse branch" {
   let diagram = @parser.parse_mindmap("* Root\n++ Right\n-- Left")
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   let root = node_for(layout, 0)
   let left = node_for(layout, 2)
   let left_edge = edge_for(layout, 2)
@@ -71,7 +71,7 @@ test "layout connects a shared root directly to its reverse branch" {
 ///|
 test "layout puts a reverse-only root on the reverse branch" {
   let diagram = @parser.parse_mindmap("* Root\n-- Left")
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   let root = node_for(layout, 0)
   let left_edge = edge_for(layout, 1)
   @test.assert_eq(left_edge.x1, root.x)
@@ -82,7 +82,7 @@ test "layout separates sibling subtrees without fixed coordinates" {
   let diagram = @parser.parse_mindmap(
     "* Root\n** First\n*** First leaf\n** Second\n*** Second leaf",
   )
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   expect_nodes_disjoint(layout)
   @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
   @test.assert_eq(layout.width > 0 && layout.height > 0, true)
@@ -93,7 +93,7 @@ test "layout keeps multiple roots and both branch directions disjoint" {
   let diagram = @parser.parse_mindmap(
     "* First root\n++ Right branch\n-- Left branch\n* Second root\n** Child",
   )
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   expect_nodes_disjoint(layout)
   @test.assert_eq(layout.nodes.length(), diagram.ideas.length())
   let first_root = node_for(layout, 0)
@@ -104,7 +104,7 @@ test "layout keeps multiple roots and both branch directions disjoint" {
 ///|
 test "layout represents every parsed parent-child relation once" {
   let diagram = @parser.parse_mindmap("* Root\n** One\n*** Leaf\n** Two")
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   let expected = diagram.ideas.filter(idea => idea.parent is Some(_)).length()
   @test.assert_eq(layout.edges.length(), expected)
   for edge in layout.edges {
@@ -168,6 +168,7 @@ test "generic layout_tree packs explicit items without overlap" {
 ///|
 test "strikethrough spans split into positioned text elements" {
   let svg = @render.render_mindmap_svg(
+    text_context,
     @parser.parse_mindmap(
       "@startmindmap\n* Root\n** <s>Old</s> New\n@endmindmap",
     ),

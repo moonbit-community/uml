@@ -61,7 +61,7 @@ test "recursive layout keeps composite contents inside their rendered parent" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Work {\n[*] --> Input\nInput --> Capacity\n}\nWork --> Done\n@enduml",
   )
-  let layout = @render.layout_state(diagram)
+  let layout = @render.layout_state(text_context, diagram)
   let work = layout_node(layout, "Work")
   for state in diagram.states {
     guard state.parent == Some("Work") else { continue }
@@ -74,7 +74,7 @@ test "concurrent regions preserve orientation and never overlap" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Work {\nstate Input\n--\nstate Capacity\n--\nstate Audit\n}\n@enduml",
   )
-  let layout = @render.layout_state(diagram)
+  let layout = @render.layout_state(text_context, diagram)
   @test.assert_eq(
     layout.regions.any(region => {
       region.separator == Some(@flow.StateRegionSeparator::Horizontal)
@@ -99,7 +99,7 @@ test "fixture transitions retain drawable paths" {
   let diagram = @parser.parse_state(
     "@startuml\nstate Open\nstate Closed\nstate Archived\nOpen -[dashed]-> Closed : close\nArchived <-[bold]- Closed : archive\nOpen x--> Archived : cancel\n@enduml",
   )
-  let layout = @render.layout_state(diagram)
+  let layout = @render.layout_state(text_context, diagram)
   @test.assert_eq(layout.edges.length(), diagram.transitions.length())
   for transition_index in 0..<diagram.transitions.length() {
     @test.assert_eq(
@@ -114,7 +114,7 @@ test "state and link notes participate in layout" {
   let diagram = @parser.parse_state(
     "@startuml\nA --> B : next\nnote right of A\nremember\nend note\nnote on link : transition detail\n@enduml",
   )
-  let layout = @render.layout_state(diagram)
+  let layout = @render.layout_state(text_context, diagram)
   @test.assert_eq(layout.notes.length(), diagram.notes.length())
 }
 
@@ -133,6 +133,7 @@ test "note position words are preserved on entity notes" {
 ///|
 test "entity notes land on the requested side of their anchor" {
   let layout = @render.layout_state(
+    text_context,
     @parser.parse_state(
       "@startuml\nstate A\nstate B\nnote left of A\nleft note\nend note\nnote right of B\nright note\nend note\nnote bottom of B\nbottom note\nend note\n@enduml",
     ),
@@ -155,11 +156,13 @@ test "entity notes land on the requested side of their anchor" {
 ///|
 test "note font metrics participate in Graphviz node sizing" {
   let regular = @render.layout_state(
+      text_context,
       @parser.parse_state(
         "@startuml\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
       ),
     ).notes[0]
   let enlarged = @render.layout_state(
+      text_context,
       @parser.parse_state(
         "@startuml\nskinparam NoteFontSize 24\nstate Ready\nnote right of Ready\nreview details\nend note\n@enduml",
       ),
@@ -179,7 +182,7 @@ test "nested pseudo-states belong to their composite scope" {
   )
   @test.assert_eq(diagram.state("__final__Work").unwrap().parent, Some("Work"))
   @test.assert_eq(
-    @render.layout_state(diagram).nodes
+    @render.layout_state(text_context, diagram).nodes
     .filter(node => node.code == "__initial__Work")
     .length(),
     1,
@@ -191,7 +194,7 @@ test "layout direction is forwarded to the Graphviz state pass" {
   let diagram = @parser.parse_state(
     "@startuml\nleft to right direction\nA --> B\n@enduml",
   )
-  let layout = @render.layout_state(diagram)
+  let layout = @render.layout_state(text_context, diagram)
   let a = layout_node(layout, "A")
   let b = layout_node(layout, "B")
   @test.assert_eq(a.x + a.width <= b.x || b.x + b.width <= a.x, true)
@@ -206,7 +209,7 @@ test "self transitions and their notes survive in each containing scope" {
       "state Work {\nstate Ready\n--\nstate Busy\nBusy --> Busy : retry\nnote on link : again\n}",
     ] {
     let diagram = @parser.parse_state("@startuml\n" + source + "\n@enduml")
-    let layout = @render.layout_state(diagram)
+    let layout = @render.layout_state(text_context, diagram)
     @test.assert_eq(layout.edges.length(), diagram.transitions.length())
     @test.assert_eq(layout.notes.length(), diagram.notes.length())
     for edge in layout.edges {
@@ -219,8 +222,12 @@ test "self transitions and their notes survive in each containing scope" {
 ///|
 test "synchronization bars rotate with the diagram direction" {
   let source = "\n[*] --> ==join==\n==join== --> [*]\n@enduml"
-  let vertical = @render.layout_state(@parser.parse_state("@startuml" + source))
+  let vertical = @render.layout_state(
+    text_context,
+    @parser.parse_state("@startuml" + source),
+  )
   let horizontal = @render.layout_state(
+    text_context,
     @parser.parse_state("@startuml\nleft to right direction" + source),
   )
   let bar = layout_node(vertical, "__synchronization_join")
@@ -233,6 +240,7 @@ test "synchronization bars rotate with the diagram direction" {
 ///|
 test "initial final and history states retain their distinct circle sizes" {
   let layout = @render.layout_state(
+    text_context,
     @parser.parse_state("@startuml\n[*] --> [H]\n[H] --> [*]\n@enduml"),
   )
   let initial = layout_node(layout, "__initial__")
@@ -266,7 +274,7 @@ test "off-axis transitions attach to curved and diamond outlines" {
       source +
       " --> Right\n@enduml",
     )
-    let layout = @render.layout_state(diagram)
+    let layout = @render.layout_state(text_context, diagram)
     let node = layout_node(layout, diagram.transitions[0].source)
     // A diagonal contact with a circle or diamond is strictly inside its
     // enclosing rectangle. Routing against a box leaves all contacts outside.
@@ -291,9 +299,11 @@ test "transition label font size reserves space in both rank directions" {
   for direction in ["", "left to right direction\n"] {
     let source = direction + "A --> B : transition details\n@enduml"
     let regular = @render.layout_state(
+      text_context,
       @parser.parse_state("@startuml\n" + source),
     )
     let enlarged = @render.layout_state(
+      text_context,
       @parser.parse_state("@startuml\nskinparam ArrowFontSize 32\n" + source),
     )
     let gap = (layout : @render.StateLayout) => {

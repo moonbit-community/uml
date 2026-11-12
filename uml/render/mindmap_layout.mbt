@@ -109,10 +109,11 @@ fn @tree.MindmapDiagram::node_font_size(
 ///|
 fn @tree.MindmapDiagram::node_text_metrics(
   self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
   index : Int32,
 ) -> TreeLabelMetrics {
   let idea = self.ideas[index]
-  let metrics = self.node_font_metrics(index)
+  let metrics = self.node_font_metrics(text_context, index)
   tree_label_metrics(
     metrics,
     idea.label,
@@ -123,10 +124,11 @@ fn @tree.MindmapDiagram::node_text_metrics(
 ///|
 fn @tree.MindmapDiagram::node_text_width(
   self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
   index : Int32,
 ) -> Double {
   let idea = self.ideas[index]
-  let metrics = self.node_font_metrics(index)
+  let metrics = self.node_font_metrics(text_context, index)
   tree_label_width(
     metrics,
     idea.label,
@@ -137,10 +139,12 @@ fn @tree.MindmapDiagram::node_text_width(
 ///|
 fn @tree.MindmapDiagram::node_font_metrics(
   self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
   index : Int32,
 ) -> @metrics.FontMetrics {
   let style = self.node_style(index)
   self.style.font_metrics_for(
+    text_context,
     style.font_name.unwrap_or(self.style.font_family()),
     font_size=self.node_font_size(index),
     font_weight=style.font_weight.unwrap_or(400),
@@ -151,10 +155,11 @@ fn @tree.MindmapDiagram::node_font_metrics(
 ///|
 fn @tree.MindmapDiagram::node_base_size(
   self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
   index : Int32,
 ) -> (Double, Double) {
   let idea = self.ideas[index]
-  let metrics = self.node_text_metrics(index)
+  let metrics = self.node_text_metrics(text_context, index)
   let node_style = self.node_style(index)
   match idea.shape {
     @tree.IdeaShape::Box => {
@@ -164,7 +169,7 @@ fn @tree.MindmapDiagram::node_base_size(
       let padding_y = node_style.padding_top.unwrap_or(
         @tree.MINDMAP_DEFAULT_PADDING_Y,
       )
-      let width = (self.node_text_width(index) +
+      let width = (self.node_text_width(text_context, index) +
       padding_x +
       node_style.padding_right.unwrap_or(@tree.MINDMAP_DEFAULT_PADDING_X)).max(
         node_style.minimum_width.unwrap_or(0),
@@ -176,7 +181,8 @@ fn @tree.MindmapDiagram::node_base_size(
     }
     @tree.IdeaShape::Boxless =>
       (
-        (self.node_text_width(index) + boxless_horizontal_margin.to_double()).max(
+        (self.node_text_width(text_context, index) +
+        boxless_horizontal_margin.to_double()).max(
           node_style.minimum_width.unwrap_or(0),
         ),
         metrics.height + (boxless_vertical_margin * 2).to_double(),
@@ -187,9 +193,10 @@ fn @tree.MindmapDiagram::node_base_size(
 ///|
 fn @tree.MindmapDiagram::node_size(
   self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
   index : Int32,
 ) -> (Double, Double) {
-  let (width, height) = self.node_base_size(index)
+  let (width, height) = self.node_base_size(text_context, index)
   guard self.node_style(index).same_class_width.unwrap_or(false) else {
     (width, height)
   }
@@ -198,7 +205,7 @@ fn @tree.MindmapDiagram::node_size(
     guard self.node_style(candidate).same_class_width.unwrap_or(false) else {
       continue
     }
-    let (candidate_width, _) = self.node_base_size(candidate)
+    let (candidate_width, _) = self.node_base_size(text_context, candidate)
     shared_width = shared_width.max(candidate_width)
   }
   (shared_width, height)
@@ -206,12 +213,15 @@ fn @tree.MindmapDiagram::node_size(
 
 ///|
 /// Calculate PlantUML-style, symmetric mindmap geometry without rendering it.
-fn @tree.MindmapDiagram::layout(self : @tree.MindmapDiagram) -> MindmapLayout {
+fn @tree.MindmapDiagram::layout(
+  self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
+) -> MindmapLayout {
   let vertical = self.style.layout_direction is Some(TopToBottom)
   let items = []
   let roots = []
   for index, idea in self.ideas {
-    let (width, height) = self.node_size(index)
+    let (width, height) = self.node_size(text_context, index)
     let style = self.node_style(index)
     let item : LayoutItem = {
       width,
@@ -284,8 +294,11 @@ fn @tree.MindmapDiagram::layout(self : @tree.MindmapDiagram) -> MindmapLayout {
 
 ///|
 /// Calculate PlantUML-style, symmetric mindmap geometry without rendering it.
-pub fn layout_mindmap(diagram : @tree.MindmapDiagram) -> MindmapLayout {
-  diagram.layout()
+pub fn layout_mindmap(
+  text_context : @style.RenderContext,
+  diagram : @tree.MindmapDiagram,
+) -> MindmapLayout {
+  diagram.layout(text_context)
 }
 
 ///|

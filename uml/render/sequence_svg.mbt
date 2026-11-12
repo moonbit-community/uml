@@ -1,5 +1,6 @@
 ///|
 fn sequence_stylesheet(
+  text_context : @style.RenderContext,
   document : @svg.SvgDocument,
   style : @style.DocumentStyle,
 ) -> Unit {
@@ -51,7 +52,7 @@ fn sequence_stylesheet(
     $|.page-label{font-size:\{body_font_size}px;font-style:italic}
     $|.destroy{fill:none;stroke:#A80036;stroke-width:2}
   document.stylesheet(svg_style)
-  let metrics = SequenceTextMetrics::new(style)
+  let metrics = SequenceTextMetrics::new(text_context, style)
   for
     (selector, role, font) in [
       (".participant-label", "Participant", metrics.participant),
@@ -79,9 +80,11 @@ fn sequence_stylesheet(
 /// that order.
 fn @seq.SequenceDiagram::paint_sequence_svg(
   self : @seq.SequenceDiagram,
+  text_context : @style.RenderContext,
   layout : DiagramLayout,
 ) -> String {
   let decoration = decorate_document_text(
+    text_context,
     self.style,
     layout.width,
     layout.height,
@@ -97,7 +100,7 @@ fn @seq.SequenceDiagram::paint_sequence_svg(
     ),
   )
   let output = sequence_drawing(document)
-  sequence_stylesheet(document, self.style)
+  sequence_stylesheet(text_context, document, self.style)
   output.draw(
     Rectangle(
       origin=sequence_point(0, 0),
@@ -194,6 +197,7 @@ fn @seq.SequenceDiagram::paint_sequence_svg(
     append_footboxes(output, layout)
   }
   draw_document_text(
+    text_context,
     document.graphic(),
     self.style,
     "sequence",
@@ -205,6 +209,7 @@ fn @seq.SequenceDiagram::paint_sequence_svg(
 ///|
 /// Render a parsed sequence diagram to SVG.
 pub fn render_sequence_svg(
+  text_context : @style.RenderContext,
   diagram : @seq.SequenceDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
@@ -212,5 +217,5 @@ pub fn render_sequence_svg(
     ..diagram,
     style: diagram.style.with_color_scheme(color_scheme),
   }
-  diagram.paint_sequence_svg(diagram.layout())
+  diagram.paint_sequence_svg(text_context, diagram.layout(text_context))
 }

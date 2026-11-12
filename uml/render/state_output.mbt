@@ -26,6 +26,7 @@ fn state_output_size(
 /// Previously verified: output scaling transforms the complete drawing
 /// without rerunning layout; size constraints include document blocks.
 fn append_state_output(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   drawing : StateDrawingLayout,
@@ -48,13 +49,20 @@ fn append_state_output(
   )
   let paint = (output : @graphics.Graphic) => {
     append_state_layout(
+      text_context,
       output,
       diagram,
       drawing.layout,
       note_connections=drawing.note_connections,
       cluster_titles=drawing.cluster_titles,
     )
-    draw_document_text(output, diagram.style, "state", drawing.document)
+    draw_document_text(
+      text_context,
+      output,
+      diagram.style,
+      "state",
+      drawing.document,
+    )
   }
   if size.scale == 1.0 {
     paint(output)

@@ -187,6 +187,7 @@ fn state_spacing_override(
 /// the explicit nodesep/ranksep skin parameters, in points before DOT inches.
 fn @flow.StateDiagram::graphviz_spacing(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   scope : String?,
   region_index : Int32,
 ) -> (Double, Double) {
@@ -207,7 +208,7 @@ fn @flow.StateDiagram::graphviz_spacing(
       continue
     }
     guard transition.source != transition.target else { continue }
-    let label = self.transition_label_geometry(transition_index)
+    let label = self.transition_label_geometry(text_context, transition_index)
     let (width, height) = (label.width, label.height)
     if transition.length == 1 {
       nodesep = nodesep.max(
@@ -593,17 +594,19 @@ fn @flow.StateNode::leaf_size(
 ///|
 fn @flow.StateDiagram::composite_fragment(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   state : @flow.StateNode,
 ) -> StateFragment? raise @dot_layout.DotLayoutError {
   guard self.has_children(state.code) && self.is_autonomous_state(state.code) else {
     return None
   }
-  Some(self.layout_composite_state(state))
+  Some(self.layout_composite_state(text_context, state))
 }
 
 ///|
 fn @flow.StateDiagram::visible_nodes_for_scope(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   scope : String?,
   region_index : Int32,
 ) -> Array[StateVisibleNode] raise @dot_layout.DotLayoutError {
@@ -613,7 +616,7 @@ fn @flow.StateDiagram::visible_nodes_for_scope(
     guard region_index < 0 || state.region_index == region_index else {
       continue
     }
-    output.push({ state, child: self.composite_fragment(state), })
+    output.push({ state, child: self.composite_fragment(text_context, state), })
     if self.is_state_cluster(state.code) {
       // Later concurrent regions are independent image nodes, not flattened
       // into their parent's cluster. Only the initial region stays in this DOT.
@@ -623,7 +626,11 @@ fn @flow.StateDiagram::visible_nodes_for_scope(
         .get(0)
         .map_or(-1, region => region.index)
       output.append(
-        self.visible_nodes_for_scope(Some(state.code), initial_region),
+        self.visible_nodes_for_scope(
+          text_context,
+          Some(state.code),
+          initial_region,
+        ),
       )
     }
   }
@@ -664,11 +671,14 @@ fn append_shifted_fragment(
 /// 0.1.10 has only been checked against Java source and compilation.
 fn @flow.StateDiagram::layout_scope(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   scope : String?,
   region_index : Int32,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
   let monospaced_family = state_monospaced_family(self.style)
-  let visible_nodes = self.visible_nodes_for_scope(scope, region_index)
+  let visible_nodes = self.visible_nodes_for_scope(
+    text_context, scope, region_index,
+  )
   let graph = @graphviz.new_directed_graph("state", self.style)
   let routing = state_graphviz_routing(self.style)
   graph.set_attr("splines", routing)
@@ -684,11 +694,12 @@ fn @flow.StateDiagram::layout_scope(
   let left_to_right = self.style.layout_direction is Some(LeftToRight)
   for index, visible in visible_nodes {
     let name_metrics = if visible.state.kind is @flow.LegacyActivity {
-      legacy_activity_metrics(self.style)
+      legacy_activity_metrics(text_context, self.style)
     } else {
-      resolve_state_node_font(self, visible.state, StateLabel).metrics
+      resolve_state_node_font(text_context, self, visible.state, StateLabel).metrics
     }
     let description_metrics = resolve_state_font(
+        text_context,
         self.style,
         StateDescription,
         state=Some(visible.state),
@@ -709,6 +720,7 @@ fn @flow.StateDiagram::layout_scope(
           note.target == @flow.StateNote(visible.state.code)
         })
       let container = create_state_cluster(
+        text_context,
         parent,
         cluster_name,
         visible.state,
@@ -721,7 +733,7 @@ fn @flow.StateDiagram::layout_scope(
       containers[visible.state.code] = container
       for region in self.regions_for(visible.state.code) {
         guard region.separator is Some(_) else { continue }
-        let fragment = self.layout_state_region(region)
+        let fragment = self.layout_state_region(text_context, region)
         let region_name = "region" + region.index.to_string()
         region_images[region_name] = (fragment, region)
         @graphviz.set_fixed_node_size(
@@ -736,11 +748,11 @@ fn @flow.StateDiagram::layout_scope(
     let leaf_size = if visible.state.standalone_note is Some(note) {
       state_note_size(
         note,
-        resolve_state_font(self.style, NoteLabel).metrics,
+        resolve_state_font(text_context, self.style, NoteLabel).metrics,
         self.style,
       )
     } else if visible.state.embedded is Some(entity) {
-      state_embedded_size(entity, self.style)
+      state_embedded_size(text_context, entity, self.style)
     } else {
       visible.state.leaf_size(
         name_metrics,
@@ -751,6 +763,7 @@ fn @flow.StateDiagram::layout_scope(
         monospaced_family~,
         stereotype_size=if visible.state.kind == @flow.Frame {
           state_frame_stereotype_size(
+            text_context,
             visible.state,
             self.style,
             PackageStereotype,
@@ -785,7 +798,7 @@ fn @flow.StateDiagram::layout_scope(
     if visible.state.embedded is Some(entity) {
       let ports = entity.node_ports(
         [],
-        ClassTextMetrics::new(self.style),
+        ClassTextMetrics::new(text_context, self.style),
         @entity.ClassDiagram,
       )
       node_ports[visible.state.code] = ports
@@ -866,7 +879,7 @@ fn @flow.StateDiagram::layout_scope(
     if transition.length != 1 {
       edge.set_attr("minlen", (transition.length - 1).to_string())
     }
-    let label = self.transition_label_geometry(transition_index)
+    let label = self.transition_label_geometry(text_context, transition_index)
     if label.width > 0.0 && label.height > 0.0 {
       edge.set_attr_value(
         if external_labels {
@@ -878,7 +891,7 @@ fn @flow.StateDiagram::layout_scope(
       )
     }
     if transition.target_label is Some(text) {
-      let metrics = legacy_activity_arrow_metrics(self.style)
+      let metrics = legacy_activity_arrow_metrics(text_context, self.style)
       let (width, height) = state_text_size(text, metrics)
       edge.set_attr_value(
         if transition.layout_reversed() {
@@ -905,7 +918,7 @@ fn @flow.StateDiagram::layout_scope(
   }
   let note_names : Map[String, Int32] = Map([])
   let note_edge_names : Map[Int32, Int32] = Map([])
-  let note_metrics = resolve_state_font(self.style, NoteLabel).metrics
+  let note_metrics = resolve_state_font(text_context, self.style, NoteLabel).metrics
   for note_index, note in self.notes {
     guard !(note.target is @flow.TransitionNote(_)) else { continue }
     guard self.note_scope(note) == scope else { continue }
@@ -970,7 +983,9 @@ fn @flow.StateDiagram::layout_scope(
     // uses its internal defaults, while rankdir is still set on the graph.
     @dot_layout.layout_dot(graph)
   } else {
-    let (nodesep, ranksep) = self.graphviz_spacing(scope, region_index)
+    let (nodesep, ranksep) = self.graphviz_spacing(
+      text_context, scope, region_index,
+    )
     @graphviz.layout_dot(graph, self.style, nodesep, ranksep)
   }
   if laid_out.nodes.any(node => node.node.get_attr("shape") == Some("octagon")) {
@@ -987,7 +1002,9 @@ fn @flow.StateDiagram::layout_scope(
     note_connections: [],
     cluster_titles: Map([]),
   }
-  append_state_cluster_layouts(self, output, laid_out, bbox, cluster_codes)
+  append_state_cluster_layouts(
+    text_context, self, output, laid_out, bbox, cluster_codes,
+  )
   for node_layout in laid_out.nodes {
     let node_name = node_layout.node.name()
     if region_images.get(node_name) is Some((fragment, region)) {
@@ -1029,11 +1046,13 @@ fn @flow.StateDiagram::layout_scope(
       })
       if visible.child is Some(child) {
         let name_metrics = resolve_state_font(
+            text_context,
             self.style,
             StateLabel,
             state=Some(visible.state),
           ).metrics
         let description_metrics = resolve_state_font(
+            text_context,
             self.style,
             StateDescription,
             state=Some(visible.state),
@@ -1059,7 +1078,7 @@ fn @flow.StateDiagram::layout_scope(
       bbox,
       external_labels~,
     ) {
-    let label = self.transition_label_geometry(edge.index)
+    let label = self.transition_label_geometry(text_context, edge.index)
     let label_origin = edge.label.map(center => {
       (center.x - label.width / 2.0, center.y - label.height / 2.0)
     })
@@ -1205,32 +1224,38 @@ fn stack_region_fragments(
 ///|
 fn @flow.StateDiagram::layout_composite_state(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   state : @flow.StateNode,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
   let regions = self.regions_for(state.code)
   if regions.is_empty() {
     return normalize_state_fragment(
+      text_context,
       self,
-      self.layout_scope(Some(state.code), -1),
+      self.layout_scope(text_context, Some(state.code), -1),
       STATE_IMAGE_MARGIN,
     )
   }
-  let fragments = regions.map(region => self.layout_state_region(region))
+  let fragments = regions.map(region => {
+    self.layout_state_region(text_context, region)
+  })
   stack_region_fragments(state.code, regions, fragments)
 }
 
 ///|
 fn @flow.StateDiagram::drawing_layout(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
 ) -> StateDrawingLayout raise @dot_layout.DotLayoutError {
   // Baseline SVGs reserve the image margin after the translated drawing's
   // maximum coordinate. Inner images use SvekResult's unshifted dimension.
   let fragment = normalize_state_fragment(
+    text_context,
     self,
-    self.layout_scope(None, -1),
+    self.layout_scope(text_context, None, -1),
     STATE_IMAGE_ORIGIN + STATE_IMAGE_MARGIN,
   )
-  decorate_state_document(self, {
+  decorate_state_document(text_context, self, {
     layout: fragment.as_layout(),
     note_connections: fragment.note_connections,
     cluster_titles: fragment.cluster_titles,
@@ -1241,29 +1266,33 @@ fn @flow.StateDiagram::drawing_layout(
 ///|
 fn @flow.StateDiagram::layout(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
 ) -> StateLayout raise @dot_layout.DotLayoutError {
-  self.drawing_layout().layout
+  self.drawing_layout(text_context).layout
 }
 
 ///|
 /// Calculate PlantUML-style state-diagram geometry without rendering it.
 pub fn layout_state(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
 ) -> StateLayout raise @dot_layout.DotLayoutError {
-  diagram.visible_state_diagram().layout()
+  diagram.visible_state_diagram().layout(text_context)
 }
 
 ///|
 fn @flow.StateDiagram::layout_state_region(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   region : @flow.StateRegion,
 ) -> StateFragment raise @dot_layout.DotLayoutError {
-  if self.empty_state_region_fragment(region) is Some(fragment) {
+  if self.empty_state_region_fragment(text_context, region) is Some(fragment) {
     return fragment
   }
   normalize_state_fragment(
+    text_context,
     self,
-    self.layout_scope(Some(region.parent), region.index),
+    self.layout_scope(text_context, Some(region.parent), region.index),
     STATE_IMAGE_MARGIN,
   )
 }
@@ -1276,6 +1305,7 @@ const STATE_CLUSTER_ENDPOINT_SIZE : Double = 0.01
 /// ClusterHeader includes the title and optional fields; ClusterDotString
 /// subtracts the title margin when reserving the HTML label rectangle.
 fn state_cluster_label_size(
+  text_context : @style.RenderContext,
   state : @flow.StateNode,
   name_metrics : @metrics.FontMetrics,
   description_metrics : @metrics.FontMetrics,
@@ -1284,7 +1314,12 @@ fn state_cluster_label_size(
   let monospaced_family = state_monospaced_family(style)
   let title = state_text_size(state.display, name_metrics, monospaced_family~)
   let title = if state.kind == @flow.Frame {
-    let stereo = state_frame_stereotype_size(state, style, StateStereotype)
+    let stereo = state_frame_stereotype_size(
+      text_context,
+      state,
+      style,
+      StateStereotype,
+    )
     (title.0.max(stereo.0), title.1 + stereo.1)
   } else {
     title
@@ -1311,6 +1346,7 @@ fn state_cluster_label_size(
 /// ClusterDotString preserves p0/p1 protection clusters. A group endpoint
 /// adds outer/inner protection and a point outside the protected contents.
 fn create_state_cluster(
+  text_context : @style.RenderContext,
   parent : @cgraph.Graph,
   name : String,
   state : @flow.StateNode,
@@ -1331,7 +1367,7 @@ fn create_state_cluster(
   before.set_attr("label", "")
   let cluster = before.subgraph(name~)
   let (width, height) = state_cluster_label_size(
-    state, name_metrics, description_metrics, style,
+    text_context, state, name_metrics, description_metrics, style,
   )
   if width > 0.0 {
     cluster.set_attr_value(
@@ -1375,6 +1411,7 @@ fn create_state_cluster(
 /// DOT cluster boxes and label locations share the root coordinate system.
 /// Keep title positions with the drawing so normalization cannot detach them.
 fn append_state_cluster_layouts(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   output : StateFragment,
   layout : @dot_layout.DotLayoutGraph,
@@ -1393,9 +1430,15 @@ fn append_state_cluster_layouts(
     })
     if layout.label_pos is Some(center) && diagram.state(code) is Some(state) {
       let (_, height) = state_cluster_label_size(
+        text_context,
         state,
-        resolve_state_node_font(diagram, state, StateLabel).metrics,
-        resolve_state_font(diagram.style, StateDescription, state=Some(state)).metrics,
+        resolve_state_node_font(text_context, diagram, state, StateLabel).metrics,
+        resolve_state_font(
+          text_context,
+          diagram.style,
+          StateDescription,
+          state=Some(state),
+        ).metrics,
         diagram.style,
       )
       output.cluster_titles[code] = root_bbox.ury - center.y - height / 2.0
@@ -1403,7 +1446,7 @@ fn append_state_cluster_layouts(
   }
   for child in layout.subgraphs {
     append_state_cluster_layouts(
-      diagram, output, child, root_bbox, cluster_codes,
+      text_context, diagram, output, child, root_bbox, cluster_codes,
     )
   }
 }

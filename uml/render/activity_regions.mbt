@@ -42,12 +42,14 @@ fn activity_group_role(group : @flow.ActivityGroup) -> String {
 
 ///|
 fn activity_role_metrics(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   role : String,
   size : Int32,
 ) -> @metrics.FontMetrics {
   let face = style.property(role + "FontStyle").unwrap_or("").to_lower()
   style.font_metrics_for(
+    text_context,
     style.property(role + "FontName").unwrap_or(style.font_family()),
     font_size=style.property_font_size(role + "FontSize", fallback=size),
     font_weight=if face.contains("bold") { 700 } else { 400 },
@@ -57,13 +59,14 @@ fn activity_role_metrics(
 
 ///|
 fn activity_partition_title(
+  text_context : @style.RenderContext,
   node : @flow.ActivityNode,
   _metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   guard node is @flow.Partition(group) else { return { width: 0, height: 0, } }
   let style = group.style.with_stereotypes(group.stereotype)
   activity_measure(
-    activity_role_metrics(style, activity_group_role(group), 14),
+    activity_role_metrics(text_context, style, activity_group_role(group), 14),
     group.label,
   )
 }
@@ -72,13 +75,14 @@ fn activity_partition_title(
 /// FtileGroup delegates its outline to USymbolFrame, USymbolFolder,
 /// USymbolRectangle or USymbolCard. This paints those vector primitives only.
 fn draw_activity_group(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   region : ActivityRegionLayout,
   group : @flow.ActivityGroup,
 ) -> Unit {
   let style = group.style.with_stereotypes(group.stereotype)
   let role = activity_group_role(group)
-  let font = activity_role_metrics(style, role, 14)
+  let font = activity_role_metrics(text_context, style, role, 14)
   let title = activity_measure(font, region.label)
   let graphic = output
     .translated(region.x, region.y)
@@ -233,6 +237,7 @@ fn draw_activity_group(
 
 ///|
 fn draw_activity_spot(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   node : ActivityNodeLayout,
   text : String,
@@ -261,7 +266,7 @@ fn draw_activity_spot(
     Circle(center~, radius=ACTIVITY_SPOT_SIZE / 2),
     metadata=activity_class("activity-spot"),
   )
-  let font = activity_role_metrics(style, "Circle", 14)
+  let font = activity_role_metrics(text_context, style, "Circle", 14)
   append_state_text_at_top(
     output.with_style({
       ..Default::default(),
@@ -359,9 +364,11 @@ fn activity_decision_style(
 
 ///|
 fn activity_decision_metrics(
+  text_context : @style.RenderContext,
   decision : @flow.ActivityDecision,
 ) -> @metrics.FontMetrics {
   activity_role_metrics(
+    text_context,
     activity_decision_style(decision),
     "ActivityDiamond",
     SMALL_FONT,

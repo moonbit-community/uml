@@ -82,6 +82,7 @@ fn append_state_label(
 
 ///|
 fn append_state_node(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateNodeLayout,
@@ -89,11 +90,17 @@ fn append_state_node(
 ) -> Unit {
   guard diagram.state(layout.code) is Some(state) else { return }
   if state.kind is @flow.LegacyActivity {
-    append_legacy_activity_node(output, diagram.style, state, layout)
+    append_legacy_activity_node(
+      text_context,
+      output,
+      diagram.style,
+      state,
+      layout,
+    )
     return
   }
   if state.standalone_note is Some(note) {
-    append_state_note(output, { ..diagram, notes: [note], }, {
+    append_state_note(text_context, output, { ..diagram, notes: [note], }, {
       note_index: 0,
       x: layout.x,
       y: layout.y,
@@ -104,6 +111,7 @@ fn append_state_node(
   }
   if state.embedded is Some(entity) {
     append_state_embedded(
+      text_context,
       output,
       diagram.style,
       { ..entity, url: state.url, },
@@ -150,6 +158,7 @@ fn append_state_node(
   output.group(metadata, output => {
     let paint = output => {
       append_state_node_body(
+        text_context,
         output,
         diagram,
         state,
@@ -169,6 +178,7 @@ fn append_state_node(
 
 ///|
 fn append_state_node_body(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   state : @flow.StateNode,
@@ -184,8 +194,14 @@ fn append_state_node_body(
   let center_x = x + width / 2.0
   let center_y = y + height / 2.0
   let center : @graphics.Point = { x: center_x, y: center_y, }
-  let name_metrics = resolve_state_node_font(diagram, state, StateLabel).metrics
+  let name_metrics = resolve_state_node_font(
+      text_context,
+      diagram,
+      state,
+      StateLabel,
+    ).metrics
   let description_metrics = resolve_state_font(
+      text_context,
       diagram.style,
       StateDescription,
       state=Some(state),
@@ -210,7 +226,7 @@ fn append_state_node_body(
   let corner = state_corner_radius(state, diagram.style)
   let shadow = state_node_shadow(state, diagram.style)
   if state.kind == @flow.Frame {
-    append_state_frame(output, diagram, state, layout)
+    append_state_frame(text_context, output, diagram, state, layout)
     return
   }
   if composite {
@@ -333,7 +349,7 @@ fn append_state_node_body(
       )
     }
     @flow.StateKind::History | @flow.StateKind::DeepHistory =>
-      append_state_history(output, diagram, state, layout)
+      append_state_history(text_context, output, diagram, state, layout)
     @flow.StateKind::Synchronization =>
       output
       .with_style({
@@ -489,6 +505,7 @@ const STATE_REGION_STROKE_WIDTH : Double = 1.5
 
 ///|
 fn append_state_note(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateNoteLayout,
@@ -526,7 +543,7 @@ fn append_state_note(
         state_note_text_x(note, layout, diagram.style),
         layout.y + STATE_NOTE_VERTICAL_MARGIN,
         "state-note-label",
-        resolve_state_font(diagram.style, NoteLabel).metrics,
+        resolve_state_font(text_context, diagram.style, NoteLabel).metrics,
         anchor=Start,
         line_alignment=Some(state_note_text_alignment(diagram.style)),
         wrap_width=state_wrap_width(diagram.style),
@@ -540,13 +557,17 @@ fn append_state_note(
 ///|
 fn @flow.StateDiagram::render_svg(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   let self = {
     ..self.visible_state_diagram(),
     style: self.style.with_color_scheme(color_scheme),
   }
-  let drawing = @graphviz.layout_or_fallback(() => self.drawing_layout(), None)
+  let drawing = @graphviz.layout_or_fallback(
+    () => self.drawing_layout(text_context),
+    None,
+  )
   let layout = drawing.layout
   let size = state_output_size(self, layout)
   let document = @svg.SvgDocument::empty(
@@ -559,7 +580,7 @@ fn @flow.StateDiagram::render_svg(
     },
   )
   if self.style.property("LegacyActivity") == Some("true") {
-    let metrics = legacy_activity_metrics(self.style)
+    let metrics = legacy_activity_metrics(text_context, self.style)
     let family = self.style
       .property("ActivityFontName")
       .unwrap_or(self.style.font_family())
@@ -605,7 +626,9 @@ fn @flow.StateDiagram::render_svg(
   ]
   for (class_name, role) in roles {
     document.stylesheet(
-      resolve_state_font(self.style, role).css_rule("." + class_name),
+      resolve_state_font(text_context, self.style, role).css_rule(
+        "." + class_name,
+      ),
     )
   }
   for index, state in self.states {
@@ -622,7 +645,7 @@ fn @flow.StateDiagram::render_svg(
         is (StateLabel | StateDescription | DiamondLabel | StateStereotype) else {
         continue
       }
-      let font = resolve_state_node_font(self, state, role)
+      let font = resolve_state_node_font(text_context, self, state, role)
       document.stylesheet(font.css_rule("\{selector} .\{class_name}"))
     }
   }
@@ -631,6 +654,7 @@ fn @flow.StateDiagram::render_svg(
   let text_backgrounds : Array[String] = []
   let shadow_filters : Array[Bool] = []
   append_state_output(
+    text_context,
     @graphics.Graphic::new(command => {
       write_state_shadow_command(
         writer,
@@ -655,6 +679,7 @@ fn @flow.StateDiagram::render_svg(
 /// SvekResult draws nodes before edges so state borders cannot cover the
 /// circle/cross or arrowhead at a transition contact.
 fn append_state_layout(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   layout : StateLayout,
@@ -673,6 +698,7 @@ fn append_state_layout(
       continue
     }
     append_state_node(
+      text_context,
       output,
       diagram,
       node,
@@ -683,7 +709,7 @@ fn append_state_layout(
     guard include_hidden || !diagram.state_is_hidden(region.parent) else {
       continue
     }
-    append_empty_concurrent_region(output, diagram, region)
+    append_empty_concurrent_region(text_context, output, diagram, region)
   }
   for note in layout.notes {
     guard include_hidden || !diagram.note_is_hidden(note.note_index) else {
@@ -695,7 +721,7 @@ fn append_state_layout(
     let connection = note_connections
       .search_by(connection => connection.note_index == note.note_index)
       .map(index => note_connections[index])
-    append_state_note(output, diagram, note, connection~)
+    append_state_note(text_context, output, diagram, note, connection~)
   }
   for edge in layout.edges {
     let transition = diagram.transitions[edge.transition_index]
@@ -708,13 +734,13 @@ fn append_state_layout(
       !diagram.transitions[edge.transition_index].has_line_style("hidden") else {
       continue
     }
-    append_state_edge(output, diagram, edge, include_hidden~)
+    append_state_edge(text_context, output, diagram, edge, include_hidden~)
     for note in layout.notes {
       guard diagram.notes[note.note_index].target ==
         @flow.StateNoteTarget::TransitionNote(edge.transition_index) else {
         continue
       }
-      append_state_note(output, diagram, note)
+      append_state_note(text_context, output, diagram, note)
     }
   }
 }
@@ -722,10 +748,11 @@ fn append_state_layout(
 ///|
 /// Render a parsed state diagram to SVG.
 pub fn render_state_svg(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
-  diagram.render_svg(color_scheme~)
+  diagram.render_svg(text_context, color_scheme~)
 }
 
 ///|
@@ -733,6 +760,7 @@ pub fn render_state_svg(
 /// styles. A populated frame keeps the state group paint, but its title uses
 /// frame.composite.title. Empty frames use package.title and packageStyle.
 fn append_state_frame(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   state : @flow.StateNode,
@@ -784,8 +812,18 @@ fn append_state_frame(
     state_class("state-frame-outline"),
     shadow,
   )
-  let name_metrics = resolve_state_node_font(diagram, state, StateLabel).metrics
-  let stereo_metrics = resolve_state_node_font(diagram, state, StateStereotype).metrics
+  let name_metrics = resolve_state_node_font(
+      text_context,
+      diagram,
+      state,
+      StateLabel,
+    ).metrics
+  let stereo_metrics = resolve_state_node_font(
+      text_context,
+      diagram,
+      state,
+      StateStereotype,
+    ).metrics
   let monospaced_family = state_monospaced_family(style)
   let title = state_text_size(state.display, name_metrics, monospaced_family~)
   let stereo_text = state_frame_stereotype(state, style)

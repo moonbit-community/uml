@@ -18,6 +18,7 @@ fn switch_right_route_x(from : ActivityNodeLayout, target_x : Double) -> Double 
 /// Width, flow axis, case column origins and wide-condition mode for the SMALL_DIAMOND and
 /// BIG_DIAMOND layouts in FtileSwitchWithDiamonds.
 fn switch_columns(
+  text_context : @style.RenderContext,
   entry : Int32,
   branches : Array[BranchTiles],
   exit : Int32,
@@ -25,11 +26,23 @@ fn switch_columns(
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double, Array[Double], Bool) {
-  let entry_width = nodes[entry].size(metrics, small_metrics).width
-  let exit_width = nodes[exit].size(metrics, small_metrics).width
+  let entry_width = nodes[entry].size(text_context, metrics, small_metrics).width
+  let exit_width = nodes[exit].size(text_context, metrics, small_metrics).width
   let sizes = branches.map(branch => {
-    let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-    let axis = sequence_axis(branch.tiles, nodes, metrics, small_metrics)
+    let body = measure_sequence(
+      text_context,
+      branch.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    )
+    let axis = sequence_axis(
+      text_context,
+      branch.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    )
     let label_width = branch.label.map_or(0.0, label => {
       activity_measure(small_metrics, label).width
     })
@@ -40,12 +53,14 @@ fn switch_columns(
     let first = sizes[0]
     let last = sizes[sizes.length() - 1]
     let first_axis = sequence_axis(
+      text_context,
       branches[0].tiles,
       nodes,
       metrics,
       small_metrics,
     )
     let last_axis = sequence_axis(
+      text_context,
       branches[branches.length() - 1].tiles,
       nodes,
       metrics,
@@ -111,6 +126,7 @@ fn switch_label_height(
 ///|
 /// Gap above the decorated columns, and height including their label padding.
 fn switch_rows(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   entry_height : Double,
   wide_condition : Bool,
@@ -123,7 +139,13 @@ fn switch_rows(
   for branch in branches {
     let label = switch_label_height(branch, small_metrics)
     label_height = label_height.max(label)
-    let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
+    let body = measure_sequence(
+      text_context,
+      branch.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    )
     let outgoing_height = sequence_outgoing_label(branch.tiles, nodes).map_or(
       0.0,
       text => activity_measure(small_metrics, text).height,

@@ -7,6 +7,7 @@
 /// resizing circles or changing unrelated history/choice nodes. Property merging
 /// and ignored inline state colors passed. Temporary property tests removed.
 fn append_state_history(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   state : @flow.StateNode,
@@ -14,7 +15,12 @@ fn append_state_history(
 ) -> Unit {
   let deep = state.kind == @flow.StateKind::DeepHistory
   let label = if deep { "H*" } else { "H" }
-  let metrics = resolve_state_node_font(diagram, state, DiamondLabel).metrics
+  let metrics = resolve_state_node_font(
+      text_context,
+      diagram,
+      state,
+      DiamondLabel,
+    ).metrics
   let center : @graphics.Point = {
     x: layout.x + layout.width / 2.0,
     y: layout.y + layout.height / 2.0,

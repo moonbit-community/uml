@@ -49,11 +49,12 @@ fn wrap_state_document(
 /// font roles, ribbon alignment and joint translation of nodes, edges, regions
 /// and note contacts when surrounding text widens the image.
 fn decorate_state_document(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   drawing : StateDrawingLayout,
 ) -> StateDrawingLayout {
   let style = diagram.style
-  let legend = document_text_block(style, "legend", style.legend)
+  let legend = document_text_block(text_context, style, "legend", style.legend)
   let legend_top = style.property("documentlegendposition") == Some("top")
   let drawing = wrap_state_document(
     drawing,
@@ -70,17 +71,17 @@ fn decorate_state_document(
   )
   let drawing = wrap_state_document(
     drawing,
-    document_text_block(style, "title", style.title),
+    document_text_block(text_context, style, "title", style.title),
     None,
   )
   let drawing = wrap_state_document(
     drawing,
     None,
-    document_text_block(style, "caption", style.caption),
+    document_text_block(text_context, style, "caption", style.caption),
   )
   wrap_state_document(
     drawing,
-    document_text_block(style, "header", style.header),
-    document_text_block(style, "footer", style.footer),
+    document_text_block(text_context, style, "header", style.header),
+    document_text_block(text_context, style, "footer", style.footer),
   )
 }

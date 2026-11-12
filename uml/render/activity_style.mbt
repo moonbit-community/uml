@@ -1,5 +1,6 @@
 ///|
 fn activity_font_metrics(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   arrow : Bool,
 ) -> @metrics.FontMetrics {
@@ -18,5 +19,5 @@ fn activity_font_metrics(
   } else {
     400
   }
-  style.font_metrics_for(family, font_size~, font_weight=weight)
+  style.font_metrics_for(text_context, family, font_size~, font_weight=weight)
 }

@@ -46,14 +46,14 @@ pub(all) enum DiagramKind {
 /// Render a parsed document to SVG by dispatching to its diagram-specific renderer.
 pub fn Document::render_svg(
   self : Document,
-  measurer? : @metrics.Measurer,
+  measurer~ : @metrics.Measurer,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   self.diagram.render_svg(
-    measurer?,
+    measurer~,
     color_scheme~,
     class_member_collapsible~,
     member_states~,
@@ -65,10 +65,9 @@ pub fn Document::render_svg(
 /// Parse a PlantUML source with the document heuristics and render the
 /// selected diagram family to SVG.
 ///
-/// `measurer` defaults to portable heuristic estimates; hosts can inject their
-/// own service. Parsed styles are not mutated, and service failures never
-/// trigger a fallback to the default. Raw DOT remains
-/// a pass-through to Graphviz, which owns its separate text measurement.
+/// The host must provide `measurer`; the core has no default implementation.
+/// Parsing does not use it, and parsed styles are not mutated by rendering.
+/// Raw DOT remains a pass-through to Graphviz's separate text measurement.
 ///
 /// `color_scheme` is the cross-diagram theme boundary. `text` and `line` are
 /// required (the ink colors that become unreadable in a dark theme), and every
@@ -82,14 +81,14 @@ pub fn Document::render_svg(
 /// MBTI defaults come from its render options; class members default closed.
 pub fn render_svg(
   source : String,
-  measurer? : @metrics.Measurer,
+  measurer~ : @metrics.Measurer,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   parse(source).render_svg(
-    measurer?,
+    measurer~,
     color_scheme~,
     class_member_collapsible~,
     member_states~,
@@ -102,81 +101,50 @@ pub fn render_svg(
 ///
 /// This is the single boundary between document parsing and diagram-specific
 /// rendering. Each family still owns its parser, layout, and SVG painter; the
-/// API binds an explicit host measurer here, then dispatches. Family renderers
-/// and layouts obtain measurement from the diagram's style.
+/// API creates one context from the host's service, then dispatches. Family
+/// renderers and layouts reuse that context without selecting a backend.
 pub fn Diagram::render_svg(
   self : Diagram,
-  measurer? : @metrics.Measurer,
+  measurer~ : @metrics.Measurer,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
-  let bind = (style : @style.DocumentStyle) => {
-    match measurer {
-      Some(measurer) => style.with_measurer(measurer)
-      None => style
-    }
-  }
+  let text_context = @style.RenderContext::new(measurer)
   match self {
     Sequence(diagram) =>
-      @render.render_sequence_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_sequence_svg(text_context, diagram, color_scheme~)
     Activity(diagram) =>
-      @render.render_activity_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_activity_svg(text_context, diagram, color_scheme~)
     LegacyActivity(diagram) =>
-      @render.render_legacy_activity_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_legacy_activity_svg(text_context, diagram, color_scheme~)
     Entity(diagram) =>
       @render.render_entity_svg(
-        { ..diagram, style: bind(diagram.style), },
+        text_context,
+        diagram,
         color_scheme~,
         class_member_collapsible~,
         member_states~,
       )
     State(diagram) =>
-      @render.render_state_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_state_svg(text_context, diagram, color_scheme~)
     Mindmap(diagram) =>
-      @render.render_mindmap_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
-    Wbs(diagram) =>
-      @render.render_wbs_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_mindmap_svg(text_context, diagram, color_scheme~)
+    Wbs(diagram) => @render.render_wbs_svg(text_context, diagram, color_scheme~)
     Timing(diagram) =>
-      @render.render_timing_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_timing_svg(text_context, diagram, color_scheme~)
     Mbti(diagram) =>
       @render.render_mbti_svg(
-        {
-          ..diagram,
-          graph: { ..diagram.graph, style: bind(diagram.graph.style), },
-        },
+        text_context,
+        diagram,
         color_scheme~,
         class_member_collapsible~,
         member_states~,
         render_options=mbti_render_options,
       )
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
-      @render.render_structured_svg(
-        { ..diagram, style: bind(diagram.style), },
-        color_scheme~,
-      )
+      @render.render_structured_svg(text_context, diagram, color_scheme~)
     Dot(diagram) => diagram.render_svg(color_scheme~)
   }
 }

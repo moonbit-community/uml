@@ -1,5 +1,6 @@
 ///|
 fn place_sequence(
+  text_context : @style.RenderContext,
   tiles : Array[Tile],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -9,7 +10,7 @@ fn place_sequence(
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
-  let axis = sequence_axis(tiles, nodes, metrics, small_metrics)
+  let axis = sequence_axis(text_context, tiles, nodes, metrics, small_metrics)
   let mut cursor_y = y
   let mut entry = None
   let mut previous : PlacedTile? = None
@@ -31,7 +32,9 @@ fn place_sequence(
       }
       _ => ()
     }
-    let tile_size = measure_tile(tile, nodes, metrics, small_metrics)
+    let tile_size = measure_tile(
+      text_context, tile, nodes, metrics, small_metrics,
+    )
     guard tile_size.height > 0 || tile is (FlowAnchor(_) | GotoAnchor(_)) else {
       continue
     }
@@ -42,11 +45,12 @@ fn place_sequence(
       cursor_y += sequence_gap(incoming.unwrap_or(None), small_metrics)
     }
     let placed = place_tile(
+      text_context,
       tile,
       nodes,
       metrics,
       small_metrics,
-      x + axis - tile_axis(tile, nodes, metrics, small_metrics),
+      x + axis - tile_axis(text_context, tile, nodes, metrics, small_metrics),
       cursor_y,
       layouts,
       edges,
@@ -103,6 +107,7 @@ fn place_sequence(
 
 ///|
 fn place_switch_branches(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   positions : Array[Double],
   nodes : Array[@flow.ActivityNode],
@@ -117,6 +122,7 @@ fn place_switch_branches(
   for index, branch in branches {
     placed.push({
       tile: place_sequence(
+        text_context,
         branch.tiles,
         nodes,
         metrics,
@@ -137,6 +143,7 @@ fn place_switch_branches(
 
 ///|
 fn place_leaf(
+  text_context : @style.RenderContext,
   index : Int32,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -145,7 +152,7 @@ fn place_leaf(
   y : Double,
   layouts : Array[ActivityNodeLayout],
 ) -> PlacedTile {
-  let size = nodes[index].size(metrics, small_metrics)
+  let size = nodes[index].size(text_context, metrics, small_metrics)
   guard size.height > 0 else {
     return {
       entry: None,
@@ -195,6 +202,7 @@ fn is_if_down(branches : Array[BranchTiles]) -> Bool {
 
 ///|
 fn place_tile(
+  text_context : @style.RenderContext,
   tile : Tile,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -207,19 +215,22 @@ fn place_tile(
   match tile {
     LoopWithBackward(body, backward, entry, exit, spec) =>
       place_loop_backward(
-        body, backward, entry, exit, spec, nodes, metrics, small_metrics, x, y, layouts,
-        edges,
+        text_context, body, backward, entry, exit, spec, nodes, metrics, small_metrics,
+        x, y, layouts, edges,
       )
     LoopWithBreaks(body, breaks, target, repeat) =>
       place_loop_breaks(
-        body, breaks, target, repeat, nodes, metrics, small_metrics, x, y, layouts,
-        edges,
+        text_context, body, breaks, target, repeat, nodes, metrics, small_metrics,
+        x, y, layouts, edges,
       )
     Leaf(index) =>
-      place_leaf(index, nodes, metrics, small_metrics, x, y, layouts)
+      place_leaf(
+        text_context, index, nodes, metrics, small_metrics, x, y, layouts,
+      )
     Noted(body, notes) =>
       place_noted(
-        body, notes, nodes, metrics, small_metrics, x, y, layouts, edges,
+        text_context, body, notes, nodes, metrics, small_metrics, x, y, layouts,
+        edges,
       )
     FlowAnchor(index) | GotoAnchor(index) => {
       layouts.push({
@@ -244,11 +255,11 @@ fn place_tile(
       }
     }
     Partition(index, tiles, end) => {
-      let size = measure_tile(tile, nodes, metrics, small_metrics)
+      let size = measure_tile(text_context, tile, nodes, metrics, small_metrics)
       let inner_width = activity_group_inner_width(
-        tiles, nodes, metrics, small_metrics,
+        text_context, tiles, nodes, metrics, small_metrics,
       )
-      let title = activity_partition_title(nodes[index], metrics)
+      let title = activity_partition_title(text_context, nodes[index], metrics)
       layouts.push({
         node_index: index,
         note_pointer_offset: None,
@@ -258,6 +269,7 @@ fn place_tile(
         height: size.height,
       })
       let placed = place_sequence(
+        text_context,
         tiles,
         nodes,
         metrics,
@@ -292,33 +304,38 @@ fn place_tile(
     IfChain(branches, exit) if if_vertical_body_index(branches, nodes)
       is Some(_) =>
       place_if_vertical(
-        branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
+        text_context, branches, exit, nodes, metrics, small_metrics, x, y, layouts,
+        edges,
       )
     IfChain(branches, exit) if is_if_down(branches) =>
       place_if_down(
-        branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
+        text_context, branches, exit, nodes, metrics, small_metrics, x, y, layouts,
+        edges,
       )
     IfChain(branches, exit) =>
       place_if_chain(
-        branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
+        text_context, branches, exit, nodes, metrics, small_metrics, x, y, layouts,
+        edges,
       )
     Switch(entry, branches, exit) =>
       place_switch(
-        entry, branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
+        text_context, entry, branches, exit, nodes, metrics, small_metrics, x, y,
+        layouts, edges,
       )
     WhileLoop(entry, body, exit, enter_label, exit_label) =>
       place_while(
-        entry, body, exit, enter_label, exit_label, nodes, metrics, small_metrics,
-        x, y, layouts, edges,
+        text_context, entry, body, exit, enter_label, exit_label, nodes, metrics,
+        small_metrics, x, y, layouts, edges,
       )
     RepeatLoop(entry, body, exit, retry_label, exit_label) =>
       place_repeat(
-        entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
-        x, y, layouts, edges,
+        text_context, entry, body, exit, retry_label, exit_label, nodes, metrics,
+        small_metrics, x, y, layouts, edges,
       )
     Parallel(entry, branches, exit) =>
       place_parallel(
-        entry, branches, exit, nodes, metrics, small_metrics, x, y, layouts, edges,
+        text_context, entry, branches, exit, nodes, metrics, small_metrics, x, y,
+        layouts, edges,
       )
   }
 }
@@ -327,6 +344,7 @@ fn place_tile(
 /// Classic `if (cond) then ... else ...` layout: a single decision diamond
 /// centered between the two branch columns, labels beside the diamond.
 fn place_if_down(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   exit : Int32,
   nodes : Array[@flow.ActivityNode],
@@ -338,25 +356,28 @@ fn place_if_down(
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
   let decision = branches[0].decision.unwrap()
-  let size = nodes[decision].size(metrics, small_metrics)
+  let size = nodes[decision].size(text_context, metrics, small_metrics)
   let y = y + if_side_label_padding(branches, size.height, small_metrics)
   let left_size = measure_sequence(
+    text_context,
     branches[0].tiles,
     nodes,
     metrics,
     small_metrics,
   )
   let right_size = measure_sequence(
+    text_context,
     branches[1].tiles,
     nodes,
     metrics,
     small_metrics,
   )
   let (_, axis, left_x, right_x) = if_columns(
-    branches, nodes, metrics, small_metrics,
+    text_context, branches, nodes, metrics, small_metrics,
   )
   let center_x = x + axis
   let decision_placed = place_leaf(
+    text_context,
     decision,
     nodes,
     metrics,
@@ -367,6 +388,7 @@ fn place_if_down(
   )
   let body_y = y + size.height + DIAMOND_BODY_GAP
   let left_body = place_sequence(
+    text_context,
     branches[0].tiles,
     nodes,
     metrics,
@@ -377,6 +399,7 @@ fn place_if_down(
     edges,
   )
   let right_body = place_sequence(
+    text_context,
     branches[1].tiles,
     nodes,
     metrics,
@@ -450,6 +473,7 @@ fn place_if_down(
 /// side above a shared exit node. False paths connect successive decisions
 /// horizontally, then turn down into the final else branch.
 fn place_if_chain(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   exit : Int32,
   nodes : Array[@flow.ActivityNode],
@@ -460,12 +484,14 @@ fn place_if_chain(
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
-  let branches_size = measure_if_chain(branches, nodes, metrics, small_metrics)
+  let branches_size = measure_if_chain(
+    text_context, branches, nodes, metrics, small_metrics,
+  )
   let mut decision_height = 0.0
   for branch in branches {
     guard branch.decision is Some(decision) else { continue }
     decision_height = decision_height.max(
-      nodes[decision].size(metrics, small_metrics).height,
+      nodes[decision].size(text_context, metrics, small_metrics).height,
     )
   }
   let body_y = y + decision_height + if_chain_body_gap(branches, small_metrics)
@@ -476,13 +502,14 @@ fn place_if_chain(
   for branch in branches {
     let decision_size = branch.decision.map_or(
       ({ width: 0, height: 0, } : TileMeasure),
-      index => nodes[index].size(metrics, small_metrics),
+      index => nodes[index].size(text_context, metrics, small_metrics),
     )
     let (branch_width, axis) = if_chain_column(
-      branch, nodes, metrics, small_metrics,
+      text_context, branch, nodes, metrics, small_metrics,
     )
     if branch.decision is Some(decision) {
       place_leaf(
+        text_context,
         decision,
         nodes,
         metrics,
@@ -494,13 +521,14 @@ fn place_if_chain(
       |> ignore
     }
     let body = place_sequence(
+      text_context,
       branch.tiles,
       nodes,
       metrics,
       small_metrics,
       cursor_x +
       axis -
-      sequence_axis(branch.tiles, nodes, metrics, small_metrics),
+      sequence_axis(text_context, branch.tiles, nodes, metrics, small_metrics),
       body_y,
       layouts,
       edges,
@@ -549,11 +577,14 @@ fn place_if_chain(
     cursor_x += branch_width + BRANCH_GAP
   }
   let exit_y = body_y +
-    measure_branches_height(branches, nodes, metrics, small_metrics) +
+    measure_branches_height(
+      text_context, branches, nodes, metrics, small_metrics,
+    ) +
     BODY_EXIT_GAP
   let has_exit = branches.any(branch => sequence_has_exit(branch.tiles, nodes))
   if has_exit {
     place_tile(
+      text_context,
       FlowAnchor(exit),
       nodes,
       metrics,
@@ -588,6 +619,7 @@ fn place_if_chain(
 ///|
 /// Max body height across the branch columns.
 fn measure_branches_height(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -595,7 +627,13 @@ fn measure_branches_height(
 ) -> Double {
   let mut height = 0.0
   for branch in branches {
-    let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
+    let body = measure_sequence(
+      text_context,
+      branch.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    )
     height = height.max(body.height)
   }
   height
@@ -603,6 +641,7 @@ fn measure_branches_height(
 
 ///|
 fn place_switch(
+  text_context : @style.RenderContext,
   entry : Int32,
   branches : Array[BranchTiles],
   exit : Int32,
@@ -615,10 +654,11 @@ fn place_switch(
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
   let (_, axis, positions, wide_condition) = switch_columns(
-    entry, branches, exit, nodes, metrics, small_metrics,
+    text_context, entry, branches, exit, nodes, metrics, small_metrics,
   )
-  let entry_size = nodes[entry].size(metrics, small_metrics)
+  let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
   let (gap, branch_height) = switch_rows(
+    text_context,
     branches,
     entry_size.height,
     wide_condition,
@@ -627,6 +667,7 @@ fn place_switch(
     small_metrics,
   )
   let entry_placed = place_leaf(
+    text_context,
     entry,
     nodes,
     metrics,
@@ -637,13 +678,15 @@ fn place_switch(
   )
   let case_y = y + entry_size.height + gap
   let case_placed = place_switch_branches(
-    branches, positions, nodes, metrics, small_metrics, x, case_y, layouts, edges,
+    text_context, branches, positions, nodes, metrics, small_metrics, x, case_y,
+    layouts, edges,
   )
-  let exit_size = nodes[exit].size(metrics, small_metrics)
+  let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
   let exit_y = case_y + branch_height + VERTICAL_GAP
   let has_exit = branches.any(branch => sequence_has_exit(branch.tiles, nodes))
   if has_exit {
     place_leaf(
+      text_context,
       exit,
       nodes,
       metrics,
@@ -708,6 +751,7 @@ fn place_switch(
 
 ///|
 fn place_while(
+  text_context : @style.RenderContext,
   entry : Int32,
   body : Array[Tile],
   exit : Int32,
@@ -722,12 +766,15 @@ fn place_while(
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
   let (width, axis) = while_columns(
-    entry, body, exit, exit_label, enter_label, nodes, metrics, small_metrics,
+    text_context, entry, body, exit, exit_label, enter_label, nodes, metrics, small_metrics,
   )
-  let entry_size = nodes[entry].size(metrics, small_metrics)
-  let body_size = measure_sequence(body, nodes, metrics, small_metrics)
-  let exit_size = nodes[exit].size(metrics, small_metrics)
+  let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+  let body_size = measure_sequence(
+    text_context, body, nodes, metrics, small_metrics,
+  )
+  let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
   let entry_placed = place_leaf(
+    text_context,
     entry,
     nodes,
     metrics,
@@ -740,16 +787,18 @@ fn place_while(
     entry_size.height +
     decision_body_gap(enter_label, small_metrics)
   let body_placed = place_sequence(
+    text_context,
     body,
     nodes,
     metrics,
     small_metrics,
-    x + axis - sequence_axis(body, nodes, metrics, small_metrics),
+    x + axis - sequence_axis(text_context, body, nodes, metrics, small_metrics),
     body_y,
     layouts,
     edges,
   )
   let exit_placed = place_tile(
+    text_context,
     FlowAnchor(exit),
     nodes,
     metrics,
@@ -818,6 +867,7 @@ fn place_while(
 
 ///|
 fn place_repeat(
+  text_context : @style.RenderContext,
   entry : Int32,
   body : Array[Tile],
   exit : Int32,
@@ -831,13 +881,16 @@ fn place_repeat(
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
-  let entry_size = nodes[entry].size(metrics, small_metrics)
-  let body_size = measure_sequence(body, nodes, metrics, small_metrics)
-  let exit_size = nodes[exit].size(metrics, small_metrics)
+  let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+  let body_size = measure_sequence(
+    text_context, body, nodes, metrics, small_metrics,
+  )
+  let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
   let (width, axis) = repeat_columns(
-    entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
+    text_context, entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
   )
   let entry_placed = place_leaf(
+    text_context,
     entry,
     nodes,
     metrics,
@@ -848,17 +901,19 @@ fn place_repeat(
   )
   let body_y = y + entry_size.height + VERTICAL_GAP
   let body_placed = place_sequence(
+    text_context,
     body,
     nodes,
     metrics,
     small_metrics,
-    x + axis - sequence_axis(body, nodes, metrics, small_metrics),
+    x + axis - sequence_axis(text_context, body, nodes, metrics, small_metrics),
     body_y,
     layouts,
     edges,
   )
   let exit_y = body_y + body_size.height + VERTICAL_GAP
   let exit_placed = place_leaf(
+    text_context,
     exit,
     nodes,
     metrics,
@@ -907,6 +962,7 @@ fn place_repeat(
 
 ///|
 fn place_parallel(
+  text_context : @style.RenderContext,
   entry : Int32,
   branches : Array[BranchTiles],
   exit : Int32,
@@ -918,10 +974,12 @@ fn place_parallel(
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
-  let columns = measure_fork_columns(branches, nodes, metrics, small_metrics)
+  let columns = measure_fork_columns(
+    text_context, branches, nodes, metrics, small_metrics,
+  )
   let block_width = columns + FORK_COLUMN_MARGIN * 2
   let (branches_height, incoming, outgoing) = fork_rows(
-    branches, nodes, metrics, small_metrics,
+    text_context, branches, nodes, metrics, small_metrics,
   )
   let bar_height = parallel_bar_height(nodes[entry])
   let has_exit = !(nodes[entry] is @flow.ActivityNode::Split) ||
@@ -930,10 +988,13 @@ fn place_parallel(
   let mut cursor_x = x
   let placed = []
   for branch in branches {
-    let branch_size = fork_branch_size(branch, nodes, metrics, small_metrics)
+    let branch_size = fork_branch_size(
+      text_context, branch, nodes, metrics, small_metrics,
+    )
     let column_width = branch_size.width + FORK_COLUMN_MARGIN * 2
     placed.push({
       tile: place_sequence(
+        text_context,
         branch.tiles,
         nodes,
         metrics,
@@ -1023,6 +1084,7 @@ fn place_parallel(
 
 ///|
 fn fork_rows(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -1033,7 +1095,13 @@ fn fork_rows(
   let mut outgoing = 0.0
   for branch in branches {
     height = height.max(
-      measure_sequence(branch.tiles, nodes, metrics, small_metrics).height,
+      measure_sequence(
+        text_context,
+        branch.tiles,
+        nodes,
+        metrics,
+        small_metrics,
+      ).height,
     )
     incoming = incoming.max(
       sequence_incoming_label(branch.tiles, nodes).map_or(0.0, text => {
@@ -1051,13 +1119,26 @@ fn fork_rows(
 
 ///|
 fn fork_branch_size(
+  text_context : @style.RenderContext,
   branch : BranchTiles,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
-  let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
-  let axis = sequence_axis(branch.tiles, nodes, metrics, small_metrics)
+  let body = measure_sequence(
+    text_context,
+    branch.tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
+  let axis = sequence_axis(
+    text_context,
+    branch.tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
   let incoming = sequence_incoming_label(branch.tiles, nodes).map_or(0.0, text => {
     EDGE_LABEL_OFFSET + activity_measure(small_metrics, text).width
   })
@@ -1069,6 +1150,7 @@ fn fork_branch_size(
 
 ///|
 fn measure_fork_columns(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -1076,7 +1158,9 @@ fn measure_fork_columns(
 ) -> Double {
   let mut width = 0.0
   for index, branch in branches {
-    let size = fork_branch_size(branch, nodes, metrics, small_metrics)
+    let size = fork_branch_size(
+      text_context, branch, nodes, metrics, small_metrics,
+    )
     if index > 0 {
       width += FORK_COLUMN_MARGIN * 2
     }
@@ -1092,19 +1176,22 @@ fn measure_fork_columns(
 /// edge to the controlling decision.
 fn @flow.ActivityDiagram::layout(
   self : @flow.ActivityDiagram,
+  text_context : @style.RenderContext,
 ) -> ActivityLayout {
   let style = self.style
-  let metrics = activity_font_metrics(style, false)
-  let small_metrics = activity_font_metrics(style, true)
+  let metrics = activity_font_metrics(text_context, style, false)
+  let small_metrics = activity_font_metrics(text_context, style, true)
   let source_nodes = []
   let tiles = tiles_from_instructions(self.instructions, source_nodes)
-  let content = measure_sequence(tiles, source_nodes, metrics, small_metrics)
+  let content = measure_sequence(
+    text_context, tiles, source_nodes, metrics, small_metrics,
+  )
   let layouts = []
   let edges = []
   let content_x = CANVAS_LEFT
   let lane_names = swimlane_names(source_nodes)
   let use_swimlanes = lane_names.length() > 1
-  let lane_metrics = activity_role_metrics(style, "Swimlane", 18)
+  let lane_metrics = activity_role_metrics(text_context, style, "Swimlane", 18)
   let mut title_height = REGION_HEADER_HEIGHT
   for name in lane_names {
     title_height = title_height.max(
@@ -1122,10 +1209,11 @@ fn @flow.ActivityDiagram::layout(
     CANVAS_TOP
   }
   let _ = place_sequence(
-    tiles, source_nodes, metrics, small_metrics, content_x, top_padding, layouts,
-    edges,
+    text_context, tiles, source_nodes, metrics, small_metrics, content_x, top_padding,
+    layouts, edges,
   )
   let regions = reposition_swimlanes(
+    text_context,
     source_nodes,
     layouts,
     edges,
@@ -1152,9 +1240,10 @@ fn @flow.ActivityDiagram::layout(
     height: content.height + top_padding + CANVAS_BOTTOM,
   }
   if !use_swimlanes {
-    result = result.compress_x(small_metrics~)
+    result = result.compress_x(text_context, small_metrics~)
   }
   let content_right = layout_content_right(
+    text_context,
     result.nodes,
     result.edges,
     result.source_nodes,
@@ -1171,6 +1260,7 @@ fn @flow.ActivityDiagram::layout(
 /// Rightmost extent of the placed content, including arrow labels and back
 /// edges that stick out of the flow column.
 fn layout_content_right(
+  text_context : @style.RenderContext,
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
   nodes : Array[@flow.ActivityNode],
@@ -1179,7 +1269,12 @@ fn layout_content_right(
   let mut right = 0.0
   for layout in layouts {
     right = right.max(
-      activity_node_drawn_right(nodes[layout.node_index], layout, small_metrics),
+      activity_node_drawn_right(
+        text_context,
+        nodes[layout.node_index],
+        layout,
+        small_metrics,
+      ),
     )
   }
   for edge in edges {
@@ -1227,14 +1322,18 @@ fn edge_label_extent(
 
 ///|
 /// Calculate PlantUML-style activity-diagram geometry without rendering it.
-pub fn layout_activity(diagram : @flow.ActivityDiagram) -> ActivityLayout {
-  diagram.with_render_context(diagram.style.defaults()).layout()
+pub fn layout_activity(
+  text_context : @style.RenderContext,
+  diagram : @flow.ActivityDiagram,
+) -> ActivityLayout {
+  diagram.with_render_context(diagram.style.defaults()).layout(text_context)
 }
 
 ///|
 /// FtileIfDown places the main branch below the condition. Its other branch
 /// either bypasses the body or terminates to the right of the condition.
 fn place_if_vertical(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   exit : Int32,
   nodes : Array[@flow.ActivityNode],
@@ -1248,24 +1347,30 @@ fn place_if_vertical(
   let body_index = if_vertical_body_index(branches, nodes).unwrap()
   let branch = branches[body_index]
   let decision = branches[0].decision.unwrap()
-  let decision_size = nodes[decision].size(metrics, small_metrics)
+  let decision_size = nodes[decision].size(text_context, metrics, small_metrics)
   let exit_size = if_vertical_merge_size(branches, nodes)
-  let size = measure_if_vertical(branches, nodes, metrics, small_metrics)
-  let (_, axis) = if_vertical_columns(branches, nodes, metrics, small_metrics)
+  let size = measure_if_vertical(
+    text_context, branches, nodes, metrics, small_metrics,
+  )
+  let (_, axis) = if_vertical_columns(
+    text_context, branches, nodes, metrics, small_metrics,
+  )
   let center_x = x + axis
   let decision_x = center_x - decision_size.width / 2
   let entry = place_leaf(
-    decision, nodes, metrics, small_metrics, decision_x, y, layouts,
+    text_context, decision, nodes, metrics, small_metrics, decision_x, y, layouts,
   )
   let body_y = y +
     decision_size.height +
     decision_body_gap(branch.label, small_metrics)
   let body = place_sequence(
+    text_context,
     branch.tiles,
     nodes,
     metrics,
     small_metrics,
-    center_x - sequence_axis(branch.tiles, nodes, metrics, small_metrics),
+    center_x -
+    sequence_axis(text_context, branch.tiles, nodes, metrics, small_metrics),
     body_y,
     layouts,
     edges,
@@ -1301,11 +1406,18 @@ fn place_if_vertical(
     style=body.outgoing_style,
   )
   if if_single_terminal(side.tiles, nodes) {
-    let side_size = measure_sequence(side.tiles, nodes, metrics, small_metrics)
+    let side_size = measure_sequence(
+      text_context,
+      side.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    )
     let label_width = side.label.map_or(0.0, text => {
       activity_measure(small_metrics, text).width
     })
     let side_placed = place_sequence(
+      text_context,
       side.tiles,
       nodes,
       metrics,
@@ -1348,6 +1460,7 @@ fn place_if_vertical(
 /// FtileFactoryDelegatorRepeat assembles an extra exit diamond and a shared
 /// left corridor; while welding points join the existing left exit corridor.
 fn place_loop_breaks(
+  text_context : @style.RenderContext,
   body : Tile,
   breaks : Array[Int32],
   target : Int32,
@@ -1362,6 +1475,7 @@ fn place_loop_breaks(
 ) -> PlacedTile {
   let margin = if repeat { REPEAT_SIDE_CLEARANCE } else { 0 }
   let placed = place_tile(
+    text_context,
     body,
     nodes,
     metrics,
@@ -1372,9 +1486,11 @@ fn place_loop_breaks(
     edges,
   )
   if repeat {
-    let size = measure_tile(body, nodes, metrics, small_metrics)
-    let axis = tile_axis(body, nodes, metrics, small_metrics) + margin
+    let size = measure_tile(text_context, body, nodes, metrics, small_metrics)
+    let axis = tile_axis(text_context, body, nodes, metrics, small_metrics) +
+      margin
     let finish = place_leaf(
+      text_context,
       target,
       nodes,
       metrics,
@@ -1424,6 +1540,7 @@ fn place_loop_breaks(
 /// FtileWhile/FtileRepeat put the backward activity at the right edge, centered
 /// vertically; the upward return traverses its bottom and top contacts.
 fn place_loop_backward(
+  text_context : @style.RenderContext,
   body : Tile,
   backward : Int32,
   entry : Int32,
@@ -1439,11 +1556,12 @@ fn place_loop_backward(
 ) -> PlacedTile {
   let start = edges.length()
   let placed = place_tile(
-    body, nodes, metrics, small_metrics, x, y, layouts, edges,
+    text_context, body, nodes, metrics, small_metrics, x, y, layouts, edges,
   )
-  let size = measure_tile(body, nodes, metrics, small_metrics)
-  let backward_size = nodes[backward].size(metrics, small_metrics)
+  let size = measure_tile(text_context, body, nodes, metrics, small_metrics)
+  let backward_size = nodes[backward].size(text_context, metrics, small_metrics)
   let _ = place_leaf(
+    text_context,
     backward,
     nodes,
     metrics,

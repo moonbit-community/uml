@@ -13,36 +13,37 @@ Run `moon test --update` from this directory to refresh them.
 moon add moonbit-community/uml
 ```
 
-The facade package is `moonbit-community/uml/api`. Rendering defaults to
-portable heuristic measurements; pass `measurer` to use a different service.
-Parsing does not require one. The common measurement contract lives in
-`moonbit-community/uml/metrics`:
+The facade package is `moonbit-community/uml/api`. Rendering requires a
+host-provided `measurer`; parsing does not. The core depends only on the
+contract in `moonbit-community/uml/metrics`, never on an implementation.
+Two optional packages are provided in the same module:
 
-- `metrics/heuristic.measurer()` provides deterministic, portable estimates.
-  Document font resolution shares one stateless instance as its default;
-  diagram renderers and layouts do not create or select a backend.
+- `metrics/heuristic.measurer()` provides deterministic, portable estimates
+  for CLI use and tests.
 - `metrics/canvas.measurer()` uses a browser Canvas 2D context (JS only). Reuse
   the service across renders to reuse its cache. Load any required web fonts
   before rendering; font-loading events invalidate its cached measurements,
   and a new render rebuilds the resolved font baselines.
 
-There is no global backend switch or automatic fallback. When explicitly
-provided, the API dispatcher binds the chosen service on copies of the parsed
-styles, leaving the document reusable with a different service. Direct users
-of family renderers and layouts can bind `DocumentStyle::with_measurer` on
-the diagram's style instead. Canvas layout follows the browser's installed
-fonts; this does not guarantee identical Java PlantUML font measurements.
+Importing only the Canvas implementation does not pull in UML's heuristic
+font data. There is no default backend, global switch, or automatic fallback.
+The dispatcher creates a rendering context from the supplied service without
+modifying parsed styles, so a document can be reused with different services.
+Direct users of family renderers and layouts must provide a
+`@style.RenderContext::new(measurer)` as their first argument.
+Canvas measurements follow the browser's installed fonts; they do not
+guarantee identical Java PlantUML font measurements.
 
 Raw DOT remains a pass-through to Graphviz and uses that engine's separate
 text measurement, rather than this service.
 
 Its entry points are:
 
-- `@api.render_svg(source)` — parse a PlantUML source and render it to SVG in
+- `@api.render_svg(source, measurer=text_measurer)` — parse a PlantUML source and render it to SVG in
   one call.
 - `@api.parse(source)` — parse only; returns a `Document` whose `kind()` names
   the diagram family the source selected.
-- `Document::render_svg` — render an already parsed document.
+- `Document::render_svg(measurer=text_measurer)` — render an already parsed document.
 
 ```mbt nocheck
 ///|
@@ -53,7 +54,10 @@ let source =
   #|@enduml
 
 ///|
-let svg = @api.render_svg(source)
+let text_measurer = @heuristic.measurer() // Import metrics/heuristic as heuristic.
+
+///|
+let svg = @api.render_svg(source, measurer=text_measurer)
 ```
 
 For browser font measurements, import `moonbit-community/uml/metrics/canvas`
@@ -76,6 +80,9 @@ notes:
 
 ```mbt check
 ///|
+let text_measurer : @metrics.Measurer = @heuristic.measurer()
+
+///|
 test "sequence diagram" (it : @test.Test) {
   let source =
     #|@startuml
@@ -96,7 +103,7 @@ test "sequence diagram" (it : @test.Test) {
     #|note right of Auth : stateless issuer
     #|@enduml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="sequence.svg")
 }
@@ -133,7 +140,7 @@ test "class diagram" (it : @test.Test) {
     #|Polygon o-- Point
     #|@enduml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="class.svg")
 }
@@ -174,7 +181,7 @@ test "object diagram" (it : @test.Test) {
     #|end note
     #|@enduml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="object.svg")
 }
@@ -197,7 +204,7 @@ test "usecase diagram" (it : @test.Test) {
     #|(Place order) ..> (Approve order) : include
     #|@enduml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="usecase.svg")
 }
@@ -229,7 +236,7 @@ test "mindmap diagram" (it : @test.Test) {
     #|--- moon test
     #|@endmindmap
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="mindmap.svg")
 }
@@ -255,7 +262,7 @@ test "json diagram" (it : @test.Test) {
     #|}
     #|@endjson
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="json.svg")
 }
@@ -281,7 +288,7 @@ test "yaml diagram" (it : @test.Test) {
     #|  compatible: PlantUML
     #|@endyaml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="yaml.svg")
 }
@@ -305,7 +312,7 @@ test "toml diagram" (it : @test.Test) {
     #|targets = ["wasm", "js"]
     #|@endtoml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="toml.svg")
 }
@@ -330,7 +337,7 @@ test "dot diagram" (it : @test.Test) {
     #|}
     #|@enduml
 
-  let svg = @api.render_svg(source)
+  let svg = @api.render_svg(source, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="dot.svg")
 }
@@ -370,7 +377,7 @@ test "sequence dark diagram" (it : @test.Test) {
     #|note right of Auth : stateless issuer
     #|@enduml
 
-  let svg = @api.render_svg(source, color_scheme=dark)
+  let svg = @api.render_svg(source, color_scheme=dark, measurer=text_measurer)
   it.write(svg)
   it.snapshot(filename="sequence_dark.svg")
 }
@@ -413,7 +420,11 @@ let source =
   #|@enduml
 
 ///|
-let svg = @api.render_svg(source, class_member_collapsible=true)
+let svg = @api.render_svg(
+  source,
+  class_member_collapsible=true,
+  measurer=text_measurer,
+)
 ```
 
 ## Testing and updating gallery images

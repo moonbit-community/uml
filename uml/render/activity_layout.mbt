@@ -705,13 +705,14 @@ fn @flow.ActivityNode::is_exit(self : @flow.ActivityNode) -> Bool {
 ///|
 fn @flow.ActivityNode::size(
   self : @flow.ActivityNode,
+  text_context : @style.RenderContext,
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   match self {
     StyledAction(action) | RepeatAction(action) =>
-      activity_action_measure(action)
-    StyledNote(note) => activity_styled_note_size(note)
+      activity_action_measure(text_context, action)
+    StyledNote(note) => activity_styled_note_size(text_context, note)
     Spot(_, _) => { width: ACTIVITY_SPOT_SIZE, height: ACTIVITY_SPOT_SIZE, }
     Start(_) => { width: TERMINAL_SIZE, height: TERMINAL_SIZE, }
     Stop(_) => { width: STOP_SIZE, height: STOP_SIZE, }
@@ -724,7 +725,9 @@ fn @flow.ActivityNode::size(
     _ if self.is_decision() => {
       let font = self
         .activity_decision()
-        .map_or(small_metrics, activity_decision_metrics)
+        .map_or(small_metrics, decision => {
+          activity_decision_metrics(text_context, decision)
+        })
       let text = activity_measure(font, self.label().unwrap_or(""))
       if self.condition_shape() == EmptyDiamond {
         return {
@@ -768,6 +771,7 @@ fn @flow.ActivityNode::size(
 
 ///|
 fn measure_sequence(
+  text_context : @style.RenderContext,
   tiles : Array[Tile],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -790,7 +794,7 @@ fn measure_sequence(
       }
       _ => ()
     }
-    let size = measure_tile(tile, nodes, metrics, small_metrics)
+    let size = measure_tile(text_context, tile, nodes, metrics, small_metrics)
     guard size.height > 0 || tile is (FlowAnchor(_) | GotoAnchor(_)) else {
       continue
     }
@@ -806,7 +810,7 @@ fn measure_sequence(
         )
       }
     }
-    let axis = tile_axis(tile, nodes, metrics, small_metrics)
+    let axis = tile_axis(text_context, tile, nodes, metrics, small_metrics)
     left = left.max(axis)
     right = right.max(size.width - axis)
     height += size.height
@@ -896,16 +900,31 @@ fn sequence_gap(label : String?, metrics : @metrics.FontMetrics) -> Double {
 
 ///|
 fn measure_if_down(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> TileMeasure {
   let decision = branches[0].decision.unwrap()
-  let size = nodes[decision].size(metrics, small_metrics)
-  let left = measure_sequence(branches[0].tiles, nodes, metrics, small_metrics)
-  let right = measure_sequence(branches[1].tiles, nodes, metrics, small_metrics)
-  let (width, _, _, _) = if_columns(branches, nodes, metrics, small_metrics)
+  let size = nodes[decision].size(text_context, metrics, small_metrics)
+  let left = measure_sequence(
+    text_context,
+    branches[0].tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
+  let right = measure_sequence(
+    text_context,
+    branches[1].tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
+  let (width, _, _, _) = if_columns(
+    text_context, branches, nodes, metrics, small_metrics,
+  )
   {
     width,
     height: if_side_label_padding(branches, size.height, small_metrics) +
@@ -922,6 +941,7 @@ fn measure_if_down(
 
 ///|
 fn measure_if_chain(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -931,16 +951,22 @@ fn measure_if_chain(
   let mut decision_height = 0.0
   let mut body_height = 0.0
   for index, branch in branches {
-    let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
+    let body = measure_sequence(
+      text_context,
+      branch.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    )
     let decision = branch.decision.map_or(
       ({ width: 0, height: 0, } : TileMeasure),
-      index => nodes[index].size(metrics, small_metrics),
+      index => nodes[index].size(text_context, metrics, small_metrics),
     )
     if index > 0 {
       width += BRANCH_GAP
     }
     let (column_width, _) = if_chain_column(
-      branch, nodes, metrics, small_metrics,
+      text_context, branch, nodes, metrics, small_metrics,
     )
     width += column_width
     decision_height = decision_height.max(decision.height)
@@ -956,6 +982,7 @@ fn measure_if_chain(
 
 ///|
 fn measure_tile(
+  text_context : @style.RenderContext,
   tile : Tile,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -963,14 +990,15 @@ fn measure_tile(
 ) -> TileMeasure {
   match tile {
     LoopWithBackward(body, backward, _, _, _) => {
-      let size = measure_tile(body, nodes, metrics, small_metrics)
+      let size = measure_tile(text_context, body, nodes, metrics, small_metrics)
       {
-        width: size.width + nodes[backward].size(metrics, small_metrics).width,
+        width: size.width +
+        nodes[backward].size(text_context, metrics, small_metrics).width,
         height: size.height,
       }
     }
     LoopWithBreaks(body, _, _, repeat) => {
-      let size = measure_tile(body, nodes, metrics, small_metrics)
+      let size = measure_tile(text_context, body, nodes, metrics, small_metrics)
       if repeat {
         {
           width: size.width + REPEAT_SIDE_CLEARANCE,
@@ -980,11 +1008,13 @@ fn measure_tile(
         size
       }
     }
-    Leaf(index) => nodes[index].size(metrics, small_metrics)
+    Leaf(index) => nodes[index].size(text_context, metrics, small_metrics)
     Noted(body, notes) => {
-      let body_size = measure_tile(body, nodes, metrics, small_metrics)
+      let body_size = measure_tile(
+        text_context, body, nodes, metrics, small_metrics,
+      )
       let (left, right) = measure_note_columns(
-        notes, nodes, metrics, small_metrics,
+        text_context, notes, nodes, metrics, small_metrics,
       )
       {
         width: body_size.width + left.width + right.width,
@@ -993,11 +1023,13 @@ fn measure_tile(
     }
     FlowAnchor(_) | GotoAnchor(_) => { width: 0, height: 0, }
     Partition(index, tiles, _) => {
-      let body = measure_sequence(tiles, nodes, metrics, small_metrics)
-      let inner_width = activity_group_inner_width(
-        tiles, nodes, metrics, small_metrics,
+      let body = measure_sequence(
+        text_context, tiles, nodes, metrics, small_metrics,
       )
-      let title = activity_partition_title(nodes[index], metrics)
+      let inner_width = activity_group_inner_width(
+        text_context, tiles, nodes, metrics, small_metrics,
+      )
+      let title = activity_partition_title(text_context, nodes[index], metrics)
       {
         width: inner_width.max(title.width + ACTIVITY_GROUP_MARGIN * 2),
         height: body.height +
@@ -1007,16 +1039,16 @@ fn measure_tile(
     }
     Swimlane(_) => { width: 0, height: 0, }
     IfChain(branches, _) if if_vertical_body_index(branches, nodes) is Some(_) =>
-      measure_if_vertical(branches, nodes, metrics, small_metrics)
+      measure_if_vertical(text_context, branches, nodes, metrics, small_metrics)
     IfChain(branches, _) if is_if_down(branches) => {
       let branches_size = measure_if_down(
-        branches, nodes, metrics, small_metrics,
+        text_context, branches, nodes, metrics, small_metrics,
       )
       branches_size
     }
     IfChain(branches, _) => {
       let branches_size = measure_if_chain(
-        branches, nodes, metrics, small_metrics,
+        text_context, branches, nodes, metrics, small_metrics,
       )
       {
         width: branches_size.width,
@@ -1029,12 +1061,13 @@ fn measure_tile(
       }
     }
     Switch(entry, branches, exit) => {
-      let entry_size = nodes[entry].size(metrics, small_metrics)
-      let exit_size = nodes[exit].size(metrics, small_metrics)
+      let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+      let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
       let (width, _, _, wide_condition) = switch_columns(
-        entry, branches, exit, nodes, metrics, small_metrics,
+        text_context, entry, branches, exit, nodes, metrics, small_metrics,
       )
       let (gap, branch_height) = switch_rows(
+        text_context,
         branches,
         entry_size.height,
         wide_condition,
@@ -1055,11 +1088,14 @@ fn measure_tile(
       }
     }
     WhileLoop(entry, body, exit, enter_label, exit_label) => {
-      let entry_size = nodes[entry].size(metrics, small_metrics)
-      let body_size = measure_sequence(body, nodes, metrics, small_metrics)
-      let exit_size = nodes[exit].size(metrics, small_metrics)
+      let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+      let body_size = measure_sequence(
+        text_context, body, nodes, metrics, small_metrics,
+      )
+      let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
       let (width, _) = while_columns(
-        entry, body, exit, exit_label, enter_label, nodes, metrics, small_metrics,
+        text_context, entry, body, exit, exit_label, enter_label, nodes, metrics,
+        small_metrics,
       )
       {
         width,
@@ -1071,11 +1107,14 @@ fn measure_tile(
       }
     }
     RepeatLoop(entry, body, exit, retry_label, exit_label) => {
-      let entry_size = nodes[entry].size(metrics, small_metrics)
-      let body_size = measure_sequence(body, nodes, metrics, small_metrics)
-      let exit_size = nodes[exit].size(metrics, small_metrics)
+      let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+      let body_size = measure_sequence(
+        text_context, body, nodes, metrics, small_metrics,
+      )
+      let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
       let (width, _) = repeat_columns(
-        entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
+        text_context, entry, body, exit, retry_label, exit_label, nodes, metrics,
+        small_metrics,
       )
       {
         width,
@@ -1089,10 +1128,10 @@ fn measure_tile(
     }
     Parallel(entry, branches, exit) => {
       let branches_width = measure_fork_columns(
-        branches, nodes, metrics, small_metrics,
+        text_context, branches, nodes, metrics, small_metrics,
       )
       let (branches_height, incoming, outgoing) = fork_rows(
-        branches, nodes, metrics, small_metrics,
+        text_context, branches, nodes, metrics, small_metrics,
       )
       {
         width: branches_width +
@@ -1119,6 +1158,7 @@ fn measure_tile(
 
 ///|
 fn measure_if_vertical(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -1126,15 +1166,18 @@ fn measure_if_vertical(
 ) -> TileMeasure {
   let body_index = if_vertical_body_index(branches, nodes).unwrap()
   let body = measure_sequence(
+    text_context,
     branches[body_index].tiles,
     nodes,
     metrics,
     small_metrics,
   )
   let decision = nodes[branches[0].decision.unwrap()].size(
-    metrics, small_metrics,
+    text_context, metrics, small_metrics,
   )
-  let (width, _) = if_vertical_columns(branches, nodes, metrics, small_metrics)
+  let (width, _) = if_vertical_columns(
+    text_context, branches, nodes, metrics, small_metrics,
+  )
   {
     width,
     height: decision.height +

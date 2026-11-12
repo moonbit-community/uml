@@ -45,13 +45,14 @@ fn append_mindmap_edge(
 
 ///|
 fn append_mindmap_node(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @tree.MindmapDiagram,
   node : NodeLayout,
 ) -> Unit {
   let idea = diagram.ideas[node.index]
   let font_size = diagram.node_font_size(node.index)
-  let font_metrics = diagram.node_font_metrics(node.index)
+  let font_metrics = diagram.node_font_metrics(text_context, node.index)
   let node_style = diagram.node_style(node.index)
   let padding_x = node_style.padding_left.unwrap_or(
     @tree.MINDMAP_DEFAULT_PADDING_X,
@@ -152,11 +153,13 @@ fn append_mindmap_node(
 /// Render a parsed mindmap as an SVG document.
 fn @tree.MindmapDiagram::render_svg(
   self : @tree.MindmapDiagram,
+  text_context : @style.RenderContext,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
-  let layout = self.layout()
+  let layout = self.layout(text_context)
   let decoration = decorate_document_text(
+    text_context,
     self.style,
     layout.width,
     layout.height,
@@ -183,7 +186,7 @@ fn @tree.MindmapDiagram::render_svg(
   )
   for block in decoration.text {
     document.stylesheet(
-      resolve_state_font(self.style, block.role).css_rule(
+      resolve_state_font(text_context, self.style, block.role).css_rule(
         ".mindmap-" + block.kind + "-label",
       ),
     )
@@ -205,8 +208,16 @@ fn @tree.MindmapDiagram::render_svg(
         self.style.layout_direction is Some(TopToBottom),
       )
     })
-    layout.nodes.each(node => append_mindmap_node(output, self, node))
-    draw_document_text(graphic, self.style, "mindmap", decoration.text)
+    layout.nodes.each(node => {
+      append_mindmap_node(text_context, output, self, node)
+    })
+    draw_document_text(
+      text_context,
+      graphic,
+      self.style,
+      "mindmap",
+      decoration.text,
+    )
   })
   document.to_string()
 }
@@ -214,8 +225,9 @@ fn @tree.MindmapDiagram::render_svg(
 ///|
 /// Render a parsed mindmap to SVG.
 pub fn render_mindmap_svg(
+  text_context : @style.RenderContext,
   diagram : @tree.MindmapDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  diagram.render_svg(color_scheme~)
+  diagram.render_svg(text_context, color_scheme~)
 }

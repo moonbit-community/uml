@@ -12,11 +12,14 @@ fn activity_note_state(note : @flow.ActivityNote) -> @flow.StateNote {
 }
 
 ///|
-fn activity_styled_note_size(note : @flow.ActivityNote) -> TileMeasure {
+fn activity_styled_note_size(
+  text_context : @style.RenderContext,
+  note : @flow.ActivityNote,
+) -> TileMeasure {
   let style = note.style.with_stereotypes(note.stereotype)
   let (width, height) = state_note_size(
     activity_note_state(note),
-    resolve_state_font(style, NoteLabel).metrics,
+    resolve_state_font(text_context, style, NoteLabel).metrics,
     style,
   )
   { width, height, }
@@ -38,6 +41,7 @@ fn @flow.ActivityNode::is_note(self : @flow.ActivityNode) -> Bool {
 
 ///|
 fn draw_activity_styled_note(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   note : @flow.ActivityNote,
   placement : ActivityNodeLayout,
@@ -76,7 +80,7 @@ fn draw_activity_styled_note(
     metadata=activity_class("activity-note"),
   )
   output.with_style(paint).draw(Path(state_note_fold(layout, 0.0)))
-  let font = resolve_state_font(style, NoteLabel)
+  let font = resolve_state_font(text_context, style, NoteLabel)
   append_state_text_at_top(
     output.with_style({ ..Default::default(), fill: Color(font.color), }),
     note.text,

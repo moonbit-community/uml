@@ -440,6 +440,9 @@ fn StateRichText::draw(
   metadata : @graphics.Metadata,
   anchor : @graphics.TextAnchor,
   line_alignment : @graphics.TextAnchor?,
+  baseline_for_font~ : (@metrics.FontMetrics) -> Double = font => {
+    font.ascent.to_double()
+  },
 ) -> Unit {
   let left = x - state_text_anchor_offset(anchor, self.width)
   let alignment = self.alignment.unwrap_or(line_alignment.unwrap_or(anchor))
@@ -453,7 +456,7 @@ fn StateRichText::draw(
         let baseline = line_top +
           line.height -
           font.line_height.to_double().max(STATE_RICH_MIN_ATOM_HEIGHT) +
-          font.ascent.to_double()
+          baseline_for_font(font)
         let size = font.measure(span.text)
         let decoration = span.decoration
         if decoration.background &&

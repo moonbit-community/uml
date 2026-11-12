@@ -19,6 +19,7 @@ const LEGACY_ACTIVITY_ARROW_FONT : Int32 = 11
 
 ///|
 fn legacy_activity_font(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   prefix : String,
   fallback : Int32,
@@ -26,6 +27,7 @@ fn legacy_activity_font(
   let size = style.property_font_size(prefix + "FontSize", fallback~)
   let face = style.property(prefix + "FontStyle").unwrap_or("").to_lower()
   style.font_metrics_for(
+    text_context,
     style.property(prefix + "FontName").unwrap_or(style.font_family()),
     font_size=size,
     font_weight=if face.contains("bold") { 700 } else { 400 },
@@ -35,26 +37,29 @@ fn legacy_activity_font(
 
 ///|
 fn legacy_activity_metrics(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
 ) -> @metrics.FontMetrics {
-  legacy_activity_font(style, "Activity", LEGACY_ACTIVITY_FONT)
+  legacy_activity_font(text_context, style, "Activity", LEGACY_ACTIVITY_FONT)
 }
 
 ///|
 fn legacy_activity_arrow_metrics(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
 ) -> @metrics.FontMetrics {
-  legacy_activity_font(style, "Arrow", LEGACY_ACTIVITY_ARROW_FONT)
+  legacy_activity_font(text_context, style, "Arrow", LEGACY_ACTIVITY_ARROW_FONT)
 }
 
 ///|
 fn append_legacy_activity_node(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   style : @style.DocumentStyle,
   state : @flow.StateNode,
   layout : StateNodeLayout,
 ) -> Unit {
-  let metrics = legacy_activity_metrics(style)
+  let metrics = legacy_activity_metrics(text_context, style)
   let background = @svg.svg_color(
     state.color,
     state_style_color(
@@ -126,10 +131,11 @@ fn append_legacy_activity_node(
 /// Legacy activities share Svek's graph/cluster layout with state diagrams,
 /// but use their own node geometry, spacing and activity/arrow styles.
 pub fn render_legacy_activity_svg(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
-  diagram.render_svg(color_scheme~)
+  diagram.render_svg(text_context, color_scheme~)
 }
 
 ///|

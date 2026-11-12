@@ -282,6 +282,7 @@ priv struct ResolvedStateFont {
 /// Previously verified: stereotype/global font equivalence, partial property
 /// inheritance, local overrides, face normalization and Java size extraction.
 fn resolve_state_font(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   role : StateFontRole,
   state~ : @flow.StateNode? = None,
@@ -362,6 +363,7 @@ fn resolve_state_font(
       ),
     ),
     metrics: style.font_metrics_for(
+      text_context,
       family,
       font_size=size,
       font_weight=face.weight,

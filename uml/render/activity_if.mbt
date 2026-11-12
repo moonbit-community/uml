@@ -2,23 +2,38 @@
 /// FtileIfNude.widthInner and FtileIfWithDiamonds: branch bodies are padded
 /// horizontally, and the condition axis bisects their incoming flow axes.
 fn if_columns(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double, Double, Double) {
   let decision = nodes[branches[0].decision.unwrap()].size(
-    metrics, small_metrics,
+    text_context, metrics, small_metrics,
   )
-  let left = measure_sequence(branches[0].tiles, nodes, metrics, small_metrics)
-  let right = measure_sequence(branches[1].tiles, nodes, metrics, small_metrics)
+  let left = measure_sequence(
+    text_context,
+    branches[0].tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
+  let right = measure_sequence(
+    text_context,
+    branches[1].tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
   let left_axis = sequence_axis(
+    text_context,
     branches[0].tiles,
     nodes,
     metrics,
     small_metrics,
   )
   let right_axis = sequence_axis(
+    text_context,
     branches[1].tiles,
     nodes,
     metrics,
@@ -56,6 +71,7 @@ fn if_columns(
 /// FtileIfDown aligns the body and condition, reserving either the empty
 /// branch's return corridor or the terminal branch and its label to the right.
 fn if_vertical_columns(
+  text_context : @style.RenderContext,
   branches : Array[BranchTiles],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -63,19 +79,21 @@ fn if_vertical_columns(
 ) -> (Double, Double) {
   let body_index = if_vertical_body_index(branches, nodes).unwrap()
   let body = measure_sequence(
+    text_context,
     branches[body_index].tiles,
     nodes,
     metrics,
     small_metrics,
   )
   let body_axis = sequence_axis(
+    text_context,
     branches[body_index].tiles,
     nodes,
     metrics,
     small_metrics,
   )
   let decision = nodes[branches[0].decision.unwrap()].size(
-    metrics, small_metrics,
+    text_context, metrics, small_metrics,
   )
   let label_width = branches[1 - body_index].label.map_or(0.0, label => {
     activity_measure(small_metrics, label).width
@@ -91,6 +109,7 @@ fn if_vertical_columns(
     .max(decision.width - decision.width / 2 + label_width)
     .max(EXIT_SIZE - EXIT_SIZE / 2)
   let side = measure_sequence(
+    text_context,
     branches[1 - body_index].tiles,
     nodes,
     metrics,
@@ -118,18 +137,31 @@ const IF_CHAIN_MIN_BRANCH_WIDTH : Double = 30
 /// FtileIfLongHorizontal builds each column with FtileAssemblySimple,
 /// aligning the condition's axis with its branch before packing columns.
 fn if_chain_column(
+  text_context : @style.RenderContext,
   branch : BranchTiles,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double) {
-  let body = measure_sequence(branch.tiles, nodes, metrics, small_metrics)
+  let body = measure_sequence(
+    text_context,
+    branch.tiles,
+    nodes,
+    metrics,
+    small_metrics,
+  )
   let padded_width = body.width.max(IF_CHAIN_MIN_BRANCH_WIDTH)
-  let body_axis = sequence_axis(branch.tiles, nodes, metrics, small_metrics) +
+  let body_axis = sequence_axis(
+      text_context,
+      branch.tiles,
+      nodes,
+      metrics,
+      small_metrics,
+    ) +
     (padded_width - body.width) / 2
   let decision = branch.decision.map_or(
     ({ width: 0, height: 0, } : TileMeasure),
-    index => nodes[index].size(metrics, small_metrics),
+    index => nodes[index].size(text_context, metrics, small_metrics),
   )
   let empty_width = empty_branch_width(branch, small_metrics)
   let axis = body_axis.max(decision.width / 2).max(empty_width / 2)

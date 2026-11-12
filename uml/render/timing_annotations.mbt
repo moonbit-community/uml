@@ -182,13 +182,14 @@ fn timing_link_paint(
 
 ///|
 fn draw_timing_messages(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   diagram : @flow.TimingDiagram,
   layout : TimingLayout,
 ) -> Unit {
   for route in layout.messages {
     let message = diagram.messages[route.index]
-    let appearance = timing_appearance(drawing.style, "arrow")
+    let appearance = timing_appearance(text_context, drawing.style, "arrow")
     let (a, b) = drawing.arrow(
       route.start,
       route.end,
@@ -208,13 +209,18 @@ fn draw_timing_messages(
 
 ///|
 fn draw_timing_constraints(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
   player : @flow.TimingPlayer,
 ) -> Unit {
   guard !(player.kind is @flow.PlayerKind::Clock) else { return }
-  let appearance = timing_appearance(drawing.style, "constraintArrow")
+  let appearance = timing_appearance(
+    text_context,
+    drawing.style,
+    "constraintArrow",
+  )
   let inset = match player.kind {
     Analog | Concise | Rectangle => 1.0
     _ => TIMING_CONSTRAINT_INSET
@@ -278,6 +284,7 @@ fn draw_timing_constraints(
 
 ///|
 fn draw_timing_notes(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
@@ -289,7 +296,7 @@ fn draw_timing_notes(
     | @flow.PlayerKind::Binary) else {
     return
   }
-  let appearance = timing_appearance(drawing.style, "note")
+  let appearance = timing_appearance(text_context, drawing.style, "note")
   for note in player.notes {
     let x = layout.wave_x +
       note.when.map_or(0.0, tick => layout.ruler.position(timing_tick(tick)))
@@ -313,7 +320,7 @@ fn draw_timing_notes(
       panel.top_notes +
       TIMING_NOTE_MARGIN / 2.0
     }
-    let (width, height) = timing_note_size(note, drawing.style)
+    let (width, height) = timing_note_size(text_context, note, drawing.style)
     let corner = STATE_NOTE_CORNER
     drawing.polygon(
       [

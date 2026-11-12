@@ -174,10 +174,11 @@ fn @flow.StateDiagram::transition_note(
 /// retain role-specific margins and source-order style precedence.
 fn @flow.StateDiagram::transition_label_geometry(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   transition_index : Int32,
 ) -> StateTransitionLabelGeometry {
   let transition = self.transitions[transition_index]
-  let metrics = resolve_state_font(self.style, TransitionLabel).metrics
+  let metrics = resolve_state_font(text_context, self.style, TransitionLabel).metrics
   let (text_width, text_height) = transition.label.map_or((0.0, 0.0), text => {
     state_text_size(
       text,
@@ -198,7 +199,7 @@ fn @flow.StateDiagram::transition_label_geometry(
   }
   let (body_width, body_height) = state_note_size(
     note,
-    resolve_state_font(self.style, NoteLabel).metrics,
+    resolve_state_font(text_context, self.style, NoteLabel).metrics,
     self.style,
   )
   let shadow = state_note_shadow(self.style)

@@ -99,6 +99,7 @@ fn swimlane_index(names : Array[String], name : String) -> Int32? {
 /// Like Swimlanes.computeSizeInternal, translate each lane from its complete
 /// horizontal extent. Centering individual nodes would collapse branches.
 fn reposition_swimlanes(
+  text_context : @style.RenderContext,
   nodes : Array[@flow.ActivityNode],
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
@@ -117,6 +118,7 @@ fn reposition_swimlanes(
     }
     let index = swimlane_index(names, name).unwrap()
     let right = activity_node_drawn_right(
+      text_context,
       nodes[layout.node_index],
       layout,
       small_metrics,

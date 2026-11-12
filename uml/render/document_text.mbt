@@ -50,6 +50,7 @@ fn document_text_alignment(
 
 ///|
 fn document_text_block(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   kind : String,
   text : String?,
@@ -67,7 +68,7 @@ fn document_text_block(
   }
   let (width, height) = state_text_size(
     text,
-    resolve_state_font(style, role).metrics,
+    resolve_state_font(text_context, style, role).metrics,
     monospaced_family=state_monospaced_family(style),
   )
   let extra = (margin + padding) * 2.0 + DOCUMENT_TEXT_BORDER_EXTENT
@@ -113,6 +114,7 @@ fn document_text_number(
 
 ///|
 fn draw_document_text(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   style : @style.DocumentStyle,
   class_prefix : String,
@@ -190,7 +192,7 @@ fn draw_document_text(
       text_x,
       y + block.padding,
       class_prefix + "-" + block.kind + "-label",
-      resolve_state_font(style, block.role).metrics,
+      resolve_state_font(text_context, style, block.role).metrics,
       anchor~,
       monospaced_family=state_monospaced_family(style),
     )

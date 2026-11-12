@@ -17,8 +17,12 @@ test "parses node, stereotype, and arrow style blocks" {
 
 ///|
 test "skinparam node dimensions participate in layout" {
-  let plain = @render.layout_mindmap(@parser.parse_mindmap("* Root\n** Child"))
+  let plain = @render.layout_mindmap(
+    text_context,
+    @parser.parse_mindmap("* Root\n** Child"),
+  )
   let styled = @render.layout_mindmap(
+    text_context,
     @parser.parse_mindmap(
       "skinparam MindMapNodeMinimumWidth 140\nskinparam MindMapNodePadding 18\n* Root\n** Child",
     ),
@@ -45,7 +49,7 @@ test "same class width and margins affect layout without overlaps" {
   let diagram = @parser.parse_mindmap(
     "<style>\nNode {\n  SameClassWidth true\n  Margin 30\n}\n</style>\n* Root\n** short\n** a considerably longer sibling",
   )
-  let layout = @render.layout_mindmap(diagram)
+  let layout = @render.layout_mindmap(text_context, diagram)
   let short = node_for(layout, 1)
   let long = node_for(layout, 2)
   @test.assert_eq(short.width, long.width)

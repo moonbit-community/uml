@@ -51,6 +51,7 @@ fn note_instruction_body(tile : Tile) -> Array[Tile]? {
 ///|
 /// Column widths include the clearance between the notes and the body.
 fn measure_note_columns(
+  text_context : @style.RenderContext,
   notes : Array[Int32],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -60,7 +61,7 @@ fn measure_note_columns(
   let mut left : TileMeasure = { width: 0, height: 0, }
   let mut right : TileMeasure = { width: 0, height: 0, }
   for index in notes {
-    let size = nodes[index].size(metrics, small_metrics)
+    let size = nodes[index].size(text_context, metrics, small_metrics)
     let is_left = nodes[index].note_left()
     let column = if is_left { left } else { right }
     let column : TileMeasure = {
@@ -80,6 +81,7 @@ fn measure_note_columns(
 
 ///|
 fn tile_axis(
+  text_context : @style.RenderContext,
   tile : Tile,
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -87,62 +89,76 @@ fn tile_axis(
 ) -> Double {
   match tile {
     Leaf(index) =>
-      nodes[index].flow_axis(nodes[index].size(metrics, small_metrics).width)
+      nodes[index].flow_axis(
+        nodes[index].size(text_context, metrics, small_metrics).width,
+      )
     LoopWithBackward(body, _, _, _, _) =>
-      tile_axis(body, nodes, metrics, small_metrics)
+      tile_axis(text_context, body, nodes, metrics, small_metrics)
     LoopWithBreaks(body, _, _, repeat) =>
-      tile_axis(body, nodes, metrics, small_metrics) +
+      tile_axis(text_context, body, nodes, metrics, small_metrics) +
       (if repeat { REPEAT_SIDE_CLEARANCE } else { 0 })
     Noted(body, notes) => {
-      let (left, _) = measure_note_columns(notes, nodes, metrics, small_metrics)
-      left.width + tile_axis(body, nodes, metrics, small_metrics)
+      let (left, _) = measure_note_columns(
+        text_context, notes, nodes, metrics, small_metrics,
+      )
+      left.width + tile_axis(text_context, body, nodes, metrics, small_metrics)
     }
     Partition(_, body, _) => {
-      let size = measure_tile(tile, nodes, metrics, small_metrics)
-      let body_size = measure_sequence(body, nodes, metrics, small_metrics)
+      let size = measure_tile(text_context, tile, nodes, metrics, small_metrics)
+      let body_size = measure_sequence(
+        text_context, body, nodes, metrics, small_metrics,
+      )
       (size.width - body_size.width) / 2 +
-      sequence_axis(body, nodes, metrics, small_metrics)
+      sequence_axis(text_context, body, nodes, metrics, small_metrics)
     }
     IfChain(branches, _) if if_vertical_body_index(branches, nodes) is Some(_) => {
       let (_, axis) = if_vertical_columns(
-        branches, nodes, metrics, small_metrics,
+        text_context, branches, nodes, metrics, small_metrics,
       )
       axis
     }
     IfChain(branches, _) if is_if_down(branches) => {
-      let (_, axis, _, _) = if_columns(branches, nodes, metrics, small_metrics)
+      let (_, axis, _, _) = if_columns(
+        text_context, branches, nodes, metrics, small_metrics,
+      )
       axis
     }
     WhileLoop(entry, body, exit, enter_label, exit_label) => {
       let (_, axis) = while_columns(
-        entry, body, exit, exit_label, enter_label, nodes, metrics, small_metrics,
+        text_context, entry, body, exit, exit_label, enter_label, nodes, metrics,
+        small_metrics,
       )
       axis
     }
     RepeatLoop(entry, body, exit, retry_label, exit_label) => {
       let (_, axis) = repeat_columns(
-        entry, body, exit, retry_label, exit_label, nodes, metrics, small_metrics,
+        text_context, entry, body, exit, retry_label, exit_label, nodes, metrics,
+        small_metrics,
       )
       axis
     }
     Switch(entry, branches, exit) => {
       let (_, axis, _, _) = switch_columns(
-        entry, branches, exit, nodes, metrics, small_metrics,
+        text_context, entry, branches, exit, nodes, metrics, small_metrics,
       )
       axis
     }
     Parallel(_, branches, _) =>
       (
-        measure_fork_columns(branches, nodes, metrics, small_metrics) +
+        measure_fork_columns(
+          text_context, branches, nodes, metrics, small_metrics,
+        ) +
         FORK_COLUMN_MARGIN * 2
       ) /
       2
-    _ => measure_tile(tile, nodes, metrics, small_metrics).width / 2
+    _ =>
+      measure_tile(text_context, tile, nodes, metrics, small_metrics).width / 2
   }
 }
 
 ///|
 fn sequence_axis(
+  text_context : @style.RenderContext,
   tiles : Array[Tile],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
@@ -150,15 +166,18 @@ fn sequence_axis(
 ) -> Double {
   let mut axis = 0.0
   for tile in tiles {
-    let size = measure_tile(tile, nodes, metrics, small_metrics)
+    let size = measure_tile(text_context, tile, nodes, metrics, small_metrics)
     guard size.height > 0 else { continue }
-    axis = axis.max(tile_axis(tile, nodes, metrics, small_metrics))
+    axis = axis.max(
+      tile_axis(text_context, tile, nodes, metrics, small_metrics),
+    )
   }
   axis
 }
 
 ///|
 fn place_noted(
+  text_context : @style.RenderContext,
   body : Tile,
   notes : Array[Int32],
   nodes : Array[@flow.ActivityNode],
@@ -169,10 +188,15 @@ fn place_noted(
   layouts : Array[ActivityNodeLayout],
   edges : Array[ActivityEdgeLayout],
 ) -> PlacedTile {
-  let body_size = measure_tile(body, nodes, metrics, small_metrics)
-  let (left, right) = measure_note_columns(notes, nodes, metrics, small_metrics)
+  let body_size = measure_tile(
+    text_context, body, nodes, metrics, small_metrics,
+  )
+  let (left, right) = measure_note_columns(
+    text_context, notes, nodes, metrics, small_metrics,
+  )
   let height = body_size.height.max(left.height).max(right.height)
   let placed = place_tile(
+    text_context,
     body,
     nodes,
     metrics,
@@ -186,7 +210,7 @@ fn place_noted(
   let mut left_y = y + (height - left.height) / 2 + margin
   let mut right_y = y + (height - right.height) / 2 + margin
   for index in notes {
-    let size = nodes[index].size(metrics, small_metrics)
+    let size = nodes[index].size(text_context, metrics, small_metrics)
     let is_left = nodes[index].note_left()
     let note_x = if margin > 0 {
       let column_x = if is_left { x } else { x + left.width + body_size.width }

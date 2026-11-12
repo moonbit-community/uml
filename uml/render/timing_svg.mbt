@@ -3,7 +3,7 @@ fn draw_timing_grid(drawing : TimingDrawing, layout : TimingLayout) -> Unit {
   let ruler = layout.ruler
   let bottom = TIMING_MARGIN + layout.inner_height
   let grid = {
-    ..timing_appearance(drawing.style, "timegrid").paint(),
+    ..timing_appearance(drawing.text_context, drawing.style, "timegrid").paint(),
     dash: Some([3.0, 5.0]),
     stroke_width: Some(0.5),
   }
@@ -15,6 +15,7 @@ fn draw_timing_grid(drawing : TimingDrawing, layout : TimingLayout) -> Unit {
 
 ///|
 fn draw_timing_axis(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   diagram : @flow.TimingDiagram,
   layout : TimingLayout,
@@ -22,7 +23,7 @@ fn draw_timing_axis(
   guard !(diagram.time_axis is @flow.TimeAxisStrategy::Hidden) else { return }
   let ruler = layout.ruler
   let bottom = TIMING_MARGIN + layout.inner_height
-  let paint = timing_appearance(drawing.style, "timeline").paint()
+  let paint = timing_appearance(text_context, drawing.style, "timeline").paint()
   let first = ruler.marks
     .filter(mark => mark >= 0.0)
     .get(0)
@@ -105,12 +106,13 @@ fn draw_timing_axis(
 
 ///|
 fn draw_timing_highlights(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   diagram : @flow.TimingDiagram,
   layout : TimingLayout,
   background : Bool,
 ) -> Unit {
-  let appearance = timing_appearance(drawing.style, "highlight")
+  let appearance = timing_appearance(text_context, drawing.style, "highlight")
   for highlight in diagram.highlights {
     guard highlight.from is Some(from) && highlight.to is Some(to) else {
       continue
@@ -154,10 +156,12 @@ fn draw_timing_highlights(
 
 ///|
 fn build_timing_drawing(
+  text_context : @style.RenderContext,
   diagram : @flow.TimingDiagram,
   layout : TimingLayout,
 ) -> TimingDrawing {
   let drawing : TimingDrawing = {
+    text_context,
     style: diagram.style,
     commands: [],
     min_x: 0.0,
@@ -182,7 +186,7 @@ fn build_timing_drawing(
       )
     }
   }
-  let border = timing_appearance(diagram.style, "title").paint()
+  let border = timing_appearance(text_context, diagram.style, "title").paint()
   if !diagram.compact_by_default {
     drawing.line(
       TIMING_MARGIN,
@@ -201,7 +205,7 @@ fn build_timing_drawing(
       class_name="timing-border",
     )
   }
-  draw_timing_highlights(drawing, diagram, layout, true)
+  draw_timing_highlights(text_context, drawing, diagram, layout, true)
   draw_timing_grid(drawing, layout)
   for panel in layout.players {
     let player = diagram.players[panel.index]
@@ -224,7 +228,7 @@ fn build_timing_drawing(
     if !player.title.is_empty() && !player.compact {
       let title = timing_text_size(
         player.title,
-        timing_appearance(diagram.style, "title"),
+        timing_appearance(text_context, diagram.style, "title"),
       )
       let corner_x = TIMING_MARGIN + TIMING_SIDE + title.0 + 1.0
       drawing.polygon(
@@ -239,24 +243,26 @@ fn build_timing_drawing(
       )
     }
     match player.kind {
-      Robust => draw_timing_robust(drawing, layout, panel, player)
-      Concise | Rectangle => draw_timing_concise(drawing, layout, panel, player)
-      Binary => draw_timing_binary(drawing, layout, panel, player)
-      Clock => draw_timing_clock(drawing, layout, panel, player)
-      Analog => draw_timing_analog(drawing, layout, panel, player)
+      Robust => draw_timing_robust(text_context, drawing, layout, panel, player)
+      Concise | Rectangle =>
+        draw_timing_concise(text_context, drawing, layout, panel, player)
+      Binary => draw_timing_binary(text_context, drawing, layout, panel, player)
+      Clock => draw_timing_clock(text_context, drawing, layout, panel, player)
+      Analog => draw_timing_analog(text_context, drawing, layout, panel, player)
     }
-    draw_timing_constraints(drawing, layout, panel, player)
-    draw_timing_notes(drawing, layout, panel, player)
+    draw_timing_constraints(text_context, drawing, layout, panel, player)
+    draw_timing_notes(text_context, drawing, layout, panel, player)
   }
-  draw_timing_axis(drawing, diagram, layout)
-  draw_timing_messages(drawing, diagram, layout)
-  draw_timing_highlights(drawing, diagram, layout, false)
+  draw_timing_axis(text_context, drawing, diagram, layout)
+  draw_timing_messages(text_context, drawing, diagram, layout)
+  draw_timing_highlights(text_context, drawing, diagram, layout, false)
   drawing
 }
 
 ///|
 /// Render the six TimingDiagram player families through their native panels.
 pub fn render_timing_svg(
+  text_context : @style.RenderContext,
   diagram : @flow.TimingDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
@@ -264,11 +270,16 @@ pub fn render_timing_svg(
     ..diagram,
     style: diagram.style.with_color_scheme(color_scheme),
   }
-  let layout = layout_timing(diagram)
-  let drawing = build_timing_drawing(diagram, layout)
+  let layout = layout_timing(text_context, diagram)
+  let drawing = build_timing_drawing(text_context, diagram, layout)
   let width = drawing.max_x - drawing.min_x
   let height = drawing.max_y - drawing.min_y
-  let decoration = decorate_document_text(diagram.style, width, height)
+  let decoration = decorate_document_text(
+    text_context,
+    diagram.style,
+    width,
+    height,
+  )
   let scale = diagram.style.output_scale(decoration.width, decoration.height)
   let document = @svg.SvgDocument::new(
     (decoration.width * scale).ceil().to_int(),
@@ -283,7 +294,7 @@ pub fn render_timing_svg(
       "title", "robust", "concise", "rectangle", "binary", "analog", "clock", "timeline",
       "arrow", "constraintArrow", "note", "highlight",
     ] {
-    let appearance = timing_appearance(diagram.style, role)
+    let appearance = timing_appearance(text_context, diagram.style, role)
     document.stylesheet(
       ".timing-" +
       role +
@@ -300,7 +311,7 @@ pub fn render_timing_svg(
   }
   for block in decoration.text {
     document.stylesheet(
-      resolve_state_font(diagram.style, block.role).css_rule(
+      resolve_state_font(text_context, diagram.style, block.role).css_rule(
         ".timing-document-" + block.kind + "-label",
       ),
     )
@@ -325,6 +336,7 @@ pub fn render_timing_svg(
       (output.emit)(command)
     }
     draw_document_text(
+      text_context,
       output,
       diagram.style,
       "timing-document",

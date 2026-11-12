@@ -2,6 +2,7 @@
 /// FtileWhile.calculateDimensionFtile stacks the condition and body on one
 /// axis, with two hexagon half-widths on the left and one on the right.
 fn while_columns(
+  text_context : @style.RenderContext,
   entry : Int32,
   body : Array[Tile],
   exit : Int32,
@@ -11,10 +12,14 @@ fn while_columns(
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double) {
-  let entry_size = nodes[entry].size(metrics, small_metrics)
-  let exit_size = nodes[exit].size(metrics, small_metrics)
-  let body_size = measure_sequence(body, nodes, metrics, small_metrics)
-  let body_axis = sequence_axis(body, nodes, metrics, small_metrics)
+  let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+  let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
+  let body_size = measure_sequence(
+    text_context, body, nodes, metrics, small_metrics,
+  )
+  let body_axis = sequence_axis(
+    text_context, body, nodes, metrics, small_metrics,
+  )
   let label_width = exit_label.map_or(0.0, label => {
     activity_measure(small_metrics, label).width
   })

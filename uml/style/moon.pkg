@@ -2,10 +2,10 @@ import {
   "moonbit-community/uml/svg",
   "moonbit-community/uml/tokenizer",
   "moonbit-community/uml/metrics",
-  "moonbit-community/uml/metrics/heuristic",
   "moonbitlang/core/string",
 }
 
 import {
   "moonbitlang/core/test",
+  "moonbit-community/uml/metrics/heuristic",
 } for "test"

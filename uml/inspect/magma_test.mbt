@@ -108,6 +108,7 @@ test "relations to packages do not create phantom entities" {
 /// as the external node.
 test "port clusters place input and output ports on opposite sides of the title" {
   let svg = @render.render_entity_svg(
+    text_context,
     @parser.parse_entity(
       "\nnode app {\n  port http\n  portin ingress\n  portout egress\n}\nnode client\nclient --> app\n",
       family=DeploymentDiagram,

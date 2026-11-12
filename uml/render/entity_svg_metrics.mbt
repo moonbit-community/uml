@@ -1142,6 +1142,7 @@ fn @entity.Entity::entry_visible(
 
 ///|
 priv struct ClassTextMetrics {
+  text_context : @style.RenderContext
   style : @style.DocumentStyle
   regular : @metrics.FontMetrics
   italic : @metrics.FontMetrics
@@ -1348,6 +1349,7 @@ const RELATION_END_FONT_SIZE : Int32 = PLANTUML_RELATION_LABEL_FONT_SIZE
 
 ///|
 fn ClassTextMetrics::new(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   role~ : String = "Class",
 ) -> ClassTextMetrics {
@@ -1373,43 +1375,52 @@ fn ClassTextMetrics::new(
     fallback=CLASS_STEREOTYPE_FONT_SIZE,
   )
   {
+    text_context,
     style,
     regular: style.font_metrics_for(
+      text_context,
       family,
       font_size~,
       font_weight=weight,
       font_style=if face.contains("italic") { Italic } else { Normal },
     ),
     italic: style.font_metrics_for(
+      text_context,
       family,
       font_size~,
       font_weight=weight,
       font_style=Italic,
     ),
     class_stereotype: style.font_metrics_for(
+      text_context,
       class_stereotype_font_family,
       font_size=class_stereotype_font_size,
       font_style=Italic,
     ),
     class_stereotype_font_family,
     class_spot: style.font_metrics(
+      text_context,
       font_size=CLASS_SPOT_FONT_SIZE,
       font_weight=700,
     ),
     usecase_regular: style.font_metrics_for(
+      text_context,
       usecase_font_family,
       font_size=usecase_font_size,
     ),
     usecase_italic: style.font_metrics_for(
+      text_context,
       usecase_font_family,
       font_size=usecase_font_size,
       font_style=Italic,
     ),
     actor_regular: style.font_metrics_for(
+      text_context,
       actor_font_family,
       font_size=actor_font_size,
     ),
     actor_italic: style.font_metrics_for(
+      text_context,
       actor_font_family,
       font_size=actor_font_size,
       font_style=Italic,
@@ -1417,18 +1428,23 @@ fn ClassTextMetrics::new(
     usecase_font_family,
     actor_font_family,
     relation_label_regular: style.font_metrics(
+      text_context,
       font_size=RELATION_LABEL_FONT_SIZE,
     ),
-    relation_end_regular: style.font_metrics(font_size=RELATION_END_FONT_SIZE),
+    relation_end_regular: style.font_metrics(
+      text_context,
+      font_size=RELATION_END_FONT_SIZE,
+    ),
     relation_end_font_family: style.font_family(),
     arrow_regular: style.font_metrics_for(
+      text_context,
       @entity.arrow_font_family(style),
       font_size=@entity.arrow_font_size(
         style,
         fallback=USECASE_RELATION_LABEL_FONT_SIZE,
       ),
     ),
-    note: style.font_metrics(font_size=NOTE_FONT_SIZE),
+    note: style.font_metrics(text_context, font_size=NOTE_FONT_SIZE),
     actor_style: @entity.actor_style(style),
     generic_old: style
     .property("GenericDisplay")

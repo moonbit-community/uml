@@ -82,7 +82,10 @@ priv struct WbsTile {
 }
 
 ///|
-fn wbs_items(diagram : @tree.WbsDiagram) -> Array[WbsItem] {
+fn wbs_items(
+  text_context : @style.RenderContext,
+  diagram : @tree.WbsDiagram,
+) -> Array[WbsItem] {
   let left : Array[Array[Int32]] = Array::makei(diagram.nodes.length(), _ => [])
   let right : Array[Array[Int32]] = Array::makei(diagram.nodes.length(), _ => [])
   for index, node in diagram.nodes {
@@ -103,7 +106,7 @@ fn wbs_items(diagram : @tree.WbsDiagram) -> Array[WbsItem] {
   for index, node in diagram.nodes {
     let style = wbs_node_style(diagram, index)
     let font_size = style.font_size.unwrap_or(@tree.WBS_DEFAULT_FONT_SIZE)
-    let metrics = diagram.style.font_metrics(font_size~)
+    let metrics = diagram.style.font_metrics(text_context, font_size~)
     let label = node.label.replace(old="\\n", new="\n")
     let text = tree_label_metrics(metrics, label)
     let text_width = tree_label_width(metrics, label)
@@ -363,6 +366,9 @@ fn layout_wbs_items(
 
 ///|
 /// Lay out a work breakdown tree using PlantUML's root Fork and recursive ITFs.
-pub fn layout_wbs(diagram : @tree.WbsDiagram) -> WbsLayout {
-  layout_wbs_items(diagram, wbs_items(diagram))
+pub fn layout_wbs(
+  text_context : @style.RenderContext,
+  diagram : @tree.WbsDiagram,
+) -> WbsLayout {
+  layout_wbs_items(diagram, wbs_items(text_context, diagram))
 }

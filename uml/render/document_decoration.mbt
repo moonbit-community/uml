@@ -43,6 +43,7 @@ fn DocumentDecoration::wrap(
 
 ///|
 fn decorate_document_text(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   width : Double,
   height : Double,
@@ -54,14 +55,17 @@ fn decorate_document_text(
     dy: 0.0,
     text: [],
   }
-  let legend = document_text_block(style, "legend", style.legend)
+  let legend = document_text_block(text_context, style, "legend", style.legend)
   let top = style.property("documentlegendposition") == Some("top")
   drawing
   .wrap(if top { legend } else { None }, if top { None } else { legend })
-  .wrap(document_text_block(style, "title", style.title), None)
-  .wrap(None, document_text_block(style, "caption", style.caption))
+  .wrap(document_text_block(text_context, style, "title", style.title), None)
   .wrap(
-    document_text_block(style, "header", style.header),
-    document_text_block(style, "footer", style.footer),
+    None,
+    document_text_block(text_context, style, "caption", style.caption),
+  )
+  .wrap(
+    document_text_block(text_context, style, "header", style.header),
+    document_text_block(text_context, style, "footer", style.footer),
   )
 }

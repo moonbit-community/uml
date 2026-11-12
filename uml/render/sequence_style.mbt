@@ -35,6 +35,7 @@ fn sequence_style_color(
 
 ///|
 fn sequence_font(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   role : String,
   size : Int32,
@@ -56,6 +57,7 @@ fn sequence_font(
     stereotype~,
   ).map(value => value.to_lower())
   style.font_metrics_for(
+    text_context,
     family,
     font_size=size,
     font_weight=font_style.map_or(weight, value => {

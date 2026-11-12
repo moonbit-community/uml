@@ -43,6 +43,7 @@ fn activity_connection_box(
 
 ///|
 fn activity_decision_label_bounds(
+  text_context : @style.RenderContext,
   node : @flow.ActivityNode,
   layout : ActivityNodeLayout,
 ) -> (Double, Double)? {
@@ -51,7 +52,7 @@ fn activity_decision_label_bounds(
     return None
   }
   let text = activity_measure(
-    activity_decision_metrics(decision),
+    activity_decision_metrics(text_context, decision),
     decision.text,
   )
   let left = layout.x + DIAMOND_TEXT_PADDING * 3 / 4
@@ -60,12 +61,13 @@ fn activity_decision_label_bounds(
 
 ///|
 fn activity_node_drawn_right(
+  text_context : @style.RenderContext,
   node : @flow.ActivityNode,
   layout : ActivityNodeLayout,
   metrics : @metrics.FontMetrics,
 ) -> Double {
   let right = layout.x + layout.width + activity_fork_label_width(node, metrics)
-  activity_decision_label_bounds(node, layout).map_or(right, bounds => {
+  activity_decision_label_bounds(text_context, node, layout).map_or(right, bounds => {
     right.max(bounds.1)
   })
 }
@@ -75,17 +77,21 @@ fn activity_node_drawn_right(
 /// space. Use the same placement and painted bounds here, including north
 /// decision labels and labels on return edges that exceed the tile width.
 fn activity_group_inner_width(
+  text_context : @style.RenderContext,
   tiles : Array[Tile],
   nodes : Array[@flow.ActivityNode],
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> Double {
-  let body = measure_sequence(tiles, nodes, metrics, small_metrics)
+  let body = measure_sequence(
+    text_context, tiles, nodes, metrics, small_metrics,
+  )
   let original = body.width + ACTIVITY_GROUP_MARGIN * 2
   let layouts = []
   let edges = []
   ignore(
     place_sequence(
+      text_context,
       tiles,
       nodes,
       metrics,
@@ -96,7 +102,9 @@ fn activity_group_inner_width(
       edges,
     ),
   )
-  let right = layout_content_right(layouts, edges, nodes, small_metrics)
+  let right = layout_content_right(
+    text_context, layouts, edges, nodes, small_metrics,
+  )
   if right > original {
     right + ACTIVITY_GROUP_OVERFLOW_MARGIN
   } else {

@@ -10,6 +10,7 @@ const WBS_ARROW_CONTACT : Double = 5.0
 
 ///|
 fn draw_wbs_node(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @tree.WbsDiagram,
   item : WbsItem,
@@ -20,7 +21,7 @@ fn draw_wbs_node(
   let style = item.style
   let defaults = diagram.style.defaults()
   let font_size = style.font_size.unwrap_or(@tree.WBS_DEFAULT_FONT_SIZE)
-  let metrics = diagram.style.font_metrics(font_size~)
+  let metrics = diagram.style.font_metrics(text_context, font_size~)
   let fill = @svg.svg_color(
     source.background_color.map_or(style.background_color, color => Some(color)),
     defaults.node,
@@ -205,6 +206,7 @@ fn wbs_layout_node(layout : WbsLayout, index : Int32) -> WbsNodeLayout? {
 
 ///|
 fn draw_wbs(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @tree.WbsDiagram,
   layout : WbsLayout,
@@ -230,7 +232,7 @@ fn draw_wbs(
     })
   }
   for node in layout.nodes {
-    draw_wbs_node(output, diagram, items[node.index], node)
+    draw_wbs_node(text_context, output, diagram, items[node.index], node)
   }
   draw_wbs_links(output, diagram, layout, items)
 }
@@ -238,6 +240,7 @@ fn draw_wbs(
 ///|
 /// Render a work breakdown structure using its dedicated Fork/ITF layout.
 pub fn render_wbs_svg(
+  text_context : @style.RenderContext,
   diagram : @tree.WbsDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
@@ -245,9 +248,9 @@ pub fn render_wbs_svg(
     ..diagram,
     style: diagram.style.with_color_scheme(color_scheme),
   }
-  let items = wbs_items(diagram)
+  let items = wbs_items(text_context, diagram)
   let layout = layout_wbs_items(diagram, items)
-  let drawing = wbs_document(diagram.style, layout)
+  let drawing = wbs_document(text_context, diagram.style, layout)
   let layout = drawing.tree
   let scale = diagram.style.output_scale(layout.width, layout.height)
   let document = @svg.SvgDocument::new(
@@ -260,7 +263,7 @@ pub fn render_wbs_svg(
   )
   for block in drawing.text {
     document.stylesheet(
-      resolve_state_font(diagram.style, block.role).css_rule(
+      resolve_state_font(text_context, diagram.style, block.role).css_rule(
         ".wbs-" + block.kind + "-label",
       ),
     )
@@ -268,8 +271,8 @@ pub fn render_wbs_svg(
   document
   .graphic()
   .scale_group(scale, output => {
-    draw_wbs(output, diagram, layout, items)
-    draw_document_text(output, diagram.style, "wbs", drawing.text)
+    draw_wbs(text_context, output, diagram, layout, items)
+    draw_document_text(text_context, output, diagram.style, "wbs", drawing.text)
   })
   document.to_string()
 }

@@ -10,12 +10,13 @@ fn timing_analog_y(panel : TimingPlayerLayout, value : Double) -> Double {
 
 ///|
 fn draw_timing_analog(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
   player : @flow.TimingPlayer,
 ) -> Unit {
-  let appearance = timing_appearance(drawing.style, "analog")
+  let appearance = timing_appearance(text_context, drawing.style, "analog")
   let paint = appearance.paint()
   for tick in panel.ticks {
     let y = timing_analog_y(panel, tick)
@@ -55,12 +56,13 @@ fn draw_timing_analog(
 
 ///|
 fn draw_timing_binary(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
   player : @flow.TimingPlayer,
 ) -> Unit {
-  let paint = timing_appearance(drawing.style, "binary").paint()
+  let paint = timing_appearance(text_context, drawing.style, "binary").paint()
   let high = panel.wave_y + TIMING_MARGIN_Y
   let low = panel.wave_y + panel.wave_height - TIMING_MARGIN_Y
   let state_y = (states : @flow.TimingStates) => {
@@ -103,12 +105,13 @@ fn draw_timing_binary(
 
 ///|
 fn draw_timing_clock(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
   player : @flow.TimingPlayer,
 ) -> Unit {
-  let paint = timing_appearance(drawing.style, "clock").paint()
+  let paint = timing_appearance(text_context, drawing.style, "clock").paint()
   let high = panel.wave_y + TIMING_MARGIN_Y
   let low = panel.wave_y + panel.wave_height - TIMING_MARGIN_Y
   let period = player.period.map_or(0.0, timing_decimal)
@@ -144,12 +147,13 @@ fn draw_timing_clock(
 
 ///|
 fn draw_timing_robust(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
   player : @flow.TimingPlayer,
 ) -> Unit {
-  let appearance = timing_appearance(drawing.style, "robust")
+  let appearance = timing_appearance(text_context, drawing.style, "robust")
   let paint = appearance.paint()
   let y_of = state => panel.wave_y + panel.state_y(state)
   let available = layout.wave_x - TIMING_MARGIN - TIMING_SIDE
@@ -296,13 +300,14 @@ fn draw_timing_ribbon(
 
 ///|
 fn draw_timing_concise(
+  text_context : @style.RenderContext,
   drawing : TimingDrawing,
   layout : TimingLayout,
   panel : TimingPlayerLayout,
   player : @flow.TimingPlayer,
 ) -> Unit {
   let role = timing_kind(player.kind)
-  let appearance = timing_appearance(drawing.style, role)
+  let appearance = timing_appearance(text_context, drawing.style, role)
   let y = panel.wave_y
   let height = panel.wave_height
   let rectangle = player.kind is @flow.PlayerKind::Rectangle

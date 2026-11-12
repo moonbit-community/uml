@@ -1,9 +1,10 @@
 ///|
 fn state_embedded_size(
+  text_context : @style.RenderContext,
   entity : @entity.Entity,
   style : @style.DocumentStyle,
 ) -> (Double, Double) {
-  let metrics = ClassTextMetrics::new(style)
+  let metrics = ClassTextMetrics::new(text_context, style)
   let (width, height) = if entity.kind is @entity.Map {
     entity.map_node_size(metrics)
   } else {
@@ -16,6 +17,7 @@ fn state_embedded_size(
 /// Share the entity image painter without running a second layout. The state
 /// DOT graph supplies placement; the image's local origin remains exact.
 fn append_state_embedded(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   style : @style.DocumentStyle,
   entity : @entity.Entity,
@@ -53,7 +55,7 @@ fn append_state_embedded(
   let context : EntityPaintContext = {
     output: output.translated(node.x, node.y),
     diagram,
-    text_metrics: ClassTextMetrics::new(style),
+    text_metrics: ClassTextMetrics::new(text_context, style),
   }
   context.append_object_like(entity, 0, {
     graphviz: Some(graphviz),

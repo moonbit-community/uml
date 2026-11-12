@@ -17,22 +17,36 @@ pub(all) struct SequenceTextMetrics {
 
 ///|
 fn SequenceTextMetrics::new(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
 ) -> SequenceTextMetrics {
   let base_size = style.font_size_value(fallback=14)
   {
     style,
-    participant: sequence_font(style, "Participant", base_size),
-    note: sequence_font(style, "Note", (base_size - 1).max(1)),
-    body: sequence_font(style, "Arrow", (base_size - 1).max(1)),
-    body_bold: sequence_font(style, "Group", (base_size - 1).max(1), weight=700),
+    participant: sequence_font(text_context, style, "Participant", base_size),
+    note: sequence_font(text_context, style, "Note", (base_size - 1).max(1)),
+    body: sequence_font(text_context, style, "Arrow", (base_size - 1).max(1)),
+    body_bold: sequence_font(
+      text_context,
+      style,
+      "Group",
+      (base_size - 1).max(1),
+      weight=700,
+    ),
     body_italic: sequence_font(
+      text_context,
       style,
       "Arrow",
       (base_size - 1).max(1),
       italic=true,
     ),
-    small_bold: sequence_font(style, "Box", (base_size - 3).max(1), weight=700),
+    small_bold: sequence_font(
+      text_context,
+      style,
+      "Box",
+      (base_size - 3).max(1),
+      weight=700,
+    ),
   }
 }
 

@@ -56,12 +56,14 @@ fn edge_x_extent(
 /// exempt above. Node labels live inside their node boxes, so node rectangles
 /// cover them.
 fn merge_slots(
+  text_context : @style.RenderContext,
   layout : ActivityLayout,
   small_metrics : @metrics.FontMetrics,
 ) -> Array[Slot] {
   let ranges = []
   for node in layout.nodes {
     if activity_decision_label_bounds(
+        text_context,
         layout.source_nodes[node.node_index],
         node,
       )
@@ -191,9 +193,10 @@ fn transform(gaps : Array[Gap], v : Double) -> Double {
 /// transformed node boxes, and `layout()` recomputes the canvas width.
 pub fn ActivityLayout::compress_x(
   self : ActivityLayout,
+  text_context : @style.RenderContext,
   small_metrics~ : @metrics.FontMetrics,
 ) -> ActivityLayout {
-  let merged = merge_slots(self, small_metrics)
+  let merged = merge_slots(text_context, self, small_metrics)
   extend_extreme_slots(merged)
   let mut content_min = 0.0
   let mut content_max = 0.0

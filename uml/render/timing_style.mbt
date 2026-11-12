@@ -102,6 +102,7 @@ fn timing_number(value : String, fallback : Double) -> Double {
 
 ///|
 fn timing_appearance(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   role : String,
 ) -> TimingAppearance {
@@ -144,7 +145,12 @@ fn timing_appearance(
       }
     })
   {
-    metrics: style.font_metrics_for(family, font_size~, font_weight=weight),
+    metrics: style.font_metrics_for(
+      text_context,
+      family,
+      font_size~,
+      font_weight=weight,
+    ),
     family,
     color: style.property_color(prefix + "FontColor", text),
     line: style.property_color(prefix + "LineColor", line),

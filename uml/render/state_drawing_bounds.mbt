@@ -81,11 +81,12 @@ fn StateDrawingBounds::include_path(
 
 ///|
 fn state_drawing_font(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   metadata : @graphics.Metadata,
 ) -> @metrics.FontMetrics {
   if metadata.class_name == Some("legacy-activity-label") {
-    return legacy_activity_metrics(diagram.style)
+    return legacy_activity_metrics(text_context, diagram.style)
   }
   let metadata = metadata.data
     .search_by(entry => entry.0 == "rich-role")
@@ -119,9 +120,10 @@ fn state_drawing_font(
   let state = metadata.data
     .search_by(entry => entry.0 == "state-code")
     .bind(index => diagram.state(metadata.data[index].1))
-  state.map_or_else(() => resolve_state_font(diagram.style, role).metrics, state => {
-    resolve_state_node_font(diagram, state, role).metrics
-  })
+  state.map_or_else(
+    () => resolve_state_font(text_context, diagram.style, role).metrics,
+    state => resolve_state_node_font(text_context, diagram, state, role).metrics,
+  )
 }
 
 ///|
@@ -129,6 +131,7 @@ fn state_drawing_font(
 /// SVG or using Graphviz's box as a substitute for the painted diagram.
 fn StateDrawingBounds::draw(
   self : StateDrawingBounds,
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   command : @graphics.DrawCommand,
 ) -> Unit {
@@ -185,7 +188,7 @@ fn StateDrawingBounds::draw(
       }
     Path(segments) => self.include_path(segments, translation)
     TextBlock(block) | StyledTextBlock(block, _) => {
-      let metrics = state_drawing_font(diagram, metadata)
+      let metrics = state_drawing_font(text_context, diagram, metadata)
       let mut baseline = block.position.y
       for line in block.lines {
         baseline += line.dy
@@ -202,7 +205,7 @@ fn StateDrawingBounds::draw(
       }
     }
     StyledText(run, font) => {
-      let base = state_drawing_font(diagram, metadata)
+      let base = state_drawing_font(text_context, diagram, metadata)
       let base = run.font_family.map_or(base, family => base.with_family(family))
       let metrics = base
         .with_size(run.font_size.to_int())
@@ -241,12 +244,16 @@ fn StateFragment::as_layout(self : StateFragment) -> StateLayout {
 
 ///|
 fn state_fragment_bounds(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   fragment : StateFragment,
 ) -> StateDrawingBounds {
   let bounds = StateDrawingBounds::new()
   append_state_layout(
-    @graphics.Graphic::new(command => bounds.draw(diagram, command)),
+    text_context,
+    @graphics.Graphic::new(command => {
+      bounds.draw(text_context, diagram, command)
+    }),
     diagram,
     fragment.as_layout(),
     note_connections=fragment.note_connections,
@@ -263,11 +270,12 @@ fn state_fragment_bounds(
 /// includes multiline text, outlying Bezier controls and note pointer contacts,
 /// and uses drawing bounds instead of DOT bounds.
 fn normalize_state_fragment(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   fragment : StateFragment,
   dimension_padding : Double,
 ) -> StateFragment {
-  let bounds = state_fragment_bounds(diagram, fragment)
+  let bounds = state_fragment_bounds(text_context, diagram, fragment)
   let output : StateFragment = {
     width: bounds.max_x - bounds.min_x + dimension_padding,
     height: bounds.max_y - bounds.min_y + dimension_padding,

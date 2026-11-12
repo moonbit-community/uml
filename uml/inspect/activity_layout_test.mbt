@@ -77,6 +77,7 @@ fn region_for(
 ///|
 test "conditional branches are horizontal siblings and join at endif" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "if (ready?) then (yes)\n:Accept;\nnote right\nDetailed explanation beside the accepted branch\nend note\nelse (no)\n:Reject;\nendif\n:Continue;",
     ),
@@ -131,7 +132,10 @@ test "parallel branches are horizontal and converge at the ending fork" {
       "fork\nfork again\n:Work;\nend fork", "fork\n:Work;\nfork again\nend fork",
       "fork\nfork again\nend fork",
     ] {
-    let layout = @render.layout_activity(@parser.parse_activity(source))
+    let layout = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     let empty_branches = layout.nodes.filter(node => {
       layout.source_nodes[node.node_index] is @flow.ActivityNode::ForkAgain
     })
@@ -157,7 +161,10 @@ test "parallel branches are horizontal and converge at the ending fork" {
   }
   let flow = "fork\n:Build;\nfork again\n:Test;\nend fork\n:Ship;"
   for source in [flow, "|Team|\n" + flow] {
-    let layout = @render.layout_activity(@parser.parse_activity(source))
+    let layout = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     guard action_index(layout, "Build") is Some(build_index) else {
       @test.fail("missing build branch index")
     }
@@ -196,6 +203,7 @@ test "parallel branches are horizontal and converge at the ending fork" {
 ///|
 test "loops include a routed back edge" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity("while (more?)\n:Read;\nendwhile (done)\n:Finish;"),
   )
   @test.assert_eq(
@@ -214,7 +222,10 @@ test "loop labels remain attached to control-flow edges" {
       "repeat\n" + inner + "\nrepeat while (outer?) is (retry) not (outer done)",
       "while (outer?) is (yes)\n" + inner + "\nendwhile (no)",
     ] {
-    let nested = @render.layout_activity(@parser.parse_activity(source))
+    let nested = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     let exits = nested.edges.filter(edge => edge.label == Some("inner done"))
     @test.assert_eq(exits.is_empty(), false)
     for edge in exits {
@@ -226,8 +237,12 @@ test "loop labels remain attached to control-flow edges" {
     }
   }
   let source = "while (more?) is (yes\\ncontinue reading\\nuntil exhausted)\n:Read;\nendwhile (done\\nfinished)\nrepeat\n:Retry;\nrepeat while (failed?) is (again\\nretry) not (sent\\nconfirmed\\narchived)\n:Finish;"
-  let layout = @render.layout_activity(@parser.parse_activity(source))
+  let layout = @render.layout_activity(
+    text_context,
+    @parser.parse_activity(source),
+  )
   let single_exit = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       source.replace_all(old="sent\\nconfirmed\\narchived", new="sent"),
     ),
@@ -240,6 +255,7 @@ test "loop labels remain attached to control-flow edges" {
     true,
   )
   let single = @render.layout_activity(
+    text_context,
     @parser.parse_activity("while (more?) is (yes)\n:Read;\nendwhile"),
   )
   let (_, single_y) = position_of(single, action_index(single, "Read").unwrap()).unwrap()
@@ -265,6 +281,7 @@ test "loop labels remain attached to control-flow edges" {
 ///|
 test "while exits from its controlling decision rather than its loop body" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "while (more?) is (yes)\n:Read;\nendwhile (done)\n:Finish;",
     ),
@@ -303,8 +320,12 @@ test "conditional and switch labels belong to incoming branch edges" {
       "if (ready?) then (yes)\n:Accept;\nendif", "if (ready?) then (yes)\n:Accept;\nelse (no)\n:Reject;\nendif",
       "if (ready?) then (yes)\n:Accept;\nelseif (other?) then (other)\n:Other;\nelse (no)\n:Reject;\nendif",
     ] {
-    let single = @render.layout_activity(@parser.parse_activity(source))
+    let single = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     let multiline = @render.layout_activity(
+      text_context,
       @parser.parse_activity(
         source.replace_all(old="(yes)", new="(yes\\ncontinue\\nprocessing)"),
       ),
@@ -324,7 +345,10 @@ test "conditional and switch labels belong to incoming branch edges" {
       "if (ready?) then (yes)\nelse (no)\nendif", "|Start|\nif (ready?) then (yes)\n|Empty|\nelse (no)\n:Reject;\nendif",
       "|Start|\nif (ready?) then (yes)\n:Accept;\nelse (no)\n|Empty|\nendif", "|Start|\nif (ready?) then (yes)\n|First|\nelse (no)\n|Second|\nendif",
     ] {
-    let layout = @render.layout_activity(@parser.parse_activity(source))
+    let layout = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     for node in layout.nodes {
       guard layout.source_nodes[node.node_index] is @flow.ActivityNode::If(_) else {
         continue
@@ -337,11 +361,13 @@ test "conditional and switch labels belong to incoming branch edges" {
   }
 
   let conditional = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "if (ready?) then (accept)\n:Accept;\nelse (reject)\n:Reject;\nendif",
     ),
   )
   let switch_layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "switch (Choose the preferred notification delivery method)\ncase (email)\n:Email;\ncase (sms)\n:Sms;\nendswitch",
     ),
@@ -391,6 +417,7 @@ test "conditional and switch labels belong to incoming branch edges" {
       "switch (choice)\ncase (terminated)\nstop\ncase (empty)\nendswitch",
     ] {
     let layout = @render.layout_activity(
+      text_context,
       @parser.parse_activity(source + "\n:After;"),
     )
     let incoming = layout.edges.filter(edge => edge.label == Some("empty"))
@@ -417,6 +444,7 @@ test "conditional and switch labels belong to incoming branch edges" {
 test "elseif decisions form a horizontal cascade" {
   for ending in ["endif", "else (no)\nendif"] {
     let empty = @render.layout_activity(
+      text_context,
       @parser.parse_activity(
         "if (first?) then (yes)\nelseif (second?) then (other)\n" + ending,
       ),
@@ -441,6 +469,7 @@ test "elseif decisions form a horizontal cascade" {
     }
   }
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "if (first?) then (yes)\n:First;\nnote left\nA wide explanation beside the first branch\nend note\nelseif (second?\\nextra line\\nthird line) then (yes)\n:Second;\nelse (no)\n:Fallback;\nendif",
     ),
@@ -497,6 +526,7 @@ test "partitions and swimlanes contain their visible instructions" {
       "switch (method)\ncase (first)\n|Worker|\n:First;\ncase (second)\n:Second;\nendswitch",
     ] {
     let layout = @render.layout_activity(
+      text_context,
       @parser.parse_activity("|Control|\n" + flow + "\n:After;"),
     )
     let control = region_for(
@@ -523,8 +553,12 @@ test "partitions and swimlanes contain their visible instructions" {
     }
   }
   let source = "|Customer|\n:Submit;\n|Store|\npartition Fulfilment {\n:Validate;\n:Reserve;\n}\n|Customer|\n:Confirm;\n|Empty|\n|Empty lane\\nwith a long heading\\nand extra details|"
-  let layout = @render.layout_activity(@parser.parse_activity(source))
+  let layout = @render.layout_activity(
+    text_context,
+    @parser.parse_activity(source),
+  )
   let single_line = @render.layout_activity(
+    text_context,
     @parser.parse_activity(source.replace_all(old="\\n", new=" ")),
   )
   guard region_for(layout, @render.ActivityRegionKind::Partition, "Fulfilment")
@@ -584,6 +618,7 @@ test "partitions and swimlanes contain their visible instructions" {
 ///|
 test "explicit arrow text labels the following visible edge" {
   let single = @render.layout_activity(
+    text_context,
     @parser.parse_activity(":Receive;\n-> validate input;\n:Validate;"),
   )
   let (_, single_y) = position_of(
@@ -592,6 +627,7 @@ test "explicit arrow text labels the following visible edge" {
   ).unwrap()
   for arrow in ["->", "-[#blue]->"] {
     let layout = @render.layout_activity(
+      text_context,
       @parser.parse_activity(
         ":Receive;\n" + arrow + "validate  input\\nthen continue;\n:Validate;",
       ),
@@ -613,6 +649,7 @@ test "explicit arrow text labels the following visible edge" {
 ///|
 test "goto connects its anchor directly to the matching label anchor" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "label retry\n:Retry;\nif (again?) then (yes)\ngoto retry\nendif",
     ),
@@ -684,9 +721,11 @@ fn box_gap(
 ///|
 test "fork compression is blocked by elements spanning the gaps" {
   let empty = @render.layout_activity(
+    text_context,
     @parser.parse_activity("fork\n:A;\nfork again\n:BB;\nend fork"),
   )
   let covered = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       ":WWWWWWWWWWWWWWWWWWWW;\nfork\n:A;\nfork again\n:BB;\nend fork\n:WWWWWWWWWWWWWWWWWWWW;",
     ),
@@ -717,6 +756,7 @@ test "fork compression is blocked by elements spanning the gaps" {
 ///|
 test "plain sequences are never compressed" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(":One;\n:Two;\n:Three;"),
   )
   guard action_index(layout, "One") is Some(one_index) else {
@@ -754,7 +794,10 @@ test "sequence canvas keeps its bottom margin as instructions and labels grow" {
     ":One;", ":One;\n:Two;\n:Three;\n:Four;\n:Five;", ":One;\n-> next step;\n:Two;\n:Three;\n:Four;\n:Five;",
   ]
   let margins = sources.map(source => {
-    let layout = @render.layout_activity(@parser.parse_activity(source))
+    let layout = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     let mut bottom = 0.0
     for node in layout.nodes {
       bottom = bottom.max(node.y + node.height)
@@ -770,6 +813,7 @@ test "sequence canvas keeps its bottom margin as instructions and labels grow" {
 ///|
 test "fork join stays below a branch containing a sequence" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       "fork\n:One;\n:Two;\n:Three;\n:Four;\nfork again\n:Other;\nend fork",
     ),
@@ -792,6 +836,7 @@ test "fork join stays below a branch containing a sequence" {
 ///|
 test "while exit continues after the loop without reentering its body" {
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity("while (more?)\n:Read;\nendwhile\n:Finish;"),
   )
   guard action_index(layout, "Finish") is Some(finish) else {
@@ -821,7 +866,10 @@ test "terminal branches do not expose an outgoing flow or merge" {
       "switch (choice)\ncase (first)\nstop\ncase (second)\nend\nendswitch\n:After;",
       "while (more?)\nstop\nendwhile\n:After;",
     ] {
-    let layout = @render.layout_activity(@parser.parse_activity(source))
+    let layout = @render.layout_activity(
+      text_context,
+      @parser.parse_activity(source),
+    )
     @test.assert_eq(
       layout.edges.any(edge => {
         layout.source_nodes[edge.from_node_index]
@@ -847,8 +895,12 @@ test "terminal branches do not expose an outgoing flow or merge" {
 ///|
 test "nested partitions reserve their frames between adjacent instructions" {
   let source = ":Before;\npartition Outer {\npartition Inner {\n:Inside;\n}\n:Tail;\n}\n:After;"
-  let single_line = @render.layout_activity(@parser.parse_activity(source))
+  let single_line = @render.layout_activity(
+    text_context,
+    @parser.parse_activity(source),
+  )
   let layout = @render.layout_activity(
+    text_context,
     @parser.parse_activity(
       source.replace_all(old="Outer", new="Outer\\nDetails\\nNotes"),
     ),
@@ -883,8 +935,12 @@ test "nested partitions reserve their frames between adjacent instructions" {
 ///|
 test "side notes preserve the activity flow and its axis" {
   let source = "start\nif (ready?) then (yes)\nwhile (more?)\nrepeat\n:Action;\nnote left\nLeft annotation\\nAdditional explanation\\nLast line\nend note\nnote right\nRight annotation with more text\nend note\n:Next;\nrepeat while (again?)\nendwhile\nendif\nstop"
-  let layout = @render.layout_activity(@parser.parse_activity(source))
+  let layout = @render.layout_activity(
+    text_context,
+    @parser.parse_activity(source),
+  )
   let expanded = @render.layout_activity(
+    text_context,
     @parser.parse_activity(source.replace_all(old="\\n", new="\n")),
   )
   @test.assert_eq(layout.nodes, expanded.nodes)

@@ -1,15 +1,11 @@
 ///|
-/// This service is stateless; sharing it does not select a global backend.
-let default_text_measurer : @metrics.Measurer = @heuristic.measurer()
-
-///|
 /// Common PlantUML document-level style state.
 ///
 /// This type preserves document directives and offers generic property, color,
 /// and font resolution. Diagram-family role mapping belongs to the relevant
-/// painter. Explicit host services are bound on rendering copies; font
-/// resolution supplies the portable default when no service is bound.
-#derive(Debug)
+/// painter. Measurement belongs to a separate rendering context, so parsed
+/// styles remain independent of measurement implementations.
+#derive(Eq, Debug)
 pub struct DocumentStyle {
   mut background_color : String?
   mut theme : String?
@@ -26,27 +22,6 @@ pub struct DocumentStyle {
   color_scheme : ColorScheme
   properties : Map[String, String]
   rules : Array[(Array[String], String, String)]
-  priv measurer : @metrics.Measurer?
-}
-
-///|
-/// Style equality compares document configuration, not render-time services.
-pub impl Eq for DocumentStyle with fn equal(a, b) {
-  a.background_color == b.background_color &&
-  a.theme == b.theme &&
-  a.font_family == b.font_family &&
-  a.font_size == b.font_size &&
-  a.line_color == b.line_color &&
-  a.layout_direction == b.layout_direction &&
-  a.scale == b.scale &&
-  a.title == b.title &&
-  a.caption == b.caption &&
-  a.legend == b.legend &&
-  a.header == b.header &&
-  a.footer == b.footer &&
-  a.color_scheme == b.color_scheme &&
-  a.properties == b.properties &&
-  a.rules == b.rules
 }
 
 ///|
@@ -108,34 +83,7 @@ pub fn DocumentStyle::empty() -> DocumentStyle {
     color_scheme: ColorScheme::default(),
     properties: Map([]),
     rules: [],
-    measurer: None,
   }
-}
-
-///|
-/// Unbound styles share the stateless default; explicit services are returned
-/// unchanged, so a failing host backend never triggers a fallback.
-pub fn DocumentStyle::text_measurer(self : DocumentStyle) -> @metrics.Measurer {
-  self.measurer.unwrap_or(default_text_measurer)
-}
-
-///|
-/// Bind the host's service on a rendering copy; parsed styles stay unbound.
-pub fn DocumentStyle::with_measurer(
-  self : DocumentStyle,
-  measurer : @metrics.Measurer,
-) -> DocumentStyle {
-  { ..self, measurer: Some(measurer), }
-}
-
-///|
-/// Propagate task context without replacing declaration-time font settings
-/// and properties retained by nested style snapshots.
-pub fn DocumentStyle::with_render_context(
-  self : DocumentStyle,
-  context : DocumentStyle,
-) -> DocumentStyle {
-  { ..self, color_scheme: context.color_scheme, measurer: context.measurer, }
 }
 
 ///|
@@ -475,12 +423,14 @@ pub fn font_size_value(style : DocumentStyle, fallback~ : Int32 = 13) -> Int32 {
 /// Builds metrics from the document font settings plus a concrete text role.
 pub fn DocumentStyle::font_metrics(
   self : DocumentStyle,
+  text_context : RenderContext,
   font_size~ : Int32 = 0,
   font_weight~ : Int32 = 400,
   font_style~ : @metrics.FontStyle = Normal,
   line_height~ : Int32 = 0,
 ) -> @metrics.FontMetrics {
   self.font_metrics_for(
+    text_context,
     self.font_family(),
     font_size~,
     font_weight~,
@@ -492,6 +442,7 @@ pub fn DocumentStyle::font_metrics(
 ///|
 pub fn DocumentStyle::font_metrics_for(
   self : DocumentStyle,
+  text_context : RenderContext,
   family : String,
   font_size~ : Int32 = 0,
   font_weight~ : Int32 = 400,
@@ -509,7 +460,7 @@ pub fn DocumentStyle::font_metrics_for(
     resolved_size + 2
   }
   @metrics.FontMetrics::from_defaults(
-    self.text_measurer(),
+    text_context.measurer,
     font_family=family,
     style=font_style,
     font_size=resolved_size,

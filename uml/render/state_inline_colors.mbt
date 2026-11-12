@@ -71,6 +71,7 @@ fn state_border_paint(
 /// fields and InnerStateAutonom's name use their style font configuration.
 /// ClusterHeader also applies inline colors to a non-autonomous group title.
 fn resolve_state_node_font(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
   state : @flow.StateNode,
   role : StateFontRole,
@@ -91,6 +92,7 @@ fn resolve_state_node_font(
     role
   }
   let font = resolve_state_font(
+    text_context,
     diagram.style,
     effective_role,
     state=Some(state),

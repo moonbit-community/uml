@@ -1,6 +1,7 @@
 ///|
 fn @entity.EntityDiagram::render_svg_with_mode(
   self : @entity.EntityDiagram,
+  text_context : @style.RenderContext,
   class_member_collapsible : Bool,
   mbti_render_options : @entity.MbtiRenderOptions,
   member_states : Map[String, @entity.ClassMemberState],
@@ -10,7 +11,7 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   let line_color = self.style.diagram_line_color()
   let text_color = self.style.diagram_text_color()
   let text_metrics = {
-    ..ClassTextMetrics::new(self.style),
+    ..ClassTextMetrics::new(text_context, self.style),
     member_interaction: class_member_collapsible,
     member_defaults: if self.family is Mbti {
       mbti_render_options.member_state()
@@ -25,8 +26,8 @@ fn @entity.EntityDiagram::render_svg_with_mode(
     { graphviz: Some(self.graphviz_layout(text_metrics)), mindmap: None, }
   }
   let bounds = layout.content_bounds(self, text_metrics)
-  let top_blocks = self.chrome_blocks(true)
-  let bottom_blocks = self.chrome_blocks(false)
+  let top_blocks = self.chrome_blocks(text_context, true)
+  let bottom_blocks = self.chrome_blocks(text_context, false)
   let top_height = chrome_stack_height(top_blocks)
   let bottom_height = chrome_stack_height(bottom_blocks)
   let chrome_width = chrome_stack_width(top_blocks).max(
@@ -156,12 +157,14 @@ fn @entity.EntityDiagram::render_svg_with_mode(
 /// MBTI defaults come from its render options; class members default closed.
 fn @entity.EntityDiagram::render_svg(
   self : @entity.EntityDiagram,
+  text_context : @style.RenderContext,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(
+    text_context,
     class_member_collapsible,
     @entity.MbtiRenderOptions::default(),
     member_states,
@@ -172,6 +175,7 @@ fn @entity.EntityDiagram::render_svg(
 /// Render the mbti family with the mindmap tree layout.
 fn @entity.EntityDiagram::render_mbti_svg(
   self : @entity.EntityDiagram,
+  text_context : @style.RenderContext,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
@@ -179,24 +183,31 @@ fn @entity.EntityDiagram::render_mbti_svg(
 ) -> String raise @dot_layout.DotLayoutError {
   let self = { ..self, style: self.style.with_color_scheme(color_scheme), }
   self.render_svg_with_mode(
-    class_member_collapsible, render_options, member_states,
+    text_context, class_member_collapsible, render_options, member_states,
   )
 }
 
 ///|
 /// Render a parsed entity-family diagram to SVG.
 pub fn render_entity_svg(
+  text_context : @style.RenderContext,
   diagram : @entity.EntityDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
 ) -> String raise @dot_layout.DotLayoutError {
-  diagram.render_svg(color_scheme~, class_member_collapsible~, member_states~)
+  diagram.render_svg(
+    text_context,
+    color_scheme~,
+    class_member_collapsible~,
+    member_states~,
+  )
 }
 
 ///|
 /// Render a parsed mbti diagram to SVG.
 pub fn render_mbti_svg(
+  text_context : @style.RenderContext,
   diagram : @entity.MbtiDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
@@ -204,6 +215,7 @@ pub fn render_mbti_svg(
   render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise @dot_layout.DotLayoutError {
   diagram.graph.render_mbti_svg(
+    text_context,
     color_scheme~,
     class_member_collapsible~,
     member_states~,

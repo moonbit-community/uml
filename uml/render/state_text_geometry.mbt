@@ -265,6 +265,7 @@ fn state_frame_stereotype(
 
 ///|
 fn state_frame_stereotype_size(
+  text_context : @style.RenderContext,
   state : @flow.StateNode,
   style : @style.DocumentStyle,
   role : StateFontRole,
@@ -273,7 +274,7 @@ fn state_frame_stereotype_size(
   guard !text.is_empty() else { return (0.0, 0.0) }
   let size = state_text_size(
     text,
-    resolve_state_font(style, role, state=Some(state)).metrics,
+    resolve_state_font(text_context, style, role, state=Some(state)).metrics,
     monospaced_family=state_monospaced_family(style),
   )
   // EntityImageEmptyPackage wraps its stereotype in a one-point side margin.

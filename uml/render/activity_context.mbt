@@ -1,13 +1,12 @@
 ///|
-/// Activity nodes retain declaration-time style snapshots. Bind every snapshot
-/// before reducing the stream so nested instructions use the host's service too.
+/// Activity nodes retain declaration-time style snapshots. Apply the selected
+/// theme before reduction without replacing their font settings and properties.
 fn @flow.ActivityDiagram::with_render_context(
   self : @flow.ActivityDiagram,
   color_scheme : @style.ColorScheme,
 ) -> @flow.ActivityDiagram {
-  let context = self.style.with_color_scheme(color_scheme)
   let bind = (style : @style.DocumentStyle) => {
-    style.with_render_context(context)
+    style.with_color_scheme(color_scheme)
   }
   let nodes : Array[@flow.ActivityNode] = self.nodes.map(node => {
     match node {

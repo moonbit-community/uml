@@ -77,8 +77,9 @@ test "YAML block scalars render as multiline record cells" {
       #|@endyaml
     ),
   )
-  let svg = @render.render_structured_svg(diagram)
+  let svg = @render.render_structured_svg(text_context, diagram)
   let single_line_svg = @render.render_structured_svg(
+    text_context,
     @parser.parse_structured_yaml(
       (
         #|@startyaml
@@ -106,8 +107,9 @@ test "TOML multiline basic strings render as multiline record cells" {
     diagram.root.rows[0].value,
     @structured.Text("line one\nline two"),
   )
-  let svg = @render.render_structured_svg(diagram)
+  let svg = @render.render_structured_svg(text_context, diagram)
   let single_line_svg = @render.render_structured_svg(
+    text_context,
     @parser.parse_structured_toml(
       (
         #|@starttoml

@@ -1,5 +1,6 @@
 ///|
 priv struct TimingDrawing {
+  text_context : @style.RenderContext
   style : @style.DocumentStyle
   commands : Array[@graphics.DrawCommand]
   mut min_x : Double
@@ -102,7 +103,7 @@ fn TimingDrawing::text(
   anchor~ : @graphics.TextAnchor = Start,
 ) -> Unit {
   guard !text.is_empty() else { return }
-  let appearance = timing_appearance(self.style, role)
+  let appearance = timing_appearance(self.text_context, self.style, role)
   let size = timing_text_size(text, appearance)
   let dx = match anchor {
     Start => 0.0

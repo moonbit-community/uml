@@ -19,6 +19,7 @@ priv struct ChromeBlock {
 /// above the diagram, caption, legend and footer below it.
 fn @entity.EntityDiagram::chrome_blocks(
   self : @entity.EntityDiagram,
+  text_context : @style.RenderContext,
   top : Bool,
 ) -> Array[ChromeBlock] {
   let blocks : Array[ChromeBlock] = []
@@ -27,7 +28,7 @@ fn @entity.EntityDiagram::chrome_blocks(
       blocks.push({
         text,
         block_class: "title",
-        metrics: self.style.font_metrics(font_weight=700),
+        metrics: self.style.font_metrics(text_context, font_weight=700),
         bold: true,
       })
     }
@@ -35,7 +36,7 @@ fn @entity.EntityDiagram::chrome_blocks(
       blocks.push({
         text,
         block_class: "header",
-        metrics: self.style.font_metrics(),
+        metrics: self.style.font_metrics(text_context),
         bold: false,
       })
     }
@@ -44,7 +45,7 @@ fn @entity.EntityDiagram::chrome_blocks(
       blocks.push({
         text,
         block_class: "caption",
-        metrics: self.style.font_metrics(),
+        metrics: self.style.font_metrics(text_context),
         bold: false,
       })
     }
@@ -52,7 +53,7 @@ fn @entity.EntityDiagram::chrome_blocks(
       blocks.push({
         text,
         block_class: "legend",
-        metrics: self.style.font_metrics(),
+        metrics: self.style.font_metrics(text_context),
         bold: false,
       })
     }
@@ -60,7 +61,7 @@ fn @entity.EntityDiagram::chrome_blocks(
       blocks.push({
         text,
         block_class: "footer",
-        metrics: self.style.font_metrics(),
+        metrics: self.style.font_metrics(text_context),
         bold: false,
       })
     }

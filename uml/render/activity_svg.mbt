@@ -496,13 +496,14 @@ fn append_edge(
 
 ///|
 fn append_region(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   region : ActivityRegionLayout,
   font_metrics : @metrics.FontMetrics,
   style : @style.DocumentStyle,
 ) -> Unit {
   if region.group is Some(group) {
-    draw_activity_group(output, region, group)
+    draw_activity_group(text_context, output, region, group)
     return
   }
   let output = output.with_style({
@@ -561,6 +562,7 @@ fn activity_class(name : String) -> @graphics.Metadata {
 
 ///|
 fn activity_append_node(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   layout : ActivityLayout,
   node_layout : ActivityNodeLayout,
@@ -570,15 +572,15 @@ fn activity_append_node(
 ) -> Unit {
   let node = layout.source_nodes[node_layout.node_index]
   if node is @flow.Spot(text, color) {
-    draw_activity_spot(output, node_layout, text, color, style)
+    draw_activity_spot(text_context, output, node_layout, text, color, style)
     return
   }
   if node is (@flow.StyledAction(action) | @flow.RepeatAction(action)) {
-    draw_activity_action(output, action, node_layout)
+    draw_activity_action(text_context, output, action, node_layout)
     return
   }
   if node is @flow.StyledNote(note) {
-    draw_activity_styled_note(output, note, node_layout)
+    draw_activity_styled_note(text_context, output, note, node_layout)
     return
   }
   let output = match node {
@@ -755,7 +757,9 @@ fn activity_append_node(
             .map(activity_decision_style)
           let decision_metrics = node
             .activity_decision()
-            .map_or(small_metrics, activity_decision_metrics)
+            .map_or(small_metrics, decision => {
+              activity_decision_metrics(text_context, decision)
+            })
           let output = decision_style.map_or(output, selected => {
             output.with_style({
               ..Default::default(),
@@ -960,11 +964,13 @@ fn define_activity_arrow(
 /// Render a parsed activity diagram with the built-in, non-Graphviz layout.
 fn @flow.ActivityDiagram::render_svg(
   self : @flow.ActivityDiagram,
+  text_context : @style.RenderContext,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
   let self = self.with_render_context(color_scheme)
-  let layout = self.layout()
+  let layout = self.layout(text_context)
   let decoration = decorate_document_text(
+    text_context,
     self.style,
     layout.width,
     layout.height,
@@ -975,8 +981,8 @@ fn @flow.ActivityDiagram::render_svg(
     (decoration.height * scale).ceil().to_int(),
     "Activity diagram",
   )
-  let font_metrics = activity_font_metrics(self.style, false)
-  let small_metrics = activity_font_metrics(self.style, true)
+  let font_metrics = activity_font_metrics(text_context, self.style, false)
+  let small_metrics = activity_font_metrics(text_context, self.style, true)
   let defaults = self.style.defaults()
   let line = self.style.property_color(
     "ArrowColor",
@@ -1021,7 +1027,7 @@ fn @flow.ActivityDiagram::render_svg(
   let arrow = define_activity_arrow(document, line)
   for block in decoration.text {
     document.stylesheet(
-      resolve_state_font(self.style, block.role).css_rule(
+      resolve_state_font(text_context, self.style, block.role).css_rule(
         ".activity-document-" + block.kind + "-label",
       ),
     )
@@ -1046,9 +1052,10 @@ fn @flow.ActivityDiagram::render_svg(
     let content = output.translated(decoration.dx, decoration.dy)
     layout.regions.each(region => {
       append_region(
+        text_context,
         content,
         region,
-        activity_role_metrics(self.style, "Swimlane", 18),
+        activity_role_metrics(text_context, self.style, "Swimlane", 18),
         self.style,
       )
     })
@@ -1082,6 +1089,7 @@ fn @flow.ActivityDiagram::render_svg(
     }
     layout.nodes.each(node => {
       activity_append_node(
+        text_context,
         content,
         layout,
         node,
@@ -1090,7 +1098,13 @@ fn @flow.ActivityDiagram::render_svg(
         self.style,
       )
     })
-    draw_document_text(output, self.style, "activity-document", decoration.text)
+    draw_document_text(
+      text_context,
+      output,
+      self.style,
+      "activity-document",
+      decoration.text,
+    )
   })
   document.to_string()
 }
@@ -1098,10 +1112,11 @@ fn @flow.ActivityDiagram::render_svg(
 ///|
 /// Render a parsed activity diagram to SVG.
 pub fn render_activity_svg(
+  text_context : @style.RenderContext,
   diagram : @flow.ActivityDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String {
-  diagram.render_svg(color_scheme~)
+  diagram.render_svg(text_context, color_scheme~)
 }
 
 ///|

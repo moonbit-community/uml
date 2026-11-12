@@ -12,7 +12,7 @@
 /// provides default states for nodes without an override.
 pub fn render_mbti_svg(
   source : String,
-  measurer? : @metrics.Measurer,
+  measurer~ : @metrics.Measurer,
   standalone_alias~ : Bool = false,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
@@ -21,7 +21,7 @@ pub fn render_mbti_svg(
   render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
   Diagram::Mbti(@parser.parse_mbti_body(source, standalone_alias~, options~)).render_svg(
-    measurer?,
+    measurer~,
     color_scheme~,
     class_member_collapsible~,
     member_states~,

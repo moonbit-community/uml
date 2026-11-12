@@ -1,4 +1,7 @@
 ///|
+let text_measurer : @metrics.Measurer = @heuristic.measurer()
+
+///|
 let version : String = "0.1.0"
 
 ///|
@@ -172,7 +175,11 @@ fn render_file(path : String, matches : @argparse.Matches) -> Int32 {
       return 1
     }
   }
-  let svg = @api.render_svg(source, color_scheme=cli_scheme()) catch {
+  let svg = @api.render_svg(
+    source,
+    measurer=text_measurer,
+    color_scheme=cli_scheme(),
+  ) catch {
     err => {
       println(render_error(path, "render", err))
       return 1

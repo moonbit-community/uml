@@ -2,6 +2,7 @@
 /// FtileRepeat.getLeft/getRight align both diamonds with the body's flow axis;
 /// calculateDimensionInternal reserves the return corridor on the right.
 fn repeat_columns(
+  text_context : @style.RenderContext,
   entry : Int32,
   body : Array[Tile],
   exit : Int32,
@@ -11,10 +12,14 @@ fn repeat_columns(
   metrics : @metrics.FontMetrics,
   small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double) {
-  let entry_size = nodes[entry].size(metrics, small_metrics)
-  let exit_size = nodes[exit].size(metrics, small_metrics)
-  let body_size = measure_sequence(body, nodes, metrics, small_metrics)
-  let body_axis = sequence_axis(body, nodes, metrics, small_metrics)
+  let entry_size = nodes[entry].size(text_context, metrics, small_metrics)
+  let exit_size = nodes[exit].size(text_context, metrics, small_metrics)
+  let body_size = measure_sequence(
+    text_context, body, nodes, metrics, small_metrics,
+  )
+  let body_axis = sequence_axis(
+    text_context, body, nodes, metrics, small_metrics,
+  )
   let axis = body_axis.max(entry_size.width / 2).max(exit_size.width / 2)
   let label_width = retry_label.map_or(0.0, label => {
     activity_measure(small_metrics, label).width

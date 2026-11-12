@@ -99,10 +99,13 @@ fn activity_action_geometry(
 }
 
 ///|
-fn activity_action_measure(action : @flow.ActivityAction) -> TileMeasure {
+fn activity_action_measure(
+  text_context : @style.RenderContext,
+  action : @flow.ActivityAction,
+) -> TileMeasure {
   let style = activity_action_style(action)
   let geometry = activity_action_geometry(style)
-  let metrics = activity_font_metrics(style, false)
+  let metrics = activity_font_metrics(text_context, style, false)
   let (width, height) = state_text_size(
     action.label,
     metrics,
@@ -139,6 +142,7 @@ fn @flow.ActivityNode::flow_axis(
 
 ///|
 fn draw_activity_action(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   action : @flow.ActivityAction,
   node : ActivityNodeLayout,
@@ -254,7 +258,7 @@ fn draw_activity_action(
       .draw(Line(point(x, 0), point(x, height)))
     }
   }
-  let font = activity_font_metrics(style, false)
+  let font = activity_font_metrics(text_context, style, false)
   let color = style.property_color(
     "ActivityFontColor",
     style.diagram_text_color(),

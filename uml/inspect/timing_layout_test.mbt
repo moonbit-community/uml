@@ -23,13 +23,16 @@ test "timing dispatch renders every player family and leaves entity rectangles u
       "\n@0\nP is 0\n@10\nP is 1\n@enduml"
     let document = @api.parse(source)
     @test.assert_eq(document.kind() is @api.Timing, true)
-    @test.assert_eq(document.render_svg().is_empty(), false)
+    @test.assert_eq(
+      document.render_svg(measurer=text_measurer).is_empty(),
+      false,
+    )
   }
   let clock = @api.parse(
     "@startuml\nclock CLK with period 10\n@0\n@20\n@enduml",
   )
   @test.assert_eq(clock.kind() is @api.Timing, true)
-  @test.assert_eq(clock.render_svg().is_empty(), false)
+  @test.assert_eq(clock.render_svg(measurer=text_measurer).is_empty(), false)
   @test.assert_eq(
     @api.parse("@startuml\nrectangle Service\n@enduml").kind() is @api.Timing,
     false,
@@ -41,7 +44,7 @@ test "timing players retain declaration order and occupy separate vertical panel
   let diagram = @parser.parse_timing(
     "robust \"States\" as R\nconcise \"Bus\" as C\nrectangle \"Phase\" as Q\nbinary \"Bit\" as B\nclock \"Clock\" as K with period 4\nanalog \"Voltage\" as A\n@0\nR is idle\nC is data\nQ is phase\nB is 0\nA is 0\n@10\nR is busy\nC is result\nQ is done\nB is 1\nA is 1",
   )
-  let layout = @render.layout_timing(diagram)
+  let layout = @render.layout_timing(text_context, diagram)
   @test.assert_eq(
     layout.players.map(panel => diagram.players[panel.index].code),
     diagram.players.map(player => player.code),
@@ -57,7 +60,7 @@ test "timing players retain declaration order and occupy separate vertical panel
       )
     }
   }
-  let svg = @render.render_timing_svg(diagram)
+  let svg = @render.render_timing_svg(text_context, diagram)
   @test.assert_eq(svg.contains("NaN") || svg.contains("Infinity"), false)
 }
 
@@ -66,7 +69,7 @@ test "timing ruler is linear across negative and fractional marks and honors exp
   let diagram = @parser.parse_timing(
     "binary B\nscale 2 as 30 pixels\n@-4\nB is 0\n@-1.5\nB is 1\n@3\nB is 0",
   )
-  let layout = @render.layout_timing(diagram)
+  let layout = @render.layout_timing(text_context, diagram)
   let ruler = layout.ruler
   let middle = (ruler.minimum + ruler.maximum) / 2.0
   @test.assert_eq(
@@ -88,7 +91,7 @@ test "robust declared states preserve vertical order and configured wave height"
     "robust R\nR has low,mid,high\nR is 60 pixels height\n@0\nR is low\n@5\nR is high",
   )
   let player = diagram.players[0]
-  let panel = @render.layout_timing(diagram).players[0]
+  let panel = @render.layout_timing(text_context, diagram).players[0]
   @test.assert_eq(panel.states, player.states.map(state => state.1).rev())
   @test.assert_eq(
     panel.wave_height * (panel.states.length() - 1).to_double(),
@@ -99,8 +102,9 @@ test "robust declared states preserve vertical order and configured wave height"
 ///|
 test "timing notes and constraints reserve space outside the waveform" {
   let source = "concise \"Bus\" as C\n@0\nC is start\n@10\nC is end"
-  let plain = @render.layout_timing(@parser.parse_timing(source))
+  let plain = @render.layout_timing(text_context, @parser.parse_timing(source))
   let annotated = @render.layout_timing(
+    text_context,
     @parser.parse_timing(
       source +
       "\nnote top of C : Explanation\nnote bottom of C : Details\nC@0 <--> @10 : duration",
@@ -120,7 +124,7 @@ test "messages share ruler coordinates and attach to the nearest ribbon boundary
   let diagram = @parser.parse_timing(
     "concise \"Source\" as S\nconcise \"Target\" as T\n@0\nS is active\nT is ready\n@10\nS is done\nT is done\nS@2 --> T@7 : transfer",
   )
-  let layout = @render.layout_timing(diagram)
+  let layout = @render.layout_timing(text_context, diagram)
   let source = timing_panel(diagram, layout, "S")
   let target = timing_panel(diagram, layout, "T")
   @test.assert_eq(layout.messages.length(), diagram.messages.length())
@@ -135,7 +139,7 @@ test "analog message contacts interpolate between neighboring samples" {
   let diagram = @parser.parse_timing(
     "analog \"Voltage\" from 0 to 10 as A\nbinary B\n@0\nA is 0\nB is 0\n@10\nA is 10\nA@0 --> B@0\nA@5 --> B@5\nA@10 --> B@10",
   )
-  let layout = @render.layout_timing(diagram)
+  let layout = @render.layout_timing(text_context, diagram)
   @test.assert_eq(layout.messages.length(), diagram.messages.length())
   let first = layout.messages[0].start
   let middle = layout.messages[1].start
@@ -150,12 +154,15 @@ test "timing axis modes document text and themes pass through the public rendere
   let source = "@startuml\ntitle Timing overview\nlegend\nLegend\nendlegend\nbinary \"Signal\" as B\n@0 as :begin\nB is 0\n@10 as :finish\nB is 1\nhighlight 0 to 10 #yellow : active\n"
   for mode in ["", "manual time axis", "hide time axis"] {
     let document = @api.parse(source + mode + "\n@enduml")
-    let plain = document.render_svg()
-    let themed = document.render_svg(color_scheme=@style.ColorScheme::dark())
+    let plain = document.render_svg(measurer=text_measurer)
+    let themed = document.render_svg(
+      color_scheme=@style.ColorScheme::dark(),
+      measurer=text_measurer,
+    )
     @test.assert_eq(plain.is_empty() || themed.is_empty(), false)
     @test.assert_eq(plain == themed, false)
     @test.assert_eq(plain.contains("NaN") || plain.contains("Infinity"), false)
   }
   let wbs = @api.parse("@startwbs\ntitle Plan\n* Root\n** Work\n@endwbs")
-  @test.assert_eq(wbs.render_svg().is_empty(), false)
+  @test.assert_eq(wbs.render_svg(measurer=text_measurer).is_empty(), false)
 }

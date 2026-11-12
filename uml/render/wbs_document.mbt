@@ -7,10 +7,16 @@ priv struct WbsDocumentLayout {
 ///|
 /// Apply the shared DiagramChromeFactory wrappers to WBS geometry.
 fn wbs_document(
+  text_context : @style.RenderContext,
   style : @style.DocumentStyle,
   tree : WbsLayout,
 ) -> WbsDocumentLayout {
-  let decoration = decorate_document_text(style, tree.width, tree.height)
+  let decoration = decorate_document_text(
+    text_context,
+    style,
+    tree.width,
+    tree.height,
+  )
   let dx = decoration.dx
   let dy = decoration.dy
   {

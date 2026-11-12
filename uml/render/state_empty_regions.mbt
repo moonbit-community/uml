@@ -57,11 +57,12 @@ fn empty_concurrent_state() -> @flow.StateNode {
 
 ///|
 fn empty_concurrent_state_size(
+  text_context : @style.RenderContext,
   diagram : @flow.StateDiagram,
 ) -> (Double, Double) {
   empty_concurrent_state().leaf_size(
-    resolve_state_font(diagram.style, StateLabel).metrics,
-    resolve_state_font(diagram.style, StateDescription).metrics,
+    resolve_state_font(text_context, diagram.style, StateLabel).metrics,
+    resolve_state_font(text_context, diagram.style, StateDescription).metrics,
     false,
     left_to_right=false,
   )
@@ -73,13 +74,14 @@ fn empty_concurrent_state_size(
 /// groups retain their compartments under hide-empty-description settings.
 fn @flow.StateDiagram::empty_state_region_fragment(
   self : @flow.StateDiagram,
+  text_context : @style.RenderContext,
   region : @flow.StateRegion,
 ) -> StateFragment? {
   guard self.state_region_is_empty(region.parent, region.index) else {
     return None
   }
   let (width, height) = if region.separator is Some(_) {
-    empty_concurrent_state_size(self)
+    empty_concurrent_state_size(text_context, self)
   } else {
     (STATE_EMPTY_INNER_IMAGE_SIZE, STATE_EMPTY_INNER_IMAGE_SIZE)
   }
@@ -97,6 +99,7 @@ fn @flow.StateDiagram::empty_state_region_fragment(
 
 ///|
 fn append_empty_concurrent_region(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   region : StateRegionLayout,
@@ -106,9 +109,10 @@ fn append_empty_concurrent_region(
     return
   }
   let state = empty_concurrent_state()
-  let (width, height) = empty_concurrent_state_size(diagram)
+  let (width, height) = empty_concurrent_state_size(text_context, diagram)
   output.group(state_class("state-empty-concurrent-region"), output => {
     append_state_node_body(
+      text_context,
       output,
       diagram,
       state,

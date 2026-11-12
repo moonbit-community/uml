@@ -53,8 +53,9 @@ fn creates_cycle(
 /// its first relation. Exposed so callers can inspect the geometry.
 fn @entity.EntityDiagram::mindmap_layout(
   self : @entity.EntityDiagram,
+  text_context : @style.RenderContext,
 ) -> MindmapLayout {
-  let text_metrics = ClassTextMetrics::new(self.style)
+  let text_metrics = ClassTextMetrics::new(text_context, self.style)
   self.mindmap_class_layout(text_metrics).layout
 }
 
@@ -203,6 +204,9 @@ fn draw_mindmap_class_edge(
 
 ///|
 /// The mindmap tree layout for a parsed entity diagram.
-pub fn mindmap_layout_entity(diagram : @entity.EntityDiagram) -> MindmapLayout {
-  diagram.mindmap_layout()
+pub fn mindmap_layout_entity(
+  text_context : @style.RenderContext,
+  diagram : @entity.EntityDiagram,
+) -> MindmapLayout {
+  diagram.mindmap_layout(text_context)
 }

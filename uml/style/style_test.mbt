@@ -1,11 +1,15 @@
 ///|
 test "document font settings preserve font family and size" {
+  let text_context = @style.RenderContext::new(@heuristic.measurer())
   let monospace = @style.DocumentStyle::empty()
   monospace.apply(FontFamily("Courier"))
   monospace.apply(FontSize("16px"))
-  @test.assert_eq(monospace.font_metrics().font_family, monospace.font_family())
+  @test.assert_eq(
+    monospace.font_metrics(text_context).font_family,
+    monospace.font_family(),
+  )
   @test.assert_eq(@style.font_size_value(monospace), 16)
-  @test.assert_eq(monospace.font_metrics().font_size, 16)
+  @test.assert_eq(monospace.font_metrics(text_context).font_size, 16)
 
   let points = @style.DocumentStyle::empty()
   points.apply(FontSize("12pt"))
@@ -13,11 +17,17 @@ test "document font settings preserve font family and size" {
 
   let serif = @style.DocumentStyle::empty()
   serif.apply(FontFamily("Times New Roman, serif"))
-  @test.assert_eq(serif.font_metrics().font_family, serif.font_family())
+  @test.assert_eq(
+    serif.font_metrics(text_context).font_family,
+    serif.font_family(),
+  )
 
   let sans = @style.DocumentStyle::empty()
   sans.apply(FontFamily("Arial, sans-serif"))
-  @test.assert_eq(sans.font_metrics().font_family, sans.font_family())
+  @test.assert_eq(
+    sans.font_metrics(text_context).font_family,
+    sans.font_family(),
+  )
 }
 
 ///|

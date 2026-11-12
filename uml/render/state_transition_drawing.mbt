@@ -112,6 +112,7 @@ fn append_state_cross(
 /// contacts, retain routed curves, respect signed angle rounding and inherit
 /// link paint without changing route geometry.
 fn append_state_edge(
+  text_context : @style.RenderContext,
   output : @graphics.Graphic,
   diagram : @flow.StateDiagram,
   edge : StateEdgeLayout,
@@ -181,7 +182,7 @@ fn append_state_edge(
   }
   if transition.target_label is Some(label) &&
     edge.target_label is Some(position) {
-    let metrics = legacy_activity_arrow_metrics(diagram.style)
+    let metrics = legacy_activity_arrow_metrics(text_context, diagram.style)
     append_state_label(
       output,
       label,
@@ -196,7 +197,7 @@ fn append_state_edge(
   guard transition.label is Some(label) && edge.label is Some(position) else {
     return
   }
-  let metrics = resolve_state_font(diagram.style, TransitionLabel).metrics
+  let metrics = resolve_state_font(text_context, diagram.style, TransitionLabel).metrics
   append_state_label(
     output,
     label,

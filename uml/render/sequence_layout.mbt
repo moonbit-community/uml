@@ -163,8 +163,11 @@ fn participant_lifetimes(
 }
 
 ///|
-fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
-  let text_metrics = SequenceTextMetrics::new(self.style)
+fn @seq.SequenceDiagram::layout(
+  self : @seq.SequenceDiagram,
+  text_context : @style.RenderContext,
+) -> DiagramLayout {
+  let text_metrics = SequenceTextMetrics::new(text_context, self.style)
   let (participants, participant_index, width) = layout_participants(
     self, text_metrics,
   )
@@ -221,8 +224,11 @@ fn @seq.SequenceDiagram::layout(self : @seq.SequenceDiagram) -> DiagramLayout {
 
 ///|
 /// Calculate PlantUML-style sequence-diagram geometry without rendering it.
-pub fn layout_sequence(diagram : @seq.SequenceDiagram) -> DiagramLayout {
-  diagram.layout()
+pub fn layout_sequence(
+  text_context : @style.RenderContext,
+  diagram : @seq.SequenceDiagram,
+) -> DiagramLayout {
+  diagram.layout(text_context)
 }
 
 ///|

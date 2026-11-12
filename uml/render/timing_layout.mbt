@@ -102,10 +102,14 @@ fn timing_constraint_delta(
 
 ///|
 fn timing_note_size(
+  text_context : @style.RenderContext,
   note : @flow.TimingNote,
   style : @style.DocumentStyle,
 ) -> (Double, Double) {
-  let text = timing_text_size(note.text, timing_appearance(style, "note"))
+  let text = timing_text_size(
+    note.text,
+    timing_appearance(text_context, style, "note"),
+  )
   (
     text.0 + STATE_NOTE_LEFT_MARGIN + STATE_NOTE_RIGHT_MARGIN,
     text.1 + STATE_NOTE_VERTICAL_MARGIN * 2.0,
@@ -114,12 +118,17 @@ fn timing_note_size(
 
 ///|
 fn timing_player_layout(
+  text_context : @style.RenderContext,
   diagram : @flow.TimingDiagram,
   index : Int32,
   y : Double,
 ) -> TimingPlayerLayout {
   let player = diagram.players[index]
-  let appearance = timing_appearance(diagram.style, timing_kind(player.kind))
+  let appearance = timing_appearance(
+    text_context,
+    diagram.style,
+    timing_kind(player.kind),
+  )
   let states = timing_states(player)
   let suggested = player.height.unwrap_or(0).to_double()
   let wave_height = match player.kind {
@@ -145,7 +154,7 @@ fn timing_player_layout(
   }
   let frame_height = timing_text_size(
       player.title,
-      timing_appearance(diagram.style, "title"),
+      timing_appearance(text_context, diagram.style, "title"),
     ).1 +
     (if player.compact { -1.0 } else { 1.0 })
   let minimum = player.bounds.map_or_else(
@@ -224,7 +233,7 @@ fn timing_player_layout(
     height.max(
       timing_text_size(
         constraint.message.unwrap_or(""),
-        timing_appearance(diagram.style, "constraintArrow"),
+        timing_appearance(text_context, diagram.style, "constraintArrow"),
       ).1 +
       TIMING_CONSTRAINT_MARGIN -
       timing_constraint_delta(player, panel, constraint),
@@ -245,7 +254,10 @@ fn timing_player_layout(
     }
     player.notes.fold(init=0.0, (height, note) => {
       if note.position == position {
-        height.max(timing_note_size(note, diagram.style).1 + TIMING_NOTE_MARGIN)
+        height.max(
+          timing_note_size(text_context, note, diagram.style).1 +
+          TIMING_NOTE_MARGIN,
+        )
       } else {
         height
       }
@@ -301,13 +313,16 @@ fn timing_analog_label(player : @flow.TimingPlayer, value : Double) -> String {
 
 ///|
 /// Allocate TimingRuler and each player's distinct Panels geometry.
-pub fn layout_timing(diagram : @flow.TimingDiagram) -> TimingLayout {
+pub fn layout_timing(
+  text_context : @style.RenderContext,
+  diagram : @flow.TimingDiagram,
+) -> TimingLayout {
   let ruler = timing_ruler(diagram)
   let players = []
   let mut y = TIMING_MARGIN
   let mut left = 0.0
   for index in 0..<diagram.players.length() {
-    let panel = timing_player_layout(diagram, index, y)
+    let panel = timing_player_layout(text_context, diagram, index, y)
     y += panel.height
     left = left.max(panel.left_width)
     players.push(panel)
@@ -319,7 +334,10 @@ pub fn layout_timing(diagram : @flow.TimingDiagram) -> TimingLayout {
     inner_height: y - TIMING_MARGIN,
     width: left + ruler.width + TIMING_SIDE * 2.0 + TIMING_MARGIN * 2.0,
     height: y +
-    timing_text_size("0", timing_appearance(diagram.style, "timeline")).1 +
+    timing_text_size(
+      "0",
+      timing_appearance(text_context, diagram.style, "timeline"),
+    ).1 +
     TIMING_MARGIN,
     messages: [],
   }

@@ -1,5 +1,7 @@
 import {
   "moonbit-community/uml/api",
+  "moonbit-community/uml/metrics",
+  "moonbit-community/uml/metrics/heuristic",
   "moonbit-community/uml/style",
   "moonbit-community/uml/tokenizer",
   "moonbitlang/async",
