@@ -120,7 +120,7 @@ fn entity_text_run(
     text,
     position,
     advance: if text.length() > 1 && measured.advance_width > 0 {
-      Some(measured.advance_width.to_double())
+      Some(measured.advance_width)
     } else {
       None
     },
@@ -141,7 +141,7 @@ priv struct EntityTextSize {
   height : Int32
   baseline : Int32
   ascent : Int32
-  advance_width : Int32
+  advance_width : Double
 }
 
 ///|
@@ -155,7 +155,7 @@ fn @metrics.FontMetrics::entity_measure(
       height: rich.height.ceil().to_int(),
       baseline: self.ascent,
       ascent: self.ascent,
-      advance_width: rich.width.ceil().to_int(),
+      advance_width: rich.width,
     }
   } else {
     let measured = self.measure(text)

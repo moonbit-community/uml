@@ -81,8 +81,7 @@ fn append_note(
       "note-label",
       layout.defaults,
       anchor=Start,
-      line_height=layout.text_metrics.note.line_height,
-      font_metrics=Some(layout.text_metrics.note),
+      font_metrics=layout.text_metrics.note,
     )
   })
 }
@@ -115,8 +114,7 @@ fn append_divider(
     divider.title,
     "divider-label",
     layout.defaults,
-    line_height=layout.text_metrics.body_bold.line_height,
-    font_metrics=Some(layout.text_metrics.body_bold),
+    font_metrics=layout.text_metrics.body_bold,
   )
 }
 
@@ -137,8 +135,7 @@ fn append_delay(
       label,
       "delay-label",
       layout.defaults,
-      line_height=layout.text_metrics.body.line_height,
-      font_metrics=Some(layout.text_metrics.body),
+      font_metrics=layout.text_metrics.body,
     )
   }
 }
@@ -188,8 +185,7 @@ fn append_reference(
     "reference-tab-label",
     layout.defaults,
     anchor=Start,
-    line_height=layout.text_metrics.body_bold.line_height,
-    font_metrics=Some(layout.text_metrics.body_bold),
+    font_metrics=layout.text_metrics.body_bold,
   )
   append_text(
     output,
@@ -198,8 +194,7 @@ fn append_reference(
     reference.label.unwrap_or(""),
     "reference-label",
     layout.defaults,
-    line_height=layout.text_metrics.body.line_height,
-    font_metrics=Some(layout.text_metrics.body),
+    font_metrics=layout.text_metrics.body,
   )
 }
 
@@ -257,8 +252,7 @@ fn append_return(
     label,
     "message-label",
     layout.defaults,
-    line_height=layout.text_metrics.body.line_height,
-    font_metrics=Some(layout.text_metrics.body),
+    font_metrics=layout.text_metrics.body,
   )
 }
 
@@ -327,8 +321,7 @@ fn append_event(
           title,
           "page-label",
           layout.defaults,
-          line_height=layout.text_metrics.body_italic.line_height,
-          font_metrics=Some(layout.text_metrics.body_italic),
+          font_metrics=layout.text_metrics.body_italic,
         )
       }
     }

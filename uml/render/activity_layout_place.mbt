@@ -1219,14 +1219,16 @@ fn edge_label_extent(
     )
     right
   })
-  let (_, route_right) = activity_edge_x_bounds(edge, from, to, nodes)
+  let (_, route_right) = activity_edge_x_bounds(
+    edge, from, to, nodes, small_metrics,
+  )
   Some(label_right.map_or(route_right, right => right.max(route_right)))
 }
 
 ///|
 /// Calculate PlantUML-style activity-diagram geometry without rendering it.
 pub fn layout_activity(diagram : @flow.ActivityDiagram) -> ActivityLayout {
-  diagram.layout()
+  diagram.with_render_context(diagram.style.defaults()).layout()
 }
 
 ///|

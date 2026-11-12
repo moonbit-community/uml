@@ -77,7 +77,7 @@ fn append_sequence_anchors(
         "message-label",
         layout.defaults,
         anchor=Start,
-        font_metrics=Some(layout.text_metrics.body),
+        font_metrics=layout.text_metrics.body,
       )
     }
   }

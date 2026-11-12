@@ -75,26 +75,25 @@ fn draw_wbs_node(
           boxless_vertical_margin.to_double(),
         )
       }
-      let label_width = tree_label_width(metrics, font_size, item.label)
+      let label_width = tree_label_width(metrics, item.label)
       let output = output.translated(text_x, text_y)
       let text_lines = item.label.split("\n").to_array()
       for line, value in text_lines {
         let text = value.to_owned()
         let first_line_space = if line == 0 && text_lines.length() > 1 {
-          plantuml_space_advance(font_size)
+          metrics.measure(" ").advance_width
         } else {
-          0
+          0.0
         }
-        let line_width = plantuml_measure(metrics, tree_visible_text(text)).width +
+        let line_width = metrics.measure(tree_visible_text(text)).width.to_double() +
           first_line_space
         let dx = match style.alignment.unwrap_or(@tree.TextAlignment::Left) {
           @tree.TextAlignment::Left => 0.0
-          @tree.TextAlignment::Center =>
-            (label_width - line_width.to_double()) / 2.0
-          @tree.TextAlignment::Right => label_width - line_width.to_double()
+          @tree.TextAlignment::Center => (label_width - line_width) / 2.0
+          @tree.TextAlignment::Right => label_width - line_width
         }
         draw_tree_text(
-          output.translated(dx + first_line_space.to_double(), 0.0),
+          output.translated(dx + first_line_space, 0.0),
           0,
           font_size + line * metrics.line_height,
           text,

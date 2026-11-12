@@ -10,4 +10,6 @@ import {
   "moonbit-community/uml/render",
   "moonbit-community/uml/api",
   "moonbit-community/uml/style",
+  "moonbit-community/uml/metrics/heuristic",
+  "moonbit-community/uml/metrics",
 } for "test"

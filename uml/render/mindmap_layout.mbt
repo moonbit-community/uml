@@ -126,11 +126,9 @@ fn @tree.MindmapDiagram::node_text_width(
   index : Int32,
 ) -> Double {
   let idea = self.ideas[index]
-  let font_size = self.node_font_size(index)
   let metrics = self.node_font_metrics(index)
   tree_label_width(
     metrics,
-    font_size,
     idea.label,
     wrap_width=self.node_style(index).wrap_width.unwrap_or(0.0),
   )

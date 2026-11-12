@@ -161,8 +161,7 @@ fn append_message(
           "message-label",
           layout.defaults,
           anchor=Start,
-          line_height=layout.text_metrics.body.line_height,
-          font_metrics=Some(layout.text_metrics.body),
+          font_metrics=layout.text_metrics.body,
         )
       } else {
         let start_x = from_x
@@ -201,8 +200,7 @@ fn append_message(
           "message-label",
           layout.defaults,
           anchor=Start,
-          line_height=layout.text_metrics.body.line_height,
-          font_metrics=Some(layout.text_metrics.body),
+          font_metrics=layout.text_metrics.body,
         )
       }
       if message.arrow_config.circle_start {
@@ -317,8 +315,7 @@ fn append_exo_message(
       "message-label",
       layout.defaults,
       anchor=Start,
-      line_height=layout.text_metrics.body.line_height,
-      font_metrics=Some(layout.text_metrics.body),
+      font_metrics=layout.text_metrics.body,
     )
   })
 }

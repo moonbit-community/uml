@@ -65,6 +65,9 @@ fn theme_color_scheme() -> @style.ColorScheme {
 }
 
 ///|
+let text_measurer : @metrics.Measurer = @canvas.measurer()
+
+///|
 /// Render a source to a standalone SVG with the theme-aware color scheme,
 /// stringifying any parse or render error for display in the preview pane.
 fn render_source_svg(
@@ -73,6 +76,7 @@ fn render_source_svg(
 ) -> String {
   @api.render_svg(
     source,
+    measurer=text_measurer,
     color_scheme=theme_color_scheme(),
     class_member_collapsible=true,
     member_states~,

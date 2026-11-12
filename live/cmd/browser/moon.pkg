@@ -6,6 +6,8 @@ import {
   "moonbit-community/rabbita/http",
   "moonbit-community/rui",
   "moonbit-community/uml/api",
+  "moonbit-community/uml/metrics/canvas",
+  "moonbit-community/uml/metrics",
   "moonbit-community/uml/style",
   "moonbit-community/uml/entity",
 }

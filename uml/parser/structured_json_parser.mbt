@@ -34,7 +34,7 @@ pub fn parse_structured_json(
   {
     format: @structured.Json,
     root: json_root(@json.parse(source.data)),
-    presentation: source.presentation,
+    style: source.style,
     styles: source.styles,
     highlights: source.highlights,
   }

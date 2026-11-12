@@ -266,12 +266,16 @@ fn structured_paint(
 }
 
 ///|
-fn structured_cell(text : String, paint : StructuredPaint) -> StructuredCell {
+fn structured_cell(
+  text : String,
+  paint : StructuredPaint,
+  style : @style.DocumentStyle,
+) -> StructuredCell {
   let metrics = @metrics.FontMetrics::from_defaults(
-    profile=@style.font_profile_for(paint.font_family),
+    style.text_measurer(),
+    font_family=paint.font_family,
     font_size=paint.font_size,
     line_height=paint.font_size + 3,
-    ascent=paint.font_size,
     font_weight=paint.font_weight,
     style=if paint.italic { Italic } else { Normal },
   )
@@ -308,8 +312,8 @@ fn structured_block(
   diagram : @structured.StructuredDiagram,
   node : @structured.StructuredNode,
   path : Array[String],
-  scheme : @style.ColorScheme,
 ) -> StructuredBlock {
+  let scheme = diagram.style.defaults()
   let rows = []
   let mut key_width = 0
   let mut value_width = 0
@@ -323,11 +327,13 @@ fn structured_block(
       structured_cell(
         key,
         structured_paint(diagram, scheme, "header", highlight),
+        diagram.style,
       )
     })
     let value = structured_cell(
       row.value.measurement_text(),
       structured_paint(diagram, scheme, "node", highlight),
+      diagram.style,
     )
     let row_height = value.height.max(key.map_or(0, key => key.height))
     key_width = key_width.max(key.map_or(0, key => key.width))
@@ -388,13 +394,12 @@ fn structured_graph_node(
   diagram : @structured.StructuredDiagram,
   node : @structured.StructuredNode,
   path : Array[String],
-  scheme : @style.ColorScheme,
   graph : @cgraph.Graph,
   blocks : Array[StructuredBlock],
   edges : Map[Int32, Int32],
 ) -> @cgraph.Node {
   let index = blocks.length()
-  let block = structured_block(diagram, node, path, scheme)
+  let block = structured_block(diagram, node, path)
   blocks.push(block)
   let vertex = graph.node(index.to_string())
   vertex.set_attr("shape", "plain")
@@ -409,7 +414,6 @@ fn structured_graph_node(
       diagram,
       child,
       [..path, row.key.unwrap_or(row_index.to_string())],
-      scheme,
       graph,
       blocks,
       edges,
@@ -670,21 +674,17 @@ pub fn render_structured_svg(
   diagram : @structured.StructuredDiagram,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
 ) -> String raise @dot_layout.DotLayoutError {
+  let diagram = {
+    ..diagram,
+    style: diagram.style.with_color_scheme(color_scheme),
+  }
   let graph = @cgraph.Graph::new(Directed, name="structured", strict=false)
   graph.set_attr("rankdir", "LR")
   graph.set_attr("splines", "spline")
   let blocks = []
   let edge_names : Map[Int32, Int32] = Map([])
   ignore(
-    structured_graph_node(
-      diagram,
-      diagram.root,
-      [],
-      color_scheme,
-      graph,
-      blocks,
-      edge_names,
-    ),
+    structured_graph_node(diagram, diagram.root, [], graph, blocks, edge_names),
   )
   let layout = @dot_layout.layout_dot(graph)
   let edges = @graphviz.graphviz_edges(layout, edge_names, layout.bbox)
@@ -701,10 +701,7 @@ pub fn render_structured_svg(
   let height = layout.bbox.ury -
     layout.bbox.lly +
     STRUCTURED_CANVAS_PADDING.to_double() * 2.0
-  let style = @style.DocumentStyle::empty().with_color_scheme(color_scheme)
-  for directive in diagram.presentation {
-    style.apply(directive)
-  }
+  let style = diagram.style
   let decoration = decorate_document_text(style, width, height)
   let scale = style.output_scale(decoration.width, decoration.height)
   let document = @svg.SvgDocument::new(

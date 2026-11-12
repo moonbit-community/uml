@@ -27,11 +27,12 @@ test "translation moves positions without changing dimensions" {
 
 ///|
 test "text preserves the supplied layout advance and escapes once" {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = @metrics.FontMetrics::from_defaults(@heuristic.measurer())
   let text = "A < B & C"
   // Include a layout-owned spacing adjustment. The backend must not
   // silently replace it by measuring the string again.
-  let advance = (metrics.measure(text).advance_width + metrics.font_size).to_double()
+  let advance = metrics.measure(text).advance_width +
+    metrics.font_size.to_double()
   let writer = @svg.XmlWriter::new()
   writer
   .graphic()
@@ -131,7 +132,7 @@ test "link and metadata values cannot inject XML elements or attributes" {
 ///|
 test "marker definitions allocate distinct IDs and paths reference their handles" {
   let document = @svg.SvgDocument::empty(100, 100, "markers")
-  let size = @metrics.FontMetrics::from_defaults().font_size.to_double()
+  let size = @metrics.FontMetrics::from_defaults(@heuristic.measurer()).font_size.to_double()
   let first = document.arrow_marker(
     "arrow",
     marker_width=size,
@@ -160,7 +161,7 @@ test "marker definitions allocate distinct IDs and paths reference their handles
 
 ///|
 test "multiline driver retains per-line spacing advance and XML text boundaries" {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = @metrics.FontMetrics::from_defaults(@heuristic.measurer())
   let block = @svg.layout_multiline_text(
     0.0,
     0.0,
@@ -196,7 +197,7 @@ test "multiline driver retains per-line spacing advance and XML text boundaries"
 
 ///|
 test "styled multiline blocks supply fonts without changing inherited blocks" {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = @metrics.FontMetrics::from_defaults(@heuristic.measurer())
   let block = @svg.layout_multiline_text(
     0.0,
     0.0,
@@ -225,7 +226,7 @@ test "styled multiline blocks supply fonts without changing inherited blocks" {
 
 ///|
 test "toggle areas preserve geometry state and escaped accessibility data" {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = @metrics.FontMetrics::from_defaults(@heuristic.measurer())
   let origin = @graphics.Point::{
     x: metrics.font_size.to_double(),
     y: metrics.line_height.to_double(),
@@ -254,7 +255,7 @@ test "toggle areas preserve geometry state and escaped accessibility data" {
 
 ///|
 test "styled runs override font presentation without duplicating XML attributes" {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = @metrics.FontMetrics::from_defaults(@heuristic.measurer())
   let size = metrics.font_size.to_double()
   let font : @graphics.TextStyle = {
     font_size: Some(size + size),
@@ -293,7 +294,7 @@ test "styled runs override font presentation without duplicating XML attributes"
 
 ///|
 test "inline drawing styles retain explicit overrides and viewport keeps layout origin" {
-  let metrics = @metrics.FontMetrics::from_defaults()
+  let metrics = @metrics.FontMetrics::from_defaults(@heuristic.measurer())
   let origin = @graphics.Point::{
     x: -metrics.font_size.to_double(),
     y: -metrics.line_height.to_double(),

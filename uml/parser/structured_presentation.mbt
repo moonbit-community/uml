@@ -1,7 +1,7 @@
 ///|
 priv struct StructuredSource {
   data : String
-  presentation : Array[@style.StyleDirective]
+  style : @style.DocumentStyle
   styles : Array[@structured.StructuredStyleProperty]
   highlights : Array[@structured.StructuredHighlight]
 }
@@ -19,7 +19,7 @@ fn structured_source(
     end => end == "@end" + marker,
   )
   let data = []
-  let presentation = []
+  let style = @style.DocumentStyle::empty()
   let styles : Array[@structured.StructuredStyleProperty] = []
   let highlights : Array[@structured.StructuredHighlight] = []
   let style_lines : Array[String] = []
@@ -49,9 +49,9 @@ fn structured_source(
             Rule(words, name, value) =>
               styles.push({ selector: words, name, value, })
             BackgroundColor(_) | FontFamily(_) | FontSize(_) =>
-              presentation.push(directive)
+              style.apply(directive)
             Property(key, value) =>
-              presentation.push(@style.skinparam_directive(key, value))
+              style.apply(@style.skinparam_directive(key, value))
             _ => ()
           }
         },
@@ -90,13 +90,11 @@ fn structured_source(
       }
       if line.has_prefix("title ") &&
         (marker != "toml" || !line[6:].trim_start().has_prefix("=")) {
-        presentation.push(TextBlock("title", line[6:].trim().to_owned()))
+        style.apply(TextBlock("title", line[6:].trim().to_owned()))
         continue
       }
       if line.has_prefix("scale ") {
-        presentation.push(
-          Scale(@style.parse_diagram_scale(line[6:].to_owned())),
-        )
+        style.apply(Scale(@style.parse_diagram_scale(line[6:].to_owned())))
         continue
       }
       if line.has_prefix("skinparam ") {
@@ -109,7 +107,7 @@ fn structured_source(
         continue
       }
       if line.has_prefix("skin ") {
-        presentation.push(
+        style.apply(
           Property(("skin " + line[5:].trim().to_owned()).to_lower(), "true"),
         )
         continue
@@ -123,5 +121,5 @@ fn structured_source(
   guard !in_style else {
     raise @tokenizer.SyntaxError(1, "unclosed structured style block")
   }
-  { data: data.join("\n"), presentation, styles, highlights, }
+  { data: data.join("\n"), style, styles, highlights, }
 }

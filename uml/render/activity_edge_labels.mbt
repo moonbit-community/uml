@@ -138,7 +138,7 @@ fn activity_edge_label_position(
   )
   (
     x +
-    activity_rainbow_extents(edge, from, to, nodes).map_or(0.0, extent => {
+    activity_rainbow_extents(edge, from, to, nodes, small_metrics).map_or(0.0, extent => {
       extent.2
     }),
     y,

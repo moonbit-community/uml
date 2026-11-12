@@ -38,7 +38,7 @@ pub fn parse_structured_yaml(
   {
     format: @structured.Yaml,
     root: yaml_root(@yaml.Yaml::load_from_string(source.data)),
-    presentation: source.presentation,
+    style: source.style,
     styles: source.styles,
     highlights: source.highlights,
   }
@@ -80,7 +80,7 @@ pub fn parse_structured_toml(
   {
     format: @structured.Toml,
     root: structured_root_from_value(@toml.parse(source.data), toml_value_view),
-    presentation: source.presentation,
+    style: source.style,
     styles: source.styles,
     highlights: source.highlights,
   }

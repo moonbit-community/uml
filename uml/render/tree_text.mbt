@@ -48,48 +48,13 @@ pub fn tree_visible_text(label : String) -> String {
 }
 
 ///|
-/// PlantUML's real-font string bounder counts the space glyph, but the
-/// vendored width table stores zero for it (faithful to PlantUML's own
-/// table). Tree diagrams add the reference space advance back: 4.43px at
-/// font size 14, derived from the reference SVGs.
-pub const PLANTUML_SPACE_ADVANCE_PER_14 : Int32 = 443
-
-///|
-/// The width table measures a few percent narrower than PlantUML's real
-/// font. Tree diagrams scale the measured advance only, leaving the line
-/// heights untouched.
-pub const PLANTUML_WIDTH_SCALE : Int32 = 110
-
-///|
-pub fn plantuml_space_advance(font_size : Int32) -> Int32 {
-  font_size * PLANTUML_SPACE_ADVANCE_PER_14 / 14 / 100
-}
-
-///|
-pub fn plantuml_measure(
-  metrics : @metrics.FontMetrics,
-  text : String,
-) -> @metrics.TextMetrics {
-  let measured = metrics.measure(text)
-  let spaces = text.split(" ").to_array().length() - 1
-  let extra = measured.advance_width * (PLANTUML_WIDTH_SCALE - 100) / 100 +
-    spaces * plantuml_space_advance(metrics.font_size)
-  if extra > 0 {
-    measured.with_extra_advance(extra)
-  } else {
-    measured
-  }
-}
-
-///|
 pub(all) struct TreeLabelMetrics {
   width : Double
   height : Double
 }
 
 ///|
-/// Measure a tree label with the PlantUML width compensation, after stripping
-/// creole markers.
+/// Measure visible text after stripping creole markers.
 pub fn tree_label_metrics(
   metrics : @metrics.FontMetrics,
   label : String,
@@ -98,7 +63,7 @@ pub fn tree_label_metrics(
   if tree_rich_text(label, metrics, wrap_width) is Some(rich) {
     return { width: rich.width, height: rich.height, }
   }
-  let measured = plantuml_measure(metrics, tree_visible_text(label))
+  let measured = metrics.measure(tree_visible_text(label))
   { width: measured.width.to_double(), height: measured.height.to_double(), }
 }
 
@@ -108,7 +73,6 @@ pub fn tree_label_metrics(
 /// and offsets the first line of text.
 pub fn tree_label_width(
   metrics : @metrics.FontMetrics,
-  font_size : Int32,
   label : String,
   wrap_width~ : Double = 0.0,
 ) -> Double {
@@ -118,12 +82,12 @@ pub fn tree_label_width(
   let visible = tree_visible_text(label)
   let lines = visible.split("\n").to_array()
   if lines.length() > 1 {
-    let space = plantuml_space_advance(font_size)
-    let first = plantuml_measure(metrics, lines[0].to_owned()).width + space
-    let rest = plantuml_measure(metrics, lines[1:].join("\n")).width
-    first.max(rest).to_double()
+    let space = metrics.measure(" ").advance_width
+    let first = metrics.measure(lines[0].to_owned()).width.to_double() + space
+    let rest = metrics.measure(lines[1:].join("\n")).width.to_double()
+    first.max(rest)
   } else {
-    plantuml_measure(metrics, visible).width.to_double()
+    metrics.measure(visible).width.to_double()
   }
 }
 
@@ -194,28 +158,28 @@ fn layout_tree_text(
 ) -> Array[@graphics.TextRun] {
   let runs : Array[@graphics.TextRun] = []
   let lines = label.split("\n").to_array()
-  let space = plantuml_space_advance(font_size)
-  let first_line_extra = if lines.length() > 1 { space } else { 0 }
+  let space = text_metrics.measure(" ").advance_width
+  let first_line_extra = if lines.length() > 1 { space } else { 0.0 }
   lines.eachi((line_index, line) => {
     let spans = parse_creole_text_line(line.to_owned())
-    let mut cursor_x = x + (if line_index == 0 { first_line_extra } else { 0 })
-    let mut pending_ws = 0
+    let mut cursor_x = x.to_double() +
+      (if line_index == 0 { first_line_extra } else { 0.0 })
+    let mut pending_ws = 0.0
     for span_index, span in spans {
       let (text, leading, trailing) = split_whitespace(span.text)
       if span_index > 0 {
-        cursor_x += pending_ws +
-          plantuml_measure(text_metrics, leading).advance_width
+        cursor_x += pending_ws + text_metrics.measure(leading).advance_width
       }
       if !text.is_empty() {
-        let measured = plantuml_measure(text_metrics, text)
+        let measured = text_metrics.measure(text)
         runs.push({
           text,
           position: {
-            x: cursor_x.to_double(),
+            x: cursor_x,
             y: (y + line_index * line_height).to_double(),
           },
           advance: if measured.advance_width > 0 {
-            Some(measured.advance_width.to_double())
+            Some(measured.advance_width)
           } else {
             None
           },
@@ -226,7 +190,7 @@ fn layout_tree_text(
         })
         cursor_x += measured.advance_width
       }
-      pending_ws = plantuml_measure(text_metrics, trailing).advance_width
+      pending_ws = text_metrics.measure(trailing).advance_width
     }
   })
   runs
@@ -286,7 +250,7 @@ fn draw_tree_text_at(
 
 ///|
 /// Reuse the full Creole scanner and wrapping pipeline already used by state
-/// labels, then measure each styled run with the tree font calibration.
+/// labels, then measure each styled run with its resolved font.
 fn tree_rich_text(
   label : String,
   metrics : @metrics.FontMetrics,
@@ -332,15 +296,14 @@ fn tree_rich_text(
   }
   let lines = rich.lines.mapi((index, line) => {
     let extra = if index == 0 && rich.lines.length() > 1 {
-      plantuml_space_advance(metrics.font_size).to_double()
+      metrics.measure(" ").advance_width
     } else {
       0.0
     }
     {
       ..line,
       width: line.spans.fold(init=extra, (width, span) => {
-        width +
-        plantuml_measure(span.metrics(metrics), span.text).advance_width.to_double()
+        width + span.metrics(metrics).measure(span.text).advance_width
       }),
     }
   })
@@ -370,14 +333,14 @@ fn draw_tree_rich_text(
       state_text_anchor_offset(anchor, rich.width) +
       state_text_anchor_offset(alignment, rich.width - line.width)
     if index == 0 && rich.lines.length() > 1 {
-      x += plantuml_space_advance(metrics.font_size).to_double()
+      x += metrics.measure(" ").advance_width
     }
     for span in line.spans {
       let font = span.metrics(metrics)
-      let full_width = plantuml_measure(font, span.text).advance_width
+      let full_width = font.measure(span.text).advance_width
       let (text, leading, _) = split_whitespace(span.text)
-      let measured = plantuml_measure(font, text)
-      let run_x = x + plantuml_measure(font, leading).advance_width.to_double()
+      let measured = font.measure(text)
+      let run_x = x + font.measure(leading).advance_width
       let baseline = top +
         line.height -
         font.line_height.to_double() +
@@ -406,7 +369,7 @@ fn draw_tree_rich_text(
           {
             text,
             position: { x: run_x, y: baseline, },
-            advance: Some(measured.advance_width.to_double()),
+            advance: Some(measured.advance_width),
             anchor: Start,
             font_size: font.font_size.to_double(),
             font_family: span.family.map_or(family, name => Some(name)),
@@ -435,14 +398,14 @@ fn draw_tree_rich_text(
               font.font_size.to_double() / STATE_RICH_UNDERLINE_DIVISOR,
             },
             {
-              x: x + measured.advance_width.to_double(),
+              x: x + measured.advance_width,
               y: baseline +
               font.font_size.to_double() / STATE_RICH_UNDERLINE_DIVISOR,
             },
           ),
         )
       }
-      x += full_width.to_double()
+      x += full_width
     }
     top += line.height
   }

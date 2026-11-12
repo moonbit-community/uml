@@ -140,7 +140,9 @@ fn reposition_swimlanes(
     let to = layouts[layouts
       .search_by(node => node.node_index == edge.to_node_index)
       .unwrap()]
-    let (path_left, path_right) = activity_edge_x_bounds(edge, from, to, nodes)
+    let (path_left, path_right) = activity_edge_x_bounds(
+      edge, from, to, nodes, small_metrics,
+    )
     let (left, right) = edge.label.map_or((path_left, path_right), label => {
       let (left, right) = activity_edge_label_bounds(
         edge, label, from, to, nodes, small_metrics,

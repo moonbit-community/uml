@@ -49,15 +49,9 @@ fn append_text(
   class_name : String,
   defaults : @style.SequenceColors,
   anchor~ : @graphics.TextAnchor = Middle,
-  line_height~ : Int32 = 15,
-  font_metrics~ : @metrics.FontMetrics? = None,
+  font_metrics~ : @metrics.FontMetrics,
 ) -> Unit {
-  let text_metrics = font_metrics.unwrap_or(
-    @metrics.FontMetrics::from_defaults(
-      font_size=(line_height - 2).max(1),
-      line_height~,
-    ),
-  )
+  let text_metrics = font_metrics
   append_state_text_at_top(
     output.graphic.with_style({
       ..Default::default(),

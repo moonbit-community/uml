@@ -28,6 +28,7 @@ priv struct Gap {
 fn edge_x_extent(
   edge : ActivityEdgeLayout,
   layout : ActivityLayout,
+  small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double)? {
   guard layout_for(layout, edge.from_node_index) is Some(from) else {
     return None
@@ -45,7 +46,9 @@ fn edge_x_extent(
     )) else {
     return None
   }
-  Some(activity_edge_x_bounds(edge, from, to, layout.source_nodes))
+  Some(
+    activity_edge_x_bounds(edge, from, to, layout.source_nodes, small_metrics),
+  )
 }
 
 ///|
@@ -101,7 +104,9 @@ fn merge_slots(
         ),
       )
     }
-    guard edge_x_extent(edge, layout) is Some((start, end)) else { continue }
+    guard edge_x_extent(edge, layout, small_metrics) is Some((start, end)) else {
+      continue
+    }
     ranges.push((start, end))
   }
   for region in layout.regions {
@@ -186,9 +191,7 @@ fn transform(gaps : Array[Gap], v : Double) -> Double {
 /// transformed node boxes, and `layout()` recomputes the canvas width.
 pub fn ActivityLayout::compress_x(
   self : ActivityLayout,
-  small_metrics~ : @metrics.FontMetrics = @metrics.FontMetrics::from_defaults(
-    font_size=SMALL_FONT,
-  ),
+  small_metrics~ : @metrics.FontMetrics,
 ) -> ActivityLayout {
   let merged = merge_slots(self, small_metrics)
   extend_extreme_slots(merged)

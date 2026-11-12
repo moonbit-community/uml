@@ -324,7 +324,7 @@ pub fn layout_multiline_text(
       let advance = text_metrics.map_or(None, metrics => {
         let measured = metrics.measure(text)
         if text.length() > 1 && measured.advance_width > 0 {
-          Some(measured.advance_width.to_double())
+          Some(measured.advance_width)
         } else {
           None
         }

@@ -5,8 +5,10 @@ fn activity_edge_x_bounds(
   from : ActivityNodeLayout,
   to : ActivityNodeLayout,
   nodes : Array[@flow.ActivityNode],
+  small_metrics : @metrics.FontMetrics,
 ) -> (Double, Double) {
-  if activity_rainbow_extents(edge, from, to, nodes) is Some((left, right, _)) {
+  if activity_rainbow_extents(edge, from, to, nodes, small_metrics)
+    is Some((left, right, _)) {
     return (left, right)
   }
   let from_source = nodes[edge.from_node_index]

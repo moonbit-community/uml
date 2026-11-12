@@ -8,7 +8,7 @@ import {
   "moonbit-community/uml/flow",
   "moonbit-community/uml/graphviz",
   "moonbit-community/uml/bodierjson",
-  "moonbit-community/metrics",
+  "moonbit-community/uml/metrics",
   "moonbit-community/uml/tokenizer",
   "moonbit-community/uml/seq",
   "moonbit-community/uml/structured",

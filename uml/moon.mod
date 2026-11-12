@@ -10,7 +10,6 @@ import {
   "moonbitlang/lexer@0.4.5",
   "moonbitlang/parser@0.4.8",
   "moonbitlang/x@0.5.7",
-  "moonbit-community/metrics@0.1.1",
 }
 
 readme = "README.md"

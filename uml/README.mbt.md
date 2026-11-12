@@ -13,7 +13,30 @@ Run `moon test --update` from this directory to refresh them.
 moon add moonbit-community/uml
 ```
 
-The facade package is `moonbit-community/uml/api`. Its entry points are:
+The facade package is `moonbit-community/uml/api`. Rendering defaults to
+portable heuristic measurements; pass `measurer` to use a different service.
+Parsing does not require one. The common measurement contract lives in
+`moonbit-community/uml/metrics`:
+
+- `metrics/heuristic.measurer()` provides deterministic, portable estimates.
+  Document font resolution shares one stateless instance as its default;
+  diagram renderers and layouts do not create or select a backend.
+- `metrics/canvas.measurer()` uses a browser Canvas 2D context (JS only). Reuse
+  the service across renders to reuse its cache. Load any required web fonts
+  before rendering; font-loading events invalidate its cached measurements,
+  and a new render rebuilds the resolved font baselines.
+
+There is no global backend switch or automatic fallback. When explicitly
+provided, the API dispatcher binds the chosen service on copies of the parsed
+styles, leaving the document reusable with a different service. Direct users
+of family renderers and layouts can bind `DocumentStyle::with_measurer` on
+the diagram's style instead. Canvas layout follows the browser's installed
+fonts; this does not guarantee identical Java PlantUML font measurements.
+
+Raw DOT remains a pass-through to Graphviz and uses that engine's separate
+text measurement, rather than this service.
+
+Its entry points are:
 
 - `@api.render_svg(source)` — parse a PlantUML source and render it to SVG in
   one call.
@@ -31,6 +54,17 @@ let source =
 
 ///|
 let svg = @api.render_svg(source)
+```
+
+For browser font measurements, import `moonbit-community/uml/metrics/canvas`
+as `canvas` and the common package as `metrics`, then reuse one service:
+
+```mbt nocheck
+///|
+let text_measurer : @metrics.Measurer = @canvas.measurer()
+
+///|
+let svg = @api.render_svg(source, measurer=text_measurer)
 ```
 
 ## Gallery

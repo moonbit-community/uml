@@ -1,6 +1,10 @@
 import {
   "moonbit-community/uml/graphics",
-  "moonbit-community/metrics",
+  "moonbit-community/uml/metrics",
   "moonbit-community/uml/linestyle",
   "moonbitlang/core/test",
 }
+
+import {
+  "moonbit-community/uml/metrics/heuristic",
+} for "test"

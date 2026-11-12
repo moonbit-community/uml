@@ -250,6 +250,7 @@ fn activity_rainbow_extents(
   from : ActivityNodeLayout,
   to : ActivityNodeLayout,
   nodes : Array[@flow.ActivityNode],
+  metrics : @metrics.FontMetrics,
 ) -> (Double, Double, Double)? {
   let count = edge.style.map_or(1, value => value.split(";").count())
   guard count > 1 else { return None }
@@ -261,7 +262,6 @@ fn activity_rainbow_extents(
     width: 0.0,
     height: 0.0,
   }
-  let metrics = @metrics.FontMetrics::from_defaults(font_size=SMALL_FONT)
   let mut left = from.x + from.width / 2.0
   let mut right = left
   let mut text_dx = 0.0

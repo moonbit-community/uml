@@ -106,7 +106,7 @@ fn wbs_items(diagram : @tree.WbsDiagram) -> Array[WbsItem] {
     let metrics = diagram.style.font_metrics(font_size~)
     let label = node.label.replace(old="\\n", new="\n")
     let text = tree_label_metrics(metrics, label)
-    let text_width = tree_label_width(metrics, font_size, label)
+    let text_width = tree_label_width(metrics, label)
     let (width, height) = match node.shape {
       @tree.NodeShape::Pseudo => (0.0, 0.0)
       @tree.NodeShape::Box =>

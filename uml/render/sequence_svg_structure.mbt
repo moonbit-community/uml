@@ -93,8 +93,7 @@ fn append_groups(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
                 "group-label",
                 layout.defaults,
                 anchor=Start,
-                line_height=layout.text_metrics.body_bold.line_height,
-                font_metrics=Some(layout.text_metrics.body_bold),
+                font_metrics=layout.text_metrics.body_bold,
               )
             }
           }
@@ -132,8 +131,7 @@ fn append_groups(output : SequenceDrawing, layout : DiagramLayout) -> Unit {
             "group-label",
             layout.defaults,
             anchor=Start,
-            line_height=layout.text_metrics.body_bold.line_height,
-            font_metrics=Some(layout.text_metrics.body_bold),
+            font_metrics=layout.text_metrics.body_bold,
           )
         }
       },

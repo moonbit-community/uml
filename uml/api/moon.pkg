@@ -1,5 +1,6 @@
 import {
   "moonbit-community/uml/render",
+  "moonbit-community/uml/metrics",
   "moonbit-community/uml/flow",
   "moonbit-community/uml/entity",
   "moonbit-community/uml/structured",

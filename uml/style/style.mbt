@@ -1,11 +1,15 @@
 ///|
+/// This service is stateless; sharing it does not select a global backend.
+let default_text_measurer : @metrics.Measurer = @heuristic.measurer()
+
+///|
 /// Common PlantUML document-level style state.
 ///
 /// This type preserves document directives and offers generic property, color,
 /// and font resolution. Diagram-family role mapping belongs to the relevant
-/// painter; `ColorScheme` is stored here only as the selected cross-diagram
-/// theme.
-#derive(Eq, Debug)
+/// painter. Explicit host services are bound on rendering copies; font
+/// resolution supplies the portable default when no service is bound.
+#derive(Debug)
 pub struct DocumentStyle {
   mut background_color : String?
   mut theme : String?
@@ -22,6 +26,27 @@ pub struct DocumentStyle {
   color_scheme : ColorScheme
   properties : Map[String, String]
   rules : Array[(Array[String], String, String)]
+  priv measurer : @metrics.Measurer?
+}
+
+///|
+/// Style equality compares document configuration, not render-time services.
+pub impl Eq for DocumentStyle with fn equal(a, b) {
+  a.background_color == b.background_color &&
+  a.theme == b.theme &&
+  a.font_family == b.font_family &&
+  a.font_size == b.font_size &&
+  a.line_color == b.line_color &&
+  a.layout_direction == b.layout_direction &&
+  a.scale == b.scale &&
+  a.title == b.title &&
+  a.caption == b.caption &&
+  a.legend == b.legend &&
+  a.header == b.header &&
+  a.footer == b.footer &&
+  a.color_scheme == b.color_scheme &&
+  a.properties == b.properties &&
+  a.rules == b.rules
 }
 
 ///|
@@ -83,7 +108,34 @@ pub fn DocumentStyle::empty() -> DocumentStyle {
     color_scheme: ColorScheme::default(),
     properties: Map([]),
     rules: [],
+    measurer: None,
   }
+}
+
+///|
+/// Unbound styles share the stateless default; explicit services are returned
+/// unchanged, so a failing host backend never triggers a fallback.
+pub fn DocumentStyle::text_measurer(self : DocumentStyle) -> @metrics.Measurer {
+  self.measurer.unwrap_or(default_text_measurer)
+}
+
+///|
+/// Bind the host's service on a rendering copy; parsed styles stay unbound.
+pub fn DocumentStyle::with_measurer(
+  self : DocumentStyle,
+  measurer : @metrics.Measurer,
+) -> DocumentStyle {
+  { ..self, measurer: Some(measurer), }
+}
+
+///|
+/// Propagate task context without replacing declaration-time font settings
+/// and properties retained by nested style snapshots.
+pub fn DocumentStyle::with_render_context(
+  self : DocumentStyle,
+  context : DocumentStyle,
+) -> DocumentStyle {
+  { ..self, color_scheme: context.color_scheme, measurer: context.measurer, }
 }
 
 ///|
@@ -368,7 +420,7 @@ pub fn consume_skinparam_body(
 
 ///|
 pub fn DocumentStyle::font_family(self : DocumentStyle) -> String {
-  self.font_family.unwrap_or("Arial, sans-serif")
+  self.font_family.unwrap_or(@metrics.DEFAULT_FONT_FAMILY)
 }
 
 ///|
@@ -402,31 +454,6 @@ fn parse_font_size(value : String, fallback~ : Int32) -> Int32 {
 }
 
 ///|
-pub fn font_profile_for(family : String) -> @metrics.FontProfile {
-  let family = family.to_lower()
-  match () {
-    _ if family.contains("mono") ||
-      family.contains("courier") ||
-      family.contains("consolas") ||
-      family.contains("menlo") => Monospace
-    _ if !family.contains("sans") &&
-      (
-        family.contains("serif") ||
-        family.contains("times") ||
-        family.contains("georgia")
-      ) => Serif
-    _ => Sans
-  }
-}
-
-///|
-pub fn DocumentStyle::font_profile(
-  self : DocumentStyle,
-) -> @metrics.FontProfile {
-  font_profile_for(self.font_family())
-}
-
-///|
 /// Compatibility wrapper for the original top-level style API.
 pub fn font_family(style : DocumentStyle) -> String {
   style.font_family()
@@ -442,12 +469,6 @@ pub fn font_size(style : DocumentStyle) -> String {
 /// Compatibility wrapper for the original top-level style API.
 pub fn font_size_value(style : DocumentStyle, fallback~ : Int32 = 13) -> Int32 {
   style.font_size_value(fallback~)
-}
-
-///|
-/// Compatibility wrapper for the original top-level style API.
-pub fn font_profile(style : DocumentStyle) -> @metrics.FontProfile {
-  style.font_profile()
 }
 
 ///|
@@ -488,7 +509,8 @@ pub fn DocumentStyle::font_metrics_for(
     resolved_size + 2
   }
   @metrics.FontMetrics::from_defaults(
-    profile=font_profile_for(family),
+    self.text_measurer(),
+    font_family=family,
     style=font_style,
     font_size=resolved_size,
     font_weight~,

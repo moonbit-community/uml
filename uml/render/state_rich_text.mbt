@@ -328,9 +328,7 @@ fn StateRichSpan::metrics(
   base : @metrics.FontMetrics,
 ) -> @metrics.FontMetrics {
   let font = base.with_face(self.face.weight, self.face.style)
-  let font = self.family.map_or(font, family => {
-    font.with_profile(@style.font_profile_for(family))
-  })
+  let font = self.family.map_or(font, family => font.with_family(family))
   self.size.map_or(font, size => font.with_size(size))
 }
 
@@ -499,7 +497,7 @@ fn StateRichText::draw(
             {
               text: span.text,
               position: { x, y: baseline, },
-              advance: Some(size.advance_width.to_double()),
+              advance: Some(size.advance_width),
               anchor: Start,
               font_size: font.font_size.to_double(),
               font_family: span.family,

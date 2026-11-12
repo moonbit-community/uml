@@ -203,9 +203,7 @@ fn StateDrawingBounds::draw(
     }
     StyledText(run, font) => {
       let base = state_drawing_font(diagram, metadata)
-      let base = run.font_family.map_or(base, family => {
-        base.with_profile(@style.font_profile_for(family))
-      })
+      let base = run.font_family.map_or(base, family => base.with_family(family))
       let metrics = base
         .with_size(run.font_size.to_int())
         .with_face(
