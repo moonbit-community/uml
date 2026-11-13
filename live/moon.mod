@@ -5,7 +5,7 @@ version = "0.1.0"
 import {
   "moonbit-community/rabbita@0.17.0",
   "moonbit-community/rui@0.5.0",
-  "moonbit-community/uml@0.4.3",
+  "moonbit-community/uml@0.4.4",
   "moonbit-community/graphviz@0.1.11",
 }
 
