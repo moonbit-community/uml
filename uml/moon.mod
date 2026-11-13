@@ -6,7 +6,7 @@ import {
   "moonbit-community/toml@0.5.1",
   "moonbit-community/yaml@0.0.8",
   "moonbit-community/unicode@0.7.1",
-  "moonbit-community/graphviz@0.1.10",
+  "moonbit-community/graphviz@0.1.11",
   "moonbitlang/lexer@0.4.5",
   "moonbitlang/parser@0.4.8",
   "moonbitlang/x@0.5.7",
