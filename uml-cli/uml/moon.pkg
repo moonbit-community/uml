@@ -4,6 +4,8 @@ import {
   "moonbit-community/uml/metrics/heuristic",
   "moonbit-community/uml/style",
   "moonbit-community/uml/tokenizer",
+  "moonbit-community/graphviz/layout/text" @graphviz_text,
+  "moonbit-community/graphviz/text/heuristic" @graphviz_heuristic,
   "moonbitlang/async",
   // "moonbitlang/async/io",
   "moonbitlang/async/stdio",

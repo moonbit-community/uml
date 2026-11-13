@@ -10,6 +10,7 @@ import {
   "moonbit-community/graphviz/cgraph",
   "moonbit-community/graphviz/dot" @gv_dot,
   "moonbit-community/graphviz/layout/dot" @dot_layout,
+  "moonbit-community/graphviz/layout/text" @graphviz_text,
   "moonbit-community/graphviz/render/svg",
   "moonbitlang/core/json",
   // "moonbitlang/core/test",

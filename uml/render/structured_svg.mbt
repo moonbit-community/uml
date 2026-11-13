@@ -708,7 +708,10 @@ pub fn render_structured_svg(
       edge_names,
     ),
   )
-  let layout = @dot_layout.layout_dot(graph)
+  let layout = @dot_layout.layout_dot(
+    text_context=text_context.graphviz_context,
+    graph,
+  )
   let edges = @graphviz.graphviz_edges(layout, edge_names, layout.bbox)
   let placements = layout.nodes.map(node => {
     let index = @string.parse_int(node.node.name()) catch {

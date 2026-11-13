@@ -24,7 +24,7 @@ test "timing dispatch renders every player family and leaves entity rectangles u
     let document = @api.parse(source)
     @test.assert_eq(document.kind() is @api.Timing, true)
     @test.assert_eq(
-      document.render_svg(measurer=text_measurer).is_empty(),
+      document.render_svg(measurer=text_measurer, graphviz_context~).is_empty(),
       false,
     )
   }
@@ -32,7 +32,10 @@ test "timing dispatch renders every player family and leaves entity rectangles u
     "@startuml\nclock CLK with period 10\n@0\n@20\n@enduml",
   )
   @test.assert_eq(clock.kind() is @api.Timing, true)
-  @test.assert_eq(clock.render_svg(measurer=text_measurer).is_empty(), false)
+  @test.assert_eq(
+    clock.render_svg(measurer=text_measurer, graphviz_context~).is_empty(),
+    false,
+  )
   @test.assert_eq(
     @api.parse("@startuml\nrectangle Service\n@enduml").kind() is @api.Timing,
     false,
@@ -154,15 +157,19 @@ test "timing axis modes document text and themes pass through the public rendere
   let source = "@startuml\ntitle Timing overview\nlegend\nLegend\nendlegend\nbinary \"Signal\" as B\n@0 as :begin\nB is 0\n@10 as :finish\nB is 1\nhighlight 0 to 10 #yellow : active\n"
   for mode in ["", "manual time axis", "hide time axis"] {
     let document = @api.parse(source + mode + "\n@enduml")
-    let plain = document.render_svg(measurer=text_measurer)
+    let plain = document.render_svg(measurer=text_measurer, graphviz_context~)
     let themed = document.render_svg(
       color_scheme=@style.ColorScheme::dark(),
       measurer=text_measurer,
+      graphviz_context~,
     )
     @test.assert_eq(plain.is_empty() || themed.is_empty(), false)
     @test.assert_eq(plain == themed, false)
     @test.assert_eq(plain.contains("NaN") || plain.contains("Infinity"), false)
   }
   let wbs = @api.parse("@startwbs\ntitle Plan\n* Root\n** Work\n@endwbs")
-  @test.assert_eq(wbs.render_svg(measurer=text_measurer).is_empty(), false)
+  @test.assert_eq(
+    wbs.render_svg(measurer=text_measurer, graphviz_context~).is_empty(),
+    false,
+  )
 }

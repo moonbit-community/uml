@@ -2,6 +2,8 @@ import {
   "moonbit-community/uml/api",
   "moonbit-community/uml/metrics",
   "moonbit-community/uml/metrics/heuristic",
+  "moonbit-community/graphviz/layout/text" @graphviz_text,
+  "moonbit-community/graphviz/text/heuristic" @graphviz_heuristic,
   "moonbit-community/uml/style",
   "moonbitlang/core/test",
 } for "test"

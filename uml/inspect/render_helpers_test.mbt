@@ -2,8 +2,12 @@
 let text_measurer : @metrics.Measurer = @heuristic.measurer()
 
 ///|
+let graphviz_context : @graphviz_text.Context = @graphviz_heuristic.context()
+
+///|
 let text_context : @style.RenderContext = @style.RenderContext::new(
   text_measurer,
+  graphviz_context~,
 )
 
 ///|

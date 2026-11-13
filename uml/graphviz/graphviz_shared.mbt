@@ -44,12 +44,13 @@ pub fn set_fixed_node_size(
 ///|
 /// Execute dot with the shared rank direction and the graph's routing mode.
 pub fn layout_dot(
+  text_context : @graphviz_text.Context,
   graph : @cgraph.Graph,
   style : @style.DocumentStyle,
   nodesep : Double,
   ranksep : Double,
 ) -> @dot_layout.DotLayoutGraph raise @dot_layout.DotLayoutError {
-  @dot_layout.layout_dot(graph, options={
+  @dot_layout.layout_dot(text_context~, graph, options={
     rankdir: Some(graphviz_rankdir(style)),
     nodesep: Some(nodesep),
     ranksep: Some(ranksep),

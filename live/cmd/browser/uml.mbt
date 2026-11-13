@@ -68,6 +68,15 @@ fn theme_color_scheme() -> @style.ColorScheme {
 let text_measurer : @metrics.Measurer = @canvas.measurer()
 
 ///|
+extern "js" fn new_graphviz_canvas() -> @graphviz_canvas.Context2D =
+  #| () => document.createElement("canvas").getContext("2d")
+
+///|
+let graphviz_context : @graphviz_text.Context = @graphviz_text.Context::new(
+  @graphviz_canvas.Canvas::new(new_graphviz_canvas()),
+)
+
+///|
 /// Render a source to a standalone SVG with the theme-aware color scheme,
 /// stringifying any parse or render error for display in the preview pane.
 fn render_source_svg(
@@ -77,6 +86,7 @@ fn render_source_svg(
   @api.render_svg(
     source,
     measurer=text_measurer,
+    graphviz_context~,
     color_scheme=theme_color_scheme(),
     class_member_collapsible=true,
     member_states~,

@@ -2,6 +2,9 @@
 let text_measurer : @metrics.Measurer = @heuristic.measurer()
 
 ///|
+let graphviz_context : @graphviz_text.Context = @graphviz_heuristic.context()
+
+///|
 let version : String = "0.1.0"
 
 ///|
@@ -178,6 +181,7 @@ fn render_file(path : String, matches : @argparse.Matches) -> Int32 {
   let svg = @api.render_svg(
     source,
     measurer=text_measurer,
+    graphviz_context~,
     color_scheme=cli_scheme(),
   ) catch {
     err => {
@@ -274,6 +278,7 @@ async fn package_dep(matches : @argparse.Matches) -> Int32 {
           Some(keep_node) =>
             @api.render_package_dep_svg(
               src,
+              graphviz_context~,
               color_scheme=cli_scheme(),
               keep_node~,
               related_edges~,
@@ -281,6 +286,7 @@ async fn package_dep(matches : @argparse.Matches) -> Int32 {
           None =>
             @api.render_package_dep_svg(
               src,
+              graphviz_context~,
               color_scheme=cli_scheme(),
               related_edges~,
             )

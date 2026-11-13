@@ -23,7 +23,10 @@ fn @entity.EntityDiagram::render_svg_with_mode(
   let layout : ClassLayout = if self.family is Mbti {
     { graphviz: None, mindmap: Some(self.mindmap_class_layout(text_metrics)), }
   } else {
-    { graphviz: Some(self.graphviz_layout(text_metrics)), mindmap: None, }
+    {
+      graphviz: Some(self.graphviz_layout(text_context, text_metrics)),
+      mindmap: None,
+    }
   }
   let bounds = layout.content_bounds(self, text_metrics)
   let top_blocks = self.chrome_blocks(text_context, true)

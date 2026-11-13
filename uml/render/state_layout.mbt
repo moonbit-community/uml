@@ -981,12 +981,18 @@ fn @flow.StateDiagram::layout_scope(
   let laid_out = if scope is Some(_) {
     // GroupMakerState.buildImage supplies no outer graph attributes: DOT
     // uses its internal defaults, while rankdir is still set on the graph.
-    @dot_layout.layout_dot(graph)
+    @dot_layout.layout_dot(text_context=text_context.graphviz_context, graph)
   } else {
     let (nodesep, ranksep) = self.graphviz_spacing(
       text_context, scope, region_index,
     )
-    @graphviz.layout_dot(graph, self.style, nodesep, ranksep)
+    @graphviz.layout_dot(
+      text_context.graphviz_context,
+      graph,
+      self.style,
+      nodesep,
+      ranksep,
+    )
   }
   if laid_out.nodes.any(node => node.node.get_attr("shape") == Some("octagon")) {
     @xdot.attach_xdot_attrs(laid_out)

@@ -11,8 +11,8 @@ test "render tasks keep their text measurers isolated across nested styles" {
       ink_right: measured.ink_right * 2.0,
     }
   })
-  let regular_context = @style.RenderContext::new(regular)
-  let wider_context = @style.RenderContext::new(wider)
+  let regular_context = @style.RenderContext::new(regular, graphviz_context~)
+  let wider_context = @style.RenderContext::new(wider, graphviz_context~)
   let states = @parser.parse_state(
     "@startuml\nstate Container {\nstate \"A sufficiently long state label\" as A\n}\n@enduml",
   )

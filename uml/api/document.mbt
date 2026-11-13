@@ -47,6 +47,7 @@ pub(all) enum DiagramKind {
 pub fn Document::render_svg(
   self : Document,
   measurer~ : @metrics.Measurer,
+  graphviz_context~ : @graphviz_text.Context,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
@@ -54,6 +55,7 @@ pub fn Document::render_svg(
 ) -> String raise {
   self.diagram.render_svg(
     measurer~,
+    graphviz_context~,
     color_scheme~,
     class_member_collapsible~,
     member_states~,
@@ -65,9 +67,9 @@ pub fn Document::render_svg(
 /// Parse a PlantUML source with the document heuristics and render the
 /// selected diagram family to SVG.
 ///
-/// The host must provide `measurer`; the core has no default implementation.
-/// Parsing does not use it, and parsed styles are not mutated by rendering.
-/// Raw DOT remains a pass-through to Graphviz's separate text measurement.
+/// The host provides both UML's `measurer` and Graphviz's `graphviz_context`.
+/// Parsing uses neither, and parsed styles are not mutated by rendering.
+/// Raw DOT uses the supplied Graphviz context, not UML's measurer.
 ///
 /// `color_scheme` is the cross-diagram theme boundary. `text` and `line` are
 /// required (the ink colors that become unreadable in a dark theme), and every
@@ -82,6 +84,7 @@ pub fn Document::render_svg(
 pub fn render_svg(
   source : String,
   measurer~ : @metrics.Measurer,
+  graphviz_context~ : @graphviz_text.Context,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
@@ -89,6 +92,7 @@ pub fn render_svg(
 ) -> String raise {
   parse(source).render_svg(
     measurer~,
+    graphviz_context~,
     color_scheme~,
     class_member_collapsible~,
     member_states~,
@@ -101,17 +105,18 @@ pub fn render_svg(
 ///
 /// This is the single boundary between document parsing and diagram-specific
 /// rendering. Each family still owns its parser, layout, and SVG painter; the
-/// API creates one context from the host's service, then dispatches. Family
+/// API binds the host's two services in one context, then dispatches. Family
 /// renderers and layouts reuse that context without selecting a backend.
 pub fn Diagram::render_svg(
   self : Diagram,
   measurer~ : @metrics.Measurer,
+  graphviz_context~ : @graphviz_text.Context,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   class_member_collapsible~ : Bool = false,
   member_states~ : Map[String, @entity.ClassMemberState] = {},
   mbti_render_options~ : @entity.MbtiRenderOptions = @entity.MbtiRenderOptions::default(),
 ) -> String raise {
-  let text_context = @style.RenderContext::new(measurer)
+  let text_context = @style.RenderContext::new(measurer, graphviz_context~)
   match self {
     Sequence(diagram) =>
       @render.render_sequence_svg(text_context, diagram, color_scheme~)
@@ -145,7 +150,7 @@ pub fn Diagram::render_svg(
       )
     Json(diagram) | Yaml(diagram) | Toml(diagram) =>
       @render.render_structured_svg(text_context, diagram, color_scheme~)
-    Dot(diagram) => diagram.render_svg(color_scheme~)
+    Dot(diagram) => diagram.render_svg(graphviz_context~, color_scheme~)
   }
 }
 

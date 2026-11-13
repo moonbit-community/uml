@@ -1,6 +1,9 @@
 ///|
 test "document font settings preserve font family and size" {
-  let text_context = @style.RenderContext::new(@heuristic.measurer())
+  let text_context = @style.RenderContext::new(
+    @heuristic.measurer(),
+    graphviz_context=@graphviz_heuristic.context(),
+  )
   let monospace = @style.DocumentStyle::empty()
   monospace.apply(FontFamily("Courier"))
   monospace.apply(FontSize("16px"))

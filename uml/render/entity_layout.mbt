@@ -180,6 +180,7 @@ fn @entity.Relation::graphviz_minlen(self : @entity.Relation) -> Int32 {
 /// Build and execute the in-process Graphviz DOT layout.
 fn @entity.EntityDiagram::graphviz_layout(
   self : @entity.EntityDiagram,
+  text_context : @style.RenderContext,
   text_metrics : ClassTextMetrics,
 ) -> GraphvizLayout raise @dot_layout.DotLayoutError {
   let family_capability = self.family.capability()
@@ -640,6 +641,7 @@ fn @entity.EntityDiagram::graphviz_layout(
     }
   }
   let laid_out = @graphviz.layout_dot(
+    text_context.graphviz_context,
     graph,
     self.style,
     entity_graphviz_spacing(self.style, "nodesep", PLANTUML_MIN_NODESEP_IN),

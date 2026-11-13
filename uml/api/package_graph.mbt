@@ -26,13 +26,14 @@
 /// default and overridden by any explicit attribute.
 pub fn render_package_dep_svg(
   source : String,
+  graphviz_context~ : @graphviz_text.Context,
   color_scheme~ : @style.ColorScheme = @style.ColorScheme::default(),
   keep_node~ : (InOutDegrees) -> Bool = default_keep_node,
   related_edges~ : RelatedEdges = Neighborhood,
 ) -> String raise @dot_layout.DotLayoutError {
   let graph = parse_package_dep_graph(source, keep_node~, related_edges~)
   graph.apply_theme_defaults(color_scheme)
-  let layout = @dot_layout.layout_dot(graph, options=@dot_layout.DotLayoutOptions::{
+  let layout = @dot_layout.layout_dot(text_context=graphviz_context, graph, options=@dot_layout.DotLayoutOptions::{
     rankdir: Some(@dot_layout.RankDir::TB),
     nodesep: None,
     ranksep: None,

@@ -10,6 +10,8 @@ import {
   "moonbit-community/uml/metrics",
   "moonbit-community/uml/style",
   "moonbit-community/uml/entity",
+  "moonbit-community/graphviz/text/canvas" @graphviz_canvas,
+  "moonbit-community/graphviz/layout/text" @graphviz_text,
 }
 
 supported_targets = "js"
