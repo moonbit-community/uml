@@ -1,17 +1,8 @@
-# Publishes the library modules to mooncakes.io. `uml-cli` and `live` are intentionally not published.
-name: Publish Mooncakes packages
+# Publishes uml to mooncakes.io. `uml-cli` and `live` are intentionally not published.
+name: Publish packages
 
 on:
   workflow_dispatch:
-    inputs:
-      module:
-        description: Module to publish
-        type: choice
-        default: all
-        options:
-          - all
-          - metrics
-          - uml
   release:
     types: [released]
 
@@ -41,56 +32,33 @@ jobs:
           moon version --all
           moon update
 
-      - name: Select modules
-        shell: bash
-        env:
-          SELECTED_MODULE: ${{ inputs.module || 'all' }}
-        run: |
-          set -euo pipefail
-          case "$SELECTED_MODULE" in
-            all) modules="metrics uml" ;;
-            metrics|uml) modules="$SELECTED_MODULE" ;;
-            *) echo "Unknown module: $SELECTED_MODULE" >&2; exit 1 ;;
-          esac
-          echo "PUBLISH_MODULES=$modules" >> "$GITHUB_ENV"
-
-      - name: Validate selected modules
+      - name: Validate UML
         shell: bash
         run: |
           set -euo pipefail
-          read -r -a modules <<< "$PUBLISH_MODULES"
+          # Explicit paths exclude other workspace modules from validation.
           packages=()
-          for module in "${modules[@]}"; do
-            # Explicit package paths include every child package in this module
-            # without selecting tests from other workspace modules.
-            while IFS= read -r manifest; do
-              packages+=("${manifest%/moon.pkg}")
-            done < <(git ls-files "$module/moon.pkg" "$module/**/moon.pkg")
-          done
+          while IFS= read -r manifest; do
+            packages+=("${manifest%/moon.pkg}")
+          done < <(git ls-files 'uml/moon.pkg' 'uml/**/moon.pkg')
           test "${#packages[@]}" -gt 0
           moon check --deny-warn "${packages[@]}"
           moon info "${packages[@]}"
-          git diff --exit-code -- "${modules[@]}"
+          git diff --exit-code -- uml
           moon test "${packages[@]}"
           moon fmt --check "${packages[@]}"
-          git diff --exit-code -- "${modules[@]}"
+          git diff --exit-code -- uml
 
-      # Dependencies must reach Mooncakes before their consumers: metrics is a dependency of uml, so it is always published first when both are selected.
-      - name: Publish selected modules
+      - name: Publish UML
+        working-directory: uml
         shell: bash
         run: |
           set -euo pipefail
-          read -r -a modules <<< "$PUBLISH_MODULES"
           test -n "$SECRET" || { echo "Missing Mooncakes token" >&2; exit 1; }
           umask 077
           mkdir -p "$HOME/.moon"
           trap 'rm -f "$HOME/.moon/credentials.json"' EXIT
           printf '%s\n' "$SECRET" > "$HOME/.moon/credentials.json"
-          for module in "${modules[@]}"; do
-            echo "::group::Publish $module"
-            moon update
-            (cd "$module" && moon publish)
-            echo "::endgroup::"
-          done
+          moon publish
         env:
           SECRET: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
